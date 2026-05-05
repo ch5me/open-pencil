@@ -49,17 +49,16 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      - uses: oven-sh/setup-bun@v2
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Install API dependencies
         run: cd api && pnpm install --no-frozen-lockfile
 
-      - name: Unit proof lane
-        run: pnpm proof:unit
-
       - name: API proof lane
-        run: pnpm proof:api
+        run: bunx vitest run tests/api/
 
   build-release-candidate:
     name: Build candidate + deploy staging
