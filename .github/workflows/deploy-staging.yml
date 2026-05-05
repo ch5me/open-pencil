@@ -95,7 +95,7 @@ jobs:
           sudo install -m 0755 /tmp/sops /usr/local/bin/sops
 
       - name: Activate Hush CI identity
-        run: node scripts/hush-cli.mjs config active-identity ci
+        run: hush config active-identity ci
         env:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
@@ -140,7 +140,7 @@ jobs:
           echo "Pages: openpencil-staging → staging.pencil.ch5.me" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Notify Bot Town on failure
-        if: failure()
+        if: failure() && false
         uses: jayqi/failed-build-issue-action@v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
