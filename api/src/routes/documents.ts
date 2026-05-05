@@ -1,14 +1,34 @@
 import { Hono } from 'hono'
 import type { Env } from '../env'
+import { createBetterAuth } from '../auth/better-auth'
+
+declare module 'hono' {
+  interface ContextVariableMap {
+    authUserId: string
+  }
+}
 
 export function createDocumentsRouter() {
   const router = new Hono<{ Bindings: Env }>()
 
   router.use('*', async (c, next) => {
     const authHeader = c.req.header('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return c.json({ error: 'Unauthorized' }, 401)
+    if (authHeader?.startsWith('Bearer ')) {
+      c.set('authUserId', 'bearer-user')
+      await next()
+      return
     }
+
+    const auth = createBetterAuth(c.env.DB, {
+      RESEND_API_KEY: c.env.RESEND_API_KEY,
+      PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+      BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+      BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
+    })
+    const session = await auth.api.getSession({ headers: c.req.raw.headers })
+    const userId = session?.session?.userId
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+    c.set('authUserId', userId)
     await next()
   })
 
@@ -16,10 +36,11 @@ export function createDocumentsRouter() {
     const body = await c.req.json<{ title?: string }>()
     const id = crypto.randomUUID()
     const now = Date.now()
+    const ownerId = c.get('authUserId')
     await c.env.DB.prepare(`
       INSERT INTO documents (id, ownerId, title, createdAt, updatedAt)
       VALUES (?, ?, ?, ?, ?)
-    `).bind(id, 'system', body.title ?? 'Untitled', now, now).run()
+    `).bind(id, ownerId, body.title ?? 'Untitled', now, now).run()
     return c.json({ id, title: body.title ?? 'Untitled' })
   })
 

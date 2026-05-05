@@ -29,10 +29,11 @@ app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.get('/api/version', (c) => {
   const meta = c.env.VERSION_METADATA
+  const stage = c.env.NODE_ENV === 'staging' ? 'staging' : c.env.NODE_ENV === 'production' ? 'production' : 'development'
   return c.json({
     version: meta?.version ?? '0.0.0',
     deployedAt: meta?.deployedAt ?? 'unknown',
-    stage: meta?.deployedAt ? 'production' : 'development',
+    stage,
   })
 })
 
@@ -44,7 +45,7 @@ app.post('/api/auth/sign-up', async (c) => {
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   const body = await c.req.json<{ email: string; password: string; name?: string }>()
-  return betterAuth.handler(new Request(new URL('/sign-up/email', c.req.url), {
+  return betterAuth.handler(new Request(new URL('/api/auth/sign-up/email', c.req.url), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email: body.email, password: body.password, name: body.name }),
@@ -59,7 +60,7 @@ app.post('/api/auth/sign-in', async (c) => {
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   const body = await c.req.json<{ email: string; password: string }>()
-  return betterAuth.handler(new Request(new URL('/sign-in/email', c.req.url), {
+  return betterAuth.handler(new Request(new URL('/api/auth/sign-in/email', c.req.url), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email: body.email, password: body.password }),
@@ -73,7 +74,7 @@ app.post('/api/auth/sign-out', async (c) => {
     BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
-  return betterAuth.handler(new Request(new URL('/sign-out', c.req.url), {
+  return betterAuth.handler(new Request(new URL('/api/auth/sign-out', c.req.url), {
     method: 'POST',
     headers: c.req.raw.headers,
   }))
@@ -98,7 +99,7 @@ app.post('/api/auth/otp/send', async (c) => {
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   const body = await c.req.json<{ email: string }>()
-  return betterAuth.handler(new Request(new URL('/email-otp/send-verification-otp', c.req.url), {
+  return betterAuth.handler(new Request(new URL('/api/auth/email-otp/send-verification-otp', c.req.url), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email: body.email, type: 'sign-in' }),
@@ -113,7 +114,7 @@ app.post('/api/auth/otp/verify', async (c) => {
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   const body = await c.req.json<{ email: string; otp: string }>()
-  return betterAuth.handler(new Request(new URL('/email-otp/verify-email', c.req.url), {
+  return betterAuth.handler(new Request(new URL('/api/auth/email-otp/verify-email', c.req.url), {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email: body.email, otp: body.otp }),

@@ -25,6 +25,8 @@ ALTER TABLE document_snapshots ADD COLUMN createdBy TEXT REFERENCES users(id);
 
 ALTER TABLE share_links ADD COLUMN createdBy TEXT REFERENCES users(id);
 
+ALTER TABLE accounts ADD COLUMN password TEXT;
+
 ALTER TABLE local_doc_imports ADD COLUMN id TEXT;
 ALTER TABLE local_doc_imports ADD COLUMN userId TEXT REFERENCES users(id);
 ALTER TABLE local_doc_imports ADD COLUMN localDocFingerprint TEXT;
