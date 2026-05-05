@@ -28,14 +28,15 @@ function clearSessionCookie(): void {
   document.cookie = `${SESSION_COOKIE_KEY}=; max-age=0; path=/`
 }
 
-export function useHostedSession() {
-  const sessionData = ref<SessionData | null>(null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
+const sessionData = ref<SessionData | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
 
-  const user = computed<SessionUser | null>(() => sessionData.value?.user ?? null)
-  const isSignedIn = computed<boolean>(() => user.value !== null)
-  const sessionToken = computed<string | null>(() => getSessionCookie())
+const user = computed<SessionUser | null>(() => sessionData.value?.user ?? null)
+const isSignedIn = computed<boolean>(() => user.value !== null)
+const sessionToken = computed<string | null>(() => getSessionCookie())
+
+export function useHostedSession() {
 
   async function refresh(): Promise<void> {
     loading.value = true
