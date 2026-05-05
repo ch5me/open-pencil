@@ -49,5 +49,5 @@ if (values['dry-run']) {
 }
 
 console.log('promote-production: deploying to production via wrangler...')
-execSync('npx wrangler deploy --env production', { cwd: join(ROOT, 'api'), stdio: 'inherit' })
+execSync('npx wrangler deploy --config wrangler.toml', { cwd: join(ROOT, 'api'), stdio: 'inherit' })
 console.log('promote-production: done')

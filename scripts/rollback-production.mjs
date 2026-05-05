@@ -44,5 +44,5 @@ if (values['dry-run']) {
 }
 
 console.log('rollback-production: rolling back via wrangler versions...')
-execSync(`npx wrangler versions deploy --env production`, { cwd: join(ROOT, 'api'), stdio: 'inherit' })
+execSync('npx wrangler versions deploy', { cwd: join(ROOT, 'api'), stdio: 'inherit' })
 console.log('rollback-production: done')

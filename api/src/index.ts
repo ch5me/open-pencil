@@ -40,41 +40,53 @@ app.post('/api/auth/sign-up', async (c) => {
   const betterAuth = createBetterAuth(c.env.DB, {
     RESEND_API_KEY: c.env.RESEND_API_KEY,
     PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
-  const { signUp } = betterAuth.api
   const body = await c.req.json<{ email: string; password: string; name?: string }>()
-  const result = await signUp(body.email, body.password, { name: body.name })
-  return c.json(result)
+  return betterAuth.handler(new Request(new URL('/sign-up/email', c.req.url), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: body.email, password: body.password, name: body.name }),
+  }))
 })
 
 app.post('/api/auth/sign-in', async (c) => {
   const betterAuth = createBetterAuth(c.env.DB, {
     RESEND_API_KEY: c.env.RESEND_API_KEY,
     PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
-  const { signIn } = betterAuth.api
   const body = await c.req.json<{ email: string; password: string }>()
-  const result = await signIn(body.email, body.password)
-  return c.json(result)
+  return betterAuth.handler(new Request(new URL('/sign-in/email', c.req.url), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: body.email, password: body.password }),
+  }))
 })
 
 app.post('/api/auth/sign-out', async (c) => {
   const betterAuth = createBetterAuth(c.env.DB, {
     RESEND_API_KEY: c.env.RESEND_API_KEY,
     PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
-  const { signOut } = betterAuth.api
-  await signOut(c.req.header('cookie') ?? '')
-  return c.json({ ok: true })
+  return betterAuth.handler(new Request(new URL('/sign-out', c.req.url), {
+    method: 'POST',
+    headers: c.req.raw.headers,
+  }))
 })
 
 app.get('/api/auth/session', async (c) => {
   const betterAuth = createBetterAuth(c.env.DB, {
     RESEND_API_KEY: c.env.RESEND_API_KEY,
     PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
-  const { getSession } = betterAuth.api
-  const session = await getSession(c.req.header('cookie') ?? '')
+  const session = await betterAuth.api.getSession({ headers: c.req.raw.headers })
   return c.json({ session })
 })
 
@@ -82,28 +94,38 @@ app.post('/api/auth/otp/send', async (c) => {
   const betterAuth = createBetterAuth(c.env.DB, {
     RESEND_API_KEY: c.env.RESEND_API_KEY,
     PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   const body = await c.req.json<{ email: string }>()
-  const { sendOTP } = betterAuth.api
-  await sendOTP(body.email)
-  return c.json({ ok: true })
+  return betterAuth.handler(new Request(new URL('/email-otp/send-verification-otp', c.req.url), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: body.email, type: 'sign-in' }),
+  }))
 })
 
 app.post('/api/auth/otp/verify', async (c) => {
   const betterAuth = createBetterAuth(c.env.DB, {
     RESEND_API_KEY: c.env.RESEND_API_KEY,
     PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   const body = await c.req.json<{ email: string; otp: string }>()
-  const { verifyOTP } = betterAuth.api
-  const result = await verifyOTP(body.email, body.otp)
-  return c.json(result)
+  return betterAuth.handler(new Request(new URL('/email-otp/verify-email', c.req.url), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: body.email, otp: body.otp }),
+  }))
 })
 
 app.all('/api/auth/*', async (c) => {
   const betterAuth = createBetterAuth(c.env.DB, {
     RESEND_API_KEY: c.env.RESEND_API_KEY,
     PUBLIC_APP_URL: c.env.PUBLIC_APP_URL,
+    BETTER_AUTH_URL: c.env.BETTER_AUTH_URL,
+    BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   return betterAuth.handler(c.req.raw)
 })

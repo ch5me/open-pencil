@@ -11,7 +11,7 @@ export function createOpenPencilAliases(rootDir: string) {
     '#core': resolve(rootDir, 'packages/core/src'),
     '@open-pencil/vue': resolve(rootDir, 'packages/vue/src'),
     '@open-pencil/core': resolve(rootDir, 'packages/core/src'),
-    'opentype.js': resolve(rootDir, 'node_modules/opentype.js/dist/opentype.module.js'),
+    'opentype.js': resolve(rootDir, 'node_modules/opentype.js/dist/opentype.mjs'),
     mermaid: resolve(rootDir, 'src/app/shell/markdown/index.ts'),
     'beautiful-mermaid': resolve(rootDir, 'src/app/shell/markdown/index.ts'),
   }

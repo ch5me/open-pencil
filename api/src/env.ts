@@ -6,6 +6,7 @@ export interface Env {
   PUBLIC_APP_URL?: string
   PUBLIC_SITE_URL?: string
   BETTER_AUTH_URL?: string
+  BETTER_AUTH_SECRET?: string
   SENTRY_DSN?: string
   VERSION_METADATA?: { version?: string; deployedAt?: string }
   OPENAI_API_KEY?: string

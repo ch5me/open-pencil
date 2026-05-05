@@ -28,9 +28,14 @@ async function sendResendOtp(apiKey: string, email: string, otp: string): Promis
   }
 }
 
-export function createBetterAuth(db: D1Database, env: { RESEND_API_KEY?: string; PUBLIC_APP_URL?: string }) {
+export function createBetterAuth(
+  db: D1Database,
+  env: { RESEND_API_KEY?: string; PUBLIC_APP_URL?: string; BETTER_AUTH_URL?: string; BETTER_AUTH_SECRET?: string }
+) {
   const database = drizzle(db)
   const config: BetterAuthConfig = {
+    baseURL: env.BETTER_AUTH_URL ?? env.PUBLIC_APP_URL,
+    secret: env.BETTER_AUTH_SECRET,
     database: drizzleAdapter(database, {
       provider: 'sqlite',
       schema,
