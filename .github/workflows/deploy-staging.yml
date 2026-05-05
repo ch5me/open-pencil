@@ -114,13 +114,13 @@ jobs:
         run: pnpm exec vite build
 
       - name: Deploy to staging
-        run: npx wrangler deploy --config api/wrangler.toml --env staging
+        run: pnpm dlx wrangler deploy --config api/wrangler.toml --env staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Deploy web staging to Pages
-        run: npx wrangler pages deploy dist --project-name=openpencil-staging --branch staging --commit-dirty=true
+        run: pnpm dlx wrangler pages deploy dist --project-name=openpencil-staging --branch staging --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
