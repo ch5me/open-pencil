@@ -1,5 +1,6 @@
 import { ref, computed, readonly } from 'vue'
 import type { DocumentPersistenceAdapter } from '../lib/persistence/DocumentPersistenceAdapter'
+import { API_BASE_URL } from '../lib/auth/authTransport'
 
 const persistenceAdapter = ref<DocumentPersistenceAdapter | null>(null)
 const hostedAuthSession = ref<{ userId: string; email: string } | null>(null)
@@ -63,7 +64,7 @@ export function useHostedAuth() {
 export function useRecentDocuments() {
   async function fetchRecent(): Promise<void> {
     try {
-      const res = await fetch('/api/documents?limit=20', { credentials: 'include' })
+      const res = await fetch(`${API_BASE_URL}/api/documents?limit=20`, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
         recentDocuments.value = data.documents ?? []

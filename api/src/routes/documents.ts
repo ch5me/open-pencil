@@ -1,6 +1,15 @@
 import { Hono } from 'hono'
+import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../env'
 import { createBetterAuth } from '../auth/better-auth'
+
+async function getBearerUserId(db: D1Database, authHeader: string): Promise<string | null> {
+  const token = authHeader.slice('Bearer '.length)
+  const row = await db.prepare('SELECT userId FROM sessions WHERE token = ? AND expiresAt > ?')
+    .bind(token, Date.now())
+    .first<{ userId: string }>()
+  return row?.userId ?? null
+}
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -14,7 +23,9 @@ export function createDocumentsRouter() {
   router.use('*', async (c, next) => {
     const authHeader = c.req.header('Authorization')
     if (authHeader?.startsWith('Bearer ')) {
-      c.set('authUserId', 'bearer-user')
+      const userId = await getBearerUserId(c.env.DB, authHeader)
+      if (!userId) return c.json({ error: 'Unauthorized' }, 401)
+      c.set('authUserId', userId)
       await next()
       return
     }
@@ -45,9 +56,10 @@ export function createDocumentsRouter() {
   })
 
   router.get('/', async (c) => {
+    const ownerId = c.get('authUserId')
     const { results } = await c.env.DB.prepare(`
-      SELECT * FROM documents WHERE ownerId = 'system' AND _deleted = 0 ORDER BY updatedAt DESC LIMIT 50
-    `).all()
+      SELECT * FROM documents WHERE ownerId = ? AND _deleted = 0 ORDER BY updatedAt DESC LIMIT 50
+    `).bind(ownerId).all()
     return c.json({ documents: results })
   })
 

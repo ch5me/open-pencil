@@ -1,11 +1,17 @@
 import type { Env } from '../env'
 
+type ClientMetadata = {
+  sessionId: string
+  sentInitialState: boolean
+}
+
 export class DocumentRoomDO {
   private state: DurableObjectState
   private env: Env
-  private sessions: Map<string, WebSocket> = new Map()
-  private ydoc: Map<string, Uint8Array> = new Map()
+  private sessions: Map<WebSocket, ClientMetadata> = new Map()
+  private ydocUpdate: Uint8Array | null = null
   private flushTimer: ReturnType<typeof setTimeout> | null = null
+  private initialized = false
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state
@@ -16,66 +22,98 @@ export class DocumentRoomDO {
     const url = new URL(request.url)
 
     if (url.pathname === '/ws') {
-      const webSocketPair = new WebSocketPair()
-      const { 0: clientWebSocket, 1: serverWebSocket } = webSocketPair
+      const pair = new WebSocketPair()
+      const { 0: client, 1: server } = pair
       const sessionId = crypto.randomUUID()
 
-      this.state.acceptWebSocket(serverWebSocket)
-      this.sessions.set(sessionId, serverWebSocket)
+      this.state.acceptWebSocket(server)
 
-      serverWebSocket.addEventListener('close', () => {
-        this.sessions.delete(sessionId)
-      })
+      const metadata: ClientMetadata = { sessionId, sentInitialState: false }
+      this.sessions.set(server, metadata)
 
-      return new Response(null, { status: 101, webSocket: clientWebSocket })
+      // Load persisted state on first connection, then broadcast to newcomer
+      if (!this.initialized) {
+        const r2Key = `ydoc/${this.state.id.name}.bin`
+        try {
+          const obj = await this.env.DOCUMENTS.get(r2Key)
+          if (obj) {
+            this.ydocUpdate = new Uint8Array(await obj.arrayBuffer())
+          }
+        } catch {
+          // R2 unavailable — start with empty state
+        }
+        this.initialized = true
+      }
+
+      // Broadcast current state to the newly connected client
+      if (this.ydocUpdate) {
+        server.send(this.ydocUpdate)
+        metadata.sentInitialState = true
+      }
+
+      return new Response(null, { status: 101, webSocket: client })
     }
 
-    if (url.pathname === '/state') {
-      const currentState = this.ydoc.get('main') ?? new Uint8Array()
-      return new Response(currentState, {
-        headers: { 'content-type': 'application/octet-stream' },
-      })
+    // HTTP endpoint — return room metadata
+    if (url.pathname === '/info' || url.pathname === '/state') {
+      const key = `ydoc/${this.state.id.name}.bin`
+      try {
+        const obj = await this.env.DOCUMENTS.get(key)
+        if (obj) {
+          const buf = new Uint8Array(await obj.arrayBuffer())
+          return new Response(buf, { headers: { 'content-type': 'application/octet-stream' } })
+        }
+      } catch {
+        // R2 unavailable
+      }
+      return new Response(null, { headers: { 'content-type': 'application/octet-stream' } })
     }
 
     return new Response('Not found', { status: 404 })
   }
 
   webSocketMessage(ws: WebSocket, message: ArrayBuffer | string): void {
-    if (typeof message === 'string') return
-    const data = new Uint8Array(message)
-    this.ydoc.set('main', data)
-    this.scheduleFlush()
-    this.broadcast(message, ws)
+    this.handleMessage(ws, message)
   }
 
-  private broadcast(message: ArrayBuffer | string, exclude?: WebSocket): void {
-    const data = typeof message === 'string' ? message : Array.from(new Uint8Array(message))
-    for (const [, session] of this.sessions) {
-      if (session !== exclude && session.readyState === WebSocket.OPEN) {
-        session.send(data)
+  webSocketClose(ws: WebSocket): void {
+    this.sessions.delete(ws)
+  }
+
+  private handleMessage(ws: WebSocket, data: ArrayBuffer | string): void {
+    if (typeof data === 'string') return
+    const buf = new Uint8Array(data)
+    this.ydocUpdate = buf
+    this.broadcast(buf, ws)
+    this.scheduleFlush()
+  }
+
+  private broadcast(data: ArrayBuffer | string, exclude?: WebSocket): void {
+    for (const [ws] of this.sessions) {
+      if (ws === exclude) continue
+      try {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data)
+        }
+      } catch {
+        // dead connection — runtime cleans up on next event
       }
     }
   }
 
   private scheduleFlush(): void {
     if (this.flushTimer) clearTimeout(this.flushTimer)
-    this.flushTimer = setTimeout(() => this.flushToR2(), 5000)
+    this.flushTimer = setTimeout(() => this.flushToR2(), 2000)
   }
 
   private async flushToR2(): Promise<void> {
-    const state = this.ydoc.get('main')
-    if (!state) return
+    if (!this.ydocUpdate) return
     const key = `ydoc/${this.state.id.name}.bin`
-    await this.env.DOCUMENTS.put(key, state)
-  }
-
-  async webSocketClose(ws: WebSocket, code: number): Promise<void> {
-    for (const [id, socket] of this.sessions) {
-      if (socket === ws) {
-        this.sessions.delete(id)
-        break
-      }
+    try {
+      await this.env.DOCUMENTS.put(key, this.ydocUpdate)
+    } catch {
+      // R2 write failed — state remains in memory
     }
-    this.scheduleFlush()
+    this.flushTimer = null
   }
 }

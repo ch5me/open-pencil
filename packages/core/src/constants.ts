@@ -148,6 +148,7 @@ export const ACP_AGENTS: ACPAgentDef[] = [
 ]
 
 export type AIProviderID =
+  | 'openpencil'
   | 'openrouter'
   | 'anthropic'
   | 'openai'
@@ -177,6 +178,28 @@ export interface AIProviderDef {
 }
 
 export const AI_PROVIDERS: AIProviderDef[] = [
+  {
+    id: 'openpencil',
+    name: 'OpenPencil',
+    keyPlaceholder: '',
+    keyURL: '',
+    defaultModel: 'openai/gpt-4.1',
+    models: [
+      { id: 'openai/gpt-4.1', name: 'GPT-4.1', tag: 'Managed default' },
+      { id: 'openai/gpt-5.3-codex', name: 'GPT-5.3 Codex' },
+      { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6', tag: 'Best for design' },
+      { id: 'anthropic/claude-opus-4.6', name: 'Claude Opus 4.6', tag: 'Smartest' },
+      { id: 'moonshotai/kimi-k2.5', name: 'Kimi K2.5', tag: 'Vision + code' },
+      {
+        id: 'google/gemini-3.1-pro-preview',
+        name: 'Gemini 3.1 Pro',
+        tag: '1M context'
+      },
+      { id: 'google/gemini-3-flash-preview', name: 'Gemini 3 Flash', tag: 'Fast' },
+      { id: 'deepseek/deepseek-v3.2', name: 'DeepSeek V3.2', tag: 'Cheap' },
+      { id: 'qwen/qwen3.5-flash-02-23', name: 'Qwen 3.5 Flash', tag: 'Cheap' }
+    ]
+  },
   {
     id: 'openrouter',
     name: 'OpenRouter',
@@ -306,7 +329,7 @@ export const AI_PROVIDERS: AIProviderDef[] = [
   }
 ]
 
-export const DEFAULT_AI_PROVIDER: AIProviderID = 'openrouter'
+export const DEFAULT_AI_PROVIDER: AIProviderID = 'openpencil'
 export const DEFAULT_AI_MODEL = AI_PROVIDERS[0].defaultModel
 
 export const AUTOMATION_HTTP_PORT = 7600

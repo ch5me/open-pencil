@@ -59,6 +59,51 @@ export async function createACPTransport(providerID: AIProviderID) {
   return new ACPChatTransport({ agentDef, cwd: await homeDir() })
 }
 
+export function createHostedTransport({
+  store,
+  modelID
+}: {
+  store: EditorStore
+  modelID: string
+}) {
+  const tools = createAITools(store)
+  return new DirectChatTransport({
+    agent: new ToolLoopAgent({
+      model: createLanguageModel({
+        providerID: modelID.startsWith('anthropic/') ? 'anthropic' : 'openai',
+        apiKey: 'hosted',
+        modelID,
+        customModelID: '',
+        customBaseURL: 'https://api.pencil.ch5.me/api/ai',
+        customAPIType: 'completions'
+      }),
+      instructions: SYSTEM_PROMPT,
+      tools,
+      stopWhen: stepCountIs(MAX_AGENT_STEPS),
+      maxOutputTokens: 1024,
+      prepareCall: (options) => {
+        resetRunSteps(store)
+        return {
+          ...options,
+          maxOutputTokens: 1024
+        }
+      },
+      onStepFinish: ({ usage }) => {
+        recordStepUsage(
+          {
+            inputTokens: usage.inputTokens ?? 0,
+            outputTokens: usage.outputTokens ?? 0,
+            cacheReadTokens: usage.inputTokenDetails.cacheReadTokens ?? 0,
+            cacheWriteTokens: usage.inputTokenDetails.cacheWriteTokens ?? 0,
+            timestamp: Date.now()
+          },
+          store
+        )
+      }
+    })
+  })
+}
+
 export function createToolLoopTransport({
   store,
   providerID,
@@ -151,6 +196,10 @@ export function createChatSessionManager({
 
     void acpTransportInstance?.destroy()
     acpTransportInstance = null
+
+    if (providerID.value === 'openpencil') {
+      return createHostedTransport({ store, modelID: modelID.value })
+    }
 
     return createToolLoopTransport({
       store,

@@ -3,6 +3,7 @@ import { createDeepSeek } from '@ai-sdk/deepseek'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { API_BASE_URL } from '@/lib/auth/authTransport'
 
 import type { AIProviderID } from '@open-pencil/core/constants'
 import type { LanguageModel } from 'ai'
@@ -62,6 +63,27 @@ export function createLanguageModel(config: ModelConfig): LanguageModel {
       })
       return minimax.chat(effectiveModelID)
     }
+    case 'openpencil': {
+      const baseUrl = `${API_BASE_URL}/api/ai`
+      const sessionToken = getSessionToken()
+      const headers: Record<string, string> = {}
+      if (sessionToken) headers['authorization'] = `Bearer ${sessionToken}`
+      if (config.modelID.startsWith('anthropic/')) {
+        const anthropic = createAnthropic({
+          apiKey: config.apiKey || 'hosted',
+          baseURL: baseUrl,
+          headers,
+        })
+        return anthropic(effectiveModelID)
+      } else {
+        const openai = createOpenAI({
+          apiKey: config.apiKey || 'hosted',
+          baseURL: baseUrl,
+          headers,
+        })
+        return openai.chat(effectiveModelID)
+      }
+    }
     case 'openai-compatible': {
       const custom = createOpenAI({
         apiKey: config.apiKey,
@@ -85,4 +107,10 @@ export function createLanguageModel(config: ModelConfig): LanguageModel {
       throw new Error(`Unknown provider: ${config.providerID}`)
     }
   }
+}
+
+function getSessionToken(): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(/(?:^|; )__Secure-better-auth\.session_token=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
 }

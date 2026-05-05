@@ -18,6 +18,15 @@
           <input :value="shareLink" readonly />
           <button @click="copyLink">Copy</button>
         </div>
+        <div v-if="members.length" class="members-list">
+          <h3>People with access</h3>
+          <ul>
+            <li v-for="member in members" :key="member.id">
+              <span>{{ member.name || member.email || member.id }}</span>
+              <span class="member-role">{{ member.role }}</span>
+            </li>
+          </ul>
+        </div>
         <button @click="closeDialog">Close</button>
       </div>
     </div>
@@ -27,7 +36,7 @@
 <script setup lang="ts">
 import { useShareDialog } from './useShareDialog'
 
-const { open, errors, shareLink, loading, closeDialog, createLink, copyLink } = useShareDialog()
+const { open, errors, shareLink, members, loading, closeDialog, createLink, copyLink } = useShareDialog()
 </script>
 
 <style scoped>
@@ -69,6 +78,33 @@ const { open, errors, shareLink, loading, closeDialog, createLink, copyLink } = 
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
+}
+.members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.members-list h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.members-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.members-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.member-role {
+  color: #666;
+  text-transform: capitalize;
 }
 button {
   padding: 8px 16px;

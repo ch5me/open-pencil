@@ -57,6 +57,7 @@ export const isACPProvider = computed(() => providerID.value.startsWith('acp:'))
 
 export const isConfigured = computed(() => {
   if (isACPProvider.value) return IS_TAURI
+  if (providerID.value === 'openpencil') return true // uses session cookie, no key needed
   if (!apiKey.value) return false
   const needsBaseURL =
     providerID.value === 'openai-compatible' || providerID.value === 'anthropic-compatible'

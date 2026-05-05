@@ -4,6 +4,7 @@ import * as awarenessProtocol from 'y-protocols/awareness'
 import * as Y from 'yjs'
 
 import { connectCollabRoom } from '@/app/collab/room'
+import { connectCollabWebSocket } from '@/app/collab/websocket'
 import { bindCollabGraphEvents, registerYjsObservers } from '@/app/collab/yjs-sync'
 import { PEER_COLORS } from '@/constants'
 import { randomIndex } from '@open-pencil/core/random'
@@ -26,6 +27,7 @@ export type CollabRuntime = {
   suppressYjsEvents: boolean
   unbindGraphEvents: (() => void) | null
   stopZoomWatch: (() => void) | null
+  wsCleanup: (() => void) | null
 }
 
 type ConnectCollabSessionOptions = {
@@ -39,6 +41,7 @@ type ConnectCollabSessionOptions = {
   broadcastAwareness: () => void
   applyYjsToGraph: (events: Y.YEvent<Y.Map<unknown>>[]) => void
   syncNodeToYjs: (nodeId: string) => void
+  wsUrl?: string
 }
 
 type CollabConnectionActionsOptions = {
@@ -76,7 +79,8 @@ export function createCollabRuntime(): CollabRuntime {
     suppressGraphSync: false,
     suppressYjsEvents: false,
     unbindGraphEvents: null,
-    stopZoomWatch: null
+    stopZoomWatch: null,
+    wsCleanup: null
   }
 }
 
@@ -118,6 +122,7 @@ export function createCollabConnectionActions({
 
   function disconnect() {
     const store = runtime.connectedStore ?? getStore()
+    runtime.wsCleanup?.()
     disposeCollabSessionResources({
       store,
       room: runtime.room,
@@ -161,9 +166,11 @@ export function connectCollabSession({
   tickFollow,
   broadcastAwareness,
   applyYjsToGraph,
-  syncNodeToYjs
+  syncNodeToYjs,
+  wsUrl
 }: ConnectCollabSessionOptions) {
   if (runtime.room) disconnect()
+  runtime.wsCleanup?.()
 
   runtime.connectedStore = store
   state.value.roomId = roomId
@@ -189,6 +196,38 @@ export function connectCollabSession({
     applyYjsToGraph
   })
 
+  const unbindGraphEvents = () => {
+    runtime.unbindGraphEvents?.()
+    runtime.unbindGraphEvents = null
+  }
+
+  if (wsUrl) {
+    const wsConn = connectCollabWebSocket({
+      wsUrl,
+      ydoc: runtime.ydoc,
+      awareness: runtime.awareness,
+      setConnected: () => {
+        state.value.connected = true
+      },
+      updatePeersList
+    })
+    runtime.wsCleanup = () => wsConn?.close()
+    state.value.connected = true
+    broadcastAwareness()
+    runtime.stopZoomWatch = watchAwarenessZoom(store, () => runtime.awareness)
+    runtime.unbindGraphEvents = bindCollabGraphEvents({
+      store,
+      getYdoc: () => runtime.ydoc,
+      getYnodes: () => runtime.ynodes,
+      getSuppressGraphSync: () => runtime.suppressGraphSync,
+      setSuppressYjsEvents: (value) => {
+        runtime.suppressYjsEvents = value
+      },
+      syncNodeToYjs
+    })
+    return unbindGraphEvents
+  }
+
   const roomConnection = connectCollabRoom({
     roomId,
     ydoc: runtime.ydoc,
@@ -199,6 +238,7 @@ export function connectCollabSession({
     updatePeersList
   })
   runtime.room = roomConnection.room
+  runtime.wsCleanup = null
   state.value.connected = true
   broadcastAwareness()
 
@@ -226,6 +266,9 @@ export function resetCollabRuntime(runtime: CollabRuntime) {
   runtime.ynodes = null
   runtime.yimages = null
   runtime.connectedStore = null
+  runtime.suppressGraphSync = false
+  runtime.suppressYjsEvents = false
+  runtime.wsCleanup = null
 }
 
 export function resetCollabConnectionState(state: Ref<CollabState>) {

@@ -1,6 +1,17 @@
-const API_BASE_URL = typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL
-  ? String(import.meta.env.VITE_API_BASE_URL)
-  : 'https://api.pencil.ch5.me'
+function resolveApiBaseUrl(): string {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) {
+    return String(import.meta.env.VITE_API_BASE_URL)
+  }
+
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'staging.pencil.ch5.me') return 'https://api.staging.pencil.ch5.me'
+    if (window.location.hostname === 'pencil.ch5.me') return 'https://api.pencil.ch5.me'
+  }
+
+  return 'https://api.pencil.ch5.me'
+}
+
+export const API_BASE_URL = resolveApiBaseUrl()
 
 export interface AuthFetchOptions {
   method?: 'GET' | 'POST'

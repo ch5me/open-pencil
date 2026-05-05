@@ -5,14 +5,19 @@ on:
     branches:
       - master
     paths:
+      - 'src/**'
       - 'packages/**'
+      - 'tests/**'
       - 'config/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'turbo.json'
       - 'scripts/**'
+      - 'api/src/**'
       - 'api/wrangler.toml'
+      - '.hush/**'
+      - '.sops.yaml'
       - '.github/workflows/deploy-staging.yml'
       - '.github/workflows/promote-production.yml'
       - '.github/workflows/rollback-production.yml'
@@ -52,6 +57,9 @@ jobs:
 
       - name: Unit proof lane
         run: pnpm proof:unit
+
+      - name: API proof lane
+        run: pnpm proof:api
 
   build-release-candidate:
     name: Build candidate + deploy staging

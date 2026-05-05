@@ -4,12 +4,14 @@ import { computed, ref } from 'vue'
 import { createFollowActions, generateRoomId } from '@/app/collab/awareness'
 import { createLocalAwarenessActions } from '@/app/collab/local-awareness'
 import {
+  connectCollabSession,
   createCollabConnectionActions,
   createCollabRuntime,
   createInitialCollabState
 } from '@/app/collab/session'
 import { DEFAULT_COLLAB_STATE, type CollabState, type RemotePeer } from '@/app/collab/types'
 import { createYjsGraphSync } from '@/app/collab/yjs-sync'
+import { API_BASE_URL } from '@/lib/auth/authTransport'
 
 import type { EditorStore } from '@/app/editor/active-store'
 
@@ -66,6 +68,29 @@ export function useCollab(storeOrGetter: EditorStore | (() => EditorStore)) {
     return roomId
   }
 
+  async function connectHosted(documentId: string) {
+    const res = await fetch(`${API_BASE_URL}/api/collab/room/${documentId}`, {
+      credentials: 'include',
+    })
+    const data = await res.json() as { wsUrl: string }
+    if (!data.wsUrl) throw new Error('no wsUrl from collab endpoint')
+    disconnect()
+    connectCollabSession({
+      roomId: documentId,
+      runtime,
+      state,
+      store: getStore(),
+      disconnect,
+      updatePeersList,
+      tickFollow,
+      broadcastAwareness,
+      applyYjsToGraph,
+      syncNodeToYjs,
+      wsUrl: data.wsUrl
+    })
+    syncAllNodesToYjs()
+  }
+
   tryOnScopeDispose(disconnect)
 
   return {
@@ -73,6 +98,7 @@ export function useCollab(storeOrGetter: EditorStore | (() => EditorStore)) {
     remotePeers,
     followingPeer,
     connect,
+    connectHosted,
     disconnect,
     shareCurrentDoc,
     updateCursor,
