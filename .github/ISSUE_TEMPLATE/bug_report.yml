@@ -31,7 +31,7 @@ body:
     attributes:
       label: Platform
       options:
-        - Web (app.openpencil.dev)
+        - Web (pencil.ch5.me)
         - macOS (Tauri)
         - Windows (Tauri)
         - Linux (Tauri)

@@ -1,0 +1,84 @@
+name = "openpencil-api"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+main = "src/index.ts"
+workers_dev = false
+preview_urls = true
+
+[[routes]]
+pattern = "api.pencil.ch5.me"
+custom_domain = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "openpencil-db"
+database_id = "9d83abfa-9f06-4613-95e4-0b93ce41c2c8"
+migrations_dir = "./migrations"
+
+[[r2_buckets]]
+binding = "DOCUMENTS"
+bucket_name = "openpencil-documents"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "openpencil-assets"
+
+[durable_objects]
+bindings = [
+  { name = "DOCUMENT_ROOM", class_name = "DocumentRoomDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["DocumentRoomDO"]
+
+[vars]
+NODE_ENV = "production"
+PUBLIC_APP_URL = "https://pencil.ch5.me"
+PUBLIC_SITE_URL = "https://pencil.ch5.me"
+BETTER_AUTH_URL = "https://api.pencil.ch5.me"
+
+[limits]
+cpu_ms = 300000
+
+[version_metadata]
+binding = "VERSION_METADATA"
+
+[env.staging]
+name = "openpencil-api-staging"
+
+[[env.staging.routes]]
+pattern = "api.staging.pencil.ch5.me"
+custom_domain = true
+
+[env.staging.durable_objects]
+bindings = [
+  { name = "DOCUMENT_ROOM", class_name = "DocumentRoomDO" }
+]
+
+[[env.staging.migrations]]
+tag = "v1"
+new_classes = ["DocumentRoomDO"]
+
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "openpencil-db-staging"
+database_id = "7e8af747-bef1-4fee-9431-4fc7b0108f35"
+migrations_dir = "./migrations"
+
+[[env.staging.r2_buckets]]
+binding = "DOCUMENTS"
+bucket_name = "openpencil-documents-staging"
+
+[[env.staging.r2_buckets]]
+binding = "ASSETS"
+bucket_name = "openpencil-assets-staging"
+
+[env.staging.vars]
+NODE_ENV = "staging"
+PUBLIC_APP_URL = "https://staging.pencil.ch5.me"
+PUBLIC_SITE_URL = "https://staging.pencil.ch5.me"
+BETTER_AUTH_URL = "https://api.staging.pencil.ch5.me"
+
+[env.staging.version_metadata]
+binding = "VERSION_METADATA"

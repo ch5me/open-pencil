@@ -1,0 +1,36 @@
+[
+  {
+    "canonicalName": "local",
+    "hushTargetName": "api-dev",
+    "bundleName": "api-dev",
+    "encryptedFilePath": "env/targets/api/dev",
+    "consumingScripts": [
+      "scripts/deploy-validate.mjs",
+      "scripts/secrets-validate.mjs",
+      "scripts/release-candidate.mjs"
+    ]
+  },
+  {
+    "canonicalName": "staging",
+    "hushTargetName": "api-staging",
+    "bundleName": "api-staging",
+    "encryptedFilePath": "env/targets/api/staging",
+    "consumingScripts": [
+      "scripts/deploy-validate.mjs",
+      "scripts/secrets-validate.mjs",
+      "scripts/release-candidate.mjs"
+    ]
+  },
+  {
+    "canonicalName": "production",
+    "hushTargetName": "api-production",
+    "bundleName": "api-production",
+    "encryptedFilePath": "env/targets/api/production",
+    "consumingScripts": [
+      "scripts/deploy-validate.mjs",
+      "scripts/secrets-validate.mjs",
+      "scripts/promote-production.mjs",
+      "scripts/rollback-production.mjs"
+    ]
+  }
+]

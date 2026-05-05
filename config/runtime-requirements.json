@@ -1,0 +1,52 @@
+{
+  "api": [
+    {
+      "name": "PUBLIC_APP_URL",
+      "delivery": "variable",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Public client app URL used for auth callbacks and CORS."
+    },
+    {
+      "name": "BETTER_AUTH_URL",
+      "delivery": "variable",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Public Better Auth base URL exposed by the API Worker."
+    },
+    {
+      "name": "BETTER_AUTH_SECRET",
+      "delivery": "secret",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Better Auth secret used to initialize the auth runtime."
+    },
+    {
+      "name": "OPENAI_API_KEY",
+      "delivery": "secret",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "OpenAI API key for hosted AI proxy."
+    },
+    {
+      "name": "ANTHROPIC_API_KEY",
+      "delivery": "secret",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Anthropic API key for hosted AI proxy."
+    },
+    {
+      "name": "SCENARIO_API_KEY",
+      "delivery": "secret",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Scenario API key for hosted image generation proxy."
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "delivery": "secret",
+      "requiredIn": ["staging", "production"],
+      "description": "Resend API key for magic link / OTP email delivery."
+    },
+    {
+      "name": "SENTRY_DSN",
+      "delivery": "secret",
+      "requiredIn": ["staging", "production"],
+      "description": "Sentry DSN for Worker error monitoring."
+    }
+  ]
+}

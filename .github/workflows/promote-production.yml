@@ -1,0 +1,85 @@
+name: Promote Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_id:
+        description: 'Candidate id to promote (e.g. op-staging-xxxxxxxx)'
+        required: false
+        type: string
+      candidate_run_id:
+        description: 'GitHub Actions run id for the release candidate'
+        required: false
+        type: string
+
+concurrency:
+  group: promote-production
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  packages: read
+
+jobs:
+  promote-production:
+    name: Promote production release candidate
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: '10.11.0'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Configure GitHub Packages auth
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install API dependencies
+        run: cd api && pnpm install --no-frozen-lockfile
+
+      - name: Build web app
+        run: pnpm exec vite build
+
+      - name: Promote worker production
+        run: node scripts/promote-production.mjs --candidate "${{ github.event.inputs.candidate_id }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy web production to Pages
+        run: npx wrangler pages deploy dist --project-name=openpencil --branch main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Promotion summary
+        run: |
+          echo '## Production promotion' >> "$GITHUB_STEP_SUMMARY"
+          echo "Candidate id: ${{ github.event.inputs.candidate_id || 'not-provided' }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Fallback run id: ${{ github.event.inputs.candidate_run_id || 'not-used' }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify Bot Town on failure
+        if: failure()
+        uses: jayqi/failed-build-issue-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          label-name: ci-failure
+          title-template: 'ci: Production promotion failure'
+          body-template: |
+            **Workflow**: {{ workflow }}
+            **Branch**: {{ branch }}
+            **Run**: {{ runUrl }}
+            **Commit**: {{ commit }}
+
+            Bot Town lead agent: please investigate and fix.

@@ -9,7 +9,8 @@
     {
       "files": ["tests/**/*.ts"],
       "rules": {
-        "no-unused-vars": "off"
+        "no-unused-vars": "off",
+        "open-pencil/no-direct-storage-access": "off"
       }
     }
   ],

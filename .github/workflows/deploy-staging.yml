@@ -1,0 +1,148 @@
+name: Build Release Candidate
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/**'
+      - 'config/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'scripts/**'
+      - 'api/wrangler.toml'
+      - '.github/workflows/deploy-staging.yml'
+      - '.github/workflows/promote-production.yml'
+      - '.github/workflows/rollback-production.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+  packages: read
+
+jobs:
+  proof:
+    name: Proof lanes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: '10.11.0'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install API dependencies
+        run: cd api && pnpm install --no-frozen-lockfile
+
+      - name: Unit proof lane
+        run: pnpm proof:unit
+
+  build-release-candidate:
+    name: Build candidate + deploy staging
+    needs: proof
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: '10.11.0'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Configure GitHub Packages auth
+        run: echo "//npm.pkg.github.com/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install API dependencies
+        run: cd api && pnpm install --no-frozen-lockfile
+
+      - name: Install Hush CLI
+        run: pnpm add -g @chriscode/hush@6.0.0
+
+      - name: Install SOPS
+        run: |
+          curl -L https://github.com/getsops/sops/releases/download/v3.10.2/sops-v3.10.2.linux.amd64 -o /tmp/sops
+          sudo install -m 0755 /tmp/sops /usr/local/bin/sops
+
+      - name: Activate Hush CI identity
+        run: node scripts/hush-cli.mjs config active-identity ci
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Validate deploy config
+        run: node scripts/deploy-validate.mjs
+
+      - name: Validate secrets coverage
+        run: node scripts/secrets-validate.mjs
+
+      - name: Build release candidate
+        run: node scripts/release-candidate.mjs --stage staging
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+
+      - name: Build web app
+        run: pnpm exec vite build
+
+      - name: Deploy to staging
+        run: npx wrangler deploy --config api/wrangler.toml --env staging
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy web staging to Pages
+        run: npx wrangler pages deploy dist --project-name=openpencil-staging --branch staging --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Upload release candidate manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: .sisyphus/candidates/op-staging-*.json
+
+      - name: Candidate summary
+        run: |
+          echo '## Release candidate' >> "$GITHUB_STEP_SUMMARY"
+          echo "Built from main commit ${{ github.sha }} and deployed to staging." >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo "Worker: openpencil-api-staging" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pages: openpencil-staging → staging.pencil.ch5.me" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify Bot Town on failure
+        if: failure()
+        uses: jayqi/failed-build-issue-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          label-name: ci-failure
+          title-template: 'ci: Release candidate failure on `{{ branch }}`'
+          body-template: |
+            **Workflow**: {{ workflow }}
+            **Branch**: {{ branch }}
+            **Run**: {{ runUrl }}
+            **Commit**: {{ commit }}
+
+            Bot Town lead agent: please investigate and fix.

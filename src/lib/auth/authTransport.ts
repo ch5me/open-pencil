@@ -77,7 +77,7 @@ export async function getSession(): Promise<SessionData | null> {
 }
 
 export async function signUp(email: string, password: string, name?: string): Promise<SessionData> {
-  return request<SessionData>('/signup', {
+  return request<SessionData>('/sign-up', {
     method: 'POST',
     body: { email, password, ...(name ? { name } : {}) },
   })

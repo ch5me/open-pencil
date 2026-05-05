@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "project": "openpencil",
+  "proxy": {
+    "enabled": true,
+    "hostnamePattern": "{service}.{project}.localhost"
+  },
+  "services": {
+    "api": {
+      "cwd": "api",
+      "command": "npx wrangler dev --port 8787",
+      "health": {
+        "type": "http",
+        "url": "http://localhost:8787/health",
+        "timeout": 3000
+      }
+    },
+    "web": {
+      "cwd": ".",
+      "command": "bun run dev",
+      "health": {
+        "type": "port",
+        "port": 5173
+      },
+      "dependsOn": ["api"]
+    }
+  }
+}

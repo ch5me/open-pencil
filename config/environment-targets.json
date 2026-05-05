@@ -1,0 +1,47 @@
+{
+  "local": {
+    "stage": "local",
+    "displayName": "OpenPencil",
+    "apiBaseUrl": "http://api.openpencil.localhost:8787",
+    "appUrl": "http://web.openpencil.localhost:5173",
+    "siteUrl": "http://web.openpencil.localhost:5173",
+    "assetBaseUrl": "http://api.openpencil.localhost:8787/assets",
+    "webProject": "openpencil",
+    "workerEnv": "",
+    "workerName": "openpencil-api-dev",
+    "d1DatabaseName": "openpencil-db",
+    "d1DatabaseId": "YOUR_LOCAL_D1_DATABASE_ID",
+    "r2Bucket": "openpencil-documents-dev",
+    "r2AssetsBucket": "openpencil-assets-dev"
+  },
+  "staging": {
+    "stage": "staging",
+    "displayName": "OpenPencil",
+    "apiBaseUrl": "https://api.staging.pencil.ch5.me",
+    "appUrl": "https://staging.pencil.ch5.me",
+    "siteUrl": "https://staging.pencil.ch5.me",
+    "assetBaseUrl": "https://api.staging.pencil.ch5.me/assets",
+    "webProject": "openpencil-staging",
+    "workerEnv": "staging",
+    "workerName": "openpencil-api-staging",
+    "d1DatabaseName": "openpencil-db-staging",
+    "d1DatabaseId": "7e8af747-bef1-4fee-9431-4fc7b0108f35",
+    "r2Bucket": "openpencil-documents-staging",
+    "r2AssetsBucket": "openpencil-assets-staging"
+  },
+  "production": {
+    "stage": "production",
+    "displayName": "OpenPencil",
+    "apiBaseUrl": "https://api.pencil.ch5.me",
+    "appUrl": "https://pencil.ch5.me",
+    "siteUrl": "https://pencil.ch5.me",
+    "assetBaseUrl": "https://api.pencil.ch5.me/assets",
+    "webProject": "openpencil",
+    "workerEnv": "",
+    "workerName": "openpencil-api",
+    "d1DatabaseName": "openpencil-db",
+    "d1DatabaseId": "9d83abfa-9f06-4613-95e4-0b93ce41c2c8",
+    "r2Bucket": "openpencil-documents",
+    "r2AssetsBucket": "openpencil-assets"
+  }
+}

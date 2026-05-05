@@ -1,0 +1,25 @@
+{
+  "name": "open-pencil-api",
+  "version": "0.11.8",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 execute open-pencil-db --local --file migrations/0000_init.sql",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.9",
+    "better-auth": "^1.6.9",
+    "drizzle-orm": "^0.38.4",
+    "hono": "^4.12.16"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260504.1",
+    "@sentry/cloudflare": "^10.51.0",
+    "drizzle-kit": "^0.30.6",
+    "wrangler": "^4.87.0"
+  }
+}
