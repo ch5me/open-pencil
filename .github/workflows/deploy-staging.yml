@@ -115,8 +115,8 @@ jobs:
 
       - name: Deploy to staging
         run: |
-          VERSION_JSON=$(pnpm dlx wrangler versions upload --config api/wrangler.toml --env staging --json)
-          VERSION_ID=$(printf '%s' "$VERSION_JSON" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s);process.stdout.write(j.resources[0].version_id||j.version_id||'')})")
+          VERSION_OUTPUT=$(pnpm dlx wrangler versions upload --config api/wrangler.toml --env staging)
+          VERSION_ID=$(printf '%s\n' "$VERSION_OUTPUT" | sed -n 's/^Worker Version ID: //p' | tail -1)
           pnpm dlx wrangler versions deploy "$VERSION_ID@100" --yes --env staging
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
