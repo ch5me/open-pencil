@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref } from 'vue'
+import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useEventListener, useUrlSearchParams } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
@@ -13,6 +13,7 @@ import { useCollab, COLLAB_KEY } from '@/app/collab/use'
 import { connectAutomation } from '@/app/automation/bridge/server'
 import { spawnMCPIfNeeded } from '@/app/automation/mcp/spawn'
 import { IS_BROWSER } from '@open-pencil/core/constants'
+import { useHostedSession } from '@/lib/auth/use-hosted-session'
 import { createDemoShapes } from '@/app/demo/document'
 import { useEditorStore } from '@/app/editor/active-store'
 import { createTab, activeTab, getActiveStore, tabCount } from '@/app/tabs'
@@ -46,6 +47,8 @@ useMenu()
 
 const collab = useCollab(getActiveStore)
 provide(COLLAB_KEY, collab)
+const hostedSession = useHostedSession()
+let attemptedHostedRestore = false
 
 useEventListener(
   document,
@@ -61,6 +64,15 @@ const mcpCleanup = ref<(() => void) | null>(null)
 const initialEditorLayout = loadEditorLayout()
 
 onMounted(async () => {
+  await hostedSession.refresh()
+  if (hostedSession.isSignedIn.value) {
+    store.state.autosaveEnabled = true
+    if (!attemptedHostedRestore && store.state.documentName === 'Untitled' && !store.undo.canUndo) {
+      attemptedHostedRestore = true
+      await store.restoreHostedSessionDocument?.()
+    }
+  }
+
   try {
     const mcp = await spawnMCPIfNeeded()
     mcpCleanup.value = mcp?.disconnect ?? null
@@ -80,6 +92,24 @@ onMounted(async () => {
 onUnmounted(() => {
   mcpCleanup.value?.()
   automationCleanup.value?.()
+})
+
+watch(
+  () => hostedSession.isSignedIn.value,
+  async (signedIn) => {
+    if (!signedIn) return
+    store.state.autosaveEnabled = true
+    if (!attemptedHostedRestore && store.state.documentName === 'Untitled' && !store.undo.canUndo) {
+      attemptedHostedRestore = true
+      await store.restoreHostedSessionDocument?.()
+    }
+  }
+)
+
+useEventListener(window, 'beforeunload', (event) => {
+  if (!store.hasUnsavedChanges?.()) return
+  event.preventDefault()
+  event.returnValue = ''
 })
 </script>
 

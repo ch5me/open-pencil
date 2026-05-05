@@ -15,7 +15,7 @@ export interface OtpState {
   message?: string
 }
 
-const SESSION_COOKIE_KEY = 'openpencil_session'
+const SESSION_COOKIE_KEY = '__Secure-better-auth.session_token'
 
 function getSessionCookie(): string | null {
   if (typeof document === 'undefined') return null

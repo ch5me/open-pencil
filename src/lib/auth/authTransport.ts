@@ -4,6 +4,10 @@ function resolveApiBaseUrl(): string {
   }
 
   if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'web.openpencil.localhost') {
+      return 'http://api.openpencil.localhost:8787'
+    }
+    if (window.location.hostname === 'app.openpencil.dev') return 'https://api.pencil.ch5.me'
     if (window.location.hostname === 'staging.pencil.ch5.me') return 'https://api.staging.pencil.ch5.me'
     if (window.location.hostname === 'pencil.ch5.me') return 'https://api.pencil.ch5.me'
   }
@@ -78,27 +82,65 @@ export interface SessionData {
   session: unknown | null
 }
 
+type NestedSessionEnvelope = {
+  session?: {
+    user?: SessionUser | null
+    session?: unknown | null
+  } | null
+  user?: SessionUser | null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function normalizeSessionData(data: unknown): SessionData | null {
+  if (!isRecord(data)) return null
+
+  const directUser = 'user' in data ? (data.user as SessionUser | null | undefined) : undefined
+  const directSession = 'session' in data ? data.session : undefined
+
+  if (directUser !== undefined && (!isRecord(directSession) || !('user' in (directSession as Record<string, unknown>)))) {
+    return {
+      user: directUser ?? null,
+      session: directSession ?? null,
+    }
+  }
+
+  const nested = directSession
+  if (isRecord(nested)) {
+    return {
+      user: ('user' in nested ? (nested.user as SessionUser | null | undefined) : null) ?? null,
+      session: ('session' in nested ? nested.session : null) ?? null,
+    }
+  }
+
+  return null
+}
+
 export async function getSession(): Promise<SessionData | null> {
   try {
-    const data = await request<SessionData>('/session')
-    return data
+    const data = await request<unknown>('/session')
+    return normalizeSessionData(data)
   } catch {
     return null
   }
 }
 
 export async function signUp(email: string, password: string, name?: string): Promise<SessionData> {
-  return request<SessionData>('/sign-up', {
+  const data = await request<unknown>('/sign-up', {
     method: 'POST',
     body: { email, password, ...(name ? { name } : {}) },
   })
+  return normalizeSessionData(data) ?? { user: null, session: null }
 }
 
 export async function signIn(email: string, password: string): Promise<SessionData> {
-  return request<SessionData>('/sign-in', {
+  const data = await request<unknown>('/sign-in', {
     method: 'POST',
     body: { email, password },
   })
+  return normalizeSessionData(data) ?? { user: null, session: null }
 }
 
 export async function signOut(): Promise<{ ok: boolean }> {
@@ -115,8 +157,9 @@ export async function sendOtp(email: string): Promise<{ ok: boolean; message?: s
 }
 
 export async function verifyOtp(email: string, code: string): Promise<SessionData> {
-  return request<SessionData>('/otp/verify', {
+  const data = await request<unknown>('/otp/verify', {
     method: 'POST',
     body: { email, code },
   })
+  return normalizeSessionData(data) ?? { user: null, session: null }
 }

@@ -2,6 +2,7 @@ export function createDocumentSourceState() {
   let fileHandle: FileSystemFileHandle | null = null
   let filePath: string | null = null
   let downloadName: string | null = null
+  let hostedDocumentId: string | null = null
   let savedVersion = 0
   let lastWriteTime = 0
 
@@ -17,6 +18,10 @@ export function createDocumentSourceState() {
     getDownloadName: () => downloadName,
     setDownloadName: (name: string | null) => {
       downloadName = name
+    },
+    getHostedDocumentId: () => hostedDocumentId,
+    setHostedDocumentId: (id: string | null) => {
+      hostedDocumentId = id
     },
     getSavedVersion: () => savedVersion,
     setSavedVersion: (version: number) => {
