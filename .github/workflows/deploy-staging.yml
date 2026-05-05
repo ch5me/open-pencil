@@ -114,8 +114,9 @@ jobs:
         run: pnpm exec vite build
 
       - name: Deploy to staging
+        working-directory: api
         run: |
-          VERSION_OUTPUT=$(pnpm dlx wrangler versions upload --config api/wrangler.toml --env staging)
+          VERSION_OUTPUT=$(pnpm dlx wrangler versions upload --config wrangler.toml --env staging)
           VERSION_ID=$(printf '%s\n' "$VERSION_OUTPUT" | sed -n 's/^Worker Version ID: //p' | tail -1)
           pnpm dlx wrangler versions deploy "$VERSION_ID@100" --yes --env staging
         env:
