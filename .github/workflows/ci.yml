@@ -39,6 +39,7 @@ jobs:
 
       - name: Unit tests
         run: bun test tests/engine/
+        timeout-minutes: 15
         env:
           BUN_HEAVY_TESTS: '1'
 
