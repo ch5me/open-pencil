@@ -6,7 +6,7 @@ Open-source design editor. Opens `.fig` and `.pen` design files, includes built-
 >
 > **Note:** There is another open-source project with the same name — [OpenPencil by ZSeven-W](https://github.com/ZSeven-W/openpencil), focused on AI-native design-to-code workflows. This project focuses on Figma-compatible visual design with real-time collaboration.
 
-**[Try it online →](https://app.openpencil.dev/demo)** · [Download](https://github.com/open-pencil/open-pencil/releases/latest) · [Documentation](https://openpencil.dev)
+**[Try it online →](https://pencil.ch5.me/demo)** · [Download](https://github.com/open-pencil/open-pencil/releases/latest) · [Documentation](https://pencil.ch5.me)
 
 ![OpenPencil](packages/docs/public/screenshot.png)
 
@@ -18,7 +18,7 @@ Open-source design editor. Opens `.fig` and `.pen` design files, includes built-
 brew install open-pencil/tap/open-pencil
 ```
 
-Or download from the [releases page](https://github.com/open-pencil/open-pencil/releases/latest), or [use the web app](https://app.openpencil.dev) — no install needed.
+Or download from the [releases page](https://github.com/open-pencil/open-pencil/releases/latest), or [use the web app](https://pencil.ch5.me) — no install needed.
 
 ## What it does
 
@@ -27,7 +27,7 @@ Or download from the [releases page](https://github.com/open-pencil/open-pencil/
 - **Fully programmable** — headless CLI, XPath queries, Figma Plugin API via `eval`, MCP server for AI agents, and desktop agent integrations for Claude Code, Codex, and Gemini CLI
 - **Lint, convert, and extract tokens** — inspect documents, lint naming/layout/accessibility, convert between supported formats, analyze colors/typography/spacing/clusters, and extract design tokens
 - **Design-to-code export** — export selections as JSX/Tailwind, generate token outputs, and map designs into component-oriented code workflows
-- **Vue SDK for custom editors** — headless components and composables for embedding OpenPencil into other apps or building workflow-specific editing surfaces. [Read the SDK docs →](https://openpencil.dev/programmable/sdk/)
+- **Vue SDK for custom editors** — headless components and composables for embedding OpenPencil into other apps or building workflow-specific editing surfaces. [Read the SDK docs →](https://pencil.ch5.me/programmable/sdk/)
 - **Real-time collaboration** — P2P via WebRTC, no server, no account. Cursors, presence, follow mode
 - **Auto layout & CSS Grid** — flex and grid layout via Yoga WASM, with gap, padding, alignment, track sizing
 - **~7 MB desktop app** — Tauri v2 for macOS, Windows, Linux. Also runs in the browser as a PWA
@@ -171,7 +171,7 @@ Use Claude Code, Codex, or Gemini CLI directly in the chat panel. The agent conn
 
 ### MCP server
 
-Connect Claude Code, Cursor, Windsurf, or any MCP client to inspect, modify, and export design documents headlessly. 100+ tools. [Full docs →](https://openpencil.dev/reference/mcp-tools)
+Connect Claude Code, Cursor, Windsurf, or any MCP client to inspect, modify, and export design documents headlessly. 100+ tools. [Full docs →](https://pencil.ch5.me/reference/mcp-tools)
 
 **Stdio** (Claude Code, Cursor, Windsurf):
 
@@ -212,7 +212,7 @@ Works with Claude Code, Cursor, Windsurf, Codex, and any agent that supports [sk
 Share a link to co-edit in real time. No server, no account — peers connect directly via WebRTC.
 
 1. Click the share button in the top-right panel
-2. Share the generated link (`app.openpencil.dev/share/<room-id>`)
+2. Share the generated link (`pencil.ch5.me/share/<room-id>`)
 3. Collaborators see your cursor, selection, and edits in real time
 4. Click a peer's avatar to follow their viewport
 
@@ -260,7 +260,7 @@ packages/
   vue/            @open-pencil/vue — headless Vue SDK
   cli/            @open-pencil/cli — headless CLI
   mcp/            @open-pencil/mcp — MCP server (stdio + HTTP)
-  docs/           Documentation site (openpencil.dev)
+  docs/           Documentation site (pencil.ch5.me)
 src/              Vue app (components, composables, stores)
 desktop/          Tauri v2 (Rust + config)
 tests/            E2E (188 tests) + unit (764 tests)
@@ -288,7 +288,7 @@ bun run tauri build
 
 ## Acknowledgments
 
-Thanks to [@sld0Ant](https://github.com/sld0Ant) (Anton Soldatov) for creating and maintaining the [documentation site](https://openpencil.dev).
+Thanks to [@sld0Ant](https://github.com/sld0Ant) (Anton Soldatov) for creating and maintaining the [documentation site](https://pencil.ch5.me).
 
 ## License
 

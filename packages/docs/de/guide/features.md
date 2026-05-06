@@ -127,7 +127,7 @@ P2P via WebRTC — kein Server erforderlich. Link teilen und gemeinsam bearbeite
 
 **Desktop** — Tauri v2, ~7 MB. macOS (signiert & notarisiert), Windows, Linux. Native Menüs, Offline-Betrieb, automatisches Speichern.
 
-**Web** — läuft unter [app.openpencil.dev](https://app.openpencil.dev), als PWA auf Mobilgeräten installierbar mit touch-optimierter Oberfläche.
+**Web** — läuft unter [pencil.ch5.me](https://pencil.ch5.me), als PWA auf Mobilgeräten installierbar mit touch-optimierter Oberfläche.
 
 **Homebrew:**
 

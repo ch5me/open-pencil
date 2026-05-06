@@ -2,7 +2,7 @@
 
 ## Essayer en ligne
 
-OpenPencil fonctionne dans le navigateur — aucune installation requise. Ouvrez [app.openpencil.dev](https://app.openpencil.dev).
+OpenPencil fonctionne dans le navigateur — aucune installation requise. Ouvrez [pencil.ch5.me](https://pencil.ch5.me).
 
 ## Télécharger l'application de bureau
 

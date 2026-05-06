@@ -2,7 +2,7 @@
 
 ## Online testen
 
-OpenPencil läuft im Browser — keine Installation nötig. Öffne [app.openpencil.dev](https://app.openpencil.dev) um loszulegen.
+OpenPencil läuft im Browser — keine Installation nötig. Öffne [pencil.ch5.me](https://pencil.ch5.me) um loszulegen.
 
 ## Desktop-App herunterladen
 

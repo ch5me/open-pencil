@@ -139,7 +139,7 @@ Real-time collaboration, prototyping, comments, desktop distribution.
 - Apple code signing and notarization for macOS builds
 - Linux builds (x64) added to CI
 - Git LFS moved to Cloudflare R2
-- VitePress documentation site at openpencil.dev with i18n (6 languages)
+- VitePress documentation site at pencil.ch5.me with i18n (6 languages)
 - CI/PR templates, CONTRIBUTING.md, SECURITY.md
 
 **Planned:**

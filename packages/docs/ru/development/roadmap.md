@@ -139,7 +139,7 @@
 - Подписание кода Apple и нотаризация для сборок macOS
 - Сборки Linux (x64) добавлены в CI
 - Git LFS перемещён на Cloudflare R2
-- Сайт документации VitePress на openpencil.dev с i18n (6 языков)
+- Сайт документации VitePress на pencil.ch5.me с i18n (6 языков)
 - CI/PR-шаблоны, CONTRIBUTING.md, SECURITY.md
 
 **Планируется:**

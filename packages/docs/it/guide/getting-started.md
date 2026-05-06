@@ -2,7 +2,7 @@
 
 ## Prova online
 
-OpenPencil funziona nel browser — nessuna installazione richiesta. Apri [app.openpencil.dev](https://app.openpencil.dev) per iniziare a progettare.
+OpenPencil funziona nel browser — nessuna installazione richiesta. Apri [pencil.ch5.me](https://pencil.ch5.me) per iniziare a progettare.
 
 ## Scarica l'app desktop
 

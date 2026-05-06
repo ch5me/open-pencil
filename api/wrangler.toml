@@ -34,7 +34,7 @@ new_classes = ["DocumentRoomDO"]
 
 [vars]
 NODE_ENV = "production"
-PUBLIC_APP_URL = "https://app.openpencil.dev"
+PUBLIC_APP_URL = "https://pencil.ch5.me"
 PUBLIC_SITE_URL = "https://pencil.ch5.me"
 BETTER_AUTH_URL = "https://api.pencil.ch5.me"
 

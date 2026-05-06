@@ -10,7 +10,7 @@ hero:
   actions:
     - theme: brand
       text: Wypróbuj online
-      link: https://app.openpencil.dev/demo
+      link: https://pencil.ch5.me/demo
     - theme: alt
       text: Pobierz
       link: https://github.com/open-pencil/open-pencil/releases/latest

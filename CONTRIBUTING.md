@@ -36,7 +36,7 @@ bun run test         # Playwright E2E (auto-starts dev server)
 - `packages/core` — scene graph, renderer, layout, codec (zero DOM deps)
 - `packages/cli` — headless CLI for .fig inspection and export
 - `packages/mcp` — MCP server for AI tools (stdio + HTTP)
-- `packages/docs` — VitePress documentation site (openpencil.dev)
+- `packages/docs` — VitePress documentation site (pencil.ch5.me)
 - `src/` — Tauri/Vite desktop editor
 
 ## Conventions

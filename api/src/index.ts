@@ -16,7 +16,6 @@ function createAllowedOriginSet(env: Env): Set<string> {
   const allowed = new Set<string>([
     'http://web.openpencil.localhost:5173',
     'http://localhost:5173',
-    'https://app.openpencil.dev',
     'https://pencil.ch5.me',
     'https://staging.pencil.ch5.me',
   ])

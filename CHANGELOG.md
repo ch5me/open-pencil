@@ -344,7 +344,7 @@
 - Double-click to rename layers — inline rename in layer panel, shared `useInlineRename` composable
 - New AI/MCP tools: `analyze_colors`, `analyze_typography`, `analyze_spacing`, `analyze_clusters`, `diff_create`, `diff_show`, `get_components`, `get_current_page`, `arrange`, `node_to_component`
 - CLI-to-app RPC bridge — all CLI commands work against the running app when no file is specified. Start the app, then run `bun open-pencil tree` to inspect the live document
-- VitePress docs site — user guide, reference, architecture, and development docs at openpencil.dev with 6 locales (en, de, fr, es, it, pl), SEO (OG tags, hreflang, JSON-LD, sitemap), and dark theme
+- VitePress docs site — user guide, reference, architecture, and development docs at pencil.ch5.me with 6 locales (en, de, fr, es, it, pl), SEO (OG tags, hreflang, JSON-LD, sitemap), and dark theme
 
 ### Improvements
 
@@ -755,11 +755,11 @@ First public alpha. The editor is functional but not production-ready.
 
 ### Web App
 
-- Runs at [app.openpencil.dev](https://app.openpencil.dev)
+- Runs at [pencil.ch5.me](https://pencil.ch5.me)
 - No installation required
 - File System Access API for save/open (Chrome/Edge), download fallback elsewhere
 
 ### Documentation
 
-- [openpencil.dev](https://openpencil.dev) — VitePress site with user guide, reference, and development docs
+- [pencil.ch5.me](https://pencil.ch5.me) — VitePress site with user guide, reference, and development docs
 - Deployed via Cloudflare Pages

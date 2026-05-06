@@ -2,7 +2,7 @@
 
 ## Probar en línea
 
-OpenPencil funciona en el navegador — sin instalación. Abre [app.openpencil.dev](https://app.openpencil.dev).
+OpenPencil funciona en el navegador — sin instalación. Abre [pencil.ch5.me](https://pencil.ch5.me).
 
 ## Descargar la aplicación de escritorio
 

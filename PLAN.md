@@ -1074,7 +1074,7 @@ P2P real-time collaboration via Trystero (WebRTC) + Yjs CRDT. Cursors, presence,
 
 ### Phase 7: Distribution ✅
 
-Tauri v2 desktop app (macOS, Windows, Linux). Web app at app.openpencil.dev. CLI published on npm. Documentation site at openpencil.dev. GitHub Actions CI for builds and deploys.
+Tauri v2 desktop app (macOS, Windows, Linux). Web app at pencil.ch5.me. CLI published on npm. Documentation site at pencil.ch5.me. GitHub Actions CI for builds and deploys.
 
 ### What's next
 

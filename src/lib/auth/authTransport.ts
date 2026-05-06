@@ -9,9 +9,8 @@ function resolveApiBaseUrl(): string {
     if (window.location.hostname === 'web.openpencil.localhost') {
       return 'http://api.openpencil.localhost:8787'
     }
-    if (window.location.hostname === 'app.openpencil.dev') return 'https://api.pencil.ch5.me'
-    if (window.location.hostname === 'staging.pencil.ch5.me') return 'https://api.staging.pencil.ch5.me'
     if (window.location.hostname === 'pencil.ch5.me') return 'https://api.pencil.ch5.me'
+    if (window.location.hostname === 'staging.pencil.ch5.me') return 'https://api.staging.pencil.ch5.me'
   }
 
   return 'https://api.pencil.ch5.me'

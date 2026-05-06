@@ -2,7 +2,7 @@
 
 ## Wypróbuj online
 
-OpenPencil działa w przeglądarce — bez instalacji. Otwórz [app.openpencil.dev](https://app.openpencil.dev).
+OpenPencil działa w przeglądarce — bez instalacji. Otwórz [pencil.ch5.me](https://pencil.ch5.me).
 
 ## Pobierz aplikację desktopową
 

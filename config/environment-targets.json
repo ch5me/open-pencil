@@ -33,7 +33,7 @@
     "stage": "production",
     "displayName": "OpenPencil",
     "apiBaseUrl": "https://api.pencil.ch5.me",
-    "appUrl": "https://app.openpencil.dev",
+    "appUrl": "https://pencil.ch5.me",
     "siteUrl": "https://pencil.ch5.me",
     "assetBaseUrl": "https://api.pencil.ch5.me/assets",
     "webProject": "openpencil",

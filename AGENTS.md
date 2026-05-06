@@ -111,8 +111,8 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 |----------|---------|--------------|
 | `build.yml` | `v*` tag push or manual | Build Tauri desktop apps (5 targets), create GitHub Release, publish `@open-pencil/core`, `@open-pencil/cli`, `@open-pencil/mcp`, and `@open-pencil/vue` |
 | `homebrew.yml` | Release published | Update `open-pencil/homebrew-tap` cask with new version + SHA256 hashes |
-| `app.yml` | Push to `master` (non-docs) | Build web app, deploy to Cloudflare Pages (`app.openpencil.dev`) |
-| `docs.yml` | Push to `master` (`packages/docs/**`) | Build VitePress docs, deploy to Cloudflare Pages (`openpencil.dev`) |
+| `app.yml` | Push to `master` (non-docs) | Build web app, deploy to Cloudflare Pages (`pencil.ch5.me`) |
+| `docs.yml` | Push to `master` (`packages/docs/**`) | Build VitePress docs, deploy to Cloudflare Pages (`pencil.ch5.me`) |
 
 ### Before committing
 
@@ -131,7 +131,7 @@ bun run test           # Playwright E2E
 - `CHANGELOG.md` — all user-facing changes, grouped by version. "Unreleased" section at top for in-progress work.
 - `README.md` — user-facing: features, getting started, CLI, project structure. No implementation details.
 - `AGENTS.md` (this file) — contributor/agent reference: architecture, conventions, how to release.
-- `packages/docs/` — VitePress site deployed at `openpencil.dev`. User guide, SDK, automation, reference, and development docs.
+- `packages/docs/` — VitePress site deployed at `pencil.ch5.me`. User guide, SDK, automation, reference, and development docs.
 
 When adding features, update `CHANGELOG.md` (Unreleased section) and `README.md` (if user-facing). Update `AGENTS.md` when architecture or conventions change.
 
