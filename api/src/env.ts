@@ -3,6 +3,7 @@ export interface Env {
   DOCUMENTS: R2Bucket
   ASSETS: R2Bucket
   DOCUMENT_ROOM: DurableObjectNamespace
+  NODE_ENV?: 'development' | 'staging' | 'production'
   PUBLIC_APP_URL?: string
   PUBLIC_SITE_URL?: string
   BETTER_AUTH_URL?: string

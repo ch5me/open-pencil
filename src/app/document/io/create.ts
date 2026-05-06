@@ -70,6 +70,10 @@ export function createDocumentIOActions(
     disposeDocumentIO: sourceActions.disposeDocumentIO,
     openFigFile,
     saveFigFile: sourceActions.saveFigFile,
-    saveFigFileAs: sourceActions.saveFigFileAs
+    saveFigFileAs: sourceActions.saveFigFileAs,
+    restoreHostedSessionDocument: sourceActions.restoreHostedSessionDocument,
+    hasUnsavedChanges: sourceActions.hasUnsavedChanges,
+    hasHostedDocumentSource: sourceActions.hasHostedDocumentSource,
+    canUseHostedSave: sourceActions.canUseHostedSave
   }
 }

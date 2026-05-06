@@ -7,7 +7,7 @@ export function useImportLocalDocs() {
   const progress = ref(0)
   const errors = ref<string[]>([])
 
-  async function importLocalDocs(apiBase: string, userId: string): Promise<string[]> {
+  async function importLocalDocs(apiBase: string, _userId: string): Promise<string[]> {
     importing.value = true
     progress.value = 0
     errors.value = []
@@ -21,7 +21,7 @@ export function useImportLocalDocs() {
     for (let i = 0; i < localDocs.length; i++) {
       const doc = localDocs[i]
       try {
-        const hostedId = await importer.importDoc(doc.id, apiBase, userId)
+        const hostedId = await importer.importDoc(doc.id, apiBase)
         imported.push(hostedId)
       } catch (err) {
         errors.value.push(`Failed to import "${doc.title}": ${String(err)}`)

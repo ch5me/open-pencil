@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { computed, readonly, ref } from 'vue'
 import { getSession, signIn, signUp, signOut } from '../lib/auth/authTransport'
 
 const session = ref<{ userId: string; email: string } | null>(null)

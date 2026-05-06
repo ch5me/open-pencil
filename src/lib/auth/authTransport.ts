@@ -1,9 +1,11 @@
+import { IS_BROWSER } from '@open-pencil/core/constants'
+
 function resolveApiBaseUrl(): string {
-  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) {
+  if (import.meta.env.VITE_API_BASE_URL) {
     return String(import.meta.env.VITE_API_BASE_URL)
   }
 
-  if (typeof window !== 'undefined') {
+  if (IS_BROWSER) {
     if (window.location.hostname === 'web.openpencil.localhost') {
       return 'http://api.openpencil.localhost:8787'
     }
@@ -24,6 +26,18 @@ export interface AuthFetchOptions {
 
 interface AuthErrorResult {
   error?: { message?: string; statusText?: string } | string
+}
+
+function getAuthErrorMessage(data: unknown, status: number): string {
+  if (!data || typeof data !== 'object' || !('error' in data)) {
+    return `Auth request failed (${status})`
+  }
+
+  const errorValue = data.error
+  if (typeof errorValue === 'string') return errorValue
+  if (isRecord(errorValue) && typeof errorValue.message === 'string') return errorValue.message
+  if (isRecord(errorValue) && typeof errorValue.statusText === 'string') return errorValue.statusText
+  return `Auth request failed (${status})`
 }
 
 function buildAuthNetworkError(requestUrl: string, error: unknown): Error {
@@ -57,15 +71,7 @@ export async function request<T>(path: string, options: AuthFetchOptions = {}): 
   const data = (await response.json().catch(() => null)) as T | AuthErrorResult | null
 
   if (!response.ok) {
-    const message =
-      data && typeof data === 'object' && 'error' in data
-        ? typeof data.error === 'string'
-          ? data.error
-          : (data.error as Record<string, unknown>)?.message ||
-            ((data.error as Record<string, unknown>)?.statusText as string | undefined) ||
-            `Auth request failed (${response.status})`
-        : `Auth request failed (${response.status})`
-    throw new Error(String(message))
+    throw new Error(getAuthErrorMessage(data, response.status))
   }
 
   return data as T
@@ -79,15 +85,7 @@ export interface SessionUser {
 
 export interface SessionData {
   user: SessionUser | null
-  session: unknown | null
-}
-
-type NestedSessionEnvelope = {
-  session?: {
-    user?: SessionUser | null
-    session?: unknown | null
-  } | null
-  user?: SessionUser | null
+  session: unknown
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -100,7 +98,7 @@ function normalizeSessionData(data: unknown): SessionData | null {
   const directUser = 'user' in data ? (data.user as SessionUser | null | undefined) : undefined
   const directSession = 'session' in data ? data.session : undefined
 
-  if (directUser !== undefined && (!isRecord(directSession) || !('user' in (directSession as Record<string, unknown>)))) {
+  if (directUser !== undefined && (!isRecord(directSession) || !('user' in directSession))) {
     return {
       user: directUser ?? null,
       session: directSession ?? null,

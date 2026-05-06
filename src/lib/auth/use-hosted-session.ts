@@ -37,19 +37,26 @@ const isSignedIn = computed<boolean>(() => user.value !== null)
 const sessionToken = computed<string | null>(() => getSessionCookie())
 
 export function useHostedSession() {
+  async function sleep(ms: number) {
+    await new Promise((resolve) => setTimeout(resolve, ms))
+  }
 
   async function refresh(): Promise<void> {
     loading.value = true
     error.value = null
-    try {
-      const data = await getSession()
-      sessionData.value = data
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : String(err)
-      sessionData.value = null
-    } finally {
-      loading.value = false
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const data = await getSession()
+        sessionData.value = data
+        loading.value = false
+        return
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : String(err)
+        sessionData.value = null
+        if (attempt === 0) await sleep(250)
+      }
     }
+    loading.value = false
   }
 
   async function signIn(email: string, password: string): Promise<void> {

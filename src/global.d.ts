@@ -47,3 +47,12 @@ declare module '*.md' {
   const content: string
   export default content
 }
+
+declare module '@sentry/vue' {
+  export function init(options: {
+    dsn: string
+    environment?: string
+    tracesSampleRate?: number
+    replaysSessionSampleRate?: number
+  }): void
+}

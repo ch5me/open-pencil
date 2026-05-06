@@ -318,20 +318,23 @@ function compressViaWorker(
       worker.terminate()
     }
 
+    const schemaCopy = new Uint8Array(schemaDeflated)
+    const kiwiCopy = new Uint8Array(kiwiData)
+    const thumbnailCopy = new Uint8Array(thumbnailPng)
     const imgCopies = imageEntries.map((e) => ({
       name: e.name,
       data: new Uint8Array(e.data)
     }))
 
     const transferables = [
-      schemaDeflated.buffer,
-      kiwiData.buffer,
-      thumbnailPng.buffer,
+      schemaCopy.buffer,
+      kiwiCopy.buffer,
+      thumbnailCopy.buffer,
       ...imgCopies.map((e) => e.data.buffer)
     ]
 
     worker.postMessage(
-      { schemaDeflated, kiwiData, thumbnailPng, metaJson, images: imgCopies },
+      { schemaDeflated: schemaCopy, kiwiData: kiwiCopy, thumbnailPng: thumbnailCopy, metaJson, images: imgCopies },
       transferables
     )
   })

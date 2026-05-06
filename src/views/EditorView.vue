@@ -49,6 +49,13 @@ const collab = useCollab(getActiveStore)
 provide(COLLAB_KEY, collab)
 const hostedSession = useHostedSession()
 let attemptedHostedRestore = false
+const canRestoreHostedDocument = !route.meta.demo && typeof route.params.roomId !== 'string'
+
+function isReloadNavigation() {
+  if (!IS_BROWSER || typeof performance === 'undefined') return false
+  const navigationEntry = performance.getEntriesByType('navigation')[0]
+  return navigationEntry instanceof PerformanceNavigationTiming && navigationEntry.type === 'reload'
+}
 
 useEventListener(
   document,
@@ -67,7 +74,13 @@ onMounted(async () => {
   await hostedSession.refresh()
   if (hostedSession.isSignedIn.value) {
     store.state.autosaveEnabled = true
-    if (!attemptedHostedRestore && store.state.documentName === 'Untitled' && !store.undo.canUndo) {
+    if (
+      canRestoreHostedDocument &&
+      isReloadNavigation() &&
+      !attemptedHostedRestore &&
+      store.state.documentName === 'Untitled' &&
+      !store.undo.canUndo
+    ) {
       attemptedHostedRestore = true
       await store.restoreHostedSessionDocument?.()
     }
@@ -99,7 +112,13 @@ watch(
   async (signedIn) => {
     if (!signedIn) return
     store.state.autosaveEnabled = true
-    if (!attemptedHostedRestore && store.state.documentName === 'Untitled' && !store.undo.canUndo) {
+    if (
+      canRestoreHostedDocument &&
+      isReloadNavigation() &&
+      !attemptedHostedRestore &&
+      store.state.documentName === 'Untitled' &&
+      !store.undo.canUndo
+    ) {
       attemptedHostedRestore = true
       await store.restoreHostedSessionDocument?.()
     }

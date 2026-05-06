@@ -1,6 +1,7 @@
 import { createAutosave } from '@/app/document/autosave'
 import { API_BASE_URL } from '@/lib/auth/authTransport'
 import { useHostedSession } from '@/lib/auth/use-hosted-session'
+import { useLocalStorage } from '@vueuse/core'
 import {
   documentNameFromFigPath,
   downloadNameFromPath,
@@ -9,8 +10,7 @@ import {
 import { createSaveActions } from '@/app/document/io/save'
 import { applyImportedDocument } from '@/app/document/io/imported-document'
 import { createDocumentSourceState } from '@/app/document/io/source-state'
-import { exportFigFile } from '@open-pencil/core/io/formats/fig'
-import { readFigFile } from '@open-pencil/core/io/formats/fig'
+import { exportFigFile, readFigFile } from '@open-pencil/core/io/formats/fig'
 
 import type { Editor, EditorState } from '@open-pencil/core/editor'
 
@@ -60,6 +60,8 @@ export function createDocumentSourceActions({
 }: DocumentSourceOptions) {
   const hostedSession = useHostedSession()
   const HOSTED_DOC_KEY_PREFIX = 'open-pencil:hosted-current-doc:'
+  const hostedCurrentDocs = useLocalStorage<Record<string, string>>('open-pencil:hosted-current-docs', {})
+  let hostedSaveQueue: Promise<void> = Promise.resolve()
 
   function bytesToBase64(bytes: Uint8Array): string {
     let binary = ''
@@ -86,62 +88,89 @@ export function createDocumentSourceActions({
     return user ? `${HOSTED_DOC_KEY_PREFIX}${user.id}` : null
   }
 
+  function isUntouchedHostedRestoreTarget() {
+    return (
+      state.documentName === 'Untitled' &&
+      state.sceneVersion === getSavedVersion() &&
+      !getFileHandle() &&
+      !getFilePath() &&
+      !getHostedDocumentId()
+    )
+  }
+
   async function rememberHostedDocumentId(documentId: string) {
     const key = await getHostedCurrentDocumentKey()
-    if (!key || typeof localStorage === 'undefined') return
-    localStorage.setItem(key, documentId)
+    if (!key) return
+    hostedCurrentDocs.value = { ...hostedCurrentDocs.value, [key]: documentId }
   }
 
   async function recallHostedDocumentId() {
     const key = await getHostedCurrentDocumentKey()
-    if (!key || typeof localStorage === 'undefined') return null
-    return localStorage.getItem(key)
+    if (!key) return null
+    return hostedCurrentDocs.value[key] ?? null
   }
 
-  async function saveHostedDocument(figBytes: Uint8Array) {
-    const user = await getHostedUser()
-    if (!user) {
-      await saveFigFileAs()
-      return
-    }
+  async function saveHostedDocument(figBytes: Uint8Array, savedSceneVersion: number, documentTitle: string) {
+    let releaseQueue: (() => void) | undefined
+    const nextInQueue = new Promise<void>((resolve) => {
+      releaseQueue = () => resolve()
+    })
+    const previousSave = hostedSaveQueue
+    hostedSaveQueue = hostedSaveQueue.then(() => nextInQueue)
 
-    let hostedDocumentId = getHostedDocumentId()
-    if (!hostedDocumentId) {
-      const createRes = await fetch(`${API_BASE_URL}/api/documents`, {
+    await previousSave
+    try {
+      const user = await getHostedUser()
+      if (!user) {
+        await saveFigFileAs()
+        return
+      }
+
+      let hostedDocumentId = getHostedDocumentId()
+      if (!hostedDocumentId) {
+        const createRes = await fetch(`${API_BASE_URL}/api/documents`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ title: documentTitle || 'Untitled' })
+        })
+        if (!createRes.ok) throw new Error('Failed to create hosted document')
+        const created = await createRes.json() as { id: string; title?: string }
+        hostedDocumentId = created.id
+        setHostedDocumentId(hostedDocumentId)
+        setFileHandle(null)
+        setFilePath(null)
+        setDownloadName(null)
+        state.autosaveEnabled = true
+        state.documentName = created.title ?? state.documentName
+      }
+
+      const snapshotRes = await fetch(`${API_BASE_URL}/api/documents/${hostedDocumentId}/snapshot`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: state.documentName || 'Untitled' })
+        body: JSON.stringify({ data: bytesToBase64(figBytes), title: documentTitle })
       })
-      if (!createRes.ok) throw new Error('Failed to create hosted document')
-      const created = await createRes.json() as { id: string; title?: string }
-      hostedDocumentId = created.id
-      setHostedDocumentId(hostedDocumentId)
-      setFileHandle(null)
-      setFilePath(null)
-      setDownloadName(null)
-      state.autosaveEnabled = true
-      state.documentName = created.title ?? state.documentName
+      if (!snapshotRes.ok) throw new Error('Failed to save hosted document')
+
+      const titleRes = await fetch(`${API_BASE_URL}/api/documents/${hostedDocumentId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: documentTitle })
+      })
+      if (!titleRes.ok) {
+        console.warn('Hosted document title sync failed', hostedDocumentId)
+      }
+
+      await rememberHostedDocumentId(hostedDocumentId)
+      if (state.sceneVersion === savedSceneVersion) {
+        setSavedVersion(savedSceneVersion)
+      }
+      setLastWriteTime(Date.now())
+    } finally {
+      releaseQueue?.()
     }
-
-    const snapshotRes = await fetch(`${API_BASE_URL}/api/documents/${hostedDocumentId}/snapshot`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ data: bytesToBase64(figBytes) })
-    })
-    if (!snapshotRes.ok) throw new Error('Failed to save hosted document')
-
-    await fetch(`${API_BASE_URL}/api/documents/${hostedDocumentId}`, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: state.documentName })
-    })
-
-    await rememberHostedDocumentId(hostedDocumentId)
-    setSavedVersion(state.sceneVersion)
-    setLastWriteTime(Date.now())
   }
 
   async function restoreHostedDocument(documentId: string) {
@@ -156,8 +185,11 @@ export function createDocumentSourceActions({
     if (!snapshotJson.data) return false
 
     const bytes = base64ToBytes(snapshotJson.data)
-    const file = new File([bytes], `${docJson.document?.title ?? 'Untitled'}.fig`)
+    const copiedBuffer = new ArrayBuffer(bytes.byteLength)
+    new Uint8Array(copiedBuffer).set(bytes)
+    const file = new File([copiedBuffer], `${docJson.document?.title ?? 'Untitled'}.fig`)
     const imported = await readFigFile(file, { populate: 'first-page' })
+    if (!isUntouchedHostedRestoreTarget()) return false
     await applyImportedDocument(editor, imported)
     setHostedDocumentId(documentId)
     setFileHandle(null)
@@ -175,7 +207,7 @@ export function createDocumentSourceActions({
     return exportFigFile(editor.graph, undefined, getRenderer() ?? undefined, state.currentPageId)
   }
 
-  const { saveFigFile, saveFigFileAs, writeFile } = createSaveActions({
+  const { saveFigFile, saveFigFileAs } = createSaveActions({
     state,
     buildFigFile,
     getFilePath,
@@ -192,15 +224,17 @@ export function createDocumentSourceActions({
   })
 
   async function saveCurrentDocument() {
+    const savedSceneVersion = state.sceneVersion
+    const documentTitle = state.documentName
     const data = await buildFigFile()
     if (getHostedDocumentId()) {
-      await saveHostedDocument(data)
+      await saveHostedDocument(data, savedSceneVersion, documentTitle)
       return
     }
 
     const user = await getHostedUser()
     if (user && !getFileHandle() && !getFilePath()) {
-      await saveHostedDocument(data)
+      await saveHostedDocument(data, savedSceneVersion, documentTitle)
       return
     }
 

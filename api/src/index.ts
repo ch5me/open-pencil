@@ -2,7 +2,6 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { Env } from './env'
 import { initSentry } from './sentry'
-import { runMigrations } from './db/migrate'
 import { requestLogger } from './middleware/logger'
 import { createBetterAuth } from './auth/better-auth'
 import { createDocumentsRouter } from './routes/documents'
@@ -13,10 +12,28 @@ import { DocumentRoomDO } from './collab/DocumentRoomDO'
 
 const app = new Hono<{ Bindings: Env }>()
 
-app.use('*', cors({
-  origin: (origin) => origin,
-  credentials: true,
-}))
+function createAllowedOriginSet(env: Env): Set<string> {
+  const allowed = new Set<string>([
+    'http://web.openpencil.localhost:5173',
+    'http://localhost:5173',
+    'https://app.openpencil.dev',
+    'https://pencil.ch5.me',
+    'https://staging.pencil.ch5.me',
+  ])
+
+  if (env.PUBLIC_APP_URL) allowed.add(env.PUBLIC_APP_URL)
+  if (env.PUBLIC_SITE_URL) allowed.add(env.PUBLIC_SITE_URL)
+
+  return allowed
+}
+
+app.use('*', async (c, next) => {
+  const allowedOrigins = createAllowedOriginSet(c.env)
+  return cors({
+    origin: (origin) => (origin && allowedOrigins.has(origin) ? origin : undefined),
+    credentials: true,
+  })(c, next)
+})
 
 app.use('*', async (c, next) => {
   await initSentry(c.env)
@@ -29,7 +46,9 @@ app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.get('/api/version', (c) => {
   const meta = c.env.VERSION_METADATA
-  const stage = c.env.NODE_ENV === 'staging' ? 'staging' : c.env.NODE_ENV === 'production' ? 'production' : 'development'
+  let stage: 'development' | 'staging' | 'production' = 'development'
+  if (c.env.NODE_ENV === 'staging') stage = 'staging'
+  if (c.env.NODE_ENV === 'production') stage = 'production'
   return c.json({
     version: meta?.version ?? '0.0.0',
     deployedAt: meta?.deployedAt ?? 'unknown',
@@ -88,7 +107,7 @@ app.get('/api/auth/session', async (c) => {
     BETTER_AUTH_SECRET: c.env.BETTER_AUTH_SECRET,
   })
   const session = await betterAuth.api.getSession({ headers: c.req.raw.headers })
-  return c.json({ session })
+  return c.json(session ?? { user: null, session: null })
 })
 
 app.post('/api/auth/otp/send', async (c) => {

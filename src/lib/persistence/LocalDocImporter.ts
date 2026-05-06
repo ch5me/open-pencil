@@ -1,4 +1,4 @@
-import { LocalDocumentAdapter } from './DocumentPersistenceAdapter'
+import type { LocalDocumentAdapter } from './DocumentPersistenceAdapter'
 
 export class LocalDocImporter {
   constructor(private localAdapter: LocalDocumentAdapter) {}

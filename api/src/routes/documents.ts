@@ -57,16 +57,19 @@ export function createDocumentsRouter() {
 
   router.get('/', async (c) => {
     const ownerId = c.get('authUserId')
+    const limitValue = Number(c.req.query('limit') ?? '50')
+    const limit = Number.isFinite(limitValue) ? Math.max(1, Math.min(50, Math.trunc(limitValue))) : 50
     const { results } = await c.env.DB.prepare(`
-      SELECT * FROM documents WHERE ownerId = ? AND _deleted = 0 ORDER BY updatedAt DESC LIMIT 50
-    `).bind(ownerId).all()
+      SELECT * FROM documents WHERE ownerId = ? AND _deleted = 0 ORDER BY updatedAt DESC LIMIT ?
+    `).bind(ownerId, limit).all()
     return c.json({ documents: results })
   })
 
   router.get('/:id', async (c) => {
+    const ownerId = c.get('authUserId')
     const { results } = await c.env.DB.prepare(`
-      SELECT * FROM documents WHERE id = ? AND _deleted = 0
-    `).bind(c.req.param('id')).all()
+      SELECT * FROM documents WHERE id = ? AND ownerId = ? AND _deleted = 0
+    `).bind(c.req.param('id'), ownerId).all()
     if (!results.length) return c.json({ error: 'Not found' }, 404)
     return c.json({ document: results[0] })
   })
@@ -74,23 +77,30 @@ export function createDocumentsRouter() {
   router.patch('/:id', async (c) => {
     const body = await c.req.json<{ title?: string; description?: string }>()
     const now = Date.now()
+    const ownerId = c.get('authUserId')
     await c.env.DB.prepare(`
-      UPDATE documents SET title = COALESCE(?, title), description = COALESCE(?, description), updatedAt = ? WHERE id = ?
-    `).bind(body.title, body.description, now, c.req.param('id')).run()
+      UPDATE documents SET title = COALESCE(?, title), description = COALESCE(?, description), updatedAt = ? WHERE id = ? AND ownerId = ?
+    `).bind(body.title, body.description, now, c.req.param('id'), ownerId).run()
     return c.json({ ok: true })
   })
 
   router.delete('/:id', async (c) => {
     const now = Date.now()
+    const ownerId = c.get('authUserId')
     await c.env.DB.prepare(`
-      UPDATE documents SET _deleted = 1, updatedAt = ? WHERE id = ?
-    `).bind(now, c.req.param('id')).run()
+      UPDATE documents SET _deleted = 1, updatedAt = ? WHERE id = ? AND ownerId = ?
+    `).bind(now, c.req.param('id'), ownerId).run()
     return c.json({ ok: true })
   })
 
   router.post('/:id/snapshot', async (c) => {
     const docId = c.req.param('id')
-    const body = await c.req.json<{ data: string }>()
+    const ownerId = c.get('authUserId')
+    const body = await c.req.json<{ data: string; title?: string }>()
+    const { results } = await c.env.DB.prepare(`
+      SELECT id FROM documents WHERE id = ? AND ownerId = ? AND _deleted = 0
+    `).bind(docId, ownerId).all()
+    if (!results.length) return c.json({ error: 'Not found' }, 404)
     const snapshotKey = `snapshots/${docId}/${Date.now()}.json`
     await c.env.DOCUMENTS.put(snapshotKey, body.data)
     const size = new TextEncoder().encode(body.data).length
@@ -100,15 +110,18 @@ export function createDocumentsRouter() {
       VALUES (?, ?, ?, ?, ?)
     `).bind(snapshotId, docId, snapshotKey, size, Date.now()).run()
     await c.env.DB.prepare(`
-      UPDATE documents SET latestSnapshotKey = ?, updatedAt = ? WHERE id = ?
-    `).bind(snapshotKey, Date.now(), docId).run()
+      UPDATE documents
+      SET latestSnapshotKey = ?, title = COALESCE(?, title), updatedAt = ?
+      WHERE id = ? AND ownerId = ?
+    `).bind(snapshotKey, body.title, Date.now(), docId, ownerId).run()
     return c.json({ snapshotKey, snapshotId })
   })
 
   router.get('/:id/snapshot/latest', async (c) => {
+    const ownerId = c.get('authUserId')
     const { results } = await c.env.DB.prepare(`
-      SELECT latestSnapshotKey FROM documents WHERE id = ?
-    `).bind(c.req.param('id')).all()
+      SELECT latestSnapshotKey FROM documents WHERE id = ? AND ownerId = ? AND _deleted = 0
+    `).bind(c.req.param('id'), ownerId).all()
     if (!results.length || !results[0].latestSnapshotKey) {
       return c.json({ error: 'No snapshot' }, 404)
     }
