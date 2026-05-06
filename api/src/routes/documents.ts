@@ -3,6 +3,10 @@ import type { D1Database } from '@cloudflare/workers-types'
 import type { Env } from '../env'
 import { createBetterAuth } from '../auth/better-auth'
 
+export function nullableText(value?: string): string | null {
+  return value ?? null
+}
+
 async function getBearerUserId(db: D1Database, authHeader: string): Promise<string | null> {
   const token = authHeader.slice('Bearer '.length)
   const row = await db.prepare('SELECT userId FROM sessions WHERE token = ? AND expiresAt > ?')
@@ -80,7 +84,7 @@ export function createDocumentsRouter() {
     const ownerId = c.get('authUserId')
     await c.env.DB.prepare(`
       UPDATE documents SET title = COALESCE(?, title), description = COALESCE(?, description), updatedAt = ? WHERE id = ? AND ownerId = ?
-    `).bind(body.title, body.description, now, c.req.param('id'), ownerId).run()
+    `).bind(nullableText(body.title), nullableText(body.description), now, c.req.param('id'), ownerId).run()
     return c.json({ ok: true })
   })
 
@@ -113,7 +117,7 @@ export function createDocumentsRouter() {
       UPDATE documents
       SET latestSnapshotKey = ?, title = COALESCE(?, title), updatedAt = ?
       WHERE id = ? AND ownerId = ?
-    `).bind(snapshotKey, body.title, Date.now(), docId, ownerId).run()
+    `).bind(snapshotKey, nullableText(body.title), Date.now(), docId, ownerId).run()
     return c.json({ snapshotKey, snapshotId })
   })
 

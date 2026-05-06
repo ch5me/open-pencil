@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { nullableText } from '../../api/src/routes/documents'
 
 describe('Documents API', () => {
   describe('POST /api/documents', () => {
@@ -50,6 +51,11 @@ describe('Documents API', () => {
     it('updates title and description', async () => {
       const update = { title: 'New Title', description: 'New desc' }
       expect(update.title).toBe('New Title')
+    })
+
+    it('normalizes missing optional fields to null for D1 binds', () => {
+      expect(nullableText(undefined)).toBe(null)
+      expect(nullableText('Title')).toBe('Title')
     })
   })
 
