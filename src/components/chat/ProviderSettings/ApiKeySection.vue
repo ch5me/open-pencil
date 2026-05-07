@@ -7,7 +7,7 @@ const ctx = useProviderSettingsContext()
 </script>
 
 <template>
-  <div v-if="!ctx.isACP" class="flex flex-col gap-1">
+  <div v-if="!ctx.isACP && ctx.providerID !== 'openpencil'" class="flex flex-col gap-1">
     <div class="flex items-center justify-between">
       <label class="text-[10px] text-muted">API Key</label>
       <button

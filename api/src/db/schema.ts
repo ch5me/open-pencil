@@ -114,3 +114,15 @@ export const localDocImport = sqliteTable('local_doc_imports', {
 }, (t) => [
   uniqueIndex('idx_imports_user_fingerprint').on(t.userId, t.localDocFingerprint),
 ])
+
+export const userProviderKey = sqliteTable('user_provider_keys', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  providerId: text('providerId', { enum: ['openrouter', 'scenario'] }).notNull(),
+  encryptedKey: text('encryptedKey').notNull(),
+  createdAt: integer('createdAt', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updatedAt', { mode: 'timestamp_ms' }).notNull(),
+}, (t) => [
+  uniqueIndex('idx_user_provider_keys_user_provider').on(t.userId, t.providerId),
+  index('idx_user_provider_keys_user').on(t.userId),
+])

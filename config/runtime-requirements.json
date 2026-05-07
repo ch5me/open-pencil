@@ -19,6 +19,12 @@
       "description": "Better Auth secret used to initialize the auth runtime."
     },
     {
+      "name": "OPENROUTER_API_KEY",
+      "delivery": "secret",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Managed OpenRouter API key for hosted OpenPencil chat on approved accounts."
+    },
+    {
       "name": "OPENAI_API_KEY",
       "delivery": "secret",
       "requiredIn": ["local", "staging", "production"],
@@ -34,7 +40,13 @@
       "name": "SCENARIO_API_KEY",
       "delivery": "secret",
       "requiredIn": ["local", "staging", "production"],
-      "description": "Scenario API key for hosted image generation proxy."
+      "description": "Scenario API key or combined key:secret pair for hosted image generation proxy."
+    },
+    {
+      "name": "SCENARIO_API_SECRET",
+      "delivery": "secret",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Scenario API secret when SCENARIO_API_KEY is stored separately from the secret."
     },
     {
       "name": "RESEND_API_KEY",
@@ -47,6 +59,12 @@
       "delivery": "secret",
       "requiredIn": ["staging", "production"],
       "description": "Sentry DSN for Worker error monitoring."
+    },
+    {
+      "name": "USER_KEY_ENCRYPTION_SECRET",
+      "delivery": "secret",
+      "requiredIn": ["local", "staging", "production"],
+      "description": "Encryption secret for per-user hosted provider keys stored in D1."
     }
   ]
 }

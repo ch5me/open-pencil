@@ -48,6 +48,10 @@ function buildRequestUrl(path: string): string {
   return `${API_BASE_URL}/api/auth${path}`
 }
 
+function buildApiRequestUrl(path: string): string {
+  return `${API_BASE_URL}${path}`
+}
+
 export async function request<T>(path: string, options: AuthFetchOptions = {}): Promise<T> {
   const headers: Record<string, string> = {}
 
@@ -65,6 +69,34 @@ export async function request<T>(path: string, options: AuthFetchOptions = {}): 
     })
   } catch (error) {
     throw buildAuthNetworkError(buildRequestUrl(path), error)
+  }
+
+  const data = (await response.json().catch(() => null)) as T | AuthErrorResult | null
+
+  if (!response.ok) {
+    throw new Error(getAuthErrorMessage(data, response.status))
+  }
+
+  return data as T
+}
+
+export async function apiRequest<T>(path: string, options: AuthFetchOptions = {}): Promise<T> {
+  const headers: Record<string, string> = {}
+
+  if (options.body) {
+    headers['Content-Type'] = 'application/json'
+  }
+
+  let response: Response
+  try {
+    response = await fetch(buildApiRequestUrl(path), {
+      method: options.method ?? 'GET',
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      credentials: 'include',
+    })
+  } catch (error) {
+    throw buildAuthNetworkError(buildApiRequestUrl(path), error)
   }
 
   const data = (await response.json().catch(() => null)) as T | AuthErrorResult | null

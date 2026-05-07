@@ -1,0 +1,23 @@
+id: open-pencil
+version: 1
+project:
+  id: open-pencil
+  name: OpenPencil
+  kind: app
+  lifecycle: active
+  summary: Open-source, AI-native design editor. Figma-compatible with Skia rendering, .fig import/export, MCP server, and Tauri desktop app.
+  tags:
+    - design
+    - editor
+    - figma
+    - skia
+    - cloudflare-workers
+    - tauri
+    - mcp
+  docs:
+    - locator: README.md
+      role: overview
+    - locator: PLAN.md
+      role: planning
+    - locator: docs/operator/DEPLOYMENT.md
+      role: deployment

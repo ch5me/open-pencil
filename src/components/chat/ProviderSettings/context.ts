@@ -1,6 +1,12 @@
 import { computed, inject, provide, proxyRefs, ref, watch } from 'vue'
 
 import { useAIChat } from '@/app/ai/chat/use'
+import { useHostedSession } from '@/lib/auth/use-hosted-session'
+import {
+  getAccountAiCredentialStatus,
+  updateAccountAiCredentials,
+  type AccountAiCredentialStatus,
+} from '@/lib/account/ai-credentials'
 
 import type { InjectionKey, ShallowUnwrapRef } from 'vue'
 
@@ -17,6 +23,7 @@ function createProviderSettingsContext() {
     pexelsApiKey,
     unsplashAccessKey
   } = useAIChat()
+  const hostedSession = useHostedSession()
 
   const isACP = computed(() => providerID.value.startsWith('acp:'))
   const keyInput = ref('')
@@ -27,6 +34,11 @@ function createProviderSettingsContext() {
   const hasExistingKey = ref(!!apiKey.value)
   const hasExistingPexelsKey = ref(!!pexelsApiKey.value)
   const hasExistingUnsplashKey = ref(!!unsplashAccessKey.value)
+  const accountStatus = ref<AccountAiCredentialStatus | null>(null)
+  const accountStatusError = ref<string | null>(null)
+  const openRouterAccountKeyInput = ref('')
+  const scenarioAccountKeyInput = ref('')
+  const savingAccountKeys = ref(false)
 
   watch(providerID, () => {
     keyInput.value = ''
@@ -35,7 +47,32 @@ function createProviderSettingsContext() {
     customModelInput.value = customModelID.value
   })
 
-  function save() {
+  async function refreshAccountStatus() {
+    if (!hostedSession.isSignedIn.value) {
+      accountStatus.value = null
+      accountStatusError.value = null
+      return
+    }
+
+    try {
+      accountStatus.value = await getAccountAiCredentialStatus()
+      accountStatusError.value = null
+    } catch (error) {
+      accountStatusError.value = error instanceof Error ? error.message : String(error)
+    }
+  }
+
+  void refreshAccountStatus()
+
+  watch(
+    () => hostedSession.isSignedIn.value,
+    () => {
+      void refreshAccountStatus()
+    },
+    { immediate: true }
+  )
+
+  async function save() {
     if (keyInput.value.trim()) {
       setAPIKey(keyInput.value.trim())
       hasExistingKey.value = true
@@ -56,6 +93,26 @@ function createProviderSettingsContext() {
     }
     if (providerDef.value.supportsCustomModel) {
       customModelID.value = customModelInput.value.trim()
+    }
+
+    if (!hostedSession.isSignedIn.value) return
+    if (!openRouterAccountKeyInput.value.trim() && !scenarioAccountKeyInput.value.trim()) return
+
+    savingAccountKeys.value = true
+    try {
+      await updateAccountAiCredentials({
+        ...(openRouterAccountKeyInput.value.trim()
+          ? { openrouter: openRouterAccountKeyInput.value.trim() }
+          : {}),
+        ...(scenarioAccountKeyInput.value.trim()
+          ? { scenario: scenarioAccountKeyInput.value.trim() }
+          : {}),
+      })
+      openRouterAccountKeyInput.value = ''
+      scenarioAccountKeyInput.value = ''
+      await refreshAccountStatus()
+    } finally {
+      savingAccountKeys.value = false
     }
   }
 
@@ -79,7 +136,18 @@ function createProviderSettingsContext() {
 
   function setCustomAPIType(value: string) {
     customAPIType.value = value as 'completions' | 'responses'
-    save()
+    void save()
+  }
+
+  async function clearSavedAccountKey(provider: 'openrouter' | 'scenario') {
+    if (!hostedSession.isSignedIn.value) return
+    savingAccountKeys.value = true
+    try {
+      await updateAccountAiCredentials({ [provider]: null })
+      await refreshAccountStatus()
+    } finally {
+      savingAccountKeys.value = false
+    }
   }
 
   return {
@@ -101,10 +169,18 @@ function createProviderSettingsContext() {
     hasExistingKey,
     hasExistingPexelsKey,
     hasExistingUnsplashKey,
+    hostedSession,
+    accountStatus,
+    accountStatusError,
+    openRouterAccountKeyInput,
+    scenarioAccountKeyInput,
+    savingAccountKeys,
     save,
     clearKey,
     clearPexelsKey,
     clearUnsplashKey,
+    clearSavedAccountKey,
+    refreshAccountStatus,
     setCustomAPIType
   }
 }

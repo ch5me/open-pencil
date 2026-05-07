@@ -68,21 +68,12 @@ export function createLanguageModel(config: ModelConfig): LanguageModel {
       const sessionToken = getSessionToken()
       const headers: Record<string, string> = {}
       if (sessionToken) headers['authorization'] = `Bearer ${sessionToken}`
-      if (config.modelID.startsWith('anthropic/')) {
-        const anthropic = createAnthropic({
-          apiKey: config.apiKey || 'hosted',
-          baseURL: baseUrl,
-          headers,
-        })
-        return anthropic(effectiveModelID)
-      } else {
-        const openai = createOpenAI({
-          apiKey: config.apiKey || 'hosted',
-          baseURL: baseUrl,
-          headers,
-        })
-        return openai.chat(effectiveModelID)
-      }
+      const openai = createOpenAI({
+        apiKey: config.apiKey || 'hosted',
+        baseURL: baseUrl,
+        headers,
+      })
+      return openai.chat(effectiveModelID)
     }
     case 'openai-compatible': {
       const custom = createOpenAI({

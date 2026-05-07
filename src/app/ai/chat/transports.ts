@@ -70,11 +70,11 @@ export function createHostedTransport({
   return new DirectChatTransport({
     agent: new ToolLoopAgent({
       model: createLanguageModel({
-        providerID: modelID.startsWith('anthropic/') ? 'anthropic' : 'openai',
+        providerID: 'openpencil',
         apiKey: 'hosted',
         modelID,
         customModelID: '',
-        customBaseURL: 'https://api.pencil.ch5.me/api/ai',
+        customBaseURL: '',
         customAPIType: 'completions'
       }),
       instructions: SYSTEM_PROMPT,

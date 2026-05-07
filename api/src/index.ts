@@ -8,6 +8,7 @@ import { createDocumentsRouter } from './routes/documents'
 import { createSharingRouter } from './routes/sharing'
 import { createAiRouter } from './routes/ai'
 import { createCollabRouter } from './routes/collab'
+import { createAccountRouter } from './routes/account'
 import { DocumentRoomDO } from './collab/DocumentRoomDO'
 
 const app = new Hono<{ Bindings: Env }>()
@@ -152,6 +153,7 @@ app.all('/api/auth/*', async (c) => {
 app.route('/api/documents', createDocumentsRouter())
 app.route('/api/share', createSharingRouter())
 app.route('/api/ai', createAiRouter())
+app.route('/api/account', createAccountRouter())
 app.route('/api/collab', createCollabRouter())
 
 export default app

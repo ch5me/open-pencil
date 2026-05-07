@@ -9,11 +9,14 @@ See `config/runtime-requirements.json` for the full list. Summary:
 | Secret | Surface | Stages | Purpose |
 |--------|---------|--------|---------|
 | BETTER_AUTH_SECRET | api | all | Better Auth signing secret |
+| OPENROUTER_API_KEY | api | all | Managed hosted chat key for `@ch5.me` accounts |
 | OPENAI_API_KEY | api | all | Hosted AI chat proxy |
 | ANTHROPIC_API_KEY | api | all | Hosted AI chat proxy |
-| SCENARIO_API_KEY | api | all | Hosted image generation proxy |
+| SCENARIO_API_KEY | api | all | Hosted image generation proxy key, or combined `key:secret` pair |
+| SCENARIO_API_SECRET | api | all | Hosted image generation proxy secret when stored separately |
 | RESEND_API_KEY | api | staging, production | Magic link email delivery |
 | SENTRY_DSN | api | staging, production | Worker error monitoring |
+| USER_KEY_ENCRYPTION_SECRET | api | all | Encrypts per-user saved provider keys before D1 storage |
 
 ## Validate Coverage
 
