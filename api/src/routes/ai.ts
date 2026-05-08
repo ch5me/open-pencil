@@ -259,6 +259,10 @@ export function createAiRouter() {
       }
     }
 
+    if (!isCh5Email(user.email)) {
+      return c.json({ error: 'Hosted AI is not configured for this account' }, { status: 403 })
+    }
+
     const apiKey = c.env.OPENAI_API_KEY ?? c.env.ANTHROPIC_API_KEY
 
     if (!apiKey) {
