@@ -10,6 +10,7 @@ import { createAiRouter } from './routes/ai'
 import { createCollabRouter } from './routes/collab'
 import { createAccountRouter } from './routes/account'
 import { DocumentRoomDO } from './collab/DocumentRoomDO'
+import { getApiVersionInfo } from './version'
 
 const app = new Hono<{ Bindings: Env }>()
 
@@ -45,13 +46,12 @@ app.use('*', requestLogger())
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.get('/api/version', (c) => {
-  const meta = c.env.VERSION_METADATA
   let stage: 'development' | 'staging' | 'production' = 'development'
   if (c.env.NODE_ENV === 'staging') stage = 'staging'
   if (c.env.NODE_ENV === 'production') stage = 'production'
+  const versionInfo = getApiVersionInfo(c.env.VERSION_METADATA)
   return c.json({
-    version: meta?.version ?? '0.0.0',
-    deployedAt: meta?.deployedAt ?? 'unknown',
+    ...versionInfo,
     stage,
   })
 })

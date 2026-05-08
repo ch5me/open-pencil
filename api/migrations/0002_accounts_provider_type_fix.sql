@@ -14,7 +14,7 @@ CREATE TABLE accounts_new (
 );
 
 INSERT INTO accounts_new (id, userId, providerId, accountId, providerType, accessToken, refreshToken, password, expiresAt, scope, createdAt, updatedAt)
-SELECT id, userId, providerId, accountId, COALESCE(providerType, 'credential'), accessToken, refreshToken, password, expiresAt, scope, createdAt, updatedAt
+SELECT id, userId, providerId, accountId, 'credential', accessToken, refreshToken, NULL, expiresAt, scope, createdAt, updatedAt
 FROM accounts;
 
 DROP TABLE accounts;

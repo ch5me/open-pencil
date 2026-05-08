@@ -1,3 +1,5 @@
+import type { WorkerVersionMetadata } from './version'
+
 export interface Env {
   DB: D1Database
   DOCUMENTS: R2Bucket
@@ -9,7 +11,7 @@ export interface Env {
   BETTER_AUTH_URL?: string
   BETTER_AUTH_SECRET?: string
   SENTRY_DSN?: string
-  VERSION_METADATA?: { version?: string; deployedAt?: string }
+  VERSION_METADATA?: WorkerVersionMetadata & { version?: string; deployedAt?: string }
   OPENROUTER_API_KEY?: string
   OPENAI_API_KEY?: string
   ANTHROPIC_API_KEY?: string

@@ -22,13 +22,17 @@ npx wrangler d1 migrations apply openpencil-db --local
 
 ### Staging
 ```sh
-npx wrangler d1 migrations apply openpencil-db-staging --env staging
+npx wrangler d1 migrations apply openpencil-db-staging --env staging --remote
 ```
 
 ### Production
 ```sh
-npx wrangler d1 migrations apply openpencil-db --env production
+npx wrangler d1 migrations apply openpencil-db --remote
 ```
+
+Production uses the top-level Worker config in `api/wrangler.toml`, not an `env.production` block.
+
+Only run the production command after staging proof and explicit approval.
 
 ## Migration Failure Recovery
 

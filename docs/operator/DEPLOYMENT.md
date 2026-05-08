@@ -7,7 +7,9 @@ Staging deploys automatically from `main` via `.github/workflows/deploy-staging.
 Manual trigger:
 ```sh
 node scripts/release-candidate.mjs --stage staging
+npx wrangler d1 migrations apply openpencil-db-staging --env staging --remote
 npx wrangler deploy --env staging --config api/wrangler.toml
+node scripts/hosted-version-smoke.mjs --stage staging
 ```
 
 ## Production Promotion
@@ -17,6 +19,9 @@ Production is promoted from a recorded staging candidate — never rebuilt from 
 ```sh
 node scripts/release-candidate.mjs --stage staging
 # Note the candidate ID from output, e.g. op-staging-1234567890-abcd1234
+
+npx wrangler d1 migrations list openpencil-db --remote
+# If any migrations are pending, stop here and get explicit approval before applying them.
 
 node scripts/promote-production.mjs --candidate op-staging-1234567890-abcd1234 --dry-run
 node scripts/promote-production.mjs --candidate op-staging-1234567890-abcd1234
@@ -42,7 +47,7 @@ See MIGRATIONS.md for the full migration workflow.
 ### Worker 500 after deploy
 1. Check `wrangler tail --env production` for errors
 2. Check D1 schema is up to date: `npx wrangler d1 execute openpencil-db --command "SELECT * FROM users LIMIT 1"`
-3. If schema lag: run `npx wrangler d1 migrations apply openpencil-db --env production`
+3. If schema lag: get approval, then run `npx wrangler d1 migrations apply openpencil-db --remote`
 4. If persistent: rollback to last known-good candidate (see above)
 
 ### R2 blob missing
