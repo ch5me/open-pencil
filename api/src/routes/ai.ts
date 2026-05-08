@@ -6,12 +6,41 @@ import { UserProviderKeyService } from '../services/user-provider-keys'
 
 export function createAiRouter() {
   const router = new Hono<{ Bindings: Env }>()
+  const SCENARIO_POLL_INTERVAL_MS = 3000
+  const SCENARIO_MAX_POLL_ATTEMPTS = 60
 
   function jsonError(message: string, status: number): Response {
     return new Response(JSON.stringify({ error: message }), {
       status,
       headers: { 'content-type': 'application/json' },
     })
+  }
+
+  function usesCustomScenarioEndpoint(modelId: string): boolean {
+    if (!modelId.startsWith('model_')) return false
+    const customPrefixes = [
+      'model_imagen',
+      'model_google-gemini',
+      'model_hunyuan',
+      'model_ideogram',
+      'model_seedream',
+      'model_dreamina',
+      'model_recraft',
+      'model_luma-',
+      'model_minimax',
+      'model_qwen',
+      'model_reve',
+      'model_z-',
+      'model_p-',
+      'model_openai-gpt-image',
+      'model_retrodiffusion',
+      'model_bfl-flux-2',
+      'model_bfl-flux-1-1',
+      'model_flux-kontext',
+      'model_flux-krea',
+      'model_bytedance',
+    ]
+    return customPrefixes.some((prefix) => modelId.startsWith(prefix))
   }
 
   async function ensureAuthorized(c: Context<{ Bindings: Env }>) {
@@ -51,17 +80,31 @@ export function createAiRouter() {
     body: { prompt: string; model?: string; aspectRatio?: string }
   ) {
     const { apiKey, apiSecret } = getScenarioAuthorizationParts(c, credential)
-    const modelId = body.model ?? 'model_flux-1-dev'
-    const response = await fetch(`https://api.cloud.scenario.com/v1/generate/custom/${modelId}`, {
+    const modelId = body.model ?? 'model_recraft-v3'
+    const usesCustomEndpoint = usesCustomScenarioEndpoint(modelId)
+    const endpoint = usesCustomEndpoint ? `/generate/custom/${modelId}` : '/generate/txt2img'
+    const payload = usesCustomEndpoint
+      ? {
+          prompt: body.prompt,
+          numSamples: 1,
+          aspectRatio: body.aspectRatio ?? '1:1',
+        }
+      : {
+          modelId,
+          prompt: body.prompt,
+          numSamples: 1,
+          width: 1024,
+          height: 1024,
+          guidance: 3.5,
+          numInferenceSteps: 28,
+        }
+    const response = await fetch(`https://api.cloud.scenario.com/v1${endpoint}`, {
       method: 'POST',
       headers: {
         authorization: `Basic ${btoa(`${apiKey}:${apiSecret}`)}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({
-        prompt: body.prompt,
-        aspectRatio: body.aspectRatio ?? '1:1',
-      }),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {
@@ -76,7 +119,7 @@ export function createAiRouter() {
   }
 
   async function pollScenarioJob(authHeader: string, jobId: string) {
-    for (let attempt = 0; attempt < 30; attempt += 1) {
+    for (let attempt = 0; attempt < SCENARIO_MAX_POLL_ATTEMPTS; attempt += 1) {
       const response = await fetch(`https://api.cloud.scenario.com/v1/jobs/${jobId}`, {
         headers: { authorization: authHeader },
       })
@@ -88,7 +131,7 @@ export function createAiRouter() {
       const payload = (await response.json()) as {
         job?: {
           status?: string
-          result?: { images?: Array<{ url?: string }> }
+          metadata?: { assetIds?: string[] }
           failureReason?: string
         }
       }
@@ -98,10 +141,24 @@ export function createAiRouter() {
         throw new Error(payload.job?.failureReason ?? `Scenario job ${status}`)
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 2500))
+      await new Promise((resolve) => setTimeout(resolve, SCENARIO_POLL_INTERVAL_MS))
     }
 
     throw new Error('Scenario job polling timed out')
+  }
+
+  async function getScenarioAssetUrl(authHeader: string, assetId: string): Promise<string> {
+    const response = await fetch(`https://api.cloud.scenario.com/v1/assets/${assetId}`, {
+      headers: { authorization: authHeader },
+    })
+    if (!response.ok) {
+      const error = await response.text()
+      throw new Error(error || `Scenario asset fetch failed (${response.status})`)
+    }
+    const payload = (await response.json()) as { asset?: { url?: string } }
+    const url = payload.asset?.url
+    if (!url) throw new Error(`Scenario asset ${assetId} missing url`)
+    return url
   }
 
   async function handleAnthropicMessage(c: Context<{ Bindings: Env }>) {
@@ -186,7 +243,17 @@ export function createAiRouter() {
         }
 
         const result = await pollScenarioJob(authHeader, jobId)
-        return c.json(result)
+        const assetIds = result.job?.metadata?.assetIds ?? []
+        if (assetIds.length === 0) {
+          return c.json({ error: 'Scenario job completed with no assets' }, { status: 502 })
+        }
+        const urls = await Promise.all(assetIds.map((assetId) => getScenarioAssetUrl(authHeader, assetId)))
+        return c.json({
+          created: Math.floor(Date.now() / 1000),
+          data: urls.map((url) => ({ url })),
+          provider: 'scenario',
+          jobId,
+        })
       } catch (error) {
         return c.json({ error: error instanceof Error ? error.message : String(error) }, { status: 502 })
       }

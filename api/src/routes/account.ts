@@ -10,7 +10,7 @@ export function createAccountRouter() {
   const router = new Hono<{ Bindings: Env }>()
 
   function hasManagedScenarioCredentials(env: Env): boolean {
-    return Boolean(env.SCENARIO_API_SECRET || env.SCENARIO_API_KEY?.includes(':'))
+    return Boolean(env.SCENARIO_API_SECRET || env.SCENARIO_SECRET_API_KEY || env.SCENARIO_API_KEY?.includes(':'))
   }
 
   router.get('/ai-credentials', async (c) => {
