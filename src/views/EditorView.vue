@@ -17,10 +17,12 @@ import { useHostedSession } from '@/lib/auth/use-hosted-session'
 import { createDemoShapes } from '@/app/demo/document'
 import { useEditorStore } from '@/app/editor/active-store'
 import { createTab, activeTab, getActiveStore, tabCount } from '@/app/tabs'
+import { useLibraryState } from '@/app/shell/menu/library-state'
 
 import CollabPanel from '@/components/CollabPanel/CollabPanel.vue'
 import EditorCanvas from '@/components/EditorCanvas.vue'
 import LayersPanel from '@/components/LayersPanel.vue'
+import LibraryDialog from '@/components/LibraryDialog.vue'
 import MobileDrawer from '@/components/MobileDrawer.vue'
 import MobileHud from '@/components/MobileHud/MobileHud.vue'
 import PropertiesPanel from '@/components/PropertiesPanel.vue'
@@ -36,6 +38,7 @@ const createdInitialTab = tabCount() === 0
 const firstTab = createdInitialTab ? createTab() : (activeTab.value ?? createTab())
 const store = useEditorStore()
 const { isMobile } = useViewportKind()
+const { libraryOpen } = useLibraryState()
 
 if (createdInitialTab && route.meta.demo && !('test' in params)) {
   createDemoShapes(firstTab.store)
@@ -234,4 +237,5 @@ useEventListener(window, 'beforeunload', (event) => {
       </div>
     </div>
   </div>
+  <LibraryDialog v-model:open="libraryOpen" />
 </template>

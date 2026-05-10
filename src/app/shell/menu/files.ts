@@ -1,5 +1,6 @@
 import { useFileDialog } from '@vueuse/core'
 
+import { openLibraryDialog } from '@/app/shell/menu/library-state'
 import { openFileInNewTab } from '@/app/tabs'
 import { IS_BROWSER, IS_TAURI } from '@/constants'
 
@@ -42,29 +43,7 @@ export async function openFileDialog() {
     return
   }
 
-  if (window.showOpenFilePicker) {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        types: [
-          {
-            description: 'Design file',
-            accept: {
-              'application/octet-stream': ['.fig'],
-              'application/json': ['.pen'],
-              'text/plain': ['.pen']
-            }
-          }
-        ]
-      })
-      const file = await handle.getFile()
-      await openFileInNewTab(file, handle)
-      return
-    } catch (e) {
-      if ((e as Error).name === 'AbortError') return
-    }
-  }
-
-  fileDialog.open()
+  openLibraryDialog()
 }
 
 export async function importFileDialog() {
