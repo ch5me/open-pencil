@@ -70,7 +70,13 @@ export function measureTextWithOpenType(
   const lineGap = font.tables.os2?.sTypoLineGap ?? 0
   const lineH = lineHeight ?? Math.ceil((font.ascender - font.descender + lineGap) * scale)
 
-  const singleLineWidth = font.getAdvanceWidth(text, fontSize)
+  let singleLineWidth: number
+  try {
+    singleLineWidth = font.getAdvanceWidth(text, fontSize)
+  } catch {
+    // Font has unsupported substitution features (e.g. ccmp lookup type 62/6/2)
+    return null
+  }
 
   if (maxWidth && maxWidth > 0 && singleLineWidth > maxWidth) {
     const lines = Math.ceil(singleLineWidth / maxWidth)
@@ -102,7 +108,12 @@ export function getGlyphOutlineCommandsSync(
   const font = getParsedFont(family, style)
   if (!font) return null
 
-  const glyphs = font.stringToGlyphs(text)
+  let glyphs: ReturnType<OutlineFont['stringToGlyphs']>
+  try {
+    glyphs = font.stringToGlyphs(text)
+  } catch {
+    return null
+  }
   return glyphs.map((glyph) => commandsToFigmaNumbers(glyph.getPath(0, 0, fontSize).commands))
 }
 
@@ -115,8 +126,19 @@ export async function probeGlyphOutlineCommands(
   const bytes = getLoadedFontData(family, style)
   if (!bytes) return null
 
-  const font = (OpenTypeSync as OpenTypeModule).parse(bytes.slice(0))
-  const glyphs = font.stringToGlyphs(text)
+  let font: OutlineFont
+  try {
+    font = (OpenTypeSync as OpenTypeModule).parse(bytes.slice(0))
+  } catch {
+    return null
+  }
+
+  let glyphs: ReturnType<OutlineFont['stringToGlyphs']>
+  try {
+    glyphs = font.stringToGlyphs(text)
+  } catch {
+    return null
+  }
   const firstGlyph = glyphs.find((glyph: OutlineGlyph) => glyph.path.commands.length > 0)
   const firstGlyphCommandSample = (firstGlyph?.getPath(0, 0, fontSize).commands ?? []).slice(0, 12)
 
