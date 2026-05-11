@@ -1,8 +1,10 @@
+import { IS_BROWSER } from '@open-pencil/core/constants'
+
 let initialized = false
 
 export function initPostHog(): void {
   if (initialized) return
-  if (typeof window === 'undefined') return
+  if (!IS_BROWSER) return
 
   const key = import.meta.env.VITE_POSTHOG_API_KEY
   if (!key) return
@@ -13,12 +15,17 @@ export function initPostHog(): void {
       posthog.init(key)
       initialized = true
     }
-  } catch {
+  } catch (err) {
+    console.warn('[PostHog] init failed:', err)
   }
 }
 
 export function trackEvent(name: string, properties?: Record<string, unknown>): void {
-  if (typeof window === 'undefined') return
-  const posthog = (window as unknown as { posthog?: { capture: (name: string, props?: Record<string, unknown>) => void } }).posthog
+  if (!IS_BROWSER) return
+  const posthog = (
+    window as unknown as {
+      posthog?: { capture: (name: string, props?: Record<string, unknown>) => void }
+    }
+  ).posthog
   posthog?.capture(name, properties)
 }

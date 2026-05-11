@@ -25,6 +25,6 @@ export async function updateAccountAiCredentials(body: {
 }): Promise<{ ok: boolean }> {
   return apiRequest<{ ok: boolean }>('/api/account/ai-credentials', {
     method: 'PUT',
-    body,
+    body
   })
 }

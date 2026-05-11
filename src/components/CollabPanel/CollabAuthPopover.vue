@@ -62,7 +62,9 @@ async function handleSignOut() {
         data-test-id="collab-auth-trigger"
         class="flex h-7 cursor-pointer items-center gap-2 rounded-md border border-border bg-panel px-2.5 text-xs font-medium text-muted transition-colors hover:bg-hover hover:text-surface"
       >
-        <div class="flex size-6 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-white">
+        <div
+          class="flex size-6 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-white"
+        >
           {{ userInitial }}
         </div>
         <span class="max-w-28 truncate">
@@ -94,20 +96,26 @@ async function handleSignOut() {
           <div class="space-y-4">
             <div>
               <p class="text-sm font-medium text-surface">Account</p>
-              <p class="mt-1 text-xs text-muted">Sign in or create an account without leaving the editor.</p>
+              <p class="mt-1 text-xs text-muted">
+                Sign in or create an account without leaving the editor.
+              </p>
             </div>
 
             <div class="flex gap-2 rounded-md bg-surface p-1">
               <button
                 class="flex-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
-                :class="mode === 'signin' ? 'bg-accent text-white' : 'text-muted hover:text-surface'"
+                :class="
+                  mode === 'signin' ? 'bg-accent text-white' : 'text-muted hover:text-surface'
+                "
                 @click="mode = 'signin'"
               >
                 Sign in
               </button>
               <button
                 class="flex-1 rounded px-2 py-1.5 text-xs font-medium transition-colors"
-                :class="mode === 'signup' ? 'bg-accent text-white' : 'text-muted hover:text-surface'"
+                :class="
+                  mode === 'signup' ? 'bg-accent text-white' : 'text-muted hover:text-surface'
+                "
                 @click="mode = 'signup'"
               >
                 Create account
@@ -117,14 +125,29 @@ async function handleSignOut() {
             <form v-if="mode === 'signin'" class="space-y-3" @submit.prevent="handleSignIn">
               <div class="space-y-1.5">
                 <label class="text-xs font-medium text-surface">Email</label>
-                <input v-model="signInEmail" type="email" required autocomplete="email" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent" />
+                <input
+                  v-model="signInEmail"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                />
               </div>
               <div class="space-y-1.5">
                 <label class="text-xs font-medium text-surface">Password</label>
-                <input v-model="signInPassword" type="password" required autocomplete="current-password" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent" />
+                <input
+                  v-model="signInPassword"
+                  type="password"
+                  required
+                  autocomplete="current-password"
+                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                />
               </div>
               <p v-if="formError" class="text-xs text-red-500">{{ formError }}</p>
-              <button class="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90" :disabled="session.loading.value">
+              <button
+                class="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90"
+                :disabled="session.loading.value"
+              >
                 <IconUser class="size-4" />
                 {{ session.loading.value ? 'Signing in…' : 'Sign in' }}
               </button>
@@ -133,18 +156,38 @@ async function handleSignOut() {
             <form v-else class="space-y-3" @submit.prevent="handleSignUp">
               <div class="space-y-1.5">
                 <label class="text-xs font-medium text-surface">Name</label>
-                <input v-model="signUpName" type="text" autocomplete="name" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent" />
+                <input
+                  v-model="signUpName"
+                  type="text"
+                  autocomplete="name"
+                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                />
               </div>
               <div class="space-y-1.5">
                 <label class="text-xs font-medium text-surface">Email</label>
-                <input v-model="signUpEmail" type="email" required autocomplete="email" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent" />
+                <input
+                  v-model="signUpEmail"
+                  type="email"
+                  required
+                  autocomplete="email"
+                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                />
               </div>
               <div class="space-y-1.5">
                 <label class="text-xs font-medium text-surface">Password</label>
-                <input v-model="signUpPassword" type="password" required autocomplete="new-password" class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent" />
+                <input
+                  v-model="signUpPassword"
+                  type="password"
+                  required
+                  autocomplete="new-password"
+                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                />
               </div>
               <p v-if="formError" class="text-xs text-red-500">{{ formError }}</p>
-              <button class="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90" :disabled="session.loading.value">
+              <button
+                class="flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-medium text-white hover:bg-accent/90"
+                :disabled="session.loading.value"
+              >
                 <IconUserPlus class="size-4" />
                 {{ session.loading.value ? 'Creating account…' : 'Create account' }}
               </button>

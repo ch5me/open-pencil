@@ -9,10 +9,13 @@ export interface AiProviderConfig {
 
 export const DEFAULT_AI_CONFIG: AiProviderConfig = {
   provider: 'openrouter',
-  model: 'anthropic/claude-sonnet-4',
+  model: 'anthropic/claude-sonnet-4'
 }
 
-const aiConfigRef = useLocalStorage<AiProviderConfig>('open-pencil:ai-provider-config', DEFAULT_AI_CONFIG)
+const aiConfigRef = useLocalStorage<AiProviderConfig>(
+  'open-pencil:ai-provider-config',
+  DEFAULT_AI_CONFIG
+)
 
 export function loadAiConfig(): AiProviderConfig {
   return { ...aiConfigRef.value }

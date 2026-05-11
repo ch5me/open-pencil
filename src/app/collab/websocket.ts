@@ -34,7 +34,7 @@ export function connectCollabWebSocket({
 
   const send = (data: Uint8Array) => {
     if (isReady && ws.readyState === WebSocket.OPEN) {
-      ws.send(data)
+      ws.send(data as BufferSource)
       return
     }
     pending.push(data)
@@ -47,7 +47,7 @@ export function connectCollabWebSocket({
     setConnected()
 
     for (const buf of pending) {
-      ws.send(buf)
+      ws.send(buf as BufferSource)
     }
     pending.length = 0
   })

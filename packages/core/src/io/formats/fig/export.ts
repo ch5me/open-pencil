@@ -334,7 +334,13 @@ function compressViaWorker(
     ]
 
     worker.postMessage(
-      { schemaDeflated: schemaCopy, kiwiData: kiwiCopy, thumbnailPng: thumbnailCopy, metaJson, images: imgCopies },
+      {
+        schemaDeflated: schemaCopy,
+        kiwiData: kiwiCopy,
+        thumbnailPng: thumbnailCopy,
+        metaJson,
+        images: imgCopies
+      },
       transferables
     )
   })

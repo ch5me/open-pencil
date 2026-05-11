@@ -1,15 +1,16 @@
-import { createAutosave } from '@/app/document/autosave'
-import { API_BASE_URL } from '@/lib/auth/authTransport'
-import { useHostedSession } from '@/lib/auth/use-hosted-session'
 import { useLocalStorage } from '@vueuse/core'
+
+import { createAutosave } from '@/app/document/autosave'
+import { applyImportedDocument } from '@/app/document/io/imported-document'
 import {
   documentNameFromFigPath,
   downloadNameFromPath,
   figDownloadName
 } from '@/app/document/io/names'
 import { createSaveActions } from '@/app/document/io/save'
-import { applyImportedDocument } from '@/app/document/io/imported-document'
 import { createDocumentSourceState } from '@/app/document/io/source-state'
+import { API_BASE_URL } from '@/lib/auth/authTransport'
+import { useHostedSession } from '@/lib/auth/use-hosted-session'
 import { exportFigFile, readFigFile } from '@open-pencil/core/io/formats/fig'
 
 import type { Editor, EditorState } from '@open-pencil/core/editor'
@@ -60,7 +61,10 @@ export function createDocumentSourceActions({
 }: DocumentSourceOptions) {
   const hostedSession = useHostedSession()
   const HOSTED_DOC_KEY_PREFIX = 'open-pencil:hosted-current-doc:'
-  const hostedCurrentDocs = useLocalStorage<Record<string, string>>('open-pencil:hosted-current-docs', {})
+  const hostedCurrentDocs = useLocalStorage<Record<string, string>>(
+    'open-pencil:hosted-current-docs',
+    {}
+  )
   let hostedSaveQueue: Promise<void> = Promise.resolve()
 
   function bytesToBase64(bytes: Uint8Array): string {
@@ -110,7 +114,11 @@ export function createDocumentSourceActions({
     return hostedCurrentDocs.value[key] ?? null
   }
 
-  async function saveHostedDocument(figBytes: Uint8Array, savedSceneVersion: number, documentTitle: string) {
+  async function saveHostedDocument(
+    figBytes: Uint8Array,
+    savedSceneVersion: number,
+    documentTitle: string
+  ) {
     let releaseQueue: (() => void) | undefined
     const nextInQueue = new Promise<void>((resolve) => {
       releaseQueue = () => resolve()
@@ -135,7 +143,7 @@ export function createDocumentSourceActions({
           body: JSON.stringify({ title: documentTitle || 'Untitled' })
         })
         if (!createRes.ok) throw new Error('Failed to create hosted document')
-        const created = await createRes.json() as { id: string; title?: string }
+        const created = (await createRes.json()) as { id: string; title?: string }
         hostedDocumentId = created.id
         setHostedDocumentId(hostedDocumentId)
         setFileHandle(null)
@@ -145,12 +153,15 @@ export function createDocumentSourceActions({
         state.documentName = created.title ?? state.documentName
       }
 
-      const snapshotRes = await fetch(`${API_BASE_URL}/api/documents/${hostedDocumentId}/snapshot`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ data: bytesToBase64(figBytes), title: documentTitle })
-      })
+      const snapshotRes = await fetch(
+        `${API_BASE_URL}/api/documents/${hostedDocumentId}/snapshot`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ data: bytesToBase64(figBytes), title: documentTitle })
+        }
+      )
       if (!snapshotRes.ok) throw new Error('Failed to save hosted document')
 
       const titleRes = await fetch(`${API_BASE_URL}/api/documents/${hostedDocumentId}`, {
@@ -176,12 +187,14 @@ export function createDocumentSourceActions({
   async function restoreHostedDocument(documentId: string) {
     const [docRes, snapshotRes] = await Promise.all([
       fetch(`${API_BASE_URL}/api/documents/${documentId}`, { credentials: 'include' }),
-      fetch(`${API_BASE_URL}/api/documents/${documentId}/snapshot/latest`, { credentials: 'include' })
+      fetch(`${API_BASE_URL}/api/documents/${documentId}/snapshot/latest`, {
+        credentials: 'include'
+      })
     ])
     if (!docRes.ok || !snapshotRes.ok) return false
 
-    const docJson = await docRes.json() as { document?: { id: string; title?: string } }
-    const snapshotJson = await snapshotRes.json() as { data?: string }
+    const docJson = (await docRes.json()) as { document?: { id: string; title?: string } }
+    const snapshotJson = (await snapshotRes.json()) as { data?: string }
     if (!snapshotJson.data) return false
 
     const bytes = base64ToBytes(snapshotJson.data)
@@ -244,7 +257,11 @@ export function createDocumentSourceActions({
   const { disposeAutosave } = createAutosave({
     state,
     getSavedVersion,
-    hasWritableSource: () => !!getFileHandle() || !!getFilePath() || !!getHostedDocumentId() || hostedSession.isSignedIn.value,
+    hasWritableSource: () =>
+      !!getFileHandle() ||
+      !!getFilePath() ||
+      !!getHostedDocumentId() ||
+      hostedSession.isSignedIn.value,
     saveCurrentDocument
   })
 

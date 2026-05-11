@@ -1,8 +1,10 @@
+import { IS_BROWSER } from '@open-pencil/core/constants'
+
 let initialized = false
 
 export async function initSentry(): Promise<void> {
   if (initialized) return
-  if (typeof window === 'undefined') return
+  if (!IS_BROWSER) return
 
   const apiKey = import.meta.env.VITE_SENTRY_DSN
   if (!apiKey) return
@@ -13,9 +15,10 @@ export async function initSentry(): Promise<void> {
       dsn: apiKey,
       environment: import.meta.env.MODE,
       tracesSampleRate: 0.1,
-      replaysSessionSampleRate: 0.1,
+      replaysSessionSampleRate: 0.1
     })
     initialized = true
-  } catch {
+  } catch (err) {
+    console.warn('[Sentry] init failed:', err)
   }
 }

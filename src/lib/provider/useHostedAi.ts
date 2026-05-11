@@ -1,10 +1,11 @@
-import { computed, readonly, ref } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
+import { computed, readonly, ref } from 'vue'
+
 import type { AiProviderConfig } from './aiProviderConfig'
 
 const storedConfig = useLocalStorage<AiProviderConfig>('open-pencil:ai-provider-config', {
   provider: 'openrouter',
-  model: 'anthropic/claude-sonnet-4',
+  model: 'anthropic/claude-sonnet-4'
 })
 const storedHostedApiKey = useLocalStorage('open-pencil:hosted-ai-api-key', '')
 const config = ref<AiProviderConfig>({ ...storedConfig.value })
@@ -21,10 +22,12 @@ export function useHostedAi() {
 
   const isConfigured = computed(() => Boolean(apiKey.value || config.value.provider === 'local'))
 
-  async function sendMessage(messages: Array<{ role: string; content: string }>): Promise<Response> {
+  async function sendMessage(
+    messages: Array<{ role: string; content: string }>
+  ): Promise<Response> {
     const key = apiKey.value || storedHostedApiKey.value || ''
     const headers: Record<string, string> = {
-      'content-type': 'application/json',
+      'content-type': 'application/json'
     }
 
     if (config.value.provider === 'anthropic') {
@@ -36,7 +39,7 @@ export function useHostedAi() {
 
     const body: Record<string, unknown> = {
       model: config.value.model ?? 'claude-sonnet-4-20250514',
-      messages,
+      messages
     }
 
     if (config.value.provider === 'anthropic') {
@@ -55,7 +58,7 @@ export function useHostedAi() {
     return fetch(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body),
+      body: JSON.stringify(body)
     })
   }
 
@@ -66,5 +69,12 @@ export function useHostedAi() {
     storedHostedApiKey.value = apiKey.value
   }
 
-  return { config: readonly(config), apiKey: readonly(apiKey), isConfigured, init, sendMessage, setConfig }
+  return {
+    config: readonly(config),
+    apiKey: readonly(apiKey),
+    isConfigured,
+    init,
+    sendMessage,
+    setConfig
+  }
 }

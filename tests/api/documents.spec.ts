@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+
 import { nullableText } from '../../api/src/routes/documents'
 
 describe('Documents API', () => {
@@ -21,7 +22,7 @@ describe('Documents API', () => {
     it('returns documents for authenticated user', async () => {
       const mockDocs = [
         { id: '1', title: 'Doc 1', ownerId: 'user1' },
-        { id: '2', title: 'Doc 2', ownerId: 'user1' },
+        { id: '2', title: 'Doc 2', ownerId: 'user1' }
       ]
       expect(mockDocs.length).toBe(2)
     })
@@ -80,7 +81,7 @@ describe('Documents API', () => {
       const schema = {
         snapshotKey: { notNull: true },
         size: { notNull: true },
-        documentId: { notNull: true },
+        documentId: { notNull: true }
       }
       expect(schema.snapshotKey.notNull).toBe(true)
       expect(schema.size.notNull).toBe(true)

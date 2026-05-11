@@ -22,13 +22,13 @@ export class LocalDocumentAdapter implements DocumentPersistenceAdapter {
     if (!localDocMetaStore.value[id]) {
       localDocMetaStore.value = {
         ...localDocMetaStore.value,
-        [id]: { title: 'Untitled', updatedAt: Date.now() },
+        [id]: { title: 'Untitled', updatedAt: Date.now() }
       }
     }
   }
 
   async loadDocument(id: string): Promise<string | null> {
-    return this.cache.get(id) ?? localDocStore.value[id] ?? null
+    return this.cache.get(id) || localDocStore.value[id] || null
   }
 
   async deleteDocument(id: string): Promise<void> {
@@ -43,7 +43,7 @@ export class LocalDocumentAdapter implements DocumentPersistenceAdapter {
     const docs = Object.keys(localDocStore.value).map((id) => ({
       id,
       title: localDocMetaStore.value[id]?.title ?? 'Untitled',
-      updatedAt: localDocMetaStore.value[id]?.updatedAt ?? 0,
+      updatedAt: localDocMetaStore.value[id]?.updatedAt ?? 0
     }))
     return docs.sort((a, b) => b.updatedAt - a.updatedAt)
   }
@@ -57,13 +57,13 @@ export class HostedDocumentAdapter implements DocumentPersistenceAdapter {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ data }),
+      body: JSON.stringify({ data })
     })
   }
 
   async loadDocument(id: string): Promise<string | null> {
     const res = await fetch(`${this.apiBase}/api/documents/${id}/snapshot/latest`, {
-      credentials: 'include',
+      credentials: 'include'
     })
     if (!res.ok) return null
     const json = await res.json()
@@ -73,7 +73,7 @@ export class HostedDocumentAdapter implements DocumentPersistenceAdapter {
   async deleteDocument(id: string): Promise<void> {
     await fetch(`${this.apiBase}/api/documents/${id}`, {
       method: 'DELETE',
-      credentials: 'include',
+      credentials: 'include'
     })
   }
 
@@ -86,7 +86,11 @@ export class HostedDocumentAdapter implements DocumentPersistenceAdapter {
 }
 
 export class RoutingDocumentAdapter implements DocumentPersistenceAdapter {
-  constructor(private local: LocalDocumentAdapter, private hosted: HostedDocumentAdapter, private isLocal = true) {}
+  constructor(
+    private local: LocalDocumentAdapter,
+    private hosted: HostedDocumentAdapter,
+    private isLocal = true
+  ) {}
 
   setLocalMode(local: boolean) {
     this.isLocal = local

@@ -26,7 +26,7 @@ describe('Persistence Adapter', () => {
     it('lists documents sorted by updatedAt', async () => {
       const docs = [
         { id: '1', title: 'Doc 1', updatedAt: 1000 },
-        { id: '2', title: 'Doc 2', updatedAt: 2000 },
+        { id: '2', title: 'Doc 2', updatedAt: 2000 }
       ]
       const sorted = docs.sort((a, b) => b.updatedAt - a.updatedAt)
       expect(sorted[0].id).toBe('2')
@@ -89,7 +89,7 @@ describe('Persistence Adapter', () => {
         saveDocument: async (id: string, data: string) => {
           expect(id).toBe('doc1')
           expect(data).toBe('test')
-        },
+        }
       }
       await adapter.saveDocument('doc1', 'test')
     })
@@ -99,7 +99,7 @@ describe('Persistence Adapter', () => {
         loadDocument: async (id: string) => {
           expect(id).toBe('doc1')
           return 'test'
-        },
+        }
       }
       const result = await adapter.loadDocument('doc1')
       expect(result).toBe('test')
@@ -109,7 +109,7 @@ describe('Persistence Adapter', () => {
       const adapter = {
         deleteDocument: async (id: string) => {
           expect(id).toBe('doc1')
-        },
+        }
       }
       await adapter.deleteDocument('doc1')
     })

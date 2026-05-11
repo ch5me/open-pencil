@@ -6,7 +6,10 @@ const ctx = useProviderSettingsContext()
 </script>
 
 <template>
-  <div v-if="ctx.hostedSession.isSignedIn" class="flex flex-col gap-2 rounded border border-border/70 p-2">
+  <div
+    v-if="ctx.hostedSession.isSignedIn"
+    class="flex flex-col gap-2 rounded border border-border/70 p-2"
+  >
     <div class="flex items-center justify-between gap-2">
       <div>
         <div class="text-[10px] font-medium text-surface">Hosted account keys</div>
@@ -81,10 +84,14 @@ const ctx = useProviderSettingsContext()
     </div>
 
     <div class="text-[9px] text-muted">
-      {{ ctx.providerID === 'openpencil'
-        ? 'The OpenPencil hosted provider uses these keys on the server. Browser storage is not used for this lane.'
-        : 'These saved keys power the hosted OpenPencil provider. Direct provider mode still uses the local key field below.' }}
+      {{
+        ctx.providerID === 'openpencil'
+          ? 'The OpenPencil hosted provider uses these keys on the server. Browser storage is not used for this lane.'
+          : 'These saved keys power the hosted OpenPencil provider. Direct provider mode still uses the local key field below.'
+      }}
     </div>
-    <div class="text-[9px] text-muted">Scenario credentials use `key:secret` unless the server provides the secret separately.</div>
+    <div class="text-[9px] text-muted">
+      Scenario credentials use `key:secret` unless the server provides the secret separately.
+    </div>
   </div>
 </template>

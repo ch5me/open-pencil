@@ -10,9 +10,7 @@
           <button @click="createLink('viewer')" :disabled="loading">
             {{ loading ? 'Creating...' : 'Create viewer link' }}
           </button>
-          <button @click="createLink('editor')" :disabled="loading">
-            Create editor link
-          </button>
+          <button @click="createLink('editor')" :disabled="loading">Create editor link</button>
         </div>
         <div v-else class="share-link-result">
           <input :value="shareLink" readonly />
@@ -36,7 +34,8 @@
 <script setup lang="ts">
 import { useShareDialog } from './useShareDialog'
 
-const { open, errors, shareLink, members, loading, closeDialog, createLink, copyLink } = useShareDialog()
+const { open, errors, shareLink, members, loading, closeDialog, createLink, copyLink } =
+  useShareDialog()
 </script>
 
 <style scoped>

@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+
 import { API_BASE_URL } from '../auth/authTransport'
 
 export function useShareDialog() {
@@ -30,7 +31,7 @@ export function useShareDialog() {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ documentId: documentId.value, role }),
+        body: JSON.stringify({ documentId: documentId.value, role })
       })
       if (!res.ok) throw new Error('Failed to create share link')
       const data = await res.json()
@@ -51,7 +52,7 @@ export function useShareDialog() {
     if (!documentId.value) return
     try {
       const res = await fetch(`${API_BASE_URL}/api/share/documents/${documentId.value}/members`, {
-        credentials: 'include',
+        credentials: 'include'
       })
       if (!res.ok) throw new Error('Failed to load members')
       const data = await res.json()
@@ -61,5 +62,17 @@ export function useShareDialog() {
     }
   }
 
-  return { open, documentId, shareLink, members, loading, errors, openDialog, closeDialog, createLink, copyLink, loadMembers }
+  return {
+    open,
+    documentId,
+    shareLink,
+    members,
+    loading,
+    errors,
+    openDialog,
+    closeDialog,
+    createLink,
+    copyLink,
+    loadMembers
+  }
 }

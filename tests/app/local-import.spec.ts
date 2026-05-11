@@ -5,7 +5,7 @@ describe('Local Doc Import', () => {
     it('detects local docs from localStorage', async () => {
       const localDocs = [
         { id: 'doc1', title: 'Local Doc 1', fingerprint: 'abc123' },
-        { id: 'doc2', title: 'Local Doc 2', fingerprint: 'def456' },
+        { id: 'doc2', title: 'Local Doc 2', fingerprint: 'def456' }
       ]
       expect(localDocs.length).toBe(2)
     })
@@ -40,7 +40,7 @@ describe('Local Doc Import', () => {
         userId: 'user1',
         localDocFingerprint: 'abc123',
         hostedDocId: 'hosted-doc-123',
-        importedAt: Date.now(),
+        importedAt: Date.now()
       }
       expect(importRecord.hostedDocId).toBeDefined()
     })

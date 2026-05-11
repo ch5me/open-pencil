@@ -15,7 +15,7 @@ describe('DB Schema', () => {
     it('has timestamps', () => {
       const schema = {
         createdAt: { notNull: true, mode: 'timestamp_ms' },
-        updatedAt: { notNull: true, mode: 'timestamp_ms' },
+        updatedAt: { notNull: true, mode: 'timestamp_ms' }
       }
       expect(schema.createdAt.notNull).toBe(true)
       expect(schema.updatedAt.notNull).toBe(true)
@@ -42,7 +42,7 @@ describe('DB Schema', () => {
 
     it('owner references user with cascade delete', () => {
       const schema = {
-        ownerId: { notNull: true, references: 'users.id', onDelete: 'cascade' },
+        ownerId: { notNull: true, references: 'users.id', onDelete: 'cascade' }
       }
       expect(schema.ownerId.notNull).toBe(true)
     })
@@ -53,14 +53,16 @@ describe('DB Schema', () => {
       const schema = {
         documentId: { notNull: true },
         userId: { notNull: true },
-        uniqueIndexes: ['idx_members_doc_user'],
+        uniqueIndexes: ['idx_members_doc_user']
       }
       expect(schema.documentId.notNull).toBe(true)
       expect(schema.userId.notNull).toBe(true)
     })
 
     it('role is enum', () => {
-      const schema = { role: { notNull: true, default: 'viewer', enum: ['owner', 'viewer', 'editor'] } }
+      const schema = {
+        role: { notNull: true, default: 'viewer', enum: ['owner', 'viewer', 'editor'] }
+      }
       expect(schema.role.notNull).toBe(true)
       expect(schema.role.default).toBe('viewer')
     })
@@ -90,7 +92,7 @@ describe('DB Schema', () => {
       const schema = {
         userId: { notNull: true },
         token: { notNull: true, unique: true },
-        indexes: ['idx_session_user', 'idx_session_token'],
+        indexes: ['idx_session_user', 'idx_session_token']
       }
       expect(schema.userId.notNull).toBe(true)
     })

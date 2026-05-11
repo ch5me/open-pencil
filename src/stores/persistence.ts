@@ -1,6 +1,8 @@
 import { ref, computed, readonly } from 'vue'
-import type { DocumentPersistenceAdapter } from '../lib/persistence/DocumentPersistenceAdapter'
+
 import { API_BASE_URL } from '../lib/auth/authTransport'
+
+import type { DocumentPersistenceAdapter } from '../lib/persistence/DocumentPersistenceAdapter'
 
 const persistenceAdapter = ref<DocumentPersistenceAdapter | null>(null)
 const hostedAuthSession = ref<{ userId: string; email: string } | null>(null)
@@ -69,13 +71,14 @@ export function useRecentDocuments() {
         const data = await res.json()
         recentDocuments.value = data.documents ?? []
       }
-    } catch {
+    } catch (err) {
+      console.warn('[persistence] fetchRecent failed:', err)
     }
   }
 
   function addRecent(doc: { id: string; title: string; updatedAt: number }) {
     const idx = recentDocuments.value.findIndex((d) => d.id === doc.id)
-    if (idx >= 0) recentDocuments.value.splice(idx, 1)
+    if (idx !== -1) recentDocuments.value.splice(idx, 1)
     recentDocuments.value.unshift(doc)
     if (recentDocuments.value.length > 20) recentDocuments.value.pop()
   }

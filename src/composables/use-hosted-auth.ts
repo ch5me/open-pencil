@@ -1,4 +1,5 @@
 import { computed, readonly, ref } from 'vue'
+
 import { getSession, signIn, signUp, signOut } from '../lib/auth/authTransport'
 
 const session = ref<{ userId: string; email: string } | null>(null)
@@ -35,5 +36,12 @@ export function useHostedAuth() {
     session.value = null
   }
 
-  return { session: readonly(session), isAuthenticated, init, signInHosted, signUpHosted, signOutHosted }
+  return {
+    session: readonly(session),
+    isAuthenticated,
+    init,
+    signInHosted,
+    signUpHosted,
+    signOutHosted
+  }
 }

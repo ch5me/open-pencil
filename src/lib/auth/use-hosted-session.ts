@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+
 import {
   getSession,
   signIn as authSignIn,
@@ -7,7 +8,7 @@ import {
   verifyOtp as authVerifyOtp,
   signUp as authSignUp,
   type SessionUser,
-  type SessionData,
+  type SessionData
 } from './authTransport'
 
 export interface OtpState {
@@ -133,6 +134,6 @@ export function useHostedSession() {
     signUp,
     signOut,
     sendOtp,
-    verifyOtp,
+    verifyOtp
   }
 }

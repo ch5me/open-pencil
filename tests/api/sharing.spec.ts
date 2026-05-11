@@ -48,7 +48,7 @@ describe('Sharing API', () => {
   describe('GET /api/share/documents/:documentId/members', () => {
     it('returns members with user info', async () => {
       const members = [
-        { userId: 'user1', email: 'test@example.com', name: 'Test User', role: 'editor' },
+        { userId: 'user1', email: 'test@example.com', name: 'Test User', role: 'editor' }
       ]
       expect(members[0].email).toBe('test@example.com')
     })

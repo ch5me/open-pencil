@@ -10,7 +10,8 @@ function resolveApiBaseUrl(): string {
       return 'http://api.openpencil.localhost:8787'
     }
     if (window.location.hostname === 'pencil.ch5.me') return 'https://api.pencil.ch5.me'
-    if (window.location.hostname === 'staging.pencil.ch5.me') return 'https://api.staging.pencil.ch5.me'
+    if (window.location.hostname === 'staging.pencil.ch5.me')
+      return 'https://api.staging.pencil.ch5.me'
   }
 
   return 'https://api.pencil.ch5.me'
@@ -19,7 +20,7 @@ function resolveApiBaseUrl(): string {
 export const API_BASE_URL = resolveApiBaseUrl()
 
 export interface AuthFetchOptions {
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
   body?: Record<string, unknown>
 }
 
@@ -35,7 +36,8 @@ function getAuthErrorMessage(data: unknown, status: number): string {
   const errorValue = data.error
   if (typeof errorValue === 'string') return errorValue
   if (isRecord(errorValue) && typeof errorValue.message === 'string') return errorValue.message
-  if (isRecord(errorValue) && typeof errorValue.statusText === 'string') return errorValue.statusText
+  if (isRecord(errorValue) && typeof errorValue.statusText === 'string')
+    return errorValue.statusText
   return `Auth request failed (${status})`
 }
 
@@ -65,7 +67,7 @@ export async function request<T>(path: string, options: AuthFetchOptions = {}): 
       method: options.method ?? 'GET',
       headers: Object.keys(headers).length > 0 ? headers : undefined,
       body: options.body ? JSON.stringify(options.body) : undefined,
-      credentials: 'include',
+      credentials: 'include'
     })
   } catch (error) {
     throw buildAuthNetworkError(buildRequestUrl(path), error)
@@ -93,7 +95,7 @@ export async function apiRequest<T>(path: string, options: AuthFetchOptions = {}
       method: options.method ?? 'GET',
       headers: Object.keys(headers).length > 0 ? headers : undefined,
       body: options.body ? JSON.stringify(options.body) : undefined,
-      credentials: 'include',
+      credentials: 'include'
     })
   } catch (error) {
     throw buildAuthNetworkError(buildApiRequestUrl(path), error)
@@ -132,7 +134,7 @@ function normalizeSessionData(data: unknown): SessionData | null {
   if (directUser !== undefined && (!isRecord(directSession) || !('user' in directSession))) {
     return {
       user: directUser ?? null,
-      session: directSession ?? null,
+      session: directSession ?? null
     }
   }
 
@@ -140,7 +142,7 @@ function normalizeSessionData(data: unknown): SessionData | null {
   if (isRecord(nested)) {
     return {
       user: ('user' in nested ? (nested.user as SessionUser | null | undefined) : null) ?? null,
-      session: ('session' in nested ? nested.session : null) ?? null,
+      session: ('session' in nested ? nested.session : null) ?? null
     }
   }
 
@@ -159,7 +161,7 @@ export async function getSession(): Promise<SessionData | null> {
 export async function signUp(email: string, password: string, name?: string): Promise<SessionData> {
   const data = await request<unknown>('/sign-up', {
     method: 'POST',
-    body: { email, password, ...(name ? { name } : {}) },
+    body: { email, password, ...(name ? { name } : {}) }
   })
   return normalizeSessionData(data) ?? { user: null, session: null }
 }
@@ -167,28 +169,28 @@ export async function signUp(email: string, password: string, name?: string): Pr
 export async function signIn(email: string, password: string): Promise<SessionData> {
   const data = await request<unknown>('/sign-in', {
     method: 'POST',
-    body: { email, password },
+    body: { email, password }
   })
   return normalizeSessionData(data) ?? { user: null, session: null }
 }
 
 export async function signOut(): Promise<{ ok: boolean }> {
   return request<{ ok: boolean }>('/sign-out', {
-    method: 'POST',
+    method: 'POST'
   })
 }
 
 export async function sendOtp(email: string): Promise<{ ok: boolean; message?: string }> {
   return request<{ ok: boolean; message?: string }>('/otp/send', {
     method: 'POST',
-    body: { email },
+    body: { email }
   })
 }
 
 export async function verifyOtp(email: string, code: string): Promise<SessionData> {
   const data = await request<unknown>('/otp/verify', {
     method: 'POST',
-    body: { email, code },
+    body: { email, code }
   })
   return normalizeSessionData(data) ?? { user: null, session: null }
 }

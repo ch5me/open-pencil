@@ -254,6 +254,7 @@ export function connectCollabSession({
     },
     syncNodeToYjs
   })
+  return unbindGraphEvents
 }
 
 export function resetCollabRuntime(runtime: CollabRuntime) {

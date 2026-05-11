@@ -59,13 +59,7 @@ export async function createACPTransport(providerID: AIProviderID) {
   return new ACPChatTransport({ agentDef, cwd: await homeDir() })
 }
 
-export function createHostedTransport({
-  store,
-  modelID
-}: {
-  store: EditorStore
-  modelID: string
-}) {
+export function createHostedTransport({ store, modelID }: { store: EditorStore; modelID: string }) {
   const tools = createAITools(store)
   return new DirectChatTransport({
     agent: new ToolLoopAgent({

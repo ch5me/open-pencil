@@ -1,12 +1,12 @@
 import { computed, inject, provide, proxyRefs, ref, watch } from 'vue'
 
 import { useAIChat } from '@/app/ai/chat/use'
-import { useHostedSession } from '@/lib/auth/use-hosted-session'
 import {
   getAccountAiCredentialStatus,
   updateAccountAiCredentials,
-  type AccountAiCredentialStatus,
+  type AccountAiCredentialStatus
 } from '@/lib/account/ai-credentials'
+import { useHostedSession } from '@/lib/auth/use-hosted-session'
 
 import type { InjectionKey, ShallowUnwrapRef } from 'vue'
 
@@ -106,7 +106,7 @@ function createProviderSettingsContext() {
           : {}),
         ...(scenarioAccountKeyInput.value.trim()
           ? { scenario: scenarioAccountKeyInput.value.trim() }
-          : {}),
+          : {})
       })
       openRouterAccountKeyInput.value = ''
       scenarioAccountKeyInput.value = ''

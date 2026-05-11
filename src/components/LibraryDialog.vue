@@ -22,11 +22,9 @@ import { useCloudDocuments } from '@/app/shell/menu/library'
 import { openFileDialog } from '@/app/shell/menu/files'
 import { useDialogUI } from '@/components/ui/dialog'
 import { createTab } from '@/app/tabs'
-import Tip from '@/components/ui/Tip.vue'
-
 const open = defineModel<boolean>('open', { default: false })
 
-const { t } = useI18n()
+useI18n()
 const cls = useDialogUI({ content: 'flex w-[640px] max-w-[90vw] flex-col' })
 const { documents, loading, error, isSignedIn, fetchDocuments, openCloudDocument } =
   useCloudDocuments()

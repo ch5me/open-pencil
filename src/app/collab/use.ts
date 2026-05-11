@@ -70,9 +70,9 @@ export function useCollab(storeOrGetter: EditorStore | (() => EditorStore)) {
 
   async function connectHosted(documentId: string) {
     const res = await fetch(`${API_BASE_URL}/api/collab/room/${documentId}`, {
-      credentials: 'include',
+      credentials: 'include'
     })
-    const data = await res.json() as { wsUrl: string }
+    const data = (await res.json()) as { wsUrl: string }
     if (!data.wsUrl) throw new Error('no wsUrl from collab endpoint')
     disconnect()
     connectCollabSession({

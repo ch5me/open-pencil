@@ -9,7 +9,7 @@ export class LocalDocImporter {
       docs.map(async (doc) => ({
         id: doc.id,
         title: doc.title,
-        fingerprint: await this.computeFingerprint(doc.id),
+        fingerprint: await this.computeFingerprint(doc.id)
       }))
     )
   }
@@ -24,7 +24,7 @@ export class LocalDocImporter {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'Imported Document' }),
+      body: JSON.stringify({ title: 'Imported Document' })
     })
     if (!res.ok) throw new Error('Failed to create hosted document')
     const { id: hostedId } = await res.json()
@@ -33,14 +33,14 @@ export class LocalDocImporter {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ data }),
+      body: JSON.stringify({ data })
     })
 
     await fetch(`${apiBase}/api/documents/imports`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ localDocFingerprint: fingerprint, hostedDocId: hostedId }),
+      body: JSON.stringify({ localDocFingerprint: fingerprint, hostedDocId: hostedId })
     })
 
     return hostedId

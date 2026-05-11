@@ -3,6 +3,7 @@ import { createDeepSeek } from '@ai-sdk/deepseek'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+
 import { API_BASE_URL } from '@/lib/auth/authTransport'
 
 import type { AIProviderID } from '@open-pencil/core/constants'
@@ -71,7 +72,7 @@ export function createLanguageModel(config: ModelConfig): LanguageModel {
       const openai = createOpenAI({
         apiKey: config.apiKey || 'hosted',
         baseURL: baseUrl,
-        headers,
+        headers
       })
       return openai.chat(effectiveModelID)
     }

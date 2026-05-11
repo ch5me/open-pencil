@@ -1,6 +1,7 @@
 import { ref } from 'vue'
-import { LocalDocImporter } from '../lib/persistence/LocalDocImporter'
+
 import { LocalDocumentAdapter } from '../lib/persistence/DocumentPersistenceAdapter'
+import { LocalDocImporter } from '../lib/persistence/LocalDocImporter'
 
 export function useImportLocalDocs() {
   const importing = ref(false)
