@@ -37,6 +37,7 @@
   --color-surface: #e0e0e0;
   --color-muted: #888888;
   --color-input: #1e1e1e;
+  --color-input-text: #f3f4f6;
   --color-component: #9747ff;
   --color-warning-bg: rgb(245 158 11 / 0.1);
   --color-warning-border: rgb(245 158 11 / 0.3);
@@ -67,6 +68,7 @@ html[data-theme='light'] {
   --color-surface: #202124;
   --color-muted: #6b7280;
   --color-input: #ffffff;
+  --color-input-text: #111827;
   --color-component: #7c3aed;
   --color-warning-bg: rgb(245 158 11 / 0.14);
   --color-warning-border: rgb(245 158 11 / 0.32);
@@ -112,6 +114,23 @@ body {
 input[type='number'] {
   appearance: textfield;
   -moz-appearance: textfield;
+}
+
+input,
+textarea,
+select {
+  color: var(--color-input-text);
+  caret-color: var(--color-input-text);
+}
+
+html[data-theme='light'] :is(input, textarea, select),
+:is(input, textarea, select).bg-white,
+:is(input, textarea, select)[style*='background: white'],
+:is(input, textarea, select)[style*='background-color: white'],
+:is(input, textarea, select)[style*='background:#fff'],
+:is(input, textarea, select)[style*='background-color:#fff'] {
+  color: #111827;
+  caret-color: #111827;
 }
 
 input[type='number']::-webkit-inner-spin-button,

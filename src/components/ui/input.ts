@@ -2,7 +2,7 @@ import { twMerge } from 'tailwind-merge'
 import { tv } from 'tailwind-variants'
 
 const input = tv({
-  base: 'w-full rounded border border-border bg-input text-surface outline-none focus:border-accent',
+  base: 'w-full rounded border border-border bg-input text-[var(--color-input-text)] outline-none focus:border-accent',
   variants: {
     size: {
       sm: 'px-2 py-1 text-[11px]',
