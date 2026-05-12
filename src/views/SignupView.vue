@@ -43,7 +43,7 @@ async function handleSignUp() {
             type="text"
             autocomplete="name"
             placeholder="Your name"
-            class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-surface placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            class="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-surface placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
 
@@ -56,7 +56,7 @@ async function handleSignUp() {
             required
             autocomplete="email"
             placeholder="you@example.com"
-            class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-surface placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            class="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-surface placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
 
@@ -69,7 +69,7 @@ async function handleSignUp() {
             required
             autocomplete="new-password"
             placeholder="••••••••"
-            class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-surface placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            class="w-full rounded-lg border border-border bg-input px-3 py-2 text-sm text-surface placeholder:text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
           />
         </div>
 

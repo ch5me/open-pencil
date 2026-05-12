@@ -130,7 +130,7 @@ async function handleSignOut() {
                   type="email"
                   required
                   autocomplete="email"
-                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                  class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-surface outline-none focus:border-accent"
                 />
               </div>
               <div class="space-y-1.5">
@@ -140,7 +140,7 @@ async function handleSignOut() {
                   type="password"
                   required
                   autocomplete="current-password"
-                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                  class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-surface outline-none focus:border-accent"
                 />
               </div>
               <p v-if="formError" class="text-xs text-red-500">{{ formError }}</p>
@@ -160,7 +160,7 @@ async function handleSignOut() {
                   v-model="signUpName"
                   type="text"
                   autocomplete="name"
-                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                  class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-surface outline-none focus:border-accent"
                 />
               </div>
               <div class="space-y-1.5">
@@ -170,7 +170,7 @@ async function handleSignOut() {
                   type="email"
                   required
                   autocomplete="email"
-                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                  class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-surface outline-none focus:border-accent"
                 />
               </div>
               <div class="space-y-1.5">
@@ -180,7 +180,7 @@ async function handleSignOut() {
                   type="password"
                   required
                   autocomplete="new-password"
-                  class="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-surface outline-none focus:border-accent"
+                  class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-surface outline-none focus:border-accent"
                 />
               </div>
               <p v-if="formError" class="text-xs text-red-500">{{ formError }}</p>
