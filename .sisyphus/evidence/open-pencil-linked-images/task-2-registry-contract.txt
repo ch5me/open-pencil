@@ -1,0 +1,31 @@
+export type LinkedImageSourceType = "url" | "path" | "figma-remote";
+export type LinkedImageStatus = "pending" | "loading" | "loaded" | "error";
+ * The `imageKey` is the stable synthetic id used as `fill.imageHash` and as
+export interface LinkedImageRecord {
+  imageKey: string;
+  sourceType: LinkedImageSourceType;
+  status: LinkedImageStatus;
+export function makeLinkedImageKey(nodeId: string, fillIndex: number): string {
+ * Returns null if the key was not produced by `makeLinkedImageKey`.
+export function parseLinkedImageKey(
+export class LinkedImageRegistry {
+  private records = new Map<string, LinkedImageRecord>();
+  get all(): ReadonlyMap<string, LinkedImageRecord> {
+  get(imageKey: string): LinkedImageRecord | undefined {
+    return this.records.get(imageKey);
+   * Returns the stable `imageKey` that should be written into
+    sourceType: LinkedImageSourceType;
+    const imageKey = makeLinkedImageKey(params.nodeId, params.fillIndex);
+    this.records.set(imageKey, {
+      imageKey,
+      sourceType: params.sourceType,
+    return imageKey;
+    imageKey: string,
+    status: LinkedImageStatus,
+    const record = this.records.get(imageKey);
+  remove(imageKey: string): LinkedImageRecord | undefined {
+    const record = this.records.get(imageKey);
+    if (record) this.records.delete(imageKey);
+  findByNode(nodeId: string): LinkedImageRecord[] {
+    const results: LinkedImageRecord[] = [];
+      const parsed = parseLinkedImageKey(rec.imageKey);

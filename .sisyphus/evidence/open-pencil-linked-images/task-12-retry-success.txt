@@ -1,0 +1,6 @@
+Task 12 — Retry/manual refresh evidence
+
+- `ImageFillPicker.vue` now relabels the manual refresh action to `Retry` when `linkedRecord.status === "error"`.
+- The retry path still calls `store.refreshImage(linkedRecord.imageKey)`, preserving the stable linked key instead of rewriting the fill.
+- After refresh/relink, the component explicitly resyncs both preview bytes and linked-source status, so recovered snapshots show up without needing a new `imageHash`.
+- Stale linked sources keep their last snapshot rendered while the picker switches to a yellow warning state with the latest resolver error.

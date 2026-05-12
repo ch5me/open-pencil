@@ -1,0 +1,10 @@
+command: bun scripts/proof-linked-images.ts
+package-script: bun run proof:linked-images
+board: /Users/hassoncs/Workspaces/Personal/open-pencil/.sisyphus/evidence/open-pencil-linked-images/task-11-proof-board.fig
+initial-render: /Users/hassoncs/Workspaces/Personal/open-pencil/.sisyphus/evidence/open-pencil-linked-images/task-11-proof-board-initial.png
+source-server: http://127.0.0.1:57576
+linked-image-count: 3
+verifyProofBoard: pass
+node=0:8 | key=linked-img-0:8-0 | source=http://127.0.0.1:57576/proof-red.png | backing-file=/Users/hassoncs/Workspaces/Personal/open-pencil/.sisyphus/evidence/open-pencil-linked-images/task-11-proof-sources/proof-red.png | status=loaded | contentHash=a7b484684bbfb5dfa3dd1dad36a5c66b19c9a24f5fa32765f1605c2afc925950
+node=0:11 | key=linked-img-0:11-0 | source=http://127.0.0.1:57576/proof-blue.png | backing-file=/Users/hassoncs/Workspaces/Personal/open-pencil/.sisyphus/evidence/open-pencil-linked-images/task-11-proof-sources/proof-blue.png | status=loaded | contentHash=d3d69fbbbae0d5e9f6de6d2f9d91a4eac5889b7180a507a7d2777a4031b66da1
+node=0:14 | key=linked-img-0:14-0 | source=http://127.0.0.1:57576/proof-green.png | backing-file=/Users/hassoncs/Workspaces/Personal/open-pencil/.sisyphus/evidence/open-pencil-linked-images/task-11-proof-sources/proof-green.png | status=loaded | contentHash=2cc30327b62e54b5a29298e5df0ad171049ed4a1cca155cf9c1a94c4509ef3d0

@@ -1,0 +1,11 @@
+Task 8 — Linked image debounce / coalescing
+
+Evidence:
+- linked-images.ts:30 defines WATCH_DEBOUNCE_MS = 1000.
+- linked-images.ts:147-191 stores one debounce timer per watched path and resets it on repeated modify events.
+- linked-images.ts:179-180 fans out the coalesced refresh through refreshImage(imageKey) for every linked image sharing the changed path.
+- linked-images.ts:237-248 configures the native Tauri watcher with modify-event filtering and delayMs: 500 before the store-level debounce.
+
+Outcome:
+- Bursty file writes collapse into a single refresh window instead of repeated immediate reloads.
+- Resolver-level debouncing stays intact, but the store now coalesces file-system churn before refresh dispatch.

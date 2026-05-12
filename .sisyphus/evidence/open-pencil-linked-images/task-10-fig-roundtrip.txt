@@ -1,0 +1,40 @@
+Task 10 — linked image .fig round-trip verification
+
+Files inspected:
+- packages/core/src/io/formats/fig/write.ts re-exports exportFigFile from ./export.
+- packages/core/src/io/formats/fig/export.ts collectImageEntries(graph) iterates every graph.images entry and writes it as images/${hash}; no filter excludes linked-img-* keys.
+- packages/core/src/linked-images/resolver.ts resolveSourceInternal writes resolved bytes with graph.images.set(imageKey, bytes), where imageKey is the stable linked-img-${nodeId}-${fillIndex} key.
+- packages/core/src/kiwi/serialize.ts still serializes only fill.imageHash, not source URLs. Hardened to persist linked image stable fill keys as OpenPencil plugin metadata (`linkedImageKeys`) and to avoid treating non-hex linked keys as malformed hex bytes.
+- packages/core/src/kiwi/convert.ts restores linked fill.imageHash values from `linkedImageKeys` plugin metadata after Kiwi decode.
+
+What persists in .fig:
+- Snapshot image bytes in graph.images, exported as images/linked-img-<nodeId>-<fillIndex>.
+- The node IMAGE fill's stable image key via OpenPencil plugin metadata, so OpenPencil round-trip reconnects the fill to the embedded snapshot bytes.
+
+What does not persist:
+- LinkedImageRegistry source URL/path/figma-remote metadata.
+- Runtime status fields: pending/loading/loaded/error, contentHash, last error.
+- Watcher/debounce state and local file watch handles.
+
+Regression added:
+- tests/engine/fig-roundtrip.test.ts: `linked image snapshot bytes and stable image key survive export → re-import`.
+- The test asserts the exported ZIP includes `images/${linkedKey}` with exact bytes, then parseFigFile restores both `reimported.images.get(linkedKey)` and the node fill's `imageHash === linkedKey`.
+
+Verification run:
+```text
+$ bun test ./tests/engine/fig-roundtrip.test.ts
+bun test v1.3.11 (af24e281)
+
+ 51 pass
+ 8 skip
+ 0 fail
+ 14064 expect() calls
+Ran 59 tests across 1 file. [27.68s]
+```
+
+Changed-file diagnostics:
+- packages/core/src/kiwi/serialize.ts: clean
+- packages/core/src/kiwi/convert.ts: clean
+- src/composables/use-collab.ts: clean
+- src/stores/linked-images.ts: clean
+- tests/engine/fig-roundtrip.test.ts: only pre-existing Bun ambient diagnostics remain (`bun:test`, `import.meta.dir`); no new linked-image diagnostics.

@@ -1,0 +1,25 @@
+A linked image has a **source** and a **snapshot**.
+- The **snapshot** is the resolved pixel bytes. It lives in `graph.images` under an `imageHash`, exactly like any manually-uploaded image.
+- When you save or export a `.fig` file, the snapshot is what gets embedded. The source reference travels alongside it as annotation, not as a live dependency.
+**One-sentence contract:** the linked source resolves to bytes; the saved `.fig` is a snapshot.
+- Refreshing a link re-fetches the source and replaces the snapshot bytes. The hash changes; the fill updates automatically.
+A file path on the user's local filesystem (e.g. `/Users/alice/assets/logo.png`).
+- Treated identically to a hosted URL at the data layer. The distinction is surfaced only in UI copy ("local server" vs. "hosted URL").
+PNG, JPEG, WebP, and SVG exports use the snapshot bytes already in `graph.images`. No re-fetch occurs at export time.
+### What happens if the snapshot is missing
+After the user confirms, the app attempts to resolve the source immediately. On success, the snapshot is stored and the fill updates. On failure, the fill is created in a broken state (see below).
+- A thumbnail of the current snapshot (same as today).
+- A **"Refresh"** button (circular arrow icon). Triggers a re-fetch of the source and replaces the snapshot bytes if successful.
+- A **"Remove link"** option (accessible via a context menu or secondary button). Converts the fill to a plain embedded image, discarding the source reference. The snapshot bytes are kept.
+- The fill still renders the last successful snapshot if one exists. If no snapshot has ever been resolved, the renderer shows the broken-source placeholder.
+3. On failure: the existing snapshot is preserved. The source badge enters the broken state with the new error message.
+Refresh is non-destructive: a failed refresh never removes the existing snapshot.
+| Linked, broken (no snapshot)    | Red               | Broken-link icon | Last error message                           |
+| Linked, broken (stale snapshot) | Yellow/warning    | Warning icon     | "Showing last snapshot. Source unavailable." |
+### Network error (hosted URL or local web URL)
+### File not found (local file)
+### CORS error (browser build, hosted URL)
+### Broken source with no prior snapshot
+- UX: the fill renders the broken-source placeholder (gray rectangle with broken-link icon). No stale snapshot is shown.
+### Broken source with stale snapshot
+- UX: the fill renders the last successful snapshot. The source badge shows a yellow warning state. The user is not blocked from working.

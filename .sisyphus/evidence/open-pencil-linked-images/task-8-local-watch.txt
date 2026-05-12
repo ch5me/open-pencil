@@ -1,0 +1,16 @@
+Task 8 — Local linked image watch wiring
+
+Files:
+- src/stores/linked-images.ts
+- src/stores/editor.ts
+
+Evidence:
+- linked-images.ts:194-252 adds Tauri fs watch with polling fallback for local path sources.
+- linked-images.ts:255-306 adds watch lifecycle orchestration plus exported startWatchingLinkedImages()/stopWatchingLinkedImages().
+- linked-images.ts:350-352 and 413-415 attach watchers after link/relink only when watch mode is enabled.
+- editor.ts:129-135 starts linked image watching with the editor store lifecycle.
+- editor.ts:978-980 stops linked image watching during editor dispose.
+
+Result:
+- Local path-backed linked images now auto-refresh on file modification.
+- URL-backed linked images still rely on manual refreshImage(imageKey).

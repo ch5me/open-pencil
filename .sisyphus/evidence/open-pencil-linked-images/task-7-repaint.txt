@@ -1,0 +1,22 @@
+Task 7: Repaint After Refresh Evidence
+=======================================
+Date: 2026-05-03
+
+Verification: Repaint occurs after refresh.
+
+1. linked-images.ts refreshImage flow:
+   - resolveSourceImmediate() fetches new bytes
+   - graph.images.set(imageKey, newBytes) updates byte store
+   - invalidateImage(imageKey) clears decoded CKImage cache
+   - requestRepaint() increments renderVersion + sceneVersion
+
+2. Renderer invalidation in renderer.ts:
+   - invalidateImage(hash) deletes cached CKImage
+   - Next paint: applyImageFill checks imageCache miss
+   - Falls back to graph.images.get(hash) -> MakeImageFromEncoded -> cache
+
+3. Proof board evidence:
+   - task-11-proof-refresh.txt: render-changed: true
+   - Board repaints with new bytes after source swap
+
+Conclusion: Update is not stuck in memory only - canvas repaints.

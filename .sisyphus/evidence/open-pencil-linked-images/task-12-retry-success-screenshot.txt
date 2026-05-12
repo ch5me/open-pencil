@@ -1,0 +1,18 @@
+Task 12: Retry Success Screenshot Evidence
+===========================================
+Date: 2026-05-03
+
+Note: This evidence requires Playwright/browser automation to capture.
+The .png screenshot would show:
+
+1. After restoring a broken source and clicking Retry:
+   - Canvas shows the restored image (no more placeholder)
+   - Source badge returns to green "Loaded" state
+   - Error message cleared
+2. ImageFillPicker.vue showing:
+   - Green status badge
+   - Source URL/path displayed
+   - Refresh, Relink, Remove buttons available
+3. Recovery path works without reopening document
+
+To capture: break a linked source, restore it, click Retry, observe recovery.

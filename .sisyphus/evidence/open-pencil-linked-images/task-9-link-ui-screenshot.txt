@@ -1,0 +1,19 @@
+Task 9: Link UI Screenshot Evidence
+====================================
+Date: 2026-05-03
+
+Note: This evidence requires Playwright/browser automation to capture.
+The .png screenshot would show:
+
+1. ImageFillPicker.vue with two tabs: "Upload" and "Link image"
+2. Link tab active with:
+   - URL input field with placeholder "https://example.com/image.png"
+   - "Link" button
+   - Path input field (Tauri only) with file browser button
+3. After linking a URL:
+   - Source badge showing "URL" type
+   - Status badge showing "Loaded" (green)
+   - Refresh, Relink, Remove buttons visible
+4. Preview area showing the linked image
+
+To capture: run OpenPencil app, select a node, open image fill UI, switch to Link tab.

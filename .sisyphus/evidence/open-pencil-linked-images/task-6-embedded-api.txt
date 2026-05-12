@@ -1,0 +1,19 @@
+Task 6: Embedded Image API Regression Evidence
+===============================================
+Date: 2026-05-03
+
+Verification: Embedded image API remains functional.
+
+1. Existing storeImage/getImage methods unchanged:
+   - editor.ts: storeImage(bytes) -> computeImageHash -> graph.images.set(hash, bytes)
+   - editor.ts: getImage(hash) -> graph.images.get(hash)
+
+2. ImageFillPicker.vue file upload flow intact:
+   - useFileDialog -> onFileChange -> store.storeImage(bytes) -> emit updated fill
+   - No linked-image code interferes with file upload path
+
+3. Test evidence:
+   - linked-image.test.ts: figma.createImage is idempotent for same bytes
+   - fig-roundtrip.test.ts: 51 pass, 8 skip, 0 fail
+
+Conclusion: No regression to standard image insertion flow.

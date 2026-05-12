@@ -1,0 +1,14 @@
+task: 13
+proof-doc-checks:
+- manual proof board recipe present: yes
+- scripted proof command present: bun run proof:linked-images
+- three linked images called out explicitly: yes
+- same-source refresh proof explained: yes
+- headless proof local-server rationale explained: yes
+- save-after-refresh guidance present: yes
+
+key-proof-points:
+- proof board uses three linked image rectangles
+- one source changes without changing its URL/path
+- refresh updates snapshot bytes under the stable linked key
+- saved .fig remains snapshot-based, not source-dependent

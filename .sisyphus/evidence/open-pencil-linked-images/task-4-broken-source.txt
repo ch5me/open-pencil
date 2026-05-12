@@ -1,0 +1,2 @@
+    return r.applyImageFill(fill, node, graph)
+export function applyImageFill(

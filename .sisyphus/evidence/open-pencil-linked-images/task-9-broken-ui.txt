@@ -1,0 +1,12 @@
+Task 9 — Broken-source UI evidence
+
+- Broken linked images stay visible through the same linked-image panel instead of silently falling back to the upload-only state.
+- Failed initial links still emit the stable `imageKey` into `fill.imageHash`, so `getLinkedImageStatus()` can keep showing the linked source, its status, and the resolver error.
+- When `linkedRecord.status === "error"`, the UI renders:
+  - the source badge
+  - the `Broken` status badge
+  - the original source string
+  - the resolver error text in a warning container
+  - `Refresh`, `Relink`, and `Remove` actions for recovery
+- Loading states are also explicit: `Loading linked image…` appears while refresh/relink work is in flight.
+- The broken-source state is not hidden by the upload tab; linked fills auto-open the `Link image` tab so the failure state stays inspectable.

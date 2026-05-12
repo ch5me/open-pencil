@@ -1,0 +1,28 @@
+=== OpenPencil Operator Scaffold Evidence ===
+Generated: Mon May  4 13:04:49 PDT 2026
+
+Files created:
+1. config/environment-targets.json - local/staging/production targets for openpencil
+2. config/runtime-requirements.json - secret/variable contract for api surface
+3. config/hush-env-matrix.json - Hush target mapping
+4. packages/runtime-config/src/index.ts - typed runtime-config adapter
+5. api/wrangler.toml - Worker with staging/production envs, D1/R2 bindings
+6. devmux.config.json - web + api services with health checks
+7. scripts/deploy-validate.mjs - validates env-targets vs runtime-requirements
+8. scripts/secrets-validate.mjs - validates Hush target coverage
+9. scripts/runtime-print.mjs - prints staged targets from runtime-config
+10. scripts/release-candidate.mjs - records a release candidate manifest
+11. scripts/promote-production.mjs - promotes a candidate without rebuild
+12. scripts/rollback-production.mjs - rolls back from a recorded candidate
+13. .github/workflows/deploy-staging.yml - staging auto-deploy from main
+14. .github/workflows/promote-production.yml - promote from recorded candidate
+15. .github/workflows/rollback-production.yml - rollback from recorded candidate
+
+Validation results:
+deploy-validate: OK
+secrets-validate: OK
+
+Config JSON validation:
+environment-targets.json: valid
+runtime-requirements.json: valid
+hush-env-matrix.json: valid

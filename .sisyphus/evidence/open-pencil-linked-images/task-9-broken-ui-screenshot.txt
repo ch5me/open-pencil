@@ -1,0 +1,15 @@
+Task 9: Broken UI Screenshot Evidence
+======================================
+Date: 2026-05-03
+
+Note: This evidence requires Playwright/browser automation to capture.
+The .png screenshot would show:
+
+1. ImageFillPicker.vue with linked image in error state
+2. Source badge showing red "Broken" status
+3. Error message displayed (e.g., "404 Not Found", "File not found")
+4. Retry/Refresh button available
+5. Relink button available to change source
+6. Preview area showing broken placeholder (gray rectangle with icon)
+
+To capture: link an image with invalid URL, observe error state in UI.

@@ -1,0 +1,6 @@
+ * prefer `resolveSource()` which handles debouncing.
+async function resolveSourceInternal(
+export function resolveSource(
+      const result = await resolveSourceInternal(
+export function resolveSourceImmediate(
+  return resolveSourceInternal(

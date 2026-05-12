@@ -1,0 +1,262 @@
+# F4: Scope Fidelity Report
+# Image Generation Integration — Plan vs Actual
+# Date: 2026-05-03
+
+## Summary
+
+Overall fidelity: **HIGH with minor deviations**
+- Must Have items: 4/5 fully met, 1 partial (polling timeout)
+- Must NOT Have items: 3/4 fully respected, 1 scope creep in shared package
+- Dependency matrix: FULLY RESPECTED
+- Commit strategy: 1/4 exact match, 2 close, 1 not committed yet
+
+---
+
+## A. Must Have Items
+
+### 1. Text-to-image generation with Scenario.com
+**Status: ✅ FULLY MET**
+- Evidence: `packages/core/src/tools/image-gen.ts` imports `ScenarioClient` from `@ch5me/scenario-client`
+- `ScenarioImageGenProvider` class wraps the client, calls `createTxt2ImgJob()` and `pollJobUntilComplete()`
+- Tool registered as `generate_image` in `CORE_TOOLS` (registry.ts line 148)
+
+### 2. Model selection (flux.1-dev default)
+**Status: ✅ FULLY MET**
+- Evidence: `DEFAULT_MODEL = 'flux.1-dev'` (image-gen.ts line 83)
+- Tool param `model` defaults to `'flux.1-dev'` (lines 167, 181)
+- Supports custom model IDs and third-party endpoints
+
+### 3. Image applied as fill on selected/target node
+**Status: ✅ FULLY MET**
+- Evidence: Lines 236-246 in image-gen.ts create IMAGE fill on target node
+- Downloads image bytes via `fetch(url)`, creates `SceneImage`, sets `node.fills`
+- Only applies to leaf shapes (no children) — correct behavior
+
+### 4. Async job polling with timeout
+**Status: ⚠️ PARTIALLY MET**
+- Evidence: Uses `client.pollJobUntilComplete(jobId)` which delegates to ScenarioClient internals
+- ScenarioClient has `MAX_POLL_ATTEMPTS = 200` and `POLL_INTERVAL_MS = 3000` (10 min max)
+- **Gap**: No explicit timeout configuration exposed in image-gen.ts tool params
+- **Impact**: Low — the internal polling has a reasonable default timeout
+
+### 5. Error handling visible to user
+**Status: ✅ FULLY MET**
+- Evidence: Returns `{ error: string }` at multiple points:
+  - Line 95: No provider configured
+  - Line 138: No image data in result
+  - Line 146: Job polling failed
+  - Lines 205, 209: Invalid node/shape
+  - Lines 214-216: Image creation failed
+  - Lines 232-233: Fill application failed
+- All errors returned as tool results (visible in AI chat)
+
+---
+
+## B. Must NOT Have Items (Guardrails)
+
+### 1. No img2img, background removal, or layered images
+**Status: ⚠️ SCOPE CREEP IN SHARED PACKAGE**
+
+**OpenPencil core (committed):** ✅ CLEAN
+- `image-gen.ts` only has text-to-image params (prompt, model, width, height, etc.)
+- No img2img, background removal, or layered image support in the tool
+
+**@ch5me/scenario-client (uncommitted):** ⚠️ VIOLATION
+- Uncommitted changes add to the shared package:
+  - `Img2ImgParams` type and `createImg2ImgJob()` method
+  - `RemoveBackgroundParams` type and `createRemoveBackgroundJob()` method
+  - `LayeredGenerationParams`/`LayeredGenerationResult` types and methods
+- These are "future work" per the plan but are being added to the shared package now
+
+**scenario-image-gen (uncommitted):** ⚠️ BEING REFACTORED
+- `src/scenario-client.ts` is being refactored to import from shared package
+- This is Task 5 (planned) but the refactoring pulls in the expanded shared package
+
+**Rationale**: The shared package is being expanded beyond immediate scope to support the existing scenario-image-gen CLI which already had these features. This is reasonable for the extraction but technically violates the "future work" guardrail.
+
+### 2. No changes to stock photo tool
+**Status: ✅ FULLY MET**
+- Evidence: `stock-photo.ts` is untouched — no image-gen logic or parameters present
+- Stock photo (Pexels/Unsplash) and image gen (Scenario) are completely separate features
+
+### 3. No UI redesign
+**Status: ✅ FULLY MET**
+- Evidence: `ProviderSettings.vue` diff shows only additive changes:
+  - Added `scenarioApiKey` and `scenarioApiSecret` fields after Unsplash section
+  - Added clear buttons and "Get Scenario API key →" link
+  - No layout changes, no redesign of existing UI
+- Pattern matches existing Pexels/Unsplash key fields exactly
+
+### 4. No axios dependency in OpenPencil core
+**Status: ✅ FULLY MET**
+- Evidence: `image-gen.ts` uses native `fetch(url)` at line 136
+- `@ch5me/scenario-client` uses native `fetch` (line 86 of scenario-client.ts)
+- No axios import anywhere in OpenPencil core or the shared package
+
+---
+
+## C. Dependency Matrix
+
+**Status: ✅ FULLY RESPECTED**
+
+| Dependency | Required | Actual | Status |
+|------------|----------|--------|--------|
+| Task 1 → Task 4 | Package before impl | `a475525` before `197a9595` | ✅ |
+| Task 1 → Task 5 | Package before refactor | `a475525` before uncommitted | ✅ |
+| Task 2 → Task 4 | Types before impl | Same commit (parallel) | ✅ |
+| Task 2 → Task 6 | Types before registry | Same commit | ✅ |
+| Task 4 → Task 6 | Impl before registry | Same commit | ✅ |
+| Task 4 → Task 7 | Impl before wiring | `197a9595` before uncommitted | ✅ |
+| Task 3 → Task 7 | UI before wiring | Both uncommitted, done together | ✅ |
+| Task 6 → Task 7 | Registry before wiring | `197a9595` before uncommitted | ✅ |
+| Task 4 → Task 8 | Impl before tests | `197a9595` before uncommitted | ✅ |
+| Task 7 → Task 9 | Wiring before E2E | Task 9 deferred | ✅ |
+
+**No dependency violations detected.** Execution order respected the plan's dependency matrix.
+
+---
+
+## D. Commit Strategy
+
+**Status: ⚠️ PARTIAL MATCH**
+
+### Task 1: ch5-packages
+- **Planned**: `feat(scenario-client): extract shared Scenario.com API client`
+- **Actual**: `a475525 feat(scenario-client): extract shared Scenario.com API client`
+- **Match**: ✅ EXACT
+
+### Tasks 2+4+6+8: open-pencil core
+- **Planned**: `feat(core): add image generation tool with tests`
+- **Actual**: `197a9595 feat(core): add image generation tool with Scenario provider`
+- **Match**: ⚠️ CLOSE — wording differs ("with tests" vs "with Scenario provider"), and tests are not in the commit (uncommitted)
+
+### Tasks 3+7+9: open-pencil app
+- **Planned**: `feat(app): wire image generation to AI chat with E2E`
+- **Actual**: NOT COMMITTED — ProviderSettings.vue, use-chat.ts changes are uncommitted
+- **Match**: ❌ NOT YET COMMITTED
+
+### Task 5: scenario-image-gen
+- **Planned**: `refactor(scenario-image-gen): consume shared package`
+- **Actual**: NOT COMMITTED — package.json and scenario-client.ts changes are uncommitted
+- **Match**: ❌ NOT YET COMMITTED
+
+---
+
+## E. Additional Findings
+
+### 1. Uncommitted Work Across 3 Repos
+Significant changes are uncommitted:
+
+**open-pencil:**
+- `src/components/chat/ProviderSettings.vue` — Scenario API key fields
+- `src/composables/use-chat.ts` — Key persistence and propagation
+- `packages/core/src/tools/image-gen.ts` — Auto-register provider on key set
+- `packages/core/src/tools/__tests__/image-gen.test.ts` — 11 unit tests (untracked)
+
+**ch5-packages:**
+- `packages/scenario-client/src/scenario-client.ts` — Added img2img, background removal, layered methods
+- `packages/scenario-client/src/index.ts` — Exported new types and functions
+
+**scenario-image-gen:**
+- `package.json` — Added `@ch5me/scenario-client` dependency
+- `src/scenario-client.ts` — Refactored to import from shared package
+
+### 2. Scope Creep in Shared Package
+The `@ch5me/scenario-client` package is being expanded beyond the plan's scope:
+- Plan said: "No img2img, background removal, or layered images (future work)"
+- Actual: Uncommitted changes add these features to the shared package
+- Reason: The existing scenario-image-gen CLI already had these features, and extracting the shared package naturally includes them
+- Risk: Low — these features exist in the shared package but are NOT exposed in OpenPencil's tool
+
+### 3. Auto-Register Provider Pattern
+The uncommitted changes to `image-gen.ts` add auto-registration when both API key and secret are set:
+```typescript
+export function setScenarioApiKey(key: string): void {
+  scenarioApiKey = key
+  if (key && scenarioApiSecret) {
+    registerDefaultImageGenProvider(key, scenarioApiSecret)
+  }
+}
+```
+This is a reasonable enhancement not explicitly in the plan but improves UX.
+
+---
+
+## F. Acceptance Criteria Check
+
+### Task 1: @ch5me/scenario-client
+- [x] Builds successfully with `pnpm --filter @ch5me/scenario-client build`
+- [x] ScenarioClient works with native fetch (no axios import)
+- [x] All types exported from index.ts
+- [x] No fs/node-only imports in core client (browser-compatible)
+- **Note**: Uncommitted changes add more types/methods beyond initial scope
+
+### Task 2: Types and interface
+- [x] `image-gen.ts` compiles with zero type errors
+- [x] All types exported from `packages/core/src/tools/index.ts`
+
+### Task 3: ProviderSettings UI
+- [x] ProviderSettings shows "Scenario API Key" and "Scenario API Secret" fields
+- [x] Keys persist across page reload (useLocalStorage)
+- [x] Clear button works for both fields
+- **Note**: Uncommitted but functionally complete
+
+### Task 4: Scenario provider
+- [x] ScenarioImageGenProvider implemented with @ch5me/scenario-client
+- [x] Supports both standard and custom endpoints
+- [x] Polls job until complete
+- [x] Downloads image bytes via fetch
+
+### Task 5: scenario-image-gen refactor
+- [ ] NOT COMMITTED — uncommitted changes show refactoring in progress
+- [x] package.json has @ch5me/scenario-client dependency (uncommitted)
+- [x] scenario-client.ts imports from shared package (uncommitted)
+
+### Task 6: Tool registration
+- [x] generateImage imported and registered in CORE_TOOLS
+- [x] Available in ALL_TOOLS via spread
+
+### Task 7: AI chat wiring
+- [x] setScenarioApiKey/setScenarioApiSecret auto-register provider (uncommitted)
+- [x] toolsToAI(CORE_TOOLS) auto-includes generate_image
+- [x] Watches in use-chat.ts propagate keys (uncommitted)
+
+### Task 8: Unit tests
+- [x] Test file exists with 11 tests (uncommitted/untracked)
+- [ ] NOT COMMITTED
+
+### Task 9: E2E test
+- [ ] DEFERRED — requires Scenario API keys for live testing
+- **Note**: Correctly deferred per plan
+
+---
+
+## G. Verdict
+
+### Overall Assessment: **PASS WITH NOTES**
+
+The implementation faithfully follows the plan's scope and architecture. All Must Have items are implemented (with minor polling timeout gap). All Must NOT Have guardrails are respected in the OpenPencil core code. The dependency matrix was fully respected.
+
+### Areas of Concern:
+1. **Uncommitted work**: Most of the implementation is uncommitted. This is not a scope violation but a process concern.
+2. **Shared package scope creep**: The `@ch5me/scenario-client` package includes img2img/background removal/layered features beyond the plan's "future work" scope. However, these are not exposed in OpenPencil's tool.
+3. **Commit strategy**: Only 1 of 4 planned commits is exact match. The others are close or not yet committed.
+
+### Recommendations:
+1. Commit the uncommitted work following the plan's commit strategy
+2. Consider whether the shared package's expanded scope is acceptable (it supports the existing scenario-image-gen CLI)
+3. Add explicit timeout configuration to the generate_image tool params (minor enhancement)
+
+---
+
+## Evidence Files Referenced
+
+- `packages/core/src/tools/image-gen.ts` — Main implementation (committed + uncommitted)
+- `packages/core/src/tools/registry.ts` — Tool registration
+- `packages/core/src/tools/__tests__/image-gen.test.ts` — Unit tests (untracked)
+- `src/components/chat/ProviderSettings.vue` — UI changes (uncommitted)
+- `src/composables/use-chat.ts` — Key persistence (uncommitted)
+- `packages/core/src/index.ts` — Core exports
+- `/Users/hassoncs/Workspaces/Personal/ch5-packages/packages/scenario-client/` — Shared package
+- `/Users/hassoncs/Workspaces/Personal/dev/scenario-image-gen/` — CLI refactor
+- Git history: `a475525` (ch5-packages), `197a9595` (open-pencil)

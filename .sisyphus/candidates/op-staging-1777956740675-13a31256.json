@@ -1,0 +1,11 @@
+{
+  "candidateId": "op-staging-1777956740675-13a31256",
+  "stage": "staging",
+  "sha": "local",
+  "builtAt": "2026-05-05T04:52:20.675Z",
+  "workerName": "openpencil-api-staging",
+  "d1DatabaseName": "openpencil-db-staging",
+  "r2Bucket": "openpencil-documents-staging",
+  "apiBaseUrl": "https://api.staging.openpencil.dev",
+  "appUrl": "https://app.staging.openpencil.dev"
+}

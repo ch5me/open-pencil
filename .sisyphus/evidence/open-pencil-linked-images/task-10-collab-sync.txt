@@ -1,0 +1,44 @@
+Task 10 — linked image collab byte-sync verification
+
+Files inspected:
+- src/composables/use-collab.ts
+- src/stores/linked-images.ts
+- packages/core/src/linked-images/registry.ts
+- packages/core/src/linked-images/resolver.ts
+
+Initial state found:
+- yimages.observe applies remote image-byte add/update/delete events to `store.graph.images`, so peers already receive bytes when the Yjs image map changes.
+- syncNodeToYjs scanned node fills and copied `fill.imageHash` bytes from `store.graph.images` to yimages, but only when the key did not already exist.
+- syncAllNodesToYjs copied every graph.images entry into yimages, but also only when missing.
+- Linked image refresh updates bytes under the same stable `linked-img-*` key; the fill usually does not change. That means the old `!localYimages.has(hash)` guard could leave peers with stale bytes after a refresh.
+
+Hardening applied:
+- Added `setYImageIfChanged()` in use-collab.ts. Both syncNodeToYjs and syncAllNodesToYjs now update yimages when bytes differ, not only when missing.
+- yimages values are copied with `new Uint8Array(data)` before set, preventing shared mutable buffer surprises.
+- Added `emitLinkedImageSnapshotChanged()` in src/stores/linked-images.ts. Successful link/relink/refresh resolves now emit a node update for the linked node when the fill already points at that stable key. This triggers existing collab graph mutation sync without adding URL awareness to peers.
+
+Collab compatibility result:
+- Peers do not need to know source URLs or paths in v1.
+- Collab state sync remains byte-based: `fill.imageHash` points to a key, `yimages[key]` carries the snapshot bytes.
+- Remote peers write received yimages bytes into `store.graph.images`, so linked images render from the embedded snapshot bytes just like normal images.
+
+What persists/syncs:
+- Snapshot bytes under `linked-img-<nodeId>-<fillIndex>` in graph.images/yimages.
+- Node fill imageHash stable key.
+
+What stays dev/runtime-only:
+- LinkedImageRegistry records: source, sourceType, status, contentHash, error.
+- Local file watchers, debounce timers, refresh orchestration state.
+- Source URLs/paths are intentionally not serialized into Kiwi and not required by collab peers.
+
+Verification run:
+```text
+$ bun test ./tests/engine/fig-roundtrip.test.ts
+bun test v1.3.11 (af24e281)
+
+ 51 pass
+ 8 skip
+ 0 fail
+ 14064 expect() calls
+Ran 59 tests across 1 file. [27.68s]
+```

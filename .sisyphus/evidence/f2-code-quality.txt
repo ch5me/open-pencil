@@ -1,0 +1,204 @@
+============================================================================
+CODE QUALITY REVIEW — Image-Gen Integration
+============================================================================
+Reviewed: 2026-05-03
+Files: scenario-client (6), image-gen tool (3), app wiring (2)
+Criteria: 10-point checklist against project conventions (AGENTS.md)
+
+============================================================================
+SUMMARY
+============================================================================
+
+ISSUES FOUND: 4
+- 1 pattern violation (medium)
+- 1 code hygiene / unused state (low)
+- 1 non-critical pattern deviation (low)
+- 1 eslint-disable usage (acceptable / test-only)
+
+VERDICT: Mostly clean. No `Math.random()`, no `console.log`, no `!` assertions,
+proper error handling, correct imports, types properly exported.
+
+============================================================================
+ISSUE 1 — PATTERN VIOLATION: `args as { ... }` cast in execute (MEDIUM)
+============================================================================
+
+File: packages/core/src/tools/image-gen.ts
+Lines: 190-202
+
+    execute: async (figma: FigmaAPI, args) => {
+        const { ... } = args as {
+          output_node_id: string
+          prompt: string
+          model?: string
+          ...
+        }
+
+WHY THIS IS A PROBLEM:
+The `execute` function in `defineTool()` receives `args: Record<string, unknown>`.
+Every other tool in the codebase (create.ts, modify.ts, structure.ts, vector.ts,
+analyze.ts, stock-photo.ts, etc.) accesses args properties DIRECTLY:
+
+    execute: (figma, args) => {
+        const parentId = args.parent_id       // ← create.ts
+        ...
+    }
+
+    execute: async (figma, { requests }) => {  // ← stock-photo.ts
+        ...
+    }
+
+image-gen.ts is the ONLY file that casts args to a specific interface. This
+defeats the purpose of `defineTool()`'s generic type inference, adds a
+maintenance burden (the cast must be kept in sync with the params definition),
+and is a silent type-unsafe escape hatch.
+
+WHAT TO DO:
+Remove the `as` cast. Access args directly:
+
+    execute: async (figma, args) => {
+        const output_node_id = args.output_node_id as string
+        const prompt = args.prompt as string
+        // ... or destructure from args like other tools do
+    }
+
+Or better yet, match stock-photo.ts pattern:
+    execute: async (figma, { output_node_id, prompt, ... }) => {
+
+============================================================================
+ISSUE 2 — CODE HYGIENE: Unused test state variables (LOW)
+============================================================================
+
+File: packages/core/src/tools/__tests__/image-gen.test.ts
+Lines: 16-19
+
+    let prevProviders: Map<string, unknown>
+    let prevActiveId: string | null
+    let prevApiKey: string | null
+    let prevApiSecret: string | null
+
+    beforeEach(() => {
+        prevProviders = new Map()       // ← declared, assigned, never read
+        prevActiveId = null             // ← declared, assigned, never read
+        prevApiKey = null               // ← declared, assigned, never read
+        prevApiSecret = null            // ← declared, assigned, never read
+    })
+
+WHY THIS IS A PROBLEM:
+These variables were set up for module-level state restoration but the restore
+logic was never implemented. The afterEach only calls
+`setActiveImageGenProvider(null)` — it doesn't restore providers or credentials.
+The commented intent ("Snapshot module state before each test so we can restore
+it after") is incomplete.
+
+This means:
+- The providers Map accumulates across tests (providers are never removed)
+- Credential state leaks between tests
+- Tests depend on execution order — fragile
+
+The tests work today only because mock providers use unique names and the
+credential tests don't overlap. But this is accidental, not designed.
+
+WHAT TO DO:
+Either:
+a) Implement the restore logic using the snapshot variables, OR
+b) Delete the unused variables and add an explicit comment about the limitation:
+   // Note: module-level state (providers Map, credentials) is NOT reset between
+   // tests. Tests use unique provider names and are order-independent.
+
+============================================================================
+ISSUE 3 — NON-CRITICAL PATTERN: Client recreated on every generate() call (LOW)
+============================================================================
+
+File: packages/core/src/tools/image-gen.ts
+Lines: 98
+
+    const client = new ScenarioClient({ apiKey: creds.apiKey, apiSecret: creds.apiSecret })
+
+WHY THIS IS A DIFFERENCE:
+The ScenarioImageGenProvider creates a new ScenarioClient instance on every
+generate() call. The PexelsProvider (stock-photo.ts) uses a module-level
+singleton client. Creating a new client per call is slightly less efficient
+(not critical — it's just an object with config) but also means the provider
+doesn't need invalidation logic when credentials change.
+
+This is a defensible design choice (credentials can change between calls, so
+fresh client each time is correct). Not a bug, just a pattern difference from
+stock-photo.ts.
+
+WHAT TO DO (optional):
+If performance matters, cache the client and invalidate when credentials change.
+Otherwise, leave as-is — it's correct.
+
+============================================================================
+ISSUE 4 — eslint-disable USAGE (ACCEPTABLE)
+============================================================================
+
+File: packages/core/src/tools/__tests__/image-gen.test.ts
+Lines: 75-76
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    globalThis.fetch = mockFetch as any
+
+File: src/composables/use-chat.ts
+Lines: 220-221
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test-only mock transports...
+    let overrideTransport: (() => any) | null = null
+
+WHY THIS IS ACCEPTABLE:
+Both are justified — one is test mocking (global fetch), the other is explicitly
+marked as test-only override infrastructure. The codebase uses eslint-disable
+sparingly and only with clear justification. These follow that pattern.
+
+WHAT TO DO: Nothing. These are fine.
+
+============================================================================
+ADDITIONAL OBSERVATIONS (NOT ISSUES)
+============================================================================
+
+1. scenario-client.ts `as string` casts (lines 94-95):
+   (errorObj?.message as string) || (errorData.message as string)
+   These are safe — used in a fallback chain where undefined coerces to falsy.
+   The `as Record<string, unknown>` typing of the error response is correct
+   for untyped API responses.
+
+2. scenario-client.ts `as Promise<T>` (line 103):
+   return response.json() as Promise<T>;
+   Standard pattern for fetch JSON deserialization. TypeScript cannot infer
+   the generic from fetch().
+
+3. Test file `as unknown as typeof ScenarioClient` (line 55):
+   Necessary for mock.module() — the mock doesn't implement the full class.
+   Acceptable in test code.
+
+4. Test file `as Response` (line 72):
+   Partial mock of Response. Acceptable for test mocking.
+
+5. `ImageGenError` type export (line 81 of image-gen.ts):
+   Exported from core/src/index.ts but appears unused in the codebase.
+   Minor — may be used by consumers or future code.
+
+6. tsconfig.build.json extends tsconfig.json with overlapping keys:
+   Both declare `noEmit`, `declaration`, `outDir`, `rootDir`. Redundant but
+   harmless — build configs commonly duplicate for clarity.
+
+7. ProviderSettings.vue follows existing Pexels/Unsplash pattern exactly —
+   clean implementation with no issues.
+
+8. use-chat.ts watcher pattern for scenario credentials follows the existing
+   Pexels/Unsplash pattern. Registration happens when both credentials are set.
+
+============================================================================
+CHECKLIST RESULTS
+============================================================================
+
+  [PASS] 1. No `as any` in production code (test file only, justified)
+  [PASS] 2. No `Math.random()` usage
+  [PASS] 3. No `!` non-null assertions
+  [PASS] 4. Proper error handling (try/catch, error propagation, no unhandled rejections)
+  [FAIL] 5. Inline type definitions duplicating named types — `args as { ... }` in image-gen.ts:190
+  [PASS] 6. No copy-pasted logic (stock-photo pattern is followed, not duplicated)
+  [PASS] 7. Consistent patterns with existing codebase (provider registration, watchers, UI)
+  [PASS] 8. No `console.log` statements
+  [PASS] 9. Imports correct and complete
+  [PASS] 10. Types properly exported where needed

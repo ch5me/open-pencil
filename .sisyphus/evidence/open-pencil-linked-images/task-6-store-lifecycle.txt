@@ -1,0 +1,25 @@
+Task 6: Store Lifecycle Evidence
+================================
+Date: 2026-05-03
+
+Verification: Store API supports link lifecycle.
+
+1. createLinkedImageStore in src/stores/linked-images.ts:
+   - linkImage(nodeId, fillIndex, source, sourceType): registers + resolves
+   - relinkImage(imageKey, newSource): updates source + re-resolves
+   - refreshImage(imageKey): immediate re-resolve
+   - getLinkedImageStatus(imageKey): returns LinkedImageRecord
+   - removeLinkedImage(imageKey): removes from registry + graph
+
+2. Integration in editor.ts:
+   - createLinkedImageStore called with graph, getCk, invalidateImage, requestRepaint
+   - Store methods exposed on editor: linkImage, relinkImage, refreshImage, etc.
+   - linkedImageRegistry exposed for read-only access
+
+3. Lifecycle flow:
+   - linkImage: register -> loading -> resolve -> loaded/error -> invalidateImage -> repaint
+   - relinkImage: update source -> loading -> resolve -> loaded/error -> invalidateImage -> repaint
+   - refreshImage: loading -> immediate resolve -> loaded/error -> invalidateImage -> repaint
+   - removeLinkedImage: remove from registry -> delete from graph.images -> invalidateImage -> repaint
+
+Conclusion: Linked image lifecycle is managed by the store cleanly.

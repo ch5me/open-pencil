@@ -1,0 +1,4 @@
+  invalidateImage(hash: string): void {
+    invalidateImage: (hash: string) => {
+      _renderer?.invalidateImage(hash);
+    invalidateImage: (hash: string) => _renderer?.invalidateImage(hash),

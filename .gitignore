@@ -30,6 +30,15 @@ public/canvaskit-webgpu/
 *.sln
 *.sw?
 test-results/
+tmp/
+*.tsbuildinfo
+
+# Local agent/runtime scratch
+.opencode/node_modules/
+.opencode/package.json
+.opencode/package-lock.json
+.sisyphus/run-continuation/
+
 # Git worktrees for parallel agent work
 .worktrees/
 .env

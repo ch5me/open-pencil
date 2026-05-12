@@ -1,0 +1,6 @@
+Task 12 — Broken linked-source evidence
+
+- `packages/core/src/canvas/fills.ts` no longer returns a silent blank for missing `linked-img-*` bytes.
+- When `graph.images.get(hash)` is missing, linked fills now render a visible fallback on canvas: tinted background, red X, and `Source unavailable` label.
+- Undecodable linked-image bytes follow the same fallback path, so corrupt linked snapshots do not crash rendering.
+- `src/components/ImageFillPicker.vue` now shows a red broken-state preview when no snapshot exists, keeps the resolver error visible, and exposes `Retry`, `Relink`, and `Remove` recovery actions.

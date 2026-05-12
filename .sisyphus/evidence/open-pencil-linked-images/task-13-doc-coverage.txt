@@ -1,0 +1,24 @@
+task: 13
+artifact: docs/linked-images-workflow.md
+
+coverage:
+- linked image mental model documented: yes
+- recommended local-server workflow documented: yes
+- recommended local-file workflow documented: yes
+- link workflow documented step-by-step: yes
+- relink workflow documented: yes
+- refresh workflow documented: yes
+- proof board setup with three linked images documented: yes
+- proof script command documented: yes
+- .fig snapshot semantics documented: yes
+- export uses snapshot bytes documented: yes
+- browser CORS limitation documented: yes
+- local-file desktop-only limitation documented: yes
+- no-auth-source limitation documented: yes
+- future work separated from v1 behavior: yes
+
+sources reviewed:
+- docs/linked-images-product-contract.md
+- scripts/proof-linked-images.ts
+- README.md
+- .sisyphus/notepads/open-pencil-linked-images-hot-reload/learnings.md

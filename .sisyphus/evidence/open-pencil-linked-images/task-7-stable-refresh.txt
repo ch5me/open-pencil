@@ -1,0 +1,21 @@
+Task 7: Stable Refresh Evidence
+================================
+Date: 2026-05-03
+
+Verification: Linked image refresh updates rendered bytes without fill churn.
+
+1. Stable key pattern: linked-img-${nodeId}-${fillIndex}
+   - Key never changes for the lifetime of the association
+   - Bytes are replaced under the same key in graph.images
+
+2. Refresh flow in linked-images.ts:
+   - resolveSource(source, imageKey, graph, ck) writes bytes to graph.images
+   - invalidateImage(imageKey) clears decoded cache
+   - requestRepaint() triggers canvas redraw
+
+3. Test evidence:
+   - linked-image.test.ts: "refreshImageSource swaps bytes under existing hash"
+   - linked-image.test.ts: "node still references same hash after refresh"
+   - Proof board: stable-key-before-after shows same key before/after refresh
+
+Conclusion: Scene references stay stable while rendered content updates.

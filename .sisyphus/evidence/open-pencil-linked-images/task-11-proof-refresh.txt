@@ -1,0 +1,16 @@
+command: bun scripts/proof-linked-images.ts
+package-script: bun run proof:linked-images
+same-graph-instance: true
+same-renderer-instance: true
+updated-source-url: http://127.0.0.1:57576/proof-red.png
+updated-source-file: /Users/hassoncs/Workspaces/Personal/open-pencil/.sisyphus/evidence/open-pencil-linked-images/task-11-proof-sources/proof-red.png
+refresh-fixture: gradient-8x8.png
+stable-key-before-after: linked-img-0:8-0
+snapshot-bytes-changed: true
+render-changed: true
+initial-snapshot-sha256: c19b45b1a6e247471ea82b674f5eb58e52d7bb71ffcf2403030b88e1322cfafc
+refreshed-snapshot-sha256: a7b484684bbfb5dfa3dd1dad36a5c66b19c9a24f5fa32765f1605c2afc925950
+initial-render-sha256: e8e8aca1111bcb6e13ee3a5ea9add9c7bd68b137ca98bebfa6e2123e9e9c3358
+refreshed-render-sha256: ad21c701970496a29423245c09089a96d0103424f6f0f9cf24ae0916f2cc8fac
+refreshed-render: /Users/hassoncs/Workspaces/Personal/open-pencil/.sisyphus/evidence/open-pencil-linked-images/task-11-proof-board-refreshed.png
+verifyProofBoard-after-refresh: pass

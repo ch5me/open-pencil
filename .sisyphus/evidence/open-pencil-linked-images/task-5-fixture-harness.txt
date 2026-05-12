@@ -1,0 +1,29 @@
+Task 5: Test Fixture Harness Evidence
+======================================
+Date: 2026-05-03
+
+Verification: Test harness exercises linked image refresh.
+
+1. Fixtures exist in tests/engine/fixtures/linked-images/:
+   - red-square.png
+   - blue-square.png
+   - green-square.png
+   - gradient-8x8.png
+   - transparent-square.png
+   - red-square-updated.png (alternate variant for refresh)
+
+2. Test helpers in linked-image-helpers.ts:
+   - loadFixture(name): loads PNG by name
+   - createImageRect(figma, graph, bytes): creates IMAGE fill node
+   - refreshImageSource(graph, oldHash, newBytes): swaps bytes under existing hash
+   - replaceImageSource(figma, graph, oldHash, newBytes): full re-import with new hash
+   - hashOf(bytes): compute hash without registering
+   - verifyProofBoard(graph, expected): validates proof board state
+
+3. Test results:
+   - linked-image.test.ts: 16 pass, 0 fail, 36 expect() calls
+   - All fixture files load with non-zero bytes
+   - Red and blue fixtures produce different hashes
+   - All fixtures have valid 40-char hex hashes
+
+Conclusion: Deterministic refresh simulation passes. Proof fixture set is complete.

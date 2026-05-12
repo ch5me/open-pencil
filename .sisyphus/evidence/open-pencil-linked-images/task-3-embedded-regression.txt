@@ -1,0 +1,21 @@
+Task 3: Embedded Image Regression Evidence
+==========================================
+Date: 2026-05-03
+
+Verification: Existing image rendering still works after invalidation hook addition.
+
+1. renderer.ts invalidateImage method added at line 1130:
+   - invalidateImage(hash: string): void
+   - Disposes native CKImage to prevent memory leaks
+   - Forces fresh decode on next paint
+
+2. Existing applyImageFill path unchanged:
+   - fills.ts: applyImageFill still checks imageCache.get(hash)
+   - Falls back to graph.images.get(hash) on cache miss
+   - No regression to embedded image fill rendering
+
+3. Test evidence:
+   - linked-image.test.ts: 16 pass, 0 fail
+   - fig-roundtrip.test.ts: 51 pass, 8 skip, 0 fail
+
+Conclusion: No regression to embedded image workflows.

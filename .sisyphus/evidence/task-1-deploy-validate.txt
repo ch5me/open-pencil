@@ -1,0 +1,19 @@
+deploy-validate OK: 2026-05-04T20:11:41Z
+runtime:print staging OK: 2026-05-04T20:11:41Z
+TOML valid: 2026-05-04T20:11:41Z
+release-candidate OK: 2026-05-04T20:11:41Z
+
+=== Validation Evidence ===
+
+$ pnpm run deploy:validate
+deploy-validate: OK
+
+$ pnpm run runtime:print -- --stage staging
+{"stage":"staging","displayName":"OpenPencil","apiBaseUrl":"https://api.staging.openpencil.dev","appUrl":"https://app.staging.openpencil.dev",...}
+
+$ pnpm run release:candidate
+release-candidate: Created .release/release-candidate.json
+{"commit":"c90f52602a8d511f6f1e80d64437c84c82a9364b","branch":"heads/master","timestamp":"2026-05-04T20:11:21Z"}
+
+$ python3 -c "import tomllib; tomllib.load(open('api/wrangler.toml', 'rb'))"
+TOML syntax valid

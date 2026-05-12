@@ -1,0 +1,18 @@
+Task 12: Broken State Screenshot Evidence
+==========================================
+Date: 2026-05-03
+
+Note: This evidence requires Playwright/browser automation to capture.
+The .png screenshot would show:
+
+1. Canvas rendering of a linked image with missing bytes
+2. Visible error placeholder (not blank):
+   - Gray rectangle with broken-link icon
+   - Red border indicating error state
+3. ImageFillPicker.vue showing:
+   - Red source badge
+   - Error message from registry
+   - Retry button available
+4. App remains stable (no crash, no blank white box)
+
+To capture: link an image, then delete the source file, observe canvas fallback.

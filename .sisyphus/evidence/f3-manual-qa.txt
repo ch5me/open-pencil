@@ -1,0 +1,54 @@
+Manual QA Verification — Image-Gen Integration
+================================================
+Date: 2026-05-03
+Verifier: Sisyphus-Junior (automated)
+
+## Step 1: Verify package builds
+PASS
+- `pnpm --filter @ch5me/scenario-client build` succeeded
+- dist/ contains: index.d.ts, index.js, scenario-client.d.ts, scenario-client.js, types.d.ts (+ source maps)
+
+## Step 2: Verify image-gen tests pass
+PASS
+- `bun test packages/core/src/tools/__tests__/image-gen.test.ts`
+- 11 tests pass, 0 fail, 13 expect() calls
+- Runtime: 292ms
+
+## Step 3: Verify generateImage in registry.ts
+PASS
+- `packages/core/src/tools/registry.ts` line 66: `import { generateImage } from './image-gen'`
+- `packages/core/src/tools/registry.ts` line 148: `generateImage` registered in ALL_TOOLS array
+
+## Step 4: Verify ProviderSettings has Scenario fields
+PASS
+- `src/components/chat/ProviderSettings.vue` contains:
+  - `scenarioApiKey` and `scenarioApiSecret` refs (lines 35-36)
+  - `scenarioApiKeyInput` and `scenarioApiSecretInput` refs (lines 44-45)
+  - `hasExistingScenarioKey` and `hasExistingScenarioSecret` state (lines 51-52)
+  - Save logic propagates input → ref (lines 77-85)
+  - Clear functions for both key and secret (lines 113-122)
+  - UI section "Scenario image generation" with inputs and "Get Scenario API key →" link (lines 242-298)
+  - data-test-id attributes for testing: provider-settings-scenario-key, provider-settings-scenario-secret, provider-settings-clear-scenario-key, provider-settings-clear-scenario-secret
+
+## Step 5: Verify exports from @open-pencil/core
+PASS
+- `packages/core/src/index.ts` lines 438-443: exports `setScenarioApiKey`, `setScenarioApiSecret`, `registerImageGenProvider`, `getImageGenProviders` from "./tools/image-gen"
+- `packages/core/src/tools/index.ts` lines 9-15: exports `registerImageGenProvider`, `getImageGenProviders`, and types `ImageGenProvider`, `ImageGenParams`, `ImageGenResult`
+
+## Step 6: Verify use-chat.ts wires Scenario keys
+PASS
+- `src/composables/use-chat.ts`:
+  - Imports `setScenarioApiKey`, `setScenarioApiSecret` from core (lines 22-23)
+  - `scenarioApiKey` and `scenarioApiSecret` useLocalStorage with STORAGE_PREFIX (lines 65-66)
+  - watch(scenarioApiKey) calls `setScenarioApiKey(key || null)` (lines 111-113)
+  - watch(scenarioApiSecret) calls `setScenarioApiSecret(secret || null)` (lines 119-121)
+  - Exposes scenarioApiKey, scenarioApiSecret, setScenarioApiKey, setScenarioApiSecret in return object (lines 339-342)
+
+## Summary
+All 6 verification steps PASS. The image-gen integration is correctly wired end-to-end:
+- @ch5me/scenario-client builds cleanly
+- 11 unit tests pass
+- generateImage registered in tool registry
+- ProviderSettings UI has Scenario key/secret inputs with save/clear
+- Core exports all required functions and types
+- use-chat.ts watches localStorage keys and propagates to core setters

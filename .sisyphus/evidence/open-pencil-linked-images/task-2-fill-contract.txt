@@ -1,0 +1,3 @@
+  imageHash?: string
+  imageScaleMode?: ImageScaleMode
+  imageTransform?: GradientTransform

@@ -1,0 +1,20 @@
+Task 9 — Linked image UI evidence
+
+- Extended `src/components/ImageFillPicker.vue` with an internal two-tab switch: `Upload` and `Link image`.
+- Kept the existing embedded upload flow intact under the `Upload` tab (`useFileDialog`, `store.storeImage`, preview, scale mode selector).
+- Added linked-image inputs under the `Link image` tab:
+  - URL input + `Link` button in all builds
+  - Path input + `Link` button only when `IS_TAURI`
+- Wired linked-image actions through editor store methods:
+  - `linkImage(nodeId, fillIndex, source, sourceType)`
+  - `relinkImage(imageKey, newSource)`
+  - `refreshImage(imageKey)`
+  - `getLinkedImageStatus(imageKey)`
+  - `removeLinkedImage(imageKey)`
+- Existing linked images now show:
+  - source-type badge (`URL` / `Path` / `Remote`)
+  - status badge (`Loaded` / `Loading` / `Broken` / `Pending`)
+  - source text
+  - `Refresh`, `Relink`, and `Remove` actions
+- `Remove` preserves the current rendered snapshot by converting linked bytes back into an embedded image hash before clearing the linked registry entry.
+- Switching from linked → uploaded image now removes the linked registry entry first, so the embedded picker path does not leave stale linked-image records behind.
