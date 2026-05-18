@@ -2,11 +2,11 @@
 
 ## CH5 Federation Context (2026-05-16)
 
-OpenPencil is a federated sub-app of the Firefly platform at `elf.dance`. Per `hq-qyx6` decision: sub-apps stay in their own independent repos and federate into Firefly via the published `@ch5me/kilo-auth-client` package (RS256 + JWKS verifier).
+OpenPencil is a federated sub-app of the Firefly platform at `elf.dance`. Per `hq-qyx6` decision: sub-apps stay in their own independent repos and federate into Firefly via the published `@ch5me/elf-auth-client` package (RS256 + JWKS verifier).
 
 - **Subdomain (canonical):** `pencil.elf.dance`
 - **Sub-route (transitional alias):** `app.elf.dance/pencil` redirects to canonical
-- **Auth target:** Kilo custom auth + RS256+JWKS via `@ch5me/kilo-auth-client` (`hq-be8u` package landing soon). Current BetterAuth being cut over per `hq-bvxx`. Desktop wrapper needs deep-link callback handler.
+- **Auth target:** Kilo custom auth + RS256+JWKS via `@ch5me/elf-auth-client` (`hq-be8u` package landing soon). Current BetterAuth being cut over per `hq-bvxx`. Desktop wrapper needs deep-link callback handler.
 - **Runtime provisioning:** Per-user agent container via shared `services/kiloclaw` in firefly-cloud rig `cloud` (call with `openpencil` tag).
 - **Billing:** All OpenPencil agentic ops route through user portable OpenCode container → firefly-cloud billing/gateway. No local LLM gateway.
 - **Master alignment doc:** `/Users/hassoncs/gt/ch5_company/mayor/rig/company-master-alignment.md`
