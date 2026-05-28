@@ -1,0 +1,51 @@
+version: 1
+project_id: open-pencil
+generated_at: '2026-05-19T02:35:51Z'
+source_hash: 689b15de91169f32a5dab4cf04aa3ec4051478699233e70926db1519960de8a5
+plane:
+  project_id: 723ef805-41d8-40b0-9655-0af5d0fb77e7
+  identifier: OPENPENC3E0
+  name: Open Pencil
+  confidence: high
+  evidence:
+  - unique normalized name match
+assets:
+  icon:
+    file: master/icon.png
+    prompt: "Create a square product icon for open-pencil. Follow CH5 design system:\
+      \ bold, precise, clean geometry, high contrast, no generic purple SaaS styling,\
+      \ no text by default. Accent tokens: version: alpha name: CH5 Core description:\
+      \ Cross-project visual system for CH5 product and tooling surfaces. colors:\
+      \ ink: \"#0F172A\" slate: \"#334155\" lime: \"#22C55E\" cyan: \". Rationale:\
+      \ ## Overview <!-- oc:id=sec_8e3e8b --> CH5 should feel bold, precise, and calm\
+      \ under complexity. This is not a generic startup pastel system. The shared\
+      \ family resemblance should signal: - strong software-tool confidence - high\
+      \ contrast and legibility - clean g. Primary accent color #F59E0B. Emoji anchor:\
+      \ \u270F\uFE0F. Visual identity: Open-source, AI-native design editor. Figma-compatible\
+      \ with Skia rendering, .fig import/export, MCP server, and Tauri desktop app..\
+      \ Keep it simple, centered, iconic, premium, and readable at app-icon size."
+    prompt_hash: a48942239e0886ab34487f8515137475580ca28eaa99b1ef5efcd7e80c5be962
+    provider: minimax
+    model: image-01
+    aspect_ratio: '1:1'
+    key_source: coding-plan
+  cover:
+    file: master/cover.png
+    prompt: 'Create a wide brand cover image for open-pencil. Follow CH5 design system:
+      bold, precise, clean geometry, high contrast, no generic purple SaaS styling,
+      no text by default. Accent tokens: version: alpha name: CH5 Core description:
+      Cross-project visual system for CH5 product and tooling surfaces. colors: ink:
+      "#0F172A" slate: "#334155" lime: "#22C55E" cyan: ". Rationale: ## Overview <!--
+      oc:id=sec_8e3e8b --> CH5 should feel bold, precise, and calm under complexity.
+      This is not a generic startup pastel system. The shared family resemblance should
+      signal: - strong software-tool confidence - high contrast and legibility - clean
+      g. Use #F59E0B as an anchor color. Build atmosphere from this project context:
+      Open-source, AI-native design editor. Figma-compatible with Skia rendering,
+      .fig import/export, MCP server, and Tauri desktop app.; tags: design, editor,
+      figma, skia, cloudflare-workers, tauri. Wide cinematic composition, enough negative
+      space for a header crop, no text.'
+    prompt_hash: 426695e6db6b7334cd2048a3d59aa782953b8cd59d6fadbe7c96236987486ab7
+    provider: minimax
+    model: image-01
+    aspect_ratio: '16:9'
+    key_source: coding-plan

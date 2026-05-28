@@ -1,0 +1,31 @@
+version: 1
+services:
+  api:
+    id: openpencil-api
+    type: cloudflare-worker
+    description: OpenPencil API Worker - auth, documents, AI proxy
+    runtime: cloudflare-workers
+    health:
+      endpoint: https://api.pencil.ch5.me/health
+      fallback: https://api.pencil.ch5.me/
+    environments:
+      staging:
+        url: https://api.staging.pencil.ch5.me
+        health: https://api.staging.pencil.ch5.me/
+      production:
+        url: https://api.pencil.ch5.me
+        health: https://api.pencil.ch5.me/
+    bindings:
+      - type: d1
+        name: DB
+        database: openpencil-db
+      - type: r2
+        name: DOCUMENTS
+        bucket: openpencil-documents
+      - type: r2
+        name: ASSETS
+        bucket: openpencil-assets
+      - type: durable-object
+        name: DOCUMENT_ROOM
+        class: DocumentRoomDO
+    owner: ch5

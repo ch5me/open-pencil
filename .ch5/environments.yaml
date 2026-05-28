@@ -1,0 +1,31 @@
+version: 1
+environments:
+  local:
+    id: openpencil-local
+    type: development
+    description: Local development with wrangler dev
+    deployTarget: local
+    services:
+      api:
+        binding: local
+  staging:
+    id: openpencil-staging
+    type: staging
+    description: Staging environment - auto-deploy from main
+    deployTarget: cloudflare-workers
+    placement: cloudflare-global
+    promotionFrom: local
+    services:
+      api:
+        url: https://api.staging.pencil.ch5.me
+  production:
+    id: openpencil-production
+    type: production
+    description: Production environment - promoted from staging
+    deployTarget: cloudflare-workers
+    placement: cloudflare-global
+    promotionFrom: staging
+    requiresApproval: true
+    services:
+      api:
+        url: https://api.pencil.ch5.me
