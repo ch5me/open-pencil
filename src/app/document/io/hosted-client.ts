@@ -72,7 +72,8 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
       }
 
       const snapshotBytes = decodeBase64ToUint8Array(response.snapshot.bytesBase64)
-      const graph = await parseFigFile(snapshotBytes.buffer.slice(snapshotBytes.byteOffset, snapshotBytes.byteOffset + snapshotBytes.byteLength))
+      const ab = snapshotBytes.buffer.slice(snapshotBytes.byteOffset, snapshotBytes.byteOffset + snapshotBytes.byteLength) as ArrayBuffer
+      const graph = await parseFigFile(ab)
 
       return {
         graph,

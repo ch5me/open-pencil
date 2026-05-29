@@ -5,7 +5,32 @@ import type { EditorStore } from '@/app/editor/session/create'
 export interface OpenPencilTestHooks {
   writeCount?: () => number
   mockHandle?: FileSystemFileHandle
+  hostedAuthToken?: string
+  hostedApiOrigin?: string
+  forceHostedCollab?: boolean
+  getCollabSnapshot?: () => {
+    connected: boolean
+    reconnecting: boolean
+    mode: string | null
+    roomId: string | null
+    documentId: string | null
+    peerCount: number
+    remoteCursorCount: number
+    sharePath: string | null
+    degraded: boolean
+    missingAssetIds: string[]
+    lastError: string | null
+  }
+  setCollabProofValue?: (value: string) => void
+  getCollabProofValue?: () => string | null
+  setCollabYjsProofValue?: (value: string) => void
+  getCollabYjsProofValue?: () => string | null
+  getHostedWireStats?: () => Record<string, number>
+  seedHostedSession?: () => void
   savedOpen?: Window['open']
+  hostedCollabTest?: {
+    clientLabel: string
+  }
 }
 
 export interface OpenPencilWindowAPI {
@@ -35,6 +60,11 @@ function windowApi(): OpenPencilWindowAPI {
 export function setOpenPencilStore(store: EditorStore) {
   activeStore = store
   windowApi()
+}
+
+export function setOpenPencilTestHooks(test: Partial<OpenPencilTestHooks>) {
+  const api = windowApi()
+  api.test = { ...api.test, ...test }
 }
 
 export function exposeChatTransportOverride(

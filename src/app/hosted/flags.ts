@@ -93,7 +93,9 @@ const ENV_VAR_NAMES = {
 
 /** Read the declared environment from env vars; falls back to 'local'. */
 function resolveEnv(): HostedEnv {
-  const raw = import.meta.env?.[ENV_VAR_NAMES.ENV] ?? ''
+  const forced = window.openPencil?.test?.forceHostedCollab
+  if (forced) return 'staging'
+  const raw = (import.meta.env[ENV_VAR_NAMES.ENV] as string | undefined) ?? ''
   const normalized = raw.toLowerCase().trim()
   if (normalized === 'preview') return 'preview'
   if (normalized === 'staging') return 'staging'
@@ -103,7 +105,11 @@ function resolveEnv(): HostedEnv {
 
 /** Resolve a single boolean flag: env var override > environment default. */
 function resolveFlag(env: HostedEnv, flagKey: keyof HostedFeatureFlags, envVar: string): boolean {
-  const raw = import.meta.env?.[envVar]
+  const forced = window.openPencil?.test?.forceHostedCollab
+  if (forced) {
+    return true
+  }
+  const raw = import.meta.env[envVar] as string | undefined
   if (raw !== undefined && raw !== '') {
     return raw === 'true' || raw === '1'
   }
@@ -116,7 +122,11 @@ function resolveString(
   key: Extract<keyof HostedEnvironmentConfig, 'apiOrigin' | 'authCallbackUrl' | 'appUrl'>,
   envVar: string,
 ): string {
-  const raw = import.meta.env?.[envVar]
+  const forced = window.openPencil?.test?.forceHostedCollab
+  if (forced && key === 'apiOrigin') {
+    return window.openPencil?.test?.hostedApiOrigin ?? 'http://127.0.0.1:8787'
+  }
+  const raw = import.meta.env[envVar] as string | undefined
   if (raw !== undefined && raw !== '') return raw
   return ENV_DEFAULTS[env][key]
 }
@@ -150,6 +160,9 @@ let _cached: HostedEnvironmentConfig | undefined
 
 /** Cached hosted config. Safe to call repeatedly; resolves once per module load. */
 export function getHostedConfig(): HostedEnvironmentConfig {
+  if (window.openPencil?.test?.forceHostedCollab) {
+    return resolveHostedConfig()
+  }
   if (!_cached) {
     _cached = resolveHostedConfig()
   }
