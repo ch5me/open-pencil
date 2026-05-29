@@ -8,6 +8,8 @@ import { DocumentRoomDO } from './documents/room'
 import {
   createHostedDocument,
   saveHostedDocumentSnapshot,
+  writeHostedAsset,
+  deleteHostedAsset,
   listHostedDocuments,
   deleteHostedDocument,
   HostedDocumentStoreError
@@ -73,6 +75,8 @@ app.get('/', (c) => {
         snapshot: 'GET /api/documents/:documentId/snapshot',
         save: 'PUT /api/documents/:documentId/snapshot',
         delete: 'DELETE /api/documents/:documentId',
+        assetCreate: 'POST /api/documents/:documentId/assets',
+        assetDelete: 'DELETE /api/documents/:documentId/assets/:assetId',
         room: 'GET /api/documents/:documentId/room'
       }
     }
@@ -235,8 +239,59 @@ app.delete('/api/documents/:documentId', requireSession(), async (c) => {
   const userId = (c as any).get('userId') as string
 
   try {
-    await deleteHostedDocument(c.env.DB, c.env.DOCUMENTS, userId, documentId)
+    await deleteHostedDocument(c.env.DB, c.env.DOCUMENTS, c.env.ASSETS, userId, documentId)
     return c.json({ documentId, deleted: true })
+  } catch (e) {
+    if (e instanceof HostedDocumentStoreError) {
+      const status = e.code === 'not-found' ? 404 : e.code === 'unauthorized' ? 403 : 400
+      return c.json({ error: e.code, message: e.message }, status)
+    }
+    throw e
+  }
+})
+
+app.post('/api/documents/:documentId/assets', requireSession(), async (c) => {
+  const documentId = c.req.param('documentId')
+  const userId = (c as any).get('userId') as string
+  const body = await c.req.json<{
+    assetId: string
+    snapshotId: string
+    kind: 'image' | 'font' | 'binary'
+    bytesBase64: string
+    mediaType: string
+  }>()
+
+  if (!body.assetId || !body.snapshotId || !body.kind || !body.bytesBase64 || !body.mediaType) {
+    return c.json({ error: 'missing-fields', message: 'assetId, snapshotId, kind, bytesBase64, and mediaType are required.' }, 400)
+  }
+
+  try {
+    const result = await writeHostedAsset(c.env.DB, c.env.ASSETS, userId, {
+      documentId,
+      assetId: body.assetId,
+      snapshotId: body.snapshotId,
+      kind: body.kind,
+      bytesBase64: body.bytesBase64,
+      mediaType: body.mediaType
+    })
+    return c.json(result, 201)
+  } catch (e) {
+    if (e instanceof HostedDocumentStoreError) {
+      const status = e.code === 'not-found' ? 404 : e.code === 'unauthorized' ? 403 : 400
+      return c.json({ error: e.code, message: e.message }, status)
+    }
+    throw e
+  }
+})
+
+app.delete('/api/documents/:documentId/assets/:assetId', requireSession(), async (c) => {
+  const documentId = c.req.param('documentId')
+  const assetId = c.req.param('assetId')
+  const userId = (c as any).get('userId') as string
+
+  try {
+    await deleteHostedAsset(c.env.DB, c.env.ASSETS, userId, documentId, assetId)
+    return c.json({ assetId, deleted: true })
   } catch (e) {
     if (e instanceof HostedDocumentStoreError) {
       const status = e.code === 'not-found' ? 404 : e.code === 'unauthorized' ? 403 : 400

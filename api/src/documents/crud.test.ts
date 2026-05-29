@@ -1,7 +1,9 @@
-import { describe, expect, test, mock } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import {
   createHostedDocument,
   saveHostedDocumentSnapshot,
+  writeHostedAsset,
+  deleteHostedAsset,
   listHostedDocuments,
   deleteHostedDocument,
   HostedDocumentStoreError
@@ -259,10 +261,14 @@ describe('hosted document CRUD', () => {
     expect(docs[1].title).toBe('A')
   })
 
-  test('delete removes document and R2 objects', async () => {
-    const store: Record<string, Uint8Array> = {
+  test('delete removes document, snapshots, and asset R2 objects', async () => {
+    const docStore: Record<string, Uint8Array> = {
       'documents/doc-005/snapshots/snap-001.fig': SAMPLE_BYTES,
       'documents/doc-005/snapshots/snap-002.fig': new Uint8Array([1, 2])
+    }
+    const assetStore: Record<string, Uint8Array> = {
+      'documents/doc-005/assets/img-1': new Uint8Array([99]),
+      'documents/doc-005/assets/img-2': new Uint8Array([88])
     }
     const rows: Record<string, any[]> = {
       hosted_documents: [{
@@ -279,14 +285,140 @@ describe('hosted document CRUD', () => {
       hosted_snapshots: [
         { storage_key: 'documents/doc-005/snapshots/snap-001.fig' },
         { storage_key: 'documents/doc-005/snapshots/snap-002.fig' }
+      ],
+      hosted_assets: [
+        { storage_key: 'documents/doc-005/assets/img-1' },
+        { storage_key: 'documents/doc-005/assets/img-2' }
       ]
     }
-    const bucket = createMockBucket(store)
+    const bucket = createMockBucket(docStore)
+    const assetsBucket = createMockBucket(assetStore)
     const db = createMockDb(rows)
 
-    await deleteHostedDocument(db as any, bucket as any, TEST_USER, 'doc-005')
+    await deleteHostedDocument(db as any, bucket as any, assetsBucket as any, TEST_USER, 'doc-005')
 
     expect(rows.hosted_documents).toEqual([])
-    expect(Object.keys(store)).toEqual([])
+    expect(Object.keys(docStore)).toEqual([])
+    expect(Object.keys(assetStore)).toEqual([])
+  })
+
+  test('write asset creates R2 object and D1 record', async () => {
+    const assetStore: Record<string, Uint8Array> = {}
+    const rows: Record<string, any[]> = {
+      hosted_documents: [{
+        id: 'doc-006',
+        owner_user_id: TEST_USER,
+        title: 'Asset Doc',
+        source_format: 'fig',
+        current_snapshot_id: 'snap-006',
+        current_snapshot_storage_key: 'documents/doc-006/snapshots/snap-006.fig',
+        lifecycle_state: 'active',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z'
+      }]
+    }
+    const assetsBucket = createMockBucket(assetStore)
+    const db = createMockDb(rows)
+
+    const imgBytes = new Uint8Array([137, 80, 78, 71])
+    const result = await writeHostedAsset(db as any, assetsBucket as any, TEST_USER, {
+      documentId: 'doc-006',
+      assetId: 'img-001',
+      snapshotId: 'snap-006',
+      kind: 'image',
+      bytesBase64: encodeBase64(imgBytes),
+      mediaType: 'image/png'
+    })
+
+    expect(result.assetId).toBe('img-001')
+    expect(result.storageKey).toBe('documents/doc-006/assets/img-001')
+    expect(result.byteLength).toBe(4)
+    expect(assetStore[result.storageKey]).toEqual(imgBytes)
+    expect(rows.hosted_assets).toHaveLength(1)
+    expect(rows.hosted_assets[0].kind).toBe('image')
+  })
+
+  test('write asset rejects wrong user', async () => {
+    const assetStore: Record<string, Uint8Array> = {}
+    const rows: Record<string, any[]> = {
+      hosted_documents: [{
+        id: 'doc-007',
+        owner_user_id: 'other-user',
+        title: 'Not Mine',
+        source_format: 'fig',
+        current_snapshot_id: 'snap-x',
+        current_snapshot_storage_key: 'k',
+        lifecycle_state: 'active',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z'
+      }]
+    }
+    const assetsBucket = createMockBucket(assetStore)
+    const db = createMockDb(rows)
+
+    await expect(
+      writeHostedAsset(db as any, assetsBucket as any, TEST_USER, {
+        documentId: 'doc-007',
+        assetId: 'img-x',
+        snapshotId: 'snap-x',
+        kind: 'image',
+        bytesBase64: encodeBase64(new Uint8Array([1])),
+        mediaType: 'image/png'
+      })
+    ).rejects.toMatchObject({ code: 'unauthorized' })
+  })
+
+  test('delete asset removes R2 object and D1 record', async () => {
+    const assetStore: Record<string, Uint8Array> = {
+      'documents/doc-008/assets/img-del': new Uint8Array([55])
+    }
+    const rows: Record<string, any[]> = {
+      hosted_documents: [{
+        id: 'doc-008',
+        owner_user_id: TEST_USER,
+        title: 'Delete Asset Doc',
+        source_format: 'fig',
+        current_snapshot_id: 'snap-008',
+        current_snapshot_storage_key: 'documents/doc-008/snapshots/snap-008.fig',
+        lifecycle_state: 'active',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z'
+      }],
+      hosted_assets: [{
+        id: 'img-del',
+        storage_key: 'documents/doc-008/assets/img-del'
+      }]
+    }
+    const assetsBucket = createMockBucket(assetStore)
+    const db = createMockDb(rows)
+
+    const result = await deleteHostedAsset(db as any, assetsBucket as any, TEST_USER, 'doc-008', 'img-del')
+
+    expect(result.assetId).toBe('img-del')
+    expect(Object.keys(assetStore)).toEqual([])
+    expect(rows.hosted_assets).toEqual([])
+  })
+
+  test('delete asset rejects when asset not found', async () => {
+    const assetStore: Record<string, Uint8Array> = {}
+    const rows: Record<string, any[]> = {
+      hosted_documents: [{
+        id: 'doc-009',
+        owner_user_id: TEST_USER,
+        title: 'Doc',
+        source_format: 'fig',
+        current_snapshot_id: 'snap-x',
+        current_snapshot_storage_key: 'k',
+        lifecycle_state: 'active',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z'
+      }]
+    }
+    const assetsBucket = createMockBucket(assetStore)
+    const db = createMockDb(rows)
+
+    await expect(
+      deleteHostedAsset(db as any, assetsBucket as any, TEST_USER, 'doc-009', 'nonexistent')
+    ).rejects.toMatchObject({ code: 'not-found' })
   })
 })

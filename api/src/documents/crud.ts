@@ -2,10 +2,10 @@ import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
 import {
   type HostedDocumentMetadataBundle,
   type HostedSnapshotReason,
-  documentSnapshotStorageKey
+  documentSnapshotStorageKey,
 } from './schema'
 import { createHostedDocumentMetadata } from './migration'
-import { writeSnapshotToR2 } from './storage'
+import { writeSnapshotToR2, writeAssetToR2 } from './storage'
 
 export type CreateHostedDocumentRequest = {
   documentId: string
@@ -25,6 +25,21 @@ export type SaveHostedDocumentRequest = {
   snapshotId: string
   snapshotBytesBase64: string
   reason?: HostedSnapshotReason
+}
+
+export type WriteHostedAssetRequest = {
+  documentId: string
+  assetId: string
+  snapshotId: string
+  kind: 'image' | 'font' | 'binary'
+  bytesBase64: string
+  mediaType: string
+}
+
+export type WrittenAssetResponse = {
+  assetId: string
+  storageKey: string
+  byteLength: number
 }
 
 export type CreatedDocumentResponse = {
@@ -247,11 +262,12 @@ export async function listHostedDocuments(
 }
 
 /**
- * Delete a hosted document and all its snapshots (R2 cleanup + D1 cascade).
+ * Delete a hosted document: snapshots + assets from R2, all metadata via D1 cascade.
  */
 export async function deleteHostedDocument(
   db: D1Database,
   documentsBucket: R2Bucket,
+  assetsBucket: R2Bucket,
   userId: string,
   documentId: string
 ): Promise<void> {
@@ -266,24 +282,111 @@ export async function deleteHostedDocument(
     throw new HostedDocumentStoreError('unauthorized', 'Cannot delete a document owned by another user.')
   }
 
-  // Delete snapshot objects from R2
-  const snapshots = await db.prepare(
-    'SELECT storage_key FROM hosted_snapshots WHERE document_id = ?'
-  ).bind(documentId).all<{ storage_key: string }>()
+  const [snapshots, assets] = await Promise.all([
+    db.prepare('SELECT storage_key FROM hosted_snapshots WHERE document_id = ?').bind(documentId).all<{ storage_key: string }>(),
+    db.prepare('SELECT storage_key FROM hosted_assets WHERE document_id = ?').bind(documentId).all<{ storage_key: string }>()
+  ])
 
-  const keysToDelete = [doc.current_snapshot_storage_key]
+  const docKeys = [doc.current_snapshot_storage_key]
   for (const row of snapshots.results ?? []) {
-    if (row.storage_key !== doc.current_snapshot_storage_key) {
-      keysToDelete.push(row.storage_key)
-    }
+    if (row.storage_key !== doc.current_snapshot_storage_key) docKeys.push(row.storage_key)
   }
+  const assetKeys = assets.results?.map(r => r.storage_key) ?? []
 
-  if (keysToDelete.length > 0) {
-    await documentsBucket.delete(keysToDelete)
-  }
+  await Promise.all([
+    docKeys.length > 0 ? documentsBucket.delete(docKeys) : Promise.resolve(),
+    assetKeys.length > 0 ? assetsBucket.delete(assetKeys) : Promise.resolve()
+  ])
 
-  // D1 cascade handles hosted_snapshots, hosted_assets, hosted_document_migrations
   await db.prepare('DELETE FROM hosted_documents WHERE id = ?').bind(documentId).run()
+}
+
+/**
+ * Write an asset for a hosted document: write to R2, insert D1 record.
+ * Atomic: if R2 write fails, no D1 row is created.
+ */
+export async function writeHostedAsset(
+  db: D1Database,
+  assetsBucket: R2Bucket,
+  userId: string,
+  request: WriteHostedAssetRequest
+): Promise<WrittenAssetResponse> {
+  const assetBytes = decodeBase64ToUint8Array(request.bytesBase64)
+  if (!assetBytes.byteLength) {
+    throw new HostedDocumentStoreError('empty-asset', 'Asset bytes must not be empty.')
+  }
+
+  const doc = await db.prepare(
+    'SELECT id, owner_user_id FROM hosted_documents WHERE id = ?'
+  ).bind(request.documentId).first<{ id: string; owner_user_id: string }>()
+
+  if (!doc) {
+    throw new HostedDocumentStoreError('not-found', `Hosted document ${request.documentId} not found.`)
+  }
+  if (doc.owner_user_id !== userId) {
+    throw new HostedDocumentStoreError('unauthorized', 'Cannot write assets for a document owned by another user.')
+  }
+
+  const assetResult = await writeAssetToR2({
+    bucket: assetsBucket,
+    documentId: request.documentId,
+    assetId: request.assetId,
+    bytes: assetBytes,
+    mediaType: request.mediaType
+  })
+
+  await db.prepare(
+    'INSERT INTO hosted_assets (id, document_id, owner_user_id, snapshot_id, kind, storage_key, content_hash, byte_length, media_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).bind(
+    request.assetId,
+    request.documentId,
+    userId,
+    request.snapshotId,
+    request.kind,
+    assetResult.storageKey,
+    computeContentHash(assetBytes),
+    assetBytes.byteLength,
+    request.mediaType,
+    new Date().toISOString()
+  ).run()
+
+  return {
+    assetId: request.assetId,
+    storageKey: assetResult.storageKey,
+    byteLength: assetBytes.byteLength
+  }
+}
+
+export async function deleteHostedAsset(
+  db: D1Database,
+  assetsBucket: R2Bucket,
+  userId: string,
+  documentId: string,
+  assetId: string
+): Promise<{ assetId: string }> {
+  const doc = await db.prepare(
+    'SELECT id, owner_user_id FROM hosted_documents WHERE id = ?'
+  ).bind(documentId).first<{ id: string; owner_user_id: string }>()
+
+  if (!doc) {
+    throw new HostedDocumentStoreError('not-found', `Hosted document ${documentId} not found.`)
+  }
+  if (doc.owner_user_id !== userId) {
+    throw new HostedDocumentStoreError('unauthorized', 'Cannot delete assets for a document owned by another user.')
+  }
+
+  const asset = await db.prepare(
+    'SELECT id, storage_key FROM hosted_assets WHERE id = ? AND document_id = ?'
+  ).bind(assetId, documentId).first<{ id: string; storage_key: string }>()
+
+  if (!asset) {
+    throw new HostedDocumentStoreError('not-found', `Asset ${assetId} not found in document ${documentId}.`)
+  }
+
+  await assetsBucket.delete(asset.storage_key)
+  await db.prepare('DELETE FROM hosted_assets WHERE id = ?').bind(assetId).run()
+
+  return { assetId }
 }
 
 function decodeBase64ToUint8Array(base64: string): Uint8Array {
