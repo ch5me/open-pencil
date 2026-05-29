@@ -147,6 +147,11 @@
       "types": "./dist/geometry.d.ts",
       "default": "./dist/geometry.js",
       "import": "./dist/geometry.js"
+    },
+    "./hosted": {
+      "types": "./dist/hosted/types.d.ts",
+      "default": "./dist/hosted/types.js",
+      "import": "./dist/hosted/types.js"
     }
   },
   "main": "./dist/index.js",

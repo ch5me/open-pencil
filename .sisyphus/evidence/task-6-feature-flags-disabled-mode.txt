@@ -1,0 +1,14 @@
+
+Disabled-mode proof (local-only when no env declared)
+  PASS: resolveEnv defaults to local when unset
+  PASS: local environment defaults: all flags OFF
+  PASS: no window.location sniffing
+  PASS: no hostname check
+  PASS: no Vite mode fallback
+  PASS: uses OPENPENCIL_HOSTED_ENV env var
+  PASS: validation function exists in types
+  PASS: collab→auth constraint documented
+  PASS: docs→auth constraint documented
+  PASS: topology.json local defaults: all flags OFF
+
+--- Results: 10 passed, 0 failed ---

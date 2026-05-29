@@ -14,3 +14,9 @@
 - Task 2 scaffold decision: `api/` sits outside the Bun workspace (`packages/*` glob) as a standalone Cloudflare Worker package with its own `package.json`, `tsconfig.json`, and `wrangler.jsonc`. Dependencies installed independently, not through workspace resolution.
 - Task 2 auth seam decision: auth in `api/src/auth.ts` is a stub seam — `verifyElfToken` returns a fixed `elfUserId` for local dev; real RS256+JWKS verification via `@ch5me/elf-auth-client` wires in task 6.
 - Task 2 Hono decision: the Worker uses Hono for routing (matches existing `@hono/node-server` dep in root) with CORS configured for `pencil.ch5.me` and `app.openpencil.dev`; `/health` and `/` are the initial endpoints.
+
+- Task 8 flag resolution decision: feature flags resolve exclusively from `OPENPENCIL_HOSTED_ENV` env var — no hostname checks, no `window.location` sniffing, no `import.meta.env.MODE` fallbacks. Unset env → `local` with all hosted features off.
+- Task 8 topology source of truth: `config/hosted-topology.json` is the machine-readable environment matrix, aligned with `.ch5/environments.yaml`. Vite env var overrides (`VITE_HOSTED_*_ENABLED`) allow per-deployment flag toggling without rebuild.
+- Task 8 type location: hosted feature flag types and validation live in `@open-pencil/core/hosted` subpath export — framework-agnostic, consumable by app, CLI, MCP, and Worker tests. App-specific flag resolution lives in `src/app/hosted/flags.ts`.
+- Task 8 rollout order: hostedAuth → hostedDocs → hostedCollab. Collaboration is OFF in all environments until task 12 (DO room transport) lands. Preview enables auth-only for session smoke tests; staging enables auth+docs for storage validation.
+- Task 8 docs location: `packages/docs/development/hosted-environment-topology.md`, linked from the development sidebar, is the code-facing environment topology and flag contract.

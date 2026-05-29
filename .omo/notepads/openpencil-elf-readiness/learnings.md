@@ -12,3 +12,8 @@
 
 - Task 2 Durable Object export: wrangler requires Durable Object classes to be both a named module export AND importable with a local binding in the entrypoint. `export { X } from './mod'` alone fails at runtime with `ReferenceError: X is not defined`; must use `import { X } from './mod'; export { X }`.
 - Task 2 binding names: `.ch5/services.yaml` binding names (`DB`, `DOCUMENTS`, `ASSETS`, `DOCUMENT_ROOM`) are the canonical contract — wrangler.jsonc bindings must match exactly for all stages.
+
+- Task 8 feature-flag audit: repo had zero existing feature-flag surface for hosted rollout. All environment detection was implicit (IS_TAURI, IS_BROWSER constants) with no hosted auth/docs/collab gating. Flags module resolves from explicit `OPENPENCIL_HOSTED_ENV` env var only — no hostname sniffing, no `window.location` checks, no `import.meta.env.MODE` fallbacks.
+- Task 8 topology alignment: `config/hosted-topology.json` mirrors `.ch5/environments.yaml` environment ids and adds per-environment feature flag defaults, callback URLs, and API origins. Preview enables hostedAuth only (smoke test isolation); staging enables auth+docs (storage validation); production mirrors staging with collab deferred.
+- Task 8 validation: `validateHostedConfig()` in `@open-pencil/core/hosted` catches 5 violation types: missing apiOrigin with hosted on, missing authCallbackUrl with hostedAuth on, hostedCollab without hostedAuth, hostedCollab without hostedDocs, hostedDocs without hostedAuth. 32/32 validation checks pass.
+- Task 8 disabled-mode proof: when `OPENPENCIL_HOSTED_ENV` is unset, resolveEnv() returns `'local'` and all hosted flags resolve to false. No implicit environment guessing exists in the flags resolution path.

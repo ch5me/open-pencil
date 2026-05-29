@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "OpenPencil Hosted Environment Topology",
+  "description": "Canonical environment topology for hosted auth, docs, and collaboration rollout. Aligned with .ch5/environments.yaml. Feature flags are independently switchable per environment.",
+  "version": 1,
+  "environments": {
+    "local": {
+      "id": "openpencil-local",
+      "type": "development",
+      "appUrl": "http://localhost:1420",
+      "apiOrigin": "",
+      "authCallbackUrl": "",
+      "flags": {
+        "hostedAuth": false,
+        "hostedDocs": false,
+        "hostedCollab": false
+      }
+    },
+    "preview": {
+      "id": "openpencil-preview",
+      "type": "preview",
+      "appUrl": "",
+      "apiOrigin": "https://api.staging.pencil.ch5.me",
+      "authCallbackUrl": "https://pencil.ch5.me/api/auth/callback",
+      "flags": {
+        "hostedAuth": true,
+        "hostedDocs": false,
+        "hostedCollab": false
+      }
+    },
+    "staging": {
+      "id": "openpencil-staging",
+      "type": "staging",
+      "appUrl": "https://staging.pencil.ch5.me",
+      "apiOrigin": "https://api.staging.pencil.ch5.me",
+      "authCallbackUrl": "https://staging.pencil.ch5.me/api/auth/callback",
+      "flags": {
+        "hostedAuth": true,
+        "hostedDocs": true,
+        "hostedCollab": false
+      }
+    },
+    "production": {
+      "id": "openpencil-production",
+      "type": "production",
+      "appUrl": "https://pencil.ch5.me",
+      "apiOrigin": "https://api.pencil.ch5.me",
+      "authCallbackUrl": "https://pencil.ch5.me/api/auth/callback",
+      "flags": {
+        "hostedAuth": true,
+        "hostedDocs": true,
+        "hostedCollab": false
+      }
+    }
+  },
+  "envVarContract": {
+    "OPENPENCIL_HOSTED_ENV": {
+      "description": "Declares the runtime environment. Must be one of: local, preview, staging, production.",
+      "default": "local",
+      "required": false
+    },
+    "VITE_HOSTED_AUTH_ENABLED": {
+      "description": "Override for hosted auth flag. 'true' | 'false'.",
+      "default": "per-environment default",
+      "required": false
+    },
+    "VITE_HOSTED_DOCS_ENABLED": {
+      "description": "Override for hosted docs flag. 'true' | 'false'.",
+      "default": "per-environment default",
+      "required": false
+    },
+    "VITE_HOSTED_COLLAB_ENABLED": {
+      "description": "Override for hosted collab flag. 'true' | 'false'.",
+      "default": "per-environment default",
+      "required": false
+    },
+    "VITE_API_ORIGIN": {
+      "description": "Override for the Worker API base URL.",
+      "default": "per-environment default",
+      "required": false
+    },
+    "VITE_AUTH_CALLBACK_URL": {
+      "description": "Override for the ELF auth callback URL.",
+      "default": "per-environment default",
+      "required": false
+    },
+    "VITE_APP_URL": {
+      "description": "Override for the public app URL.",
+      "default": "per-environment default",
+      "required": false
+    }
+  },
+  "rolloutOrder": [
+    "hostedAuth",
+    "hostedDocs",
+    "hostedCollab"
+  ],
+  "notes": [
+    "Collaboration is OFF in all environments until task 12 (DO room transport) lands.",
+    "Preview enables hostedAuth for session verification smoke tests but keeps hostedDocs off to isolate auth from storage risk.",
+    "Staging enables hostedDocs for single-user storage validation before production.",
+    "Production defaults mirror staging; flags can be toggled independently via env var overrides without rebuild."
+  ]
+}
