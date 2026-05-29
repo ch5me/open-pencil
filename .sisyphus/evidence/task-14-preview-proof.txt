@@ -13,15 +13,33 @@ $ bun scripts/preview-proof.ts
 4. Hosted route gating (preview = no live session)
   PASS: /hosted → 200 (redirect=false, local-mode=true)
 
-5. Worker health check
-  PASS: Worker health reports ok
-
-6. Session bootstrap on preview
-  PASS: session returns user: null without credentials
-
-7. Feature flag resolution
+5. Feature flag resolution
   PASS: feature flags validate for preview mode (exit 0)
 
---- Preview Deploy Proof: 8 passed, 0 failed ---
+6. Worker health check
+  PASS: Worker health reports ok
+
+7. Session bootstrap on preview Worker
+  PASS: session returns user: null without credentials
+
+8. Hosted document CRUD (via paired preview Worker)
+  PASS: POST /api/documents → 201
+  PASS: GET snapshot → 200
+  PASS: snapshot document id matches
+  PASS: snapshot bytes match
+  PASS: PUT snapshot → 200
+  PASS: updated snapshot bytes match
+  PASS: DELETE → 200
+  PASS: deleted snapshot → 404
+  PASS: POST collab doc → 201
+
+9. Hosted collab room (via paired preview Worker)
+  PASS: GET room → 200
+  PASS: room documentId matches
+  PASS: room response includes roomId
+  PASS: room status is ok
+  PASS: unauthorized room → 401
+
+--- Preview Deploy Proof: 22 passed, 0 failed ---
 Preview URL: http://localhost:1420
-API origin: http://127.0.0.1:8787
+API origin: http://127.0.0.1:8788

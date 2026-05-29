@@ -75,3 +75,11 @@
   - Sync API functions (`resolveTauriOperatingMode`, `shouldShowHostedUI`) use hardcoded `false` gates — async flag resolution deferred to when desktop auth is explicitly enabled
   - All 6 seam tests pass, oxlint 0 warnings, 0 errors on changed files
 
+## Task 14: Preview proof extension — hosted doc load and collab (2026-05-29)
+  - Preview proof needs hosted document CRUD and collab room checks when Worker is paired with Pages preview
+  - Room endpoint requires the document to exist in `hosted_documents` AND be owned by the requesting user — can't test collab on a deleted or nonexistent doc
+  - Create a separate collab doc (not the one deleted in CRUD cleanup) to avoid 404 from room endpoint
+  - Preview proof now covers 22 checks: Pages accessibility, editor shell, route gating, flags, Worker health, session, hosted doc CRUD, and hosted collab room
+  - `preview-proof.ts` uses `export {}` for TypeScript module mode (same pattern as `hosted-proof.ts`)
+  - CI `ci.yml` wrangler dev step needs `run: |` block scalar — continuation lines not parsed without it
+
