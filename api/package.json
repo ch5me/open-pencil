@@ -1,0 +1,19 @@
+{
+  "name": "@open-pencil/api",
+  "version": "0.12.2",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv"
+  },
+  "dependencies": {
+    "hono": "^4.12.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260520.0",
+    "typescript": "~5.8.3",
+    "wrangler": "^4.34.0"
+  }
+}

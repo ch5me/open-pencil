@@ -1,0 +1,44 @@
+{
+  "name": "openpencil-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "25bb5f8d9ec4a36106f0ff6b519133b1",
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "api.staging.pencil.ch5.me/*", "zone_name": "ch5.me" },
+    { "pattern": "api.pencil.ch5.me/*", "zone_name": "ch5.me" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "openpencil-db",
+      "database_id": "local-id-openpencil-db",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "DOCUMENTS",
+      "bucket_name": "openpencil-documents"
+    },
+    {
+      "binding": "ASSETS",
+      "bucket_name": "openpencil-assets"
+    }
+  ],
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["DocumentRoomDO"]
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "DOCUMENT_ROOM",
+        "class_name": "DocumentRoomDO"
+      }
+    ]
+  }
+}
