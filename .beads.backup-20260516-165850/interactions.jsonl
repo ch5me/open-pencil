@@ -1,0 +1,2 @@
+{"id":"int-30df2f06","kind":"field_change","created_at":"2026-05-13T20:39:57.644139Z","actor":"open_pencil/witness","issue_id":"op-wisp-bbix","extra":{"field":"status","new_value":"hooked","old_value":"open"}}
+{"id":"int-3cdfc187","kind":"field_change","created_at":"2026-05-13T20:39:57.645257Z","actor":"open_pencil/witness","issue_id":"op-wisp-bbix","extra":{"field":"assignee","new_value":"open_pencil/witness","old_value":""}}

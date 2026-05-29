@@ -36,7 +36,11 @@
     "docs:build": "bun --filter @open-pencil/docs build",
     "docs:preview": "bun --filter @open-pencil/docs preview",
     "visual-compare": "bun scripts/visual-compare.ts",
-    "generate:tauri-menu": "bun scripts/generate-tauri-menu.ts"
+    "generate:tauri-menu": "bun scripts/generate-tauri-menu.ts",
+    "proof:hosted": "bun scripts/hosted-proof.ts",
+    "proof:preview": "bun scripts/preview-proof.ts",
+    "proof:flags": "bun scripts/validate-hosted-flags.ts",
+    "proof:all": "bun run proof:flags && bun run proof:hosted"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.74",

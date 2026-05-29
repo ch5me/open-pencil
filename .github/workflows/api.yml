@@ -1,0 +1,67 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'api/**'
+      - '.github/workflows/api.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: api-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Install API dependencies
+        working-directory: api
+        run: bun install --frozen-lockfile
+
+      - name: API type generation
+        working-directory: api
+        run: bun run cf-typegen
+
+      - name: Run API tests
+        working-directory: api
+        run: bun test
+        env:
+          OPENPENCIL_HOSTED_ENV: staging
+
+      - uses: cloudflare/wrangler-action@v3
+        id: deploy
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: api
+          command: deploy --env staging
+
+      - name: Smoke test deployed Worker
+        run: |
+          set -e
+          DEPLOY_URL="${{ steps.deploy.outputs.deployment-url }}"
+          echo "Waiting for Worker to be routable..."
+          for i in $(seq 1 10); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${DEPLOY_URL}/health" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Worker health check passed at ${DEPLOY_URL}/health"
+              curl -sf "${DEPLOY_URL}/health" | head -c 500
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying in 5s..."
+            sleep 5
+          done
+          echo "Worker did not respond with 200 after 50s"
+          exit 1

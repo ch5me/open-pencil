@@ -52,6 +52,7 @@ export function createDocumentIOActions(
   const { openFigFile } = createOpenActions({
     editor,
     state,
+    documentBackend: sourceActions.documentBackend,
     setDocumentSource: sourceActions.setDocumentSource,
     fitCurrentPageToViewport
   })

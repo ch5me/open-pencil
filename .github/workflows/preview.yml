@@ -61,3 +61,21 @@ jobs:
                 ...context.repo, issue_number: context.issue.number, body
               });
             }
+
+      - name: Validate preview deploy
+        env:
+          OPENPENCIL_PREVIEW_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          echo "Waiting for Pages deploy to propagate..."
+          DEPLOY_URL="${{ steps.deploy.outputs.deployment-url }}"
+          for i in $(seq 1 15); do
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$DEPLOY_URL" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Preview URL responding with 200"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying in 3s..."
+            sleep 3
+          done
+          echo "Preview URL did not respond with 200 after 45s"
+          exit 1

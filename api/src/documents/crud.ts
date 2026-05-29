@@ -5,7 +5,7 @@ import {
   documentSnapshotStorageKey
 } from './schema'
 import { createHostedDocumentMetadata } from './migration'
-import { createAndWriteSnapshot } from './storage'
+import { writeSnapshotToR2 } from './storage'
 
 export type CreateHostedDocumentRequest = {
   documentId: string
@@ -66,7 +66,7 @@ export async function createHostedDocument(
   }
 
   // Write snapshot to R2 first (fail-fast, no metadata on failure)
-  const snapshotResult = await createAndWriteSnapshot({
+  const snapshotResult = await writeSnapshotToR2({
     bucket: documentsBucket,
     documentId: request.documentId,
     snapshotId: request.snapshotId,
@@ -178,7 +178,7 @@ export async function saveHostedDocumentSnapshot(
 
   // Write new snapshot to R2
   const storageKey = documentSnapshotStorageKey(request.documentId, request.snapshotId)
-  const snapshotResult = await documentsBucket.put(storageKey, snapshotBytes, {
+  await documentsBucket.put(storageKey, snapshotBytes, {
     httpMetadata: { contentType: 'application/octet-stream' }
   })
 

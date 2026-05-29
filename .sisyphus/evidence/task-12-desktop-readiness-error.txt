@@ -1,0 +1,24 @@
+# Task 15: Deferred Desktop Readiness Seams — Failure Safety
+
+## Scenario: Disabled hosted desktop seam check
+
+### Test 1: No hosted auth callback path active when gate is off
+- `registerDesktopAuthCallback()` returns no-op cleanup function immediately
+- Does not attempt to import `@tauri-apps/api/event` when `isHostedAuthEnabled()` is false
+- No Tauri event listeners registered
+
+### Test 2: No bearer token storage attempted when gate is off
+- `storeBearerToken('fake-token')` returns `false` without touching storage
+- `readBearerToken()` returns `null` without importing plugin-store
+- `clearBearerToken()` returns early (no-op) when `isTauri()` is false
+
+### Test 3: Operating mode defaults to local-file
+- `resolveTauriOperatingMode()` returns `'local-file'` when hosted auth is off
+- `shouldShowHostedUI()` returns `false` — no hosted UI surfaces leak
+
+### Test 4: Plugin-store module deferred correctly
+- `loadStoreModule()` returns `null` when not in Tauri environment
+- No runtime errors from missing `@tauri-apps/plugin-store` package
+- TypeScript types declared via deferred `.d.ts` augmentation
+
+### Result: All failure paths safe — no hosted auth or bearer flow attempts when feature gates are off

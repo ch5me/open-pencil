@@ -41,12 +41,14 @@ function createMockDb(rows: Record<string, any[]>) {
             async first<T>(): Promise<T | null> {
               preparedStatements.push({ sql, bindings })
               const tableName = sql.match(/FROM\s+(\w+)/)?.[1]
+              if (!tableName) return null
               const tableRows = rows[tableName] ?? []
-              return (tableRows.find((r) => r.id === bindings[0]) ?? null) as T
+              return (tableRows.find((r: any) => r.id === bindings[0]) ?? null) as T
             },
             async all<T>() {
               preparedStatements.push({ sql, bindings })
               const tableName = sql.match(/FROM\s+(\w+)/)?.[1]
+              if (!tableName) return { results: [] as T[] }
               let tableRows = [...(rows[tableName] ?? [])]
               if (sql.includes('WHERE owner_user_id = ?') && sql.includes('lifecycle_state')) {
                 const ownerId = bindings[0]

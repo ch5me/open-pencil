@@ -1,4 +1,3 @@
-import type { Room } from 'trystero'
 import type { Ref } from 'vue'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import * as awarenessProtocol from 'y-protocols/awareness'
@@ -7,7 +6,7 @@ import * as Y from 'yjs'
 
 import { randomIndex } from '@open-pencil/core/random'
 
-import { connectCollabRoom } from '@/app/collab/room'
+import { connectCollabRoom, type CollabRoomConnection } from '@/app/collab/room'
 import type { CollabState } from '@/app/collab/types'
 import { bindCollabGraphEvents, registerYjsObservers } from '@/app/collab/yjs-sync'
 import type { EditorStore } from '@/app/editor/active-store'
@@ -18,7 +17,7 @@ export type CollabRuntime = {
   awareness: awarenessProtocol.Awareness | null
   ynodes: Y.Map<Y.Map<unknown>> | null
   yimages: Y.Map<Uint8Array> | null
-  room: Room | null
+  room: CollabRoomConnection['room'] | null
   persistence: IndexeddbPersistence | null
   connectedStore: EditorStore | null
   suppressGraphSync: boolean
@@ -28,7 +27,7 @@ export type CollabRuntime = {
 }
 
 type ConnectCollabSessionOptions = {
-  roomId: string
+  connection: ConnectOptions
   runtime: CollabRuntime
   state: Ref<CollabState>
   store: EditorStore
@@ -38,7 +37,12 @@ type ConnectCollabSessionOptions = {
   broadcastAwareness: () => void
   applyYjsToGraph: (events: Y.YEvent<Y.Map<unknown>>[]) => void
   syncNodeToYjs: (nodeId: string) => void
+  setConnectionError: (message: string | null) => void
 }
+
+type ConnectOptions =
+  | { mode: 'local-p2p'; roomId: string }
+  | { mode: 'hosted-do'; documentId: string }
 
 type CollabConnectionActionsOptions = {
   runtime: CollabRuntime
@@ -49,12 +53,13 @@ type CollabConnectionActionsOptions = {
   broadcastAwareness: () => void
   applyYjsToGraph: (events: Y.YEvent<Y.Map<unknown>>[]) => void
   syncNodeToYjs: (nodeId: string) => void
+  setConnectionError: (message: string | null) => void
   resetFollow: () => void
 }
 
 type CollabSessionResources = {
   store: EditorStore
-  room: Room | null
+  room: CollabRoomConnection['room'] | null
   awareness: awarenessProtocol.Awareness | null
   persistence: IndexeddbPersistence | null
   ydoc: Y.Doc | null
@@ -82,8 +87,15 @@ export function createCollabRuntime(): CollabRuntime {
 export function createInitialCollabState(localName: string): CollabState {
   return {
     connected: false,
+    reconnecting: false,
+    mode: null,
     roomId: null,
+    documentId: null,
+    sharePath: null,
     peers: [],
+    degraded: false,
+    missingAssetIds: [],
+    lastError: null,
     localName,
     localColor: PEER_COLORS[randomIndex(PEER_COLORS.length)]
   }
@@ -98,11 +110,12 @@ export function createCollabConnectionActions({
   broadcastAwareness,
   applyYjsToGraph,
   syncNodeToYjs,
+  setConnectionError,
   resetFollow
 }: CollabConnectionActionsOptions) {
-  function connect(roomId: string) {
+  function connect(options: ConnectOptions) {
     connectCollabSession({
-      roomId,
+      connection: options,
       runtime,
       state,
       store: getStore(),
@@ -111,7 +124,8 @@ export function createCollabConnectionActions({
       tickFollow,
       broadcastAwareness,
       applyYjsToGraph,
-      syncNodeToYjs
+      syncNodeToYjs,
+      setConnectionError
     })
   }
 
@@ -148,7 +162,7 @@ export function watchAwarenessZoom(store: EditorStore, getAwareness: () => Aware
 }
 
 export function connectCollabSession({
-  roomId,
+  connection,
   runtime,
   state,
   store,
@@ -157,17 +171,28 @@ export function connectCollabSession({
   tickFollow,
   broadcastAwareness,
   applyYjsToGraph,
-  syncNodeToYjs
+  syncNodeToYjs,
+  setConnectionError
 }: ConnectCollabSessionOptions) {
   if (runtime.room) disconnect()
 
   runtime.connectedStore = store
-  state.value.roomId = roomId
+  state.value.mode = connection.mode
+  state.value.roomId = connection.mode === 'local-p2p' ? connection.roomId : null
+  state.value.documentId = connection.mode === 'hosted-do' ? connection.documentId : null
+  state.value.reconnecting = false
+  state.value.degraded = false
+  state.value.missingAssetIds = []
+  state.value.lastError = null
   runtime.ydoc = new Y.Doc()
   runtime.awareness = new awarenessProtocol.Awareness(runtime.ydoc)
   runtime.ynodes = runtime.ydoc.getMap('nodes')
   runtime.yimages = runtime.ydoc.getMap('images')
-  runtime.persistence = new IndexeddbPersistence(`op-room-${roomId}`, runtime.ydoc)
+  const persistenceKey =
+    connection.mode === 'hosted-do'
+      ? `op-room-hosted-${connection.documentId}`
+      : `op-room-${connection.roomId}`
+  runtime.persistence = new IndexeddbPersistence(persistenceKey, runtime.ydoc)
 
   runtime.awareness.on('change', () => {
     updatePeersList()
@@ -185,16 +210,39 @@ export function connectCollabSession({
     applyYjsToGraph
   })
 
-  const roomConnection = connectCollabRoom({
-    roomId,
+  const sharedRoomOptions = {
     ydoc: runtime.ydoc,
     awareness: runtime.awareness,
     setConnected: () => {
       state.value.connected = true
+      state.value.reconnecting = false
     },
     updatePeersList
-  })
+  }
+
+  const roomConnection =
+    connection.mode === 'hosted-do'
+      ? connectCollabRoom({
+          ...sharedRoomOptions,
+          ...connection,
+          setReconnecting: (value) => {
+            state.value.reconnecting = value
+          },
+          setConnectionError: (message) => {
+            setConnectionError(message)
+          },
+          setHydrationState: ({ degraded, missingAssetIds }) => {
+            state.value.degraded = degraded
+            state.value.missingAssetIds = missingAssetIds
+          }
+        })
+      : connectCollabRoom({
+          ...sharedRoomOptions,
+          ...connection
+        })
   runtime.room = roomConnection.room
+  state.value.roomId = roomConnection.roomId
+  state.value.sharePath = roomConnection.sharePath
   state.value.connected = true
   broadcastAwareness()
 
@@ -226,13 +274,21 @@ export function resetCollabRuntime(runtime: CollabRuntime) {
 
 export function resetCollabConnectionState(state: Ref<CollabState>) {
   state.value.connected = false
+  state.value.reconnecting = false
+  state.value.mode = null
   state.value.roomId = null
+  state.value.documentId = null
+  state.value.sharePath = null
   state.value.peers = []
+  state.value.degraded = false
+  state.value.missingAssetIds = []
+  state.value.lastError = null
 }
 
 export function disposeCollabSessionResources(resources: CollabSessionResources) {
   resources.unbindGraphEvents?.()
   resources.stopZoomWatch?.()
+  resources.awareness?.setLocalState(null)
   void resources.room?.leave()
   resources.awareness?.destroy()
   if (resources.persistence) {

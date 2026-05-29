@@ -1,7 +1,7 @@
 import { useClipboard } from '@vueuse/core'
 import { computed, inject, provide, proxyRefs } from 'vue'
 import type { InjectionKey, ShallowUnwrapRef } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import IconFilePlus from '~icons/lucide/file-plus'
 import IconFolderOpen from '~icons/lucide/folder-open'
 import IconImageDown from '~icons/lucide/image-down'
@@ -11,6 +11,7 @@ import IconZoomIn from '~icons/lucide/zoom-in'
 import { useEditorCommands, useI18n } from '@open-pencil/vue'
 
 import { DEFAULT_COLLAB_STATE, useCollabInjected } from '@/app/collab/use'
+import { isHostedCollabEnabled } from '@/app/hosted/flags'
 import { useEditorStore } from '@/app/editor/active-store'
 import { toolIcons } from '@/app/editor/icons'
 import { openFileDialog } from '@/app/shell/menu/use'
@@ -20,6 +21,7 @@ import type { ToolbarActionItem } from '@/components/Toolbar/types'
 type MenuAction = ToolbarActionItem
 
 function createMobileHudContext() {
+  const route = useRoute()
   const router = useRouter()
   const collab = useCollabInjected()
   const store = useEditorStore()
@@ -33,6 +35,10 @@ function createMobileHudContext() {
   const onlineCount = computed(() => collabPeers.value.length + 1)
   const activeToolIcon = computed(() => toolIcons[store.state.activeTool])
   const actionToast = computed(() => store.state.actionToast)
+  const pendingDocumentId = computed(() =>
+    typeof route.params.documentId === 'string' ? route.params.documentId : null
+  )
+  const isHostedDocument = computed(() => isHostedCollabEnabled() && !!pendingDocumentId.value)
 
   const menuItems: MenuAction[] = [
     {
@@ -56,9 +62,15 @@ function createMobileHudContext() {
 
   function share() {
     if (!collab) return
-    const roomId = collab.shareCurrentDoc()
-    void router.push(`/share/${roomId}`)
-    void copy(`${window.location.origin}/share/${roomId}`)
+    if (isHostedDocument.value && pendingDocumentId.value) {
+      collab.connectHostedDocument(pendingDocumentId.value)
+      void router.push(`/hosted/${pendingDocumentId.value}`)
+      void copy(`${window.location.origin}/hosted/${pendingDocumentId.value}`)
+    } else {
+      const roomId = collab.shareCurrentDoc()
+      void router.push(`/share/${roomId}`)
+      void copy(`${window.location.origin}/share/${roomId}`)
+    }
     toast.info('Link copied to clipboard')
   }
 

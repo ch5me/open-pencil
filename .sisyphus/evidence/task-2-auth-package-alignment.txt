@@ -1,0 +1,26 @@
+Task 2 ELF auth package alignment evidence
+
+Canonical package:
+- Source: /Users/hassoncs/src/ch5/ch5-packages/packages/auth/elf-auth-client
+- Publish name: @ch5me/elf-auth-client
+- Public payload identity field: elfUserId
+- Removed duplicate: /Users/hassoncs/src/ch5/firefly-cloud/packages/elf-auth-client
+
+Consumer audit commands:
+1. rg -n "(@ch5me/elf-auth-client|elf-auth-client|kiloUserId|fireflyUserId|createElfVerifier|ElfTokenPayload|elfTokenPayloadSchema)" ../ch5-packages ../firefly-cloud ../open-pencil ../ch5-company
+2. rg -n "from 'elf-auth-client'|from \"elf-auth-client\"|\"elf-auth-client\": \"workspace|kiloUserId" packages/elf-auth-client services/session-ingest docs/elf-auth-topology.md pnpm-workspace.yaml pnpm-lock.yaml
+
+Consumer audit result:
+- Active unscoped package consumer found: firefly-cloud/services/session-ingest
+- Migrated session-ingest import to @ch5me/elf-auth-client and payload read to payload.elfUserId
+- OpenPencil currently documents the future package but has no runtime import in this task slice
+- Remaining Firefly fireflyUserId references are internal worker-utils/service/database contracts, not the public federation package payload
+
+Verification passed:
+- pnpm --filter @ch5me/elf-auth-client build
+- pnpm --filter @ch5me/elf-auth-client test
+- pnpm --filter cloudflare-session-ingest typecheck
+- pnpm --filter cloudflare-session-ingest test -- src/middleware/firefly-jwt-auth.test.ts
+
+Notes:
+- firefly-cloud .npmrc warns when NODE_AUTH_TOKEN is absent during pnpm commands; command outcomes still passed.

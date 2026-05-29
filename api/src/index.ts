@@ -247,7 +247,8 @@ app.delete('/api/documents/:documentId', requireSession(), async (c) => {
 })
 
 // Document room DO access — requires session for hosted mode
-app.get('/api/documents/:documentId/room', requireSession(), async (c) => {
+app.use('/api/documents/:documentId/room', requireSession())
+app.get('/api/documents/:documentId/room', async (c) => {
   const documentId = c.req.param('documentId')
   const userId = (c as any).get('userId') as string
   const sessionToken = (c as any).get('sessionToken') as string
@@ -271,7 +272,12 @@ app.get('/api/documents/:documentId/room', requireSession(), async (c) => {
     headers.set('x-openpencil-session-token', sessionToken)
     headers.set('x-openpencil-document-id', documentId)
     headers.set('x-openpencil-room-id', roomId)
-    return stub.fetch(new Request(c.req.raw, { headers }))
+    const upstream = await stub.fetch(new Request(c.req.raw, { headers }))
+    return new Response(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: upstream.headers
+    })
   }
 
   return c.json({ documentId, roomId, status: 'ok' })

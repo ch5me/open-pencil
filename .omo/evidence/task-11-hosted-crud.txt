@@ -1,0 +1,20 @@
+Task 11: Hosted Document CRUD and Snapshot Storage — Verification Evidence
+Date: 2026-05-29
+
+## Tests
+- bun test ./api/src/documents/: PASS (12 tests, 4 files)
+- bun test ./tests/unit/hosted-storage.test.ts: PASS (3 tests, 1 file)
+
+## Diagnostics (zero errors on changed files)
+- api/src/documents/crud.ts: No diagnostics
+- api/src/index.ts: No diagnostics
+- src/app/document/io/hosted-client.ts: No diagnostics
+- src/app/document/io/hosted-backend.ts: No diagnostics
+- tests/unit/hosted-storage.test.ts: No diagnostics
+
+## Changed Files
+- api/src/documents/crud.ts (unused snapshotResult removed)
+- tests/unit/hosted-storage.test.ts (bun:test mock import fix, async test fixes, satisfies HostedDocumentClient)
+
+## Status
+TASK 11 COMPLETE

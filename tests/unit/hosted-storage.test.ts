@@ -1,9 +1,9 @@
-import { describe, expect, test, mock } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import { createHostedClient } from '@/app/document/io/hosted-client'
-import { createHostedDocumentBackend } from '@/app/document/io/hosted-backend'
+import { createHostedDocumentBackend, type HostedDocumentClient } from '@/app/document/io/hosted-backend'
 
 describe('hosted client + backend contract', () => {
-  test('client encodes base64 correctly for round-trip', () => {
+  test('client encodes base64 correctly for round-trip', async () => {
     const original = new Uint8Array([80, 75, 3, 4, 10, 20, 30, 40])
     let capturedBody: string | null = null
 
@@ -12,16 +12,16 @@ describe('hosted client + backend contract', () => {
       sessionToken: () => 'test-token'
     })
 
-    globalThis.fetch = mock(async (_url: string, init?: RequestInit) => {
+    globalThis.fetch = (async (_url: string, init?: RequestInit) => {
       capturedBody = init?.body as string
       return new Response(JSON.stringify({
         documentId: 'doc-1',
         snapshotId: 'snap-1',
         storageKey: 'documents/doc-1/snapshots/snap-1.fig'
       }), { status: 201 })
-    })
+    }) as typeof fetch
 
-    client.saveAs(original)
+    await client.saveAs(original)
     expect(capturedBody).not.toBeNull()
     const body = JSON.parse(capturedBody!)
     expect(body.snapshotBytesBase64).toBeTruthy()
@@ -29,15 +29,15 @@ describe('hosted client + backend contract', () => {
     expect(decoded.length).toBe(original.length)
   })
 
-  test('backend with client delegates save to hosted endpoint', () => {
+  test('backend with client delegates save to hosted endpoint', async () => {
     let saveCalled = false
     const fakeClient = {
       loadMetadata: async () => ({ mode: 'hosted-docs single-user' as const }),
-      open: async () => ({ graph: { nodes: new Map(), currentPageId: 'p1' }, fileName: 'test', sourceFormat: 'fig' }),
+      open: async () => ({ graph: { nodes: new Map(), currentPageId: 'p1' } as any, fileName: 'test', sourceFormat: 'fig' as const }),
       save: async () => { saveCalled = true; return { documentId: 'doc-1', latestSnapshotId: 'snap-1', sourceFormat: 'fig' } },
       saveAs: async () => ({ documentId: 'doc-2', latestSnapshotId: 'snap-2', sourceFormat: 'fig' }),
       autosave: async () => ({ documentId: 'doc-1', latestSnapshotId: 'snap-3', sourceFormat: 'fig' })
-    }
+    } satisfies HostedDocumentClient
 
     const backend = createHostedDocumentBackend({
       descriptor: { documentId: 'doc-1', latestSnapshotId: 'snap-1', sourceFormat: 'fig' },
@@ -50,16 +50,16 @@ describe('hosted client + backend contract', () => {
     expect(backend.hasCapability('hostedSave')).toBe(true)
     expect(backend.hasCapability('localFileSave')).toBe(false)
 
-    backend.save(new Uint8Array([1, 2, 3]))
+    await backend.save(new Uint8Array([1, 2, 3]))
     expect(saveCalled).toBe(true)
   })
 
-  test('backend throws hosted-runtime-unavailable without client', () => {
+  test('backend throws hosted-runtime-unavailable without client', async () => {
     const backend = createHostedDocumentBackend({
       descriptor: { documentId: 'doc-1', latestSnapshotId: null, sourceFormat: 'fig' }
     })
 
-    expect(() => backend.save(new Uint8Array([1])))
-      .toThrow('Hosted document runtime is not wired')
+    await expect(backend.save(new Uint8Array([1])))
+      .rejects.toThrow('Hosted document runtime is not wired')
   })
 })

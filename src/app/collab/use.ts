@@ -1,8 +1,10 @@
 import { tryOnScopeDispose, useLocalStorage } from '@vueuse/core'
 import { computed, ref } from 'vue'
 
+import { setOpenPencilTestHooks } from '@/app/browser-bridge'
 import { createFollowActions, generateRoomId } from '@/app/collab/awareness'
 import { createLocalAwarenessActions } from '@/app/collab/local-awareness'
+import { getHostedWireStats } from '@/app/collab/room'
 import {
   createCollabConnectionActions,
   createCollabRuntime,
@@ -46,6 +48,10 @@ export function useCollab(storeOrGetter: EditorStore | (() => EditorStore)) {
       runtime.suppressYjsEvents = value
     }
   })
+  function setConnectionError(message: string | null) {
+    state.value.lastError = message
+  }
+
   const { connect, disconnect } = createCollabConnectionActions({
     runtime,
     state,
@@ -55,23 +61,63 @@ export function useCollab(storeOrGetter: EditorStore | (() => EditorStore)) {
     broadcastAwareness,
     applyYjsToGraph,
     syncNodeToYjs,
+    setConnectionError,
     resetFollow
   })
 
   function shareCurrentDoc(): string {
     const roomId = generateRoomId()
-    connect(roomId)
+    connect({ mode: 'local-p2p', roomId })
     syncAllNodesToYjs()
     return roomId
   }
 
+  function connectLocalRoom(roomId: string) {
+    connect({ mode: 'local-p2p', roomId })
+  }
+
+  function connectHostedDocument(documentId: string) {
+    connect({ mode: 'hosted-do', documentId })
+  }
+
   tryOnScopeDispose(disconnect)
+
+  setOpenPencilTestHooks({
+    getCollabSnapshot: () => {
+      const store = getActiveStore()
+      return {
+        connected: state.value.connected,
+        reconnecting: state.value.reconnecting,
+        mode: state.value.mode,
+        roomId: state.value.roomId,
+        documentId: state.value.documentId,
+        peerCount: state.value.peers.length,
+        remoteCursorCount: store.state.remoteCursors.length,
+        sharePath: state.value.sharePath,
+        degraded: state.value.degraded,
+        missingAssetIds: [...state.value.missingAssetIds],
+        lastError: state.value.lastError,
+      }
+    },
+    setCollabProofValue: (value: string) => {
+      const store = getActiveStore()
+      store.state.documentName = value
+      store.requestRender()
+    },
+    getCollabProofValue: () => getActiveStore().state.documentName,
+    setCollabYjsProofValue: (value: string) => {
+      runtime.ydoc?.getMap('proof').set('value', value)
+    },
+    getCollabYjsProofValue: () => (runtime.ydoc?.getMap('proof').get('value') as string | undefined) ?? null,
+    getHostedWireStats: () => getHostedWireStats(),
+  })
 
   return {
     state,
     remotePeers,
     followingPeer,
-    connect,
+    connect: connectLocalRoom,
+    connectHostedDocument,
     disconnect,
     shareCurrentDoc,
     updateCursor,

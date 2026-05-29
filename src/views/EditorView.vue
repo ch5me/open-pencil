@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref } from 'vue'
+import { onMounted, onUnmounted, provide, ref, watch } from 'vue'
 import { useEventListener, useUrlSearchParams } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
@@ -17,6 +17,8 @@ import { appMenuShortcut } from '@/app/shell/menu/shortcut'
 import { createDemoShapes } from '@/app/demo/document'
 import { useEditorStore } from '@/app/editor/active-store'
 import { createTab, activeTab, getActiveStore, tabCount } from '@/app/tabs'
+import { isHostedAuthEnabled, isHostedCollabEnabled } from '@/app/hosted/flags'
+import { isAuthenticated, refreshSession } from '@/app/hosted/session'
 
 import CollabPanel from '@/components/CollabPanel/CollabPanel.vue'
 import EditorCanvas from '@/components/EditorCanvas.vue'
@@ -49,6 +51,29 @@ useMenu()
 
 const collab = useCollab(getActiveStore)
 provide(COLLAB_KEY, collab)
+
+function maybeConnectHostedCollab() {
+  if (!isHostedCollabEnabled()) return
+  if (!isAuthenticated()) return
+  const documentId = typeof route.params.documentId === 'string' ? route.params.documentId : null
+  if (!documentId) return
+  if (
+    collab.state.value.mode === 'hosted-do' &&
+    collab.state.value.documentId === documentId &&
+    collab.state.value.connected
+  ) {
+    return
+  }
+  collab.connectHostedDocument(documentId)
+}
+
+watch(
+  () => route.params.documentId,
+  () => {
+    maybeConnectHostedCollab()
+  },
+  { immediate: true }
+)
 
 useEventListener(
   document,
@@ -86,6 +111,11 @@ async function bindAssociatedFileOpen() {
 }
 
 onMounted(async () => {
+  if (isHostedAuthEnabled()) {
+    await refreshSession()
+    maybeConnectHostedCollab()
+  }
+
   try {
     const mcp = await spawnMCPIfNeeded()
     mcpCleanup.value = mcp?.disconnect ?? null

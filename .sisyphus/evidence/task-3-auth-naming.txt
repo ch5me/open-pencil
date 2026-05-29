@@ -1,0 +1,9 @@
+Task 3 public auth naming inventory audit: PASS
+Doctrine: packages/docs/development/elf-auth-naming.md
+Rename matrix rows: 19
+Canonical public namespace: ELF
+Canonical package: @ch5me/elf-auth-client
+Canonical payload identity: elfUserId
+Legacy public Kilo/Firefly fields covered by compatibility rules: kiloUserId, fireflyUserId
+Audited references: firefly-cloud/docs/elf-auth-topology.md; firefly-cloud/docs/firefly-cutover-runbook.md; ch5-company/elf-auth-cutover-spec.md; ch5-company/ch5-platform-package-catalog.md; ch5-company/wiki/topics/elf-federation-telemetry-and-billing-attribution.md; ch5-packages/packages/auth/elf-auth-client/src/types.ts; ch5-packages/packages/auth/elf-auth-client/README.md; open-pencil/AGENTS.md; open-pencil/packages/docs/development/hosted-operating-modes.md
+Missing required strings: none

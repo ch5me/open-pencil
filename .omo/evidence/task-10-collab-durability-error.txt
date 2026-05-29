@@ -1,0 +1,8 @@
+bun test ./src/auth.test.ts ./src/documents/assets.test.ts ./src/documents/room-id.test.ts ./src/documents/room-persistence.test.ts
+18 pass, 0 fail
+
+bun test tests/engine/document/hosted-metadata.test.ts
+6 pass, 0 fail
+
+Missing asset degraded-state rule: hydrateHostedSnapshotAssets() marks missing asset ids, returns degraded=true, and leaves bytesBase64=null for absent objects.
+Expired session rule: /api/documents/:documentId/snapshot returns 401/invalid-token at the auth boundary; hosted room bootstrap surfaces "Hosted session expired. Sign in again to reopen this room."

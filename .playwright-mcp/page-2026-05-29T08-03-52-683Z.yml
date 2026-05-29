@@ -1,0 +1,102 @@
+- generic [active] [ref=e1]:
+  - img [ref=e3]
+  - generic [ref=e6]:
+    - generic [ref=e8]:
+      - complementary [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]:
+            - img "OpenPencil" [ref=e13]
+            - generic [ref=e14]: Untitled
+            - button [ref=e15] [cursor=pointer]:
+              - img [ref=e16]
+          - menubar [ref=e20]:
+            - menuitem "File" [ref=e21] [cursor=pointer]
+            - menuitem "Edit" [ref=e22] [cursor=pointer]
+            - menuitem "View" [ref=e23] [cursor=pointer]
+            - menuitem "Object" [ref=e24] [cursor=pointer]
+            - menuitem "Text" [ref=e25] [cursor=pointer]
+            - menuitem "Arrange" [ref=e26] [cursor=pointer]
+        - generic [ref=e27]:
+          - button "File" [ref=e28]
+          - button "Assets" [ref=e29]
+        - generic [ref=e30]:
+          - generic [ref=e32]:
+            - generic [ref=e33]:
+              - generic [ref=e34]: Pages
+              - button "+" [ref=e35] [cursor=pointer]
+            - button "Page 1" [ref=e39] [cursor=pointer]:
+              - img [ref=e40]
+              - generic [ref=e44]: Page 1
+          - separator [ref=e45]
+          - generic [ref=e46]:
+            - generic [ref=e47]: Layers
+            - tree [ref=e48]
+      - separator [ref=e51]
+      - generic [ref=e57]:
+        - button [ref=e58] [cursor=pointer]:
+          - img [ref=e59]
+        - generic [ref=e61]:
+          - button [ref=e62] [cursor=pointer]:
+            - img [ref=e63]
+          - button [ref=e65] [cursor=pointer]:
+            - img [ref=e66]
+        - generic [ref=e68]:
+          - button [ref=e69] [cursor=pointer]:
+            - img [ref=e70]
+          - button [ref=e72] [cursor=pointer]:
+            - img [ref=e73]
+        - button [ref=e75] [cursor=pointer]:
+          - img [ref=e76]
+        - button [ref=e81] [cursor=pointer]:
+          - img [ref=e82]
+        - button [ref=e84] [cursor=pointer]:
+          - img [ref=e85]
+      - separator [ref=e89]
+      - generic [ref=e90]:
+        - generic [ref=e92]:
+          - generic [ref=e94]: "Y"
+          - button "Connected" [ref=e95] [cursor=pointer]:
+            - img [ref=e96]
+            - text: Connected
+        - complementary [ref=e102]:
+          - generic [ref=e103]:
+            - tablist [ref=e104]:
+              - tab "Design" [selected] [ref=e105]
+              - tab "Code" [ref=e106]:
+                - img [ref=e107]
+                - text: Code
+              - tab "AI" [ref=e109]:
+                - img [ref=e110]
+                - text: AI
+              - button "100%" [ref=e114] [cursor=pointer]
+            - tabpanel "Design" [ref=e115]:
+              - generic [ref=e116]:
+                - generic [ref=e117]:
+                  - generic [ref=e118]: Page
+                  - generic [ref=e119]:
+                    - button [ref=e120] [cursor=pointer]
+                    - textbox [ref=e121]: F5F5F5
+                - generic [ref=e122]:
+                  - generic [ref=e123]:
+                    - generic [ref=e124]: Variables
+                    - button [ref=e125] [cursor=pointer]:
+                      - img [ref=e126]
+                  - generic [ref=e131]: No local variables
+                - generic [ref=e132]:
+                  - generic [ref=e133]:
+                    - generic [ref=e134]: Export
+                    - button "+" [ref=e135] [cursor=pointer]
+                  - generic [ref=e136]:
+                    - combobox [ref=e137]:
+                      - generic: 1x
+                      - img [ref=e138]
+                    - combobox [ref=e140]:
+                      - generic: PNG
+                      - img [ref=e141]
+                    - button "−" [ref=e143] [cursor=pointer]
+                  - button "Export Page 1" [ref=e144] [cursor=pointer]
+                  - button "Preview" [ref=e145] [cursor=pointer]:
+                    - img [ref=e146]
+                    - text: Preview
+    - region "Notifications (F8)":
+      - list

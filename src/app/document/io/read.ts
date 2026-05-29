@@ -1,8 +1,7 @@
 import type { Editor, EditorState } from '@open-pencil/core/editor'
-import { readFigFile } from '@open-pencil/core/io/formats/fig'
 import { computeAllLayouts } from '@open-pencil/core/layout'
 
-import { yieldToUI } from '@/app/document/io/browser'
+import type { DocumentBackend } from '@/app/document/io/backend'
 import { applyImportedDocument } from '@/app/document/io/imported-document'
 import { readReloadSource } from '@/app/document/io/reload-source'
 import { captureReloadState, restoreReloadState } from '@/app/document/io/reload-state'
@@ -18,6 +17,7 @@ type ReloadDocumentState = EditorState & { documentName: string }
 type OpenFigFileOptions = {
   editor: Editor
   state: OpenDocumentState
+  documentBackend: DocumentBackend
   setDocumentSource: (
     fileName: string,
     sourceFormat: string,
@@ -38,18 +38,18 @@ type ReloadActionsOptions = {
 export function createOpenActions({
   editor,
   state,
+  documentBackend,
   setDocumentSource,
   fitCurrentPageToViewport
 }: OpenFigFileOptions) {
   async function openFigFile(file: File, handle?: FileSystemFileHandle, path?: string) {
     try {
       state.loading = true
-      await yieldToUI()
-      const imported = await readFigFile(file, { populate: 'first-page' })
-      await yieldToUI()
-      await applyImportedDocument(editor, imported)
-      state.documentName = file.name.replace(/\.fig$/i, '')
-      setDocumentSource(file.name, 'fig', handle, path)
+      const result = await documentBackend.open({ kind: 'file', file, handle, path })
+      if (!result) return
+      await applyImportedDocument(editor, result.graph)
+      state.documentName = result.fileName.replace(/\.fig$/i, '')
+      setDocumentSource(result.fileName, result.sourceFormat, result.handle, result.path)
       await fitCurrentPageToViewport()
       editor.requestRender()
     } catch (e) {

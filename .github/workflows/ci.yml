@@ -7,6 +7,12 @@ on:
       - 'packages/docs/**'
       - 'openspec/**'
       - '*.md'
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'packages/docs/**'
+      - 'openspec/**'
+      - '*.md'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -35,3 +41,24 @@ jobs:
 
       - name: Copy-paste detection
         run: bun run test:dupes
+
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Install API dependencies
+        working-directory: api
+        run: bun install --frozen-lockfile
+
+      - name: API type generation
+        working-directory: api
+        run: bun run cf-typegen
+
+      - name: API unit tests (auth, crud, assets, room)
+        working-directory: api
+        run: bun test
+        env:
+          OPENPENCIL_HOSTED_ENV: preview
