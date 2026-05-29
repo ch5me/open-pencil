@@ -6,15 +6,15 @@ services:
     description: OpenPencil API Worker - auth, documents, AI proxy
     runtime: cloudflare-workers
     health:
-      endpoint: https://api.pencil.ch5.me/health
-      fallback: https://api.pencil.ch5.me/
+      endpoint: https://api.design.elf.dance/health
+      fallback: https://api.design.elf.dance/
     environments:
       staging:
-        url: https://api.staging.pencil.ch5.me
-        health: https://api.staging.pencil.ch5.me/
+        url: https://api.staging.design.elf.dance
+        health: https://api.staging.design.elf.dance/
       production:
-        url: https://api.pencil.ch5.me
-        health: https://api.pencil.ch5.me/
+        url: https://api.design.elf.dance
+        health: https://api.design.elf.dance/
     bindings:
       - type: d1
         name: DB

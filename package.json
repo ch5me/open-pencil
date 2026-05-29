@@ -40,7 +40,10 @@
     "proof:hosted": "bun scripts/hosted-proof.ts",
     "proof:preview": "bun scripts/preview-proof.ts",
     "proof:flags": "bun scripts/validate-hosted-flags.ts",
-    "proof:all": "bun run proof:flags && bun run proof:hosted"
+    "proof:all": "bun run proof:flags && bun run proof:hosted",
+    "release:candidate": "node scripts/build-candidate.mjs",
+    "promote:production": "node scripts/promote.mjs production",
+    "rollback:production": "node scripts/promote.mjs production --previous"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.74",

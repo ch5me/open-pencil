@@ -20,8 +20,8 @@
       "id": "openpencil-preview",
       "type": "preview",
       "appUrl": "",
-      "apiOrigin": "https://api.staging.pencil.ch5.me",
-      "authCallbackUrl": "https://pencil.ch5.me/api/auth/callback",
+      "apiOrigin": "https://api.staging.design.elf.dance",
+      "authCallbackUrl": "https://design.elf.dance/api/auth/callback",
       "flags": {
         "hostedAuth": true,
         "hostedDocs": false,
@@ -31,9 +31,9 @@
     "staging": {
       "id": "openpencil-staging",
       "type": "staging",
-      "appUrl": "https://staging.pencil.ch5.me",
-      "apiOrigin": "https://api.staging.pencil.ch5.me",
-      "authCallbackUrl": "https://staging.pencil.ch5.me/api/auth/callback",
+      "appUrl": "https://staging.design.elf.dance",
+      "apiOrigin": "https://api.staging.design.elf.dance",
+      "authCallbackUrl": "https://staging.design.elf.dance/api/auth/callback",
       "flags": {
         "hostedAuth": true,
         "hostedDocs": true,
@@ -43,9 +43,9 @@
     "production": {
       "id": "openpencil-production",
       "type": "production",
-      "appUrl": "https://pencil.ch5.me",
-      "apiOrigin": "https://api.pencil.ch5.me",
-      "authCallbackUrl": "https://pencil.ch5.me/api/auth/callback",
+      "appUrl": "https://design.elf.dance",
+      "apiOrigin": "https://api.design.elf.dance",
+      "authCallbackUrl": "https://design.elf.dance/api/auth/callback",
       "flags": {
         "hostedAuth": true,
         "hostedDocs": true,

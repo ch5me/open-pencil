@@ -26,7 +26,9 @@ export interface Env {
 const app = new Hono<{ Bindings: Env }>()
 
 const allowedOrigins = new Set([
-  'https://pencil.ch5.me',
+  'https://design.elf.dance',
+  'https://staging.design.elf.dance',
+  'https://pencil.ch5.me', // legacy, keep during migration
   'https://app.openpencil.dev',
   'http://localhost:1420',
   'http://127.0.0.1:1420',

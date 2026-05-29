@@ -55,21 +55,21 @@ const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
   },
   preview: {
     flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
-    apiOrigin: 'https://api.staging.pencil.ch5.me',
-    authCallbackUrl: 'https://pencil.ch5.me/api/auth/callback',
+    apiOrigin: 'https://api.staging.design.elf.dance',
+    authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
     appUrl: '' // resolved at deploy time by Pages
   },
   staging: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-    apiOrigin: 'https://api.staging.pencil.ch5.me',
-    authCallbackUrl: 'https://staging.pencil.ch5.me/api/auth/callback',
-    appUrl: 'https://staging.pencil.ch5.me'
+    apiOrigin: 'https://api.staging.design.elf.dance',
+    authCallbackUrl: 'https://staging.design.elf.dance/api/auth/callback',
+    appUrl: 'https://staging.design.elf.dance'
   },
   production: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-    apiOrigin: 'https://api.pencil.ch5.me',
-    authCallbackUrl: 'https://pencil.ch5.me/api/auth/callback',
-    appUrl: 'https://pencil.ch5.me'
+    apiOrigin: 'https://api.design.elf.dance',
+    authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
+    appUrl: 'https://design.elf.dance'
   }
 }
 

@@ -6,8 +6,8 @@
   "account_id": "25bb5f8d9ec4a36106f0ff6b519133b1",
   "workers_dev": true,
   "routes": [
-    { "pattern": "api.staging.pencil.ch5.me/*", "zone_name": "ch5.me" },
-    { "pattern": "api.pencil.ch5.me/*", "zone_name": "ch5.me" }
+    { "pattern": "api.staging.design.elf.dance/*", "zone_name": "elf.dance" },
+    { "pattern": "api.design.elf.dance/*", "zone_name": "elf.dance" }
   ],
   "d1_databases": [
     {

@@ -4,9 +4,9 @@
 
 OpenPencil is a federated sub-app of the Firefly platform at `elf.dance`. Per `hq-qyx6` decision: sub-apps stay in their own independent repos and federate into Firefly via the published `@ch5me/elf-auth-client` package (RS256 + JWKS verifier).
 
-- **Subdomain (canonical):** `pencil.elf.dance`
+- **Subdomain (canonical):** `design.elf.dance`
 - **Sub-route (transitional alias):** `app.elf.dance/pencil` redirects to canonical
-- **Auth target:** Kilo custom auth + RS256+JWKS via `@ch5me/elf-auth-client` (`hq-be8u` package landing soon). Current BetterAuth being cut over per `hq-bvxx`. Desktop wrapper needs deep-link callback handler.
+- **Auth target:** ELF custom auth + RS256+JWKS via `@ch5me/elf-auth-client`. JWKS endpoint live at `api.elf.dance/.well-known/jwks.json`.
 - **Runtime provisioning:** Per-user agent container via shared `services/kiloclaw` in firefly-cloud rig `cloud` (call with `openpencil` tag).
 - **Billing:** All OpenPencil agentic ops route through user portable OpenCode container → firefly-cloud billing/gateway. No local LLM gateway.
 - **Master alignment doc:** `/Users/hassoncs/gt/ch5_company/mayor/rig/company-master-alignment.md`
@@ -125,8 +125,38 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 | -------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `build.yml`    | `v*` tag push or manual               | Build Tauri desktop apps (5 targets), create GitHub Release, publish `@open-pencil/core`, `@open-pencil/cli`, `@open-pencil/mcp`, and `@open-pencil/vue` |
 | `homebrew.yml` | Release published                     | Update `open-pencil/homebrew-tap` cask with new version + SHA256 hashes                                                                                  |
-| `app.yml`      | Push to `master` (non-docs)           | Build web app, deploy to Cloudflare Pages (`pencil.ch5.me`)                                                                                              |
-| `docs.yml`     | Push to `master` (`packages/docs/**`) | Build VitePress docs, deploy to Cloudflare Pages (`pencil.ch5.me`)                                                                                       |
+| `app.yml`      | Push to `master` (non-docs)           | Build web app, deploy to staging Cloudflare Pages (`staging.design.elf.dance`), record build manifest                                                      |
+| `promote-production.yml` | Manual workflow_dispatch | Promote staging candidate to production Cloudflare Pages (`design.elf.dance`) — no rebuild, reuses staging artifact                                         |
+| `docs.yml`     | Push to `master` (`packages/docs/**`) | Build VitePress docs, deploy to Cloudflare Pages (`design.elf.dance`)                                                                                       |
+
+### Deployment pattern
+
+OpenPencil follows the CH5 artifact promotion model:
+
+1. **Staging auto-deploys** on every push to `master` (non-docs changes)
+   - Builds the app with staging environment variables
+   - Records a build manifest (commit SHA, branch, timestamp, artifact paths)
+   - Deploys to staging Cloudflare Pages (`staging.design.elf.dance`)
+   - Uploads manifest as GitHub Actions artifact for auditability
+
+1. **Production promotion** via manual `workflow_dispatch`
+   - Reads the recorded staging manifest
+   - Rebuilds with production environment variables
+   - Deploys to production Cloudflare Pages (`design.elf.dance`)
+   - Records promotion in `.build-manifests/history.json`
+
+1. **Rollback** via `--previous` flag
+   - Re-promotes the previous manifest from history
+
+**Key invariant: production never builds from unvalidated source.** It always promotes a recorded staging candidate.
+
+### Deployment scripts
+
+```sh
+bun run release:candidate   # build + record staging manifest
+bun run promote:production  # promote staging candidate to production
+bun run rollback:production # rollback to previous production manifest
+```
 
 ### Before committing
 
@@ -145,7 +175,7 @@ bun run test           # Playwright E2E
 - `CHANGELOG.md` — all user-facing changes, grouped by version. "Unreleased" section at top for in-progress work.
 - `README.md` — user-facing: features, getting started, CLI, project structure. No implementation details.
 - `AGENTS.md` (this file) — contributor/agent reference: architecture, conventions, how to release.
-- `packages/docs/` — VitePress site deployed at `pencil.ch5.me`. User guide, SDK, automation, reference, and development docs.
+- `packages/docs/` — VitePress site deployed at `design.elf.dance`. User guide, SDK, automation, reference, and development docs.
 
 ## Vendor breadcrumbs
 

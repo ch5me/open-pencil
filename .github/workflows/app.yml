@@ -9,12 +9,22 @@ on:
       - '*.md'
   workflow_dispatch:
 
+concurrency:
+  group: app-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPENPENCIL_HOSTED_ENV: staging
+
 jobs:
-  deploy:
+  deploy-staging:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
+    environment:
+      name: staging
+      url: https://staging.design.elf.dance
     steps:
       - uses: actions/checkout@v4
 
@@ -23,10 +33,26 @@ jobs:
       - name: Format check
         run: bun run format:check
 
-      - run: bun run build
+      - name: Build candidate
+        run: bun run build
+
+      - name: Record staging manifest
+        run: bun run release:candidate
 
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=openpencil-app
+          command: pages deploy dist --project-name open-pencil --branch master
+
+      - name: Smoke test staging
+        run: |
+          sleep 5
+          curl -sf https://staging.design.elf.dance >/dev/null
+
+      - name: Upload manifest as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-manifest
+          path: .build-manifests/staging.json
+          retention-days: 30

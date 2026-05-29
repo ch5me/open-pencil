@@ -49,11 +49,11 @@ assert(envYaml.includes('openpencil-staging'), 'envs.yaml declares staging')
 assert(envYaml.includes('openpencil-production'), 'envs.yaml declares production')
 assert(envYaml.includes('openpencil-local'), 'envs.yaml declares local')
 assert(
-  topology.environments.staging.apiOrigin === 'https://api.staging.pencil.ch5.me',
+  topology.environments.staging.apiOrigin === 'https://api.staging.design.elf.dance',
   'staging apiOrigin matches envs.yaml API URL'
 )
 assert(
-  topology.environments.production.apiOrigin === 'https://api.pencil.ch5.me',
+  topology.environments.production.apiOrigin === 'https://api.design.elf.dance',
   'production apiOrigin matches envs.yaml API URL'
 )
 
@@ -63,9 +63,9 @@ console.log('\n3. Flag dependency constraints (validateHostedConfig)')
 const validConfig: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-  apiOrigin: 'https://api.staging.pencil.ch5.me',
-  authCallbackUrl: 'https://staging.pencil.ch5.me/api/auth/callback',
-  appUrl: 'https://staging.pencil.ch5.me'
+  apiOrigin: 'https://api.staging.design.elf.dance',
+  authCallbackUrl: 'https://staging.design.elf.dance/api/auth/callback',
+  appUrl: 'https://staging.design.elf.dance'
 }
 assert(validateHostedConfig(validConfig).length === 0, 'valid staging config passes validation')
 
@@ -98,7 +98,7 @@ const hostedNoApi: HostedEnvironmentConfig = {
   flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
   apiOrigin: '',
   authCallbackUrl: '',
-  appUrl: 'https://staging.pencil.ch5.me'
+  appUrl: 'https://staging.design.elf.dance'
 }
 const apiErrs = validateHostedConfig(hostedNoApi)
 assert(
@@ -109,9 +109,9 @@ assert(
 const hostedAuthNoCallback: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
-  apiOrigin: 'https://api.staging.pencil.ch5.me',
+  apiOrigin: 'https://api.staging.design.elf.dance',
   authCallbackUrl: '',
-  appUrl: 'https://staging.pencil.ch5.me'
+  appUrl: 'https://staging.design.elf.dance'
 }
 const cbErrs = validateHostedConfig(hostedAuthNoCallback)
 assert(
