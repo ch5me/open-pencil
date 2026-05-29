@@ -10,5 +10,11 @@ Disabled-mode proof (local-only when no env declared)
   PASS: collab→auth constraint documented
   PASS: docs→auth constraint documented
   PASS: topology.json local defaults: all flags OFF
+  PASS: resolveString uses Extract for type-safe key narrowing
+  PASS: resolveString key parameter is NOT bare keyof (TS7053 fixed)
+  PASS: explicit preview check only
+  PASS: explicit staging check only
+  PASS: explicit production check only
+  PASS: fallthrough returns local (not guessed from context)
 
---- Results: 10 passed, 0 failed ---
+--- Results: 16 passed, 0 failed ---

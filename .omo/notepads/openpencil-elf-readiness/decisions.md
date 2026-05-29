@@ -20,6 +20,7 @@
 - Task 8 type location: hosted feature flag types and validation live in `@open-pencil/core/hosted` subpath export — framework-agnostic, consumable by app, CLI, MCP, and Worker tests. App-specific flag resolution lives in `src/app/hosted/flags.ts`.
 - Task 8 rollout order: hostedAuth → hostedDocs → hostedCollab. Collaboration is OFF in all environments until task 12 (DO room transport) lands. Preview enables auth-only for session smoke tests; staging enables auth+docs for storage validation.
 - Task 8 docs location: `packages/docs/development/hosted-environment-topology.md`, linked from the development sidebar, is the code-facing environment topology and flag contract.
+- Task 8 type-safety decision: `resolveString` uses `Extract<keyof HostedEnvironmentConfig, 'apiOrigin' | 'authCallbackUrl' | 'appUrl'>` to narrow string config keys — bare `keyof HostedEnvironmentConfig` caused TS7053 because `'env'` is not a valid key on `Omit<HostedEnvironmentConfig, 'env'>`.
 
 - Task 9 deprecation decision: `firefly-cloud/packages/elf-auth-client/` directory retained but empty (node_modules only) — full removal deferred to Firefly Cloud repo cleanup. `elf-auth-topology.md` declares it deprecated/removed, and no consumers import from the unscoped path. Public API response shapes in Firefly docs (cutover runbook) use `elfUserId` per ELF naming doctrine.
 

@@ -51,26 +51,26 @@ const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
     flags: { hostedAuth: false, hostedDocs: false, hostedCollab: false },
     apiOrigin: '',
     authCallbackUrl: '',
-    appUrl: 'http://localhost:1420',
+    appUrl: 'http://localhost:1420'
   },
   preview: {
     flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
     apiOrigin: 'https://api.staging.pencil.ch5.me',
     authCallbackUrl: 'https://pencil.ch5.me/api/auth/callback',
-    appUrl: '', // resolved at deploy time by Pages
+    appUrl: '' // resolved at deploy time by Pages
   },
   staging: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
     apiOrigin: 'https://api.staging.pencil.ch5.me',
     authCallbackUrl: 'https://staging.pencil.ch5.me/api/auth/callback',
-    appUrl: 'https://staging.pencil.ch5.me',
+    appUrl: 'https://staging.pencil.ch5.me'
   },
   production: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
     apiOrigin: 'https://api.pencil.ch5.me',
     authCallbackUrl: 'https://pencil.ch5.me/api/auth/callback',
-    appUrl: 'https://pencil.ch5.me',
-  },
+    appUrl: 'https://pencil.ch5.me'
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ const ENV_VAR_NAMES = {
   COLLAB_ENABLED: 'VITE_HOSTED_COLLAB_ENABLED' as const,
   API_ORIGIN: 'VITE_API_ORIGIN' as const,
   AUTH_CALLBACK: 'VITE_AUTH_CALLBACK_URL' as const,
-  APP_URL: 'VITE_APP_URL' as const,
+  APP_URL: 'VITE_APP_URL' as const
 } as const
 
 // ---------------------------------------------------------------------------
@@ -102,11 +102,7 @@ function resolveEnv(): HostedEnv {
 }
 
 /** Resolve a single boolean flag: env var override > environment default. */
-function resolveFlag(
-  env: HostedEnv,
-  flagKey: keyof HostedFeatureFlags,
-  envVar: string,
-): boolean {
+function resolveFlag(env: HostedEnv, flagKey: keyof HostedFeatureFlags, envVar: string): boolean {
   const raw = import.meta.env?.[envVar]
   if (raw !== undefined && raw !== '') {
     return raw === 'true' || raw === '1'
@@ -115,11 +111,14 @@ function resolveFlag(
 }
 
 /** Resolve a string config value: env var override > environment default. */
-function resolveString(env: HostedEnv, key: keyof HostedEnvironmentConfig, envVar: string): string {
+function resolveString(
+  env: HostedEnv,
+  key: Extract<keyof HostedEnvironmentConfig, 'apiOrigin' | 'authCallbackUrl' | 'appUrl'>,
+  envVar: string,
+): string {
   const raw = import.meta.env?.[envVar]
   if (raw !== undefined && raw !== '') return raw
-  const def = ENV_DEFAULTS[env][key]
-  return typeof def === 'string' ? def : ''
+  return ENV_DEFAULTS[env][key]
 }
 
 /**
@@ -135,11 +134,11 @@ export function resolveHostedConfig(): HostedEnvironmentConfig {
     flags: {
       hostedAuth: resolveFlag(env, 'hostedAuth', ENV_VAR_NAMES.AUTH_ENABLED),
       hostedDocs: resolveFlag(env, 'hostedDocs', ENV_VAR_NAMES.DOCS_ENABLED),
-      hostedCollab: resolveFlag(env, 'hostedCollab', ENV_VAR_NAMES.COLLAB_ENABLED),
+      hostedCollab: resolveFlag(env, 'hostedCollab', ENV_VAR_NAMES.COLLAB_ENABLED)
     },
     apiOrigin: resolveString(env, 'apiOrigin', ENV_VAR_NAMES.API_ORIGIN),
     authCallbackUrl: resolveString(env, 'authCallbackUrl', ENV_VAR_NAMES.AUTH_CALLBACK),
-    appUrl: resolveString(env, 'appUrl', ENV_VAR_NAMES.APP_URL),
+    appUrl: resolveString(env, 'appUrl', ENV_VAR_NAMES.APP_URL)
   }
 }
 
