@@ -531,7 +531,7 @@ Wave 7: deferred desktop readiness and final integration cleanup
 
   **Commit**: YES | Message: `feat(api): add hosted session middleware and stubs` | Files: `api/`, tests
 
-- [ ] 11. Add hosted document CRUD and snapshot storage path
+- [x] 11. Add hosted document CRUD and snapshot storage path
 
   **What to do**: Implement Worker-side hosted document CRUD, snapshot metadata handling, and R2-backed snapshot/asset storage paths that plug into the `DocumentBackend` abstraction. Support single-user hosted docs first; defer broad sharing UX and permissions.
   **Must NOT do**: Do not attempt broad multi-user sharing or full version-history product features in this task.

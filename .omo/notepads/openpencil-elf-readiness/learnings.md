@@ -46,3 +46,12 @@
 - Task 10 Worker auth adapter shape: `api/src/auth.ts` exports a single boundary — `verifyElfToken(token)` is the only function that needs swapping when live ELF wiring lands. It returns `ElfTokenPayload | null`; currently matches `DEV_STUB_ELF_TOKEN` against a fixed stub. `resolveSession` and `requireSession` remain framework-agnostic, reading cookie/bearer/protocol channels and enforcing conflict detection.
 - Task 10 route protection shape: `/api/session` is open (returns `{user: null}`), `/api/documents`, `/api/documents/:id/snapshot`, and `/api/documents/:id/room` are behind `requireSession()`. Unauthenticated requests fail with `401 {error:'unauthorized', reason:'missing-session'}`.
 - Task 10 13/13 auth tests pass covering cookie-only, bearer-only, protocol-token, same-identity idempotent, identity-conflict rejection, invalid-token rejection, and custom cookie name paths.
+
+## Task 11: Hosted Document CRUD and Snapshot Storage (2026-05-29)
+- R2 write-before-D1 pattern prevents metadata-orphan on storage failure
+- D1 `batch()` is the atomic boundary for snapshot pointer updates
+- `parseFigFile` is async (takes ArrayBuffer); no sync variant exposed from kiwi barrel
+- `DocumentBackendOperationError` uses `code` for machine-readable failure type, message for user display
+- Hosted backend `client` field is optional — enables wiring the client when ELF auth runtime is ready
+- CORS needs POST/PUT/DELETE for full CRUD; was GET/OPTIONS-only in scaffold
+- Mock DB for CRUD tests needs SQL-aware binding matching (WHERE, ORDER BY, LIMIT)

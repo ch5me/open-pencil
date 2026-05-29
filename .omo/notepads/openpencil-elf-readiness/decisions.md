@@ -47,3 +47,12 @@
 - Task 10 adapter decision: `verifyElfToken` in `api/src/auth.ts` is the single swap boundary for live ELF wiring. The rest of the auth layer (`resolveSession`, `requireSession`, token extraction, conflict detection) is framework-agnostic and stays as-is. Live RS256+JWKS verification replaces the body of `verifyElfToken` only.
 - Task 10 route decision: `/api/session` is unprotected (returns `{user: null}` for unauthenticated); all hosted CRUD and room routes use `requireSession()` middleware returning `401` on missing/invalid sessions. This matches the task-6 route gating contract.
 - Task 10 completion: 13/13 auth tests passing, evidence files generated at `.sisyphus/evidence/task-7-worker-auth.txt` and `.sisyphus/evidence/task-7-worker-auth-error.txt`.
+
+## Task 11: Hosted Document CRUD and Snapshot Storage (2026-05-29)
+- Snapshot keys scoped as `documents/{docId}/snapshots/{snapId}.fig` — deterministic, replayable
+- Asset keys scoped as `documents/{docId}/assets/{assetId}` — no extension, media type in metadata
+- Document creation writes R2 first, then D1 metadata in batch transaction — failure leaves no orphan records
+- Save writes new snapshot to R2, then updates document pointer via D1 batch — old snapshot remains for history
+- Delete removes R2 objects then D1 record — CASCADE handles snapshots, assets, migrations
+- HostedClient lives in `src/app/document/io/hosted-client.ts` — thin HTTP wrapper, no DOM deps
+- source.ts accepts optional `backendChoice` — defaults to local, hosted when descriptor+client provided
