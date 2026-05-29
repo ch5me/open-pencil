@@ -58,3 +58,13 @@
   - Bun test does not export `mock` from `bun:test` — use plain functions or `fn` pattern instead
   - `bun:test` rejects `.rejects.toThrow()` when the passed value is an async function (`async () => fn()`); use the returned Promise directly (`expect(fn()).rejects.toThrow()`)
 
+## Task 14: Extend verification lanes, preview deploy flow, and hosted proof commands (2026-05-29)
+  - `hosted-proof.ts` originally used wrong stub token fallback (`dev-stub-elf-token-001` instead of `openpencil-hosted-dev-token`). Proof script must match Worker's `DEV_STUB_ELF_TOKEN` from `api/src/auth.ts`.
+  - `saveHostedDocumentSnapshot` passed `doc.id` (document ID) as `parent_snapshot_id` in the D1 INSERT. Should be `null` — the PUT save path doesn't track snapshot lineage. This caused a foreign key constraint violation (500).
+  - CI workflow: `hosted-proof` job starts wrangler dev in background (`&`) then polls `/health` before running `bun run proof:all`. Works in CI shell without tmux.
+  - `proof:all` combines `proof:flags` (32 checks) + `proof:hosted` (38 checks) = 70 total checks.
+  - `proof:preview` validates Pages deploy accessibility, editor shell, hosted route gating, Worker health, session bootstrap, and flag validation.
+  - api.yml runs `proof:all` against deployed staging Worker after smoke health check.
+  - preview.yml runs `proof:preview` against Pages deploy URL with optional `PREVIEW_API_ORIGIN` for Worker pairing.
+  - Local-first proof lanes (`proof:flags`, `test:unit`, `check`, `test:dupes`) remain intact and unchanged.
+

@@ -1,0 +1,108 @@
+$ bun run proof:flags && bun run proof:hosted
+$ bun scripts/validate-hosted-flags.ts
+
+1. Topology JSON validation
+  PASS: topology version is 1
+  PASS: 4 environments declared
+  PASS: local environment present
+  PASS: preview environment present
+  PASS: staging environment present
+  PASS: production environment present
+
+2. Alignment with .ch5/environments.yaml
+  PASS: envs.yaml declares staging
+  PASS: envs.yaml declares production
+  PASS: envs.yaml declares local
+  PASS: staging apiOrigin matches envs.yaml API URL
+  PASS: production apiOrigin matches envs.yaml API URL
+
+3. Flag dependency constraints (validateHostedConfig)
+  PASS: valid staging config passes validation
+  PASS: collab without auth produces violations
+  PASS: violation mentions hostedAuth requirement
+  PASS: docs without auth produces violations
+  PASS: hosted without apiOrigin produces violation
+  PASS: hostedAuth without callback URL produces violation
+
+4. Operating mode derivation
+  PASS: all off -> local-only
+  PASS: auth only -> hosted-auth-local-docs
+  PASS: auth+docs -> hosted-docs-single-user
+  PASS: all on -> hosted-collab
+
+5. Independent switchability
+  PASS: local: all flags off
+  PASS: preview: auth only
+  PASS: staging: auth+docs
+  PASS: production: auth+docs (collab deferred)
+  PASS: local ≠ preview (independent)
+  PASS: preview ≠ staging (independent)
+
+6. Callback URLs explicit per environment
+  PASS: local: no callback URL
+  PASS: preview: callback URL set
+  PASS: staging: callback URL set
+  PASS: production: callback URL set
+  PASS: staging and production callback URLs differ
+
+--- Results: 32 passed, 0 failed ---
+$ bun scripts/hosted-proof.ts
+
+1. Health endpoint
+  PASS: GET /health → 200
+  PASS: health status is "ok"
+  PASS: health service identity
+  PASS: health includes timestamp
+
+2. Root endpoint (service catalog)
+  PASS: GET / → 200
+  PASS: root service identity
+  PASS: root exposes session endpoint
+  PASS: root exposes documents endpoints
+
+3. Unauthenticated session
+  PASS: GET /api/session → 200 (not 401)
+  PASS: unauthenticated session returns user: null
+  PASS: session mode is unauthenticated
+
+4. Protected routes reject unauthenticated callers
+  PASS: GET /api/documents → 401 without session
+  PASS: GET /api/documents/test-doc/snapshot → 401 without session
+  PASS: GET /api/documents/test-doc/room → 401 without session
+
+5. Authenticated session bootstrap
+  PASS: cookie session → 200
+  PASS: cookie session resolves stub-user-001
+  PASS: bearer session → 200
+  PASS: bearer session resolves stub-user-001
+
+6. Invalid token rejection
+  PASS: invalid token session → 200 (200 with user:null)
+  PASS: invalid token returns user: null
+
+7. Hosted document CRUD
+  PASS: GET /api/documents → 200
+  PASS: document list is an array
+  PASS: POST /api/documents → 201
+  PASS: created documentId matches request
+  PASS: GET snapshot → 200
+  PASS: snapshot document id matches
+  PASS: snapshot bytes match created content
+  PASS: PUT snapshot → 200
+  PASS: save response documentId matches
+  PASS: DELETE document → 200
+  PASS: document deleted successfully
+  PASS: GET deleted snapshot → 404
+
+8. Hosted collab room access
+  PASS: GET room → 200
+  PASS: room documentId matches
+  PASS: room response includes roomId
+  PASS: room status is ok
+  PASS: unauthorized room → 401
+
+9. Feature flag contract validation
+  PASS: validate-hosted-flags exits 0
+
+--- Hosted API Proof: 38 passed, 0 failed ---
+API origin: http://127.0.0.1:8787

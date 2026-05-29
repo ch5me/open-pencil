@@ -25,7 +25,8 @@
  */
 
 const API_ORIGIN = process.env.OPENPENCIL_API_ORIGIN ?? 'http://127.0.0.1:8787'
-const STUB_TOKEN = process.env.DEV_STUB_ELF_TOKEN ?? 'openpencil-hosted-dev-token'
+// Matches api/src/auth.ts DEV_STUB_ELF_TOKEN
+const STUB_TOKEN = process.env.OPENPENCIL_DEV_STUB_TOKEN ?? 'openpencil-hosted-dev-token'
 const ELF_COOKIE = 'ELF_JWT'
 
 let passCount = 0
@@ -131,7 +132,10 @@ console.log('\n6. Invalid token rejection')
 const invalidSession = await request('/api/session', {
   headers: { cookie: `${ELF_COOKIE}=invalid-token-value` }
 })
-assert(invalidSession.status === 200, `invalid token session → ${invalidSession.status} (200 with user:null)`)
+assert(
+  invalidSession.status === 200,
+  `invalid token session → ${invalidSession.status} (200 with user:null)`
+)
 const invalidSessionJson = invalidSession.json()
 assert(invalidSessionJson.user === null, 'invalid token returns user: null')
 

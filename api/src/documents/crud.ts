@@ -186,6 +186,7 @@ export async function saveHostedDocumentSnapshot(
   const reason = request.reason ?? 'manual-save'
 
   // Update D1: insert snapshot row + update document pointer
+  // parent_snapshot_id is null for a fresh PUT save — we don't track snapshot lineage here
   await db.batch([
     db.prepare(
       'INSERT INTO hosted_snapshots (id, document_id, owner_user_id, parent_snapshot_id, storage_key, byte_length, content_hash, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -193,7 +194,7 @@ export async function saveHostedDocumentSnapshot(
       request.snapshotId,
       request.documentId,
       userId,
-      doc.id,
+      null,
       storageKey,
       snapshotBytes.byteLength,
       computeContentHash(snapshotBytes),

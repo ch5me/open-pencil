@@ -65,3 +65,9 @@ jobs:
           done
           echo "Worker did not respond with 200 after 50s"
           exit 1
+
+      - name: Run hosted proof against deployed Worker
+        run: bun run proof:all
+        env:
+          OPENPENCIL_API_ORIGIN: ${{ steps.deploy.outputs.deployment-url }}
+          OPENPENCIL_HOSTED_ENV: staging

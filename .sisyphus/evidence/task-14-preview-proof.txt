@@ -1,0 +1,27 @@
+$ bun scripts/preview-proof.ts
+
+1. Preview URL accessibility
+  PASS: GET / → 200
+  PASS: response contains HTML
+
+2. Editor shell presence
+  PASS: Vue app mount point present
+
+3. Local-only route accessibility
+  PASS: root route loads without auth requirement
+
+4. Hosted route gating (preview = no live session)
+  PASS: /hosted → 200 (redirect=false, local-mode=true)
+
+5. Worker health check
+  PASS: Worker health reports ok
+
+6. Session bootstrap on preview
+  PASS: session returns user: null without credentials
+
+7. Feature flag resolution
+  PASS: feature flags validate for preview mode (exit 0)
+
+--- Preview Deploy Proof: 8 passed, 0 failed ---
+Preview URL: http://localhost:1420
+API origin: http://127.0.0.1:8787

@@ -50,7 +50,10 @@ assert(root.text.includes('<html') || root.text.includes('<!DOCTYPE'), 'response
 // 2. Editor shell loads
 // ---------------------------------------------------------------------------
 console.log('\n2. Editor shell presence')
-assert(root.text.includes('id="app"') || root.text.includes('data-v-app'), 'Vue app mount point present')
+assert(
+  root.text.includes('id="app"') || root.text.includes('data-v-app'),
+  'Vue app mount point present'
+)
 
 // ---------------------------------------------------------------------------
 // 3. Local-only routes accessible
@@ -115,7 +118,10 @@ try {
     stdio: ['inherit', 'pipe', 'pipe'],
     env: { ...process.env, OPENPENCIL_HOSTED_ENV: 'preview' }
   })
-  assert(flagResult.status === 0, `feature flags validate for preview mode (exit ${flagResult.status})`)
+  assert(
+    flagResult.status === 0,
+    `feature flags validate for preview mode (exit ${flagResult.status})`
+  )
 } catch {
   console.log('  SKIP: feature flag validation (bun spawn unavailable)')
 }

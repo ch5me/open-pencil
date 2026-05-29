@@ -79,3 +79,9 @@ jobs:
           done
           echo "Preview URL did not respond with 200 after 45s"
           exit 1
+
+      - name: Run preview proof (hosted auth + flag validation)
+        run: bun run proof:preview
+        env:
+          OPENPENCIL_PREVIEW_URL: ${{ steps.deploy.outputs.deployment-url }}
+          OPENPENCIL_PREVIEW_API_ORIGIN: ${{ vars.PREVIEW_API_ORIGIN || 'http://127.0.0.1:8787' }}
