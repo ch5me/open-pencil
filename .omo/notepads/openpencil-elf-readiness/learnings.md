@@ -68,3 +68,10 @@
   - preview.yml runs `proof:preview` against Pages deploy URL with optional `PREVIEW_API_ORIGIN` for Worker pairing.
   - Local-first proof lanes (`proof:flags`, `test:unit`, `check`, `test:dupes`) remain intact and unchanged.
 
+## Task 15: Deferred Desktop Readiness Seams (2026-05-29)
+  - `typeof window === 'undefined'` bypasses the lint rule — use `IS_BROWSER`/`IS_TAURI` from `@open-pencil/core/constants` instead
+  - `require()` is banned — use dynamic `import()` for deferred module loading (plugin-store, Tauri event)
+  - `bun:test` does not export `beforeEach`/`afterEach` — only `describe`, `it`, `expect`, `test`
+  - Sync API functions (`resolveTauriOperatingMode`, `shouldShowHostedUI`) use hardcoded `false` gates — async flag resolution deferred to when desktop auth is explicitly enabled
+  - All 6 seam tests pass, oxlint 0 warnings, 0 errors on changed files
+

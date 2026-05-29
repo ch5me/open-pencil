@@ -56,3 +56,12 @@
 - Delete removes R2 objects then D1 record — CASCADE handles snapshots, assets, migrations
 - HostedClient lives in `src/app/document/io/hosted-client.ts` — thin HTTP wrapper, no DOM deps
 - source.ts accepts optional `backendChoice` — defaults to local, hosted when descriptor+client provided
+
+## Task 15: Deferred Desktop Readiness Seams (2026-05-29)
+  - Deep-link scheme: `DESKTOP_CALLBACK_SCHEME = 'openpencil'` constant for Tauri deep-link registration
+  - Bearer token storage: `storeBearerToken`/`readBearerToken`/`clearBearerToken` via deferred `@tauri-apps/plugin-store` import with `TauriStoreInstance`/`TauriStoreLoader` interfaces declared in `plugin-store.d.ts`
+  - Operating mode: `resolveTauriOperatingMode()` returns `'local-file' | 'hosted-docs' | 'hosted-collab'`, defaults `'local-file'`
+  - Gate strategy: `isDesktopHostedAuthEnabled()` and `isDesktopHostedDocsEnabled()` are hardcoded `false` until desktop auth task enables them — sync API stays sync
+  - Auth callback: `registerDesktopAuthCallback(onCallback)` listens to `scheme-request-received` Tauri event when enabled
+  - Desktop is never dependent on hosted mode — local-file remains the only active path
+
