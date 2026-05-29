@@ -24,6 +24,8 @@
  * 16. Feature flag contract validated via scripts/validate-hosted-flags.ts
  */
 
+export {} // Force TypeScript module mode (top-level await in script)
+
 const API_ORIGIN = process.env.OPENPENCIL_API_ORIGIN ?? 'http://127.0.0.1:8787'
 // Matches api/src/auth.ts DEV_STUB_ELF_TOKEN
 const STUB_TOKEN = process.env.OPENPENCIL_DEV_STUB_TOKEN ?? 'openpencil-hosted-dev-token'

@@ -12,9 +12,12 @@
  *  7. Feature flags resolve to preview mode
  *
  * Usage:
- *   OPENPENCIL_PREVIEW_URL=https://<hash>.openpencil.pages.dev bun scripts/preview-proof.ts
+ *   bun scripts/preview-proof.ts
+ *   https://<hash>.openpencil.pages.dev bun scripts/preview-proof.ts
  *   OPENPENCIL_PREVIEW_URL=http://localhost:1420 bun scripts/preview-proof.ts
  */
+
+export {} // Force TypeScript module mode (top-level await in script)
 
 const PREVIEW_URL = process.env.OPENPENCIL_PREVIEW_URL ?? 'http://localhost:1420'
 const API_ORIGIN = process.env.OPENPENCIL_PREVIEW_API_ORIGIN ?? 'http://127.0.0.1:8787'

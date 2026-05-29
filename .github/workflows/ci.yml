@@ -80,7 +80,8 @@ jobs:
 
       - name: Start API Worker (preview mode)
         working-directory: api
-        run: npx wrangler dev --env preview --port 8787 &
+        run: |
+          npx wrangler dev --env preview --port 8787 &
           WRANGLER_PID=$!
           echo "WRANGLER_PID=$WRANGLER_PID" >> $GITHUB_ENV
           echo "Waiting for Worker..."

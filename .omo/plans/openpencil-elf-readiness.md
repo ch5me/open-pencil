@@ -655,7 +655,7 @@ Wave 7: deferred desktop readiness and final integration cleanup
 
   **Commit**: YES | Message: `feat(collab): persist hosted room state and reconnect flows` | Files: `api/`, collab persistence code, tests
 
-- [ ] 14. Extend verification lanes, preview deploy flow, and hosted proof commands
+- [x] 14. Extend verification lanes, preview deploy flow, and hosted proof commands
 
   **What to do**: Extend the repo’s existing proof lanes with hosted/API-specific checks: Worker tests, hosted document CRUD tests, hosted collaboration e2e, preview deploy validation, and environment-aware smoke checks. Add API deployment workflow(s) aligned with current Pages preview/staging/prod behavior.
   **Must NOT do**: Do not rely on manual visual-only verification or ad hoc local-only commands.
