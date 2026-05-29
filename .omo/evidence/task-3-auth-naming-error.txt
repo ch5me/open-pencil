@@ -1,6 +1,0 @@
-Task 3 naming doctrine consistency check: PASS
-External/public auth surfaces: ELF only by doctrine.
-Internal Firefly usage: allowed only when implementation-private and translated at public boundary.
-Legacy Kilo usage: no new public surfaces; existing references are rename-matrix or historical stale-spec inputs.
-Compatibility rule: read legacy only at migration edges; write canonical ELF.
-Failures: none

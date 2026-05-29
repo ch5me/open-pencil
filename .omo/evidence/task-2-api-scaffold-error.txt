@@ -1,1 +1,0 @@
-No errors encountered during task 2 scaffold creation.

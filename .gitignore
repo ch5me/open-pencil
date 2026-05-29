@@ -48,6 +48,8 @@ vue-stream-markdown/
 
 # Agent scratch space (reviews, test artifacts)
 scratch/
+.omo/
+.beads*/
 
 # Build manifests (deployment artifacts)
 .build-manifests/

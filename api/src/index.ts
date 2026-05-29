@@ -25,6 +25,33 @@ export interface Env {
 
 const app = new Hono<{ Bindings: Env }>()
 
+app.use(async (c, next) => {
+  const start = Date.now()
+  try {
+    await next()
+  } finally {
+    const latencyMs = Date.now() - start
+    const statusCode = c.res.status
+    console.log(JSON.stringify({
+      event: 'request.completed',
+      method: c.req.method,
+      path: c.req.path,
+      statusCode,
+      latencyMs
+    }))
+  }
+})
+
+app.onError((err, c) => {
+  console.error(JSON.stringify({
+    event: 'request.failed',
+    method: c.req.method,
+    path: c.req.path,
+    error: err instanceof Error ? err.message : String(err)
+  }))
+  return c.json({ error: 'internal-server-error' }, 500)
+})
+
 const allowedOrigins = new Set([
   'https://design.elf.dance',
   'https://staging.design.elf.dance',

@@ -1,9 +1,0 @@
-task-1 hosted operating modes validation: PASS
-contract: packages/docs/development/hosted-operating-modes.md
-modes: local-only | hosted-auth + local-docs | hosted-docs single-user | hosted-collab
-identities: user.id | document.id | room.id | asset.id | snapshot.id
-room: deterministic derivation from document.id, not equal to document.id
-local import/promote: explicit .fig/.pen hosted create/import/promote only
-auth: cookie-first web, bearer non-browser/API, conflict rejected
-cross-links: packages/docs/.vitepress/sidebars.ts and AGENTS.md
-notepads: learnings.md and decisions.md appended
