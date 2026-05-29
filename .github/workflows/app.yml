@@ -37,7 +37,7 @@ jobs:
         run: bun run format:check
 
       - name: Build candidate
-        run: bun run build
+        run: bun run build:packages && vite build
 
       - name: Record staging manifest
         run: bun run release:candidate
