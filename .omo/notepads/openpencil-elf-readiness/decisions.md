@@ -22,3 +22,12 @@
 - Task 8 docs location: `packages/docs/development/hosted-environment-topology.md`, linked from the development sidebar, is the code-facing environment topology and flag contract.
 
 - Task 9 deprecation decision: `firefly-cloud/packages/elf-auth-client/` directory retained but empty (node_modules only) — full removal deferred to Firefly Cloud repo cleanup. `elf-auth-topology.md` declares it deprecated/removed, and no consumers import from the unscoped path. Public API response shapes in Firefly docs (cutover runbook) use `elfUserId` per ELF naming doctrine.
+
+- Task 6 cookie name decision: default cookie name is `ELF_JWT` constant (`ELF_JWT_COOKIE`). Overridable via `cookieName` option for migration paths.
+- Task 6 route gating decision: `/api/session` calls `resolveSession` directly (no middleware), returns `{user: null}` for unauthenticated. `/api/documents` and `/api/documents/:documentId/room` use `requireSession()` (returns 401). Room endpoint additionally verifies document ownership before handing out room stubs.
+- Task 6 frontend session composable: `src/app/hosted/session.ts` provides reactive session state (`refreshSession()`, `isAuthenticated()`, `useSession()`) consumed by `EditorView.vue` on mount when `isHostedAuthEnabled()` is true.
+- Task 6 route guard decision: `/hosted` and `/hosted/:documentId` routes have `beforeEnter` guards that check both `isHostedAuthEnabled()` and `isAuthenticated()`, redirecting to `/` if either fails. Local-only routes remain accessible without authentication.
+- Task 6 stub verifier decision: `verifyElfToken` returns fixed `stub-user-001` with 1-hour expiry for any non-empty token. Tests cover all resolution paths. Real RS256+JWKS verification replaces this function only.
+- Task 6 credential sources: `resolveSession` reads three transport channels — cookie (`ELF_JWT`), Authorization header (`Bearer <token>`), and WebSocket protocol (`bearer.<token>`). All must resolve to the same token value; mixed credentials → identity-conflict.
+- Task 6 SessionResult includes token: authenticated result carries the resolved token string for downstream use (e.g., WebSocket auth, room joins).
+- Task 6 completion: 13/13 auth tests passing, 3/3 Playwright route gating tests passing, evidence files regenerated (`.sisyphus/evidence/task-4-web-auth.png` valid PNG, `.sisyphus/evidence/task-4-web-auth-error.txt` contains passing test output). All acceptance criteria met.
