@@ -30,6 +30,9 @@ jobs:
 
       - uses: ./.github/actions/setup-bun
 
+      - name: Install oxlint
+        run: bun add -g oxlint
+
       - name: Format check
         run: bun run format:check
 
