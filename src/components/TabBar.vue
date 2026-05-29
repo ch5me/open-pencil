@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
+import { computed } from 'vue'
 
-import Tip from '@/components/ui/Tip.vue'
-import { useTabsStore, createTab } from '@/app/tabs'
 import { useI18n } from '@open-pencil/vue'
+
+import { useTabsStore, createTab } from '@/app/tabs'
+import Tip from '@/components/ui/Tip.vue'
 
 const { dialogs } = useI18n()
 

@@ -4,7 +4,7 @@
 
 ### Test 1: No hosted auth callback path active when gate is off
 - `registerDesktopAuthCallback()` returns no-op cleanup function immediately
-- Does not attempt to import `@tauri-apps/api/event` when `isHostedAuthEnabled()` is false
+- Does not attempt to import `@tauri-apps/api/event` when `isDesktopHostedAuthEnabled()` is false
 - No Tauri event listeners registered
 
 ### Test 2: No bearer token storage attempted when gate is off
@@ -17,8 +17,12 @@
 - `shouldShowHostedUI()` returns `false` — no hosted UI surfaces leak
 
 ### Test 4: Plugin-store module deferred correctly
-- `loadStoreModule()` returns `null` when not in Tauri environment
+- `loadStore()` returns `null` when not in Tauri environment
 - No runtime errors from missing `@tauri-apps/plugin-store` package
-- TypeScript types declared via deferred `.d.ts` augmentation
+- TypeScript types declared via deferred `.d.ts` augmentation in `plugin-store.d.ts`
+
+### Test 5: Oxlint clean on changed files
+- `npx oxlint -c oxlint.json --type-aware --type-check src/app/tauri/ tests/unit/tauri-hosted-seams.test.ts`
+- Result: 0 warnings, 0 errors
 
 ### Result: All failure paths safe — no hosted auth or bearer flow attempts when feature gates are off

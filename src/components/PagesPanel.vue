@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
 import { templateRef } from '@vueuse/core'
+import { ref, watch } from 'vue'
 
 import { PageListRoot, useI18n, useInlineRename } from '@open-pencil/vue'
 

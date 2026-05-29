@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { useGradientStops } from '#vue/primitives/GradientEditor/useGradientStops'
-
 import type { Fill } from '@open-pencil/core/scene-graph'
+
+import { useGradientStops } from '#vue/primitives/GradientEditor/useGradientStops'
 
 const { fill } = defineProps<{ fill: Fill }>()
 const emit = defineEmits<{ update: [fill: Fill] }>()

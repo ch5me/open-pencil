@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
+import { ref } from 'vue'
 
 import { useI18n } from '@open-pencil/vue'
 

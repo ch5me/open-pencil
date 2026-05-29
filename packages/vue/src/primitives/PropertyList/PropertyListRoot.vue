@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { useEditor } from '#vue/editor/context'
+import type { Effect, Fill, SceneNode, Stroke } from '@open-pencil/core/scene-graph'
+
 import { useNodeProps } from '#vue/controls/node-props/use'
 import { useUndoBatch } from '#vue/controls/undo-batch/use'
+import { useEditor } from '#vue/editor/context'
 import { useSceneComputed } from '#vue/internal/scene-computed/use'
 import { providePropertyList } from '#vue/primitives/PropertyList/context'
-
-import type { Effect, Fill, SceneNode, Stroke } from '@open-pencil/core/scene-graph'
 
 type ArrayPropKey = 'fills' | 'strokes' | 'effects'
 type ArrayItemType = Fill | Stroke | Effect

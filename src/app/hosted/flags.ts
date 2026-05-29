@@ -120,7 +120,7 @@ function resolveFlag(env: HostedEnv, flagKey: keyof HostedFeatureFlags, envVar: 
 function resolveString(
   env: HostedEnv,
   key: Extract<keyof HostedEnvironmentConfig, 'apiOrigin' | 'authCallbackUrl' | 'appUrl'>,
-  envVar: string,
+  envVar: string
 ): string {
   const forced = window.openPencil?.test?.forceHostedCollab
   if (forced && key === 'apiOrigin') {

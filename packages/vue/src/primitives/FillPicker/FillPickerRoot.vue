@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-
-import { useFillPicker } from '#vue/primitives/FillPicker/useFillPicker'
+import { computed } from 'vue'
 
 import type { Fill } from '@open-pencil/core/scene-graph'
+
+import { useFillPicker } from '#vue/primitives/FillPicker/useFillPicker'
 
 export interface FillPickerUi {
   content?: string

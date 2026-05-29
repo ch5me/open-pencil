@@ -10,6 +10,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@ch5me/elf-auth-client": "file:../../ch5-packages/packages/auth/elf-auth-client",
     "hono": "^4.12.5"
   },
   "devDependencies": {

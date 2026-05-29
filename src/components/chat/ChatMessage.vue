@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { isTextUIPart, isToolUIPart, getToolName } from 'ai'
+import type { UIDataTypes, UIMessage, UIMessagePart, UITools } from 'ai'
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui'
 import { Markdown } from 'vue-stream-markdown'
-import { vTestId } from '@open-pencil/vue'
+
 import 'vue-stream-markdown/index.css'
 
-import type { UIDataTypes, UIMessage, UIMessagePart, UITools } from 'ai'
+import { vTestId } from '@open-pencil/vue'
 
 const { message } = defineProps<{ message: UIMessage }>()
 

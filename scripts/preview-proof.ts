@@ -127,7 +127,9 @@ try {
 if (workerAvailable) {
   console.log('\n7. Session bootstrap on preview Worker')
   try {
-    const sessionRes = await fetch(`${API_ORIGIN}/api/session`, { signal: AbortSignal.timeout(5000) })
+    const sessionRes = await fetch(`${API_ORIGIN}/api/session`, {
+      signal: AbortSignal.timeout(5000)
+    })
     if (sessionRes.status === 200) {
       const sessionJson = await sessionRes.json()
       assert(sessionJson.user === null, 'session returns user: null without credentials')

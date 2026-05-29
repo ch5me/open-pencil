@@ -1,11 +1,12 @@
-import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
+import { describe, expect, it } from 'bun:test'
+
 import {
   resolveTauriOperatingMode,
   shouldShowHostedUI,
   storeBearerToken,
   readBearerToken,
   clearBearerToken,
-  DESKTOP_CALLBACK_SCHEME,
+  DESKTOP_CALLBACK_SCHEME
 } from '@/app/tauri/hosted'
 
 describe('tauri/hosted - disabled seams', () => {

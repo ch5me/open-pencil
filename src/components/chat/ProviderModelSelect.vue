@@ -9,9 +9,9 @@ import {
   SelectViewport
 } from 'reka-ui'
 
+import { useAIChat } from '@/app/ai/chat/use'
 import AppBadge from '@/components/ui/AppBadge.vue'
 import { useSelectUI } from '@/components/ui/select'
-import { useAIChat } from '@/app/ai/chat/use'
 
 const { modelID, providerDef } = useAIChat()
 const selectCls = useSelectUI({

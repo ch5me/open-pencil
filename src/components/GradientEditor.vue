@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import AppSelect from './ui/AppSelect.vue'
-import Tip from './ui/Tip.vue'
-import ColorPickerPanel from '@/components/ColorPickerPanel/ColorPickerPanel.vue'
-import ScrubInput from './ScrubInput.vue'
 import { colorToCSS } from '@open-pencil/core/color'
+import type { Fill } from '@open-pencil/core/scene-graph'
 import {
   GradientEditorRoot,
   GradientEditorBar,
@@ -12,7 +9,11 @@ import {
   useI18n
 } from '@open-pencil/vue'
 
-import type { Fill } from '@open-pencil/core/scene-graph'
+import ColorPickerPanel from '@/components/ColorPickerPanel/ColorPickerPanel.vue'
+
+import ScrubInput from './ScrubInput.vue'
+import AppSelect from './ui/AppSelect.vue'
+import Tip from './ui/Tip.vue'
 
 const { fill } = defineProps<{ fill: Fill }>()
 const emit = defineEmits<{ update: [fill: Fill] }>()

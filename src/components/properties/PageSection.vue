@@ -2,10 +2,10 @@
 import { computed } from 'vue'
 
 import { useI18n } from '@open-pencil/vue'
-import ColorInput from '@/components/ColorPicker/ColorInput.vue'
-import { useSectionUI } from '@/components/ui/section'
 
 import { useEditorStore } from '@/app/editor/active-store'
+import ColorInput from '@/components/ColorPicker/ColorInput.vue'
+import { useSectionUI } from '@/components/ui/section'
 
 const editor = useEditorStore()
 const pageColor = computed(() => editor.state.pageColor)

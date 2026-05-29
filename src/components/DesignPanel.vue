@@ -3,9 +3,8 @@ import { computed, ref } from 'vue'
 
 import { useI18n, useSelectionState, useEditorCommands } from '@open-pencil/vue'
 
-import VariablesDialog from './VariablesDialog.vue'
-import BooleanOperationsControl from './properties/BooleanOperationsControl.vue'
 import AppearanceSection from './properties/AppearanceSection.vue'
+import BooleanOperationsControl from './properties/BooleanOperationsControl.vue'
 import EffectsSection from './properties/EffectsSection.vue'
 import ExportSection from './properties/ExportSection.vue'
 import FillSection from './properties/FillSection.vue'
@@ -16,6 +15,7 @@ import StrokeSection from './properties/StrokeSection.vue'
 import TypographySection from './properties/TypographySection.vue'
 import VariablesSection from './properties/VariablesSection.vue'
 import VariantSection from './properties/VariantSection.vue'
+import VariablesDialog from './VariablesDialog.vue'
 
 const variablesOpen = ref(false)
 const { selectedNode: node, selectedCount: multiCount } = useSelectionState()

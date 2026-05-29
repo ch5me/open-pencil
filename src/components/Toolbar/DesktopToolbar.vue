@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import Tip from '@/components/ui/Tip.vue'
+import type { EditorToolDef } from '@open-pencil/core/editor'
+import { toolbarToolTestId, ToolbarItem } from '@open-pencil/vue'
+import type { Tool } from '@open-pencil/vue'
+
 import ToolButton from '@/components/Toolbar/ToolButton.vue'
 import ToolFlyout from '@/components/Toolbar/ToolFlyout.vue'
-import { toolbarToolTestId, ToolbarItem } from '@open-pencil/vue'
-
-import type { Tool } from '@open-pencil/vue'
-import type { EditorToolDef } from '@open-pencil/core/editor'
 import type { ToolbarUi, ToolIconMap, ToolLabels } from '@/components/Toolbar/types'
+import Tip from '@/components/ui/Tip.vue'
 
 const { tools, activeTool, toolIcons, toolLabels, toolShortcuts, ui } = defineProps<{
   tools: EditorToolDef[]

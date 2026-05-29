@@ -1,19 +1,18 @@
 <script setup lang="ts">
+import type { Fill, SceneNode } from '@open-pencil/core/scene-graph'
 import { PropertyListRoot, useFillControls, useOkHCL, useI18n } from '@open-pencil/vue'
 
 import FillPicker from '@/components/FillPicker.vue'
-import Tip from '@/components/ui/Tip.vue'
-import ColorStyleRow from '@/components/properties/ColorStyleRow.vue'
 import {
   boundVariableSwatchBackground,
   displayFillWithBoundVariable
 } from '@/components/properties/color-style-row'
+import ColorStyleRow from '@/components/properties/ColorStyleRow.vue'
 import { fillLabel } from '@/components/properties/fill-label'
 import { createFillOkhclAdapter } from '@/components/properties/fill-okhcl'
 import { useIconButtonUI } from '@/components/ui/icon-button'
 import { useSectionUI } from '@/components/ui/section'
-
-import type { Fill, SceneNode } from '@open-pencil/core/scene-graph'
+import Tip from '@/components/ui/Tip.vue'
 
 const fillCtx = useFillControls()
 const okhcl = useOkHCL()

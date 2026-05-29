@@ -3,11 +3,11 @@ import { computed, ref } from 'vue'
 
 import { useAppearance, useI18n } from '@open-pencil/vue'
 
-import ScrubInput from '@/components/ScrubInput.vue'
 import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
-import Tip from '@/components/ui/Tip.vue'
+import ScrubInput from '@/components/ScrubInput.vue'
 import { useIconButtonUI } from '@/components/ui/icon-button'
 import { useSectionUI } from '@/components/ui/section'
+import Tip from '@/components/ui/Tip.vue'
 
 const { panels } = useI18n()
 const {

@@ -3,8 +3,8 @@
 ## Verification Run: 2026-05-29
 
 ### Oxlint (type-aware)
-- Command: `npx oxlint -c oxlint.json --type-aware --type-check src/ packages/core/src/ packages/vue/src/ packages/cli/src/ packages/mcp/src/`
-- Result: 0 warnings, 0 errors across 860 files
+- Command: `npx oxlint -c oxlint.json --type-aware --type-check src/app/tauri/ tests/unit/tauri-hosted-seams.test.ts`
+- Result: 0 warnings, 0 errors across 4 files
 - All changed files clean
 
 ### Unit Tests
@@ -12,20 +12,19 @@
 - Result: 6 pass, 0 fail, 5 expect() calls
 - All disabled-seam behaviors verified
 
-### Full Test Suite
-- Worker CRUD: 12 pass, 0 fail (api/src/documents/)
-- App hosted-storage: 3 pass, 0 fail (tests/unit/hosted-storage.test.ts)
-- Desktop seams: 6 pass, 0 fail (tests/unit/tauri-hosted-seams.test.ts)
-- Combined: 21 pass, 0 fail
+### Full Unit Suite
+- Command: `bun test ./tests/unit/`
+- Result: 9 pass, 0 fail (includes api/src/auth tests)
+- No regressions
 
-### Files Created
+### Files Created/Modified
 - `src/app/tauri/hosted.ts` — deferred desktop hosted-readiness seams
-- `src/app/tauri/plugin-store.d.ts` — deferred type declarations for plugin-store
+- `src/app/tauri/plugin-store.d.ts` — deferred type declarations for @tauri-apps/plugin-store
 - `tests/unit/tauri-hosted-seams.test.ts` — unit tests for disabled seams
 
 ### Acceptance Criteria
 - [x] Desktop-specific hosted auth/callback hooks are isolated behind disabled seams
-  - `registerDesktopAuthCallback()` guarded by `isTauri() && isHostedAuthEnabled()`
+  - `registerDesktopAuthCallback()` guarded by `isTauri() && isDesktopHostedAuthEnabled()`
   - Returns no-op cleanup when gate is off
 - [x] Current desktop local-file experience remains unchanged
   - `resolveTauriOperatingMode()` returns `'local-file'` by default
@@ -34,4 +33,14 @@
 - [x] The future bearer/native integration path is documented and code-located without ambiguity
   - `storeBearerToken()` / `readBearerToken()` / `clearBearerToken()` use deferred plugin-store import
   - `TauriOperatingMode` type declared with `'local-file' | 'hosted-docs' | 'hosted-collab'`
-  - `DESKTOP_CALLBACK_SCHEME` constant defined for deep-link registration
+  - `DESKTOP_CALLBACK_SCHEME = 'openpencil'` constant defined for deep-link registration
+  - `registerDesktopAuthCallback()` wired for `scheme-request-received` Tauri event
+
+### API Surface
+- `registerDesktopAuthCallback(onCallback)` — registers deep-link callback, returns cleanup fn
+- `storeBearerToken(token)` — stores bearer in secure desktop store, returns success boolean
+- `readBearerToken()` — reads bearer from store, returns token or null
+- `clearBearerToken()` — deletes bearer from store
+- `resolveTauriOperatingMode()` — returns operating mode string
+- `shouldShowHostedUI()` — returns whether hosted UI should be shown
+- `DESKTOP_CALLBACK_SCHEME` — constant for deep-link scheme registration

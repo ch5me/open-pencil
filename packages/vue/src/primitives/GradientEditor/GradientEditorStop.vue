@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { colorToCSS, colorToHexRaw } from '@open-pencil/core/color'
 
+import { colorToCSS, colorToHexRaw } from '@open-pencil/core/color'
 import type { GradientStop } from '@open-pencil/core/scene-graph'
 
 const { stop, index, active } = defineProps<{

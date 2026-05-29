@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FontPickerRoot } from '@open-pencil/vue'
 
-import { useSelectUI } from '@/components/ui/select'
-import { usePopoverUI } from '@/components/ui/popover'
+import { FontPickerRoot } from '@open-pencil/vue'
+import type { FontPickerUi } from '@open-pencil/vue'
+
 import {
   listFamilies,
   loadFont,
   localFontAccessState,
   requestLocalFontAccess
 } from '@/app/editor/fonts'
-
-import type { FontPickerUi } from '@open-pencil/vue'
+import { usePopoverUI } from '@/components/ui/popover'
+import { useSelectUI } from '@/components/ui/select'
 
 const modelValue = defineModel<string>({ required: true })
 const emit = defineEmits<{ select: [family: string] }>()

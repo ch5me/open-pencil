@@ -2,9 +2,9 @@
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 
 import ConnectedRoom from '@/components/CollabPanel/ConnectedRoom.vue'
+import { useCollabPanelContext } from '@/components/CollabPanel/context'
 import JoinRoomPrompt from '@/components/CollabPanel/JoinRoomPrompt.vue'
 import ShareOrJoinRoom from '@/components/CollabPanel/ShareOrJoinRoom.vue'
-import { useCollabPanelContext } from '@/components/CollabPanel/context'
 import { usePopoverUI } from '@/components/ui/popover'
 
 const collab = useCollabPanelContext()

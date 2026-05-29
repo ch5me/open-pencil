@@ -3,14 +3,14 @@ import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui'
 
 import { TypographyControlsRoot, useI18n } from '@open-pencil/vue'
 
+import { loadFont } from '@/app/editor/fonts'
+import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
 import FontPicker from '@/components/FontPicker.vue'
 import FontSettingsPopover from '@/components/FontSettings/FontSettingsPopover.vue'
 import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
 import AppSelect from '@/components/ui/AppSelect.vue'
-import Tip from '@/components/ui/Tip.vue'
 import { useSectionUI } from '@/components/ui/section'
-import { loadFont } from '@/app/editor/fonts'
-import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
+import Tip from '@/components/ui/Tip.vue'
 
 const { panels, menu } = useI18n()
 const sectionCls = useSectionUI()

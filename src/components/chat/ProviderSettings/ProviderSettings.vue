@@ -11,15 +11,16 @@ import {
   TooltipTrigger
 } from 'reka-ui'
 import { ref } from 'vue'
+
 import { useI18n } from '@open-pencil/vue'
 
+import ProviderSelectField from '@/components/chat/ProviderSelect/ProviderSelectField.vue'
 import ApiKeySection from '@/components/chat/ProviderSettings/ApiKeySection.vue'
 import ApiTypeSection from '@/components/chat/ProviderSettings/ApiTypeSection.vue'
+import { provideProviderSettings } from '@/components/chat/ProviderSettings/context'
 import CustomEndpointSection from '@/components/chat/ProviderSettings/CustomEndpointSection.vue'
 import MaxTokensSection from '@/components/chat/ProviderSettings/MaxTokensSection.vue'
-import ProviderSelectField from '@/components/chat/ProviderSelect/ProviderSelectField.vue'
 import StockPhotoKeysSection from '@/components/chat/ProviderSettings/StockPhotoKeysSection.vue'
-import { provideProviderSettings } from '@/components/chat/ProviderSettings/context'
 import { usePopoverUI } from '@/components/ui/popover'
 import { useTooltipUI } from '@/components/ui/tooltip'
 

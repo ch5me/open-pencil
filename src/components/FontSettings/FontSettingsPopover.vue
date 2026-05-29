@@ -2,12 +2,13 @@
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 import { onMounted } from 'vue'
 
+import { useI18n } from '@open-pencil/vue'
+
 import { isTauri } from '@/app/tauri/env'
 import { useFontSettings } from '@/components/FontSettings/use'
-import { useI18n } from '@open-pencil/vue'
-import Tip from '@/components/ui/Tip.vue'
 import { useButtonUI } from '@/components/ui/button'
 import { usePopoverUI } from '@/components/ui/popover'
+import Tip from '@/components/ui/Tip.vue'
 
 const { dialogs } = useI18n()
 const cls = usePopoverUI({ content: 'isolate z-[51] w-80 p-3' })

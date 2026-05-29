@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { proxyRefs } from 'vue'
+
 import { useLayout } from '#vue/controls/layout/use'
 import { provideLayoutControls } from '#vue/primitives/LayoutControls/context'
-import { proxyRefs } from 'vue'
 
 const ctx = useLayout()
 const actions = {

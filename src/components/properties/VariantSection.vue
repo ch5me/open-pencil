@@ -3,9 +3,9 @@ import { computed } from 'vue'
 
 import { useI18n, useSelectionState } from '@open-pencil/vue'
 
+import { useEditorStore } from '@/app/editor/active-store'
 import AppSelect from '@/components/ui/AppSelect.vue'
 import { useSectionUI } from '@/components/ui/section'
-import { useEditorStore } from '@/app/editor/active-store'
 
 const editor = useEditorStore()
 const { selectedNode: node } = useSelectionState()

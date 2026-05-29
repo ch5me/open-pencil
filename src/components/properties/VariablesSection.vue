@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import Tip from '@/components/ui/Tip.vue'
-import { useSectionUI } from '@/components/ui/section'
 import { useI18n, useSceneComputed } from '@open-pencil/vue'
 
 import { useEditorStore } from '@/app/editor/active-store'
+import { useSectionUI } from '@/components/ui/section'
+import Tip from '@/components/ui/Tip.vue'
 
 const emit = defineEmits<{ openDialog: [] }>()
 

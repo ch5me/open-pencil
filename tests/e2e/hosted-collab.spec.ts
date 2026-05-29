@@ -40,7 +40,7 @@ type TestWindow = Window & {
         y: number,
         width: number,
         height: number,
-        parentId?: string,
+        parentId?: string
       ) => string
       requestRender?: () => void
       state: { currentPageId: string; remoteCursors: unknown[]; documentName?: string }
@@ -59,7 +59,7 @@ async function seedHostedMode(page: import('@playwright/test').Page, clientLabel
       testWindow.openPencil.test.forceHostedCollab = true
       testWindow.openPencil.test.hostedCollabTest = { clientLabel }
     },
-    { apiOrigin: API_ORIGIN, token: STUB_TOKEN, clientLabel },
+    { apiOrigin: API_ORIGIN, token: STUB_TOKEN, clientLabel }
   )
 }
 
@@ -131,23 +131,26 @@ async function composeProofScreenshot(options: {
     },
     {
       alpha: `data:image/png;base64,${alphaShot.toString('base64')}`,
-      beta: `data:image/png;base64,${betaShot.toString('base64')}`,
-    },
+      beta: `data:image/png;base64,${betaShot.toString('base64')}`
+    }
   )
   await expect(proofPage.locator('#alpha')).toBeVisible()
   await expect(proofPage.locator('#beta')).toBeVisible()
-  await proofPage.screenshot({ path: '.sisyphus/evidence/task-10-collab-durability.png', fullPage: true })
+  await proofPage.screenshot({
+    path: '.sisyphus/evidence/task-10-collab-durability.png',
+    fullPage: true
+  })
   await proofPage.close()
 }
 
 function escapeHtml(value: string) {
-  return value
-    .split('&').join('&amp;')
-    .split('<').join('&lt;')
-    .split('>').join('&gt;')
+  return value.split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;')
 }
 
-test('hosted collab durable-object room syncs two clients and rejects unauthorized join', async ({ browser, request }) => {
+test('hosted collab durable-object room syncs two clients and rejects unauthorized join', async ({
+  browser,
+  request
+}) => {
   const unauthorized = await request.get(`${API_ORIGIN}/api/documents/${DOCUMENT_ID}/room`)
   expect(unauthorized.status()).toBe(401)
   const unauthorizedText = await unauthorized.text()
@@ -246,7 +249,7 @@ test('hosted collab durable-object room syncs two clients and rejects unauthoriz
     unauthorizedText,
     childCount: 1,
     remoteCursorCount: alphaRemoteCursors,
-    reconnectSummary,
+    reconnectSummary
   })
 
   alphaCanvas.assertNoErrors()

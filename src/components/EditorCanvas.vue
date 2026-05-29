@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import { computed, ref, type Component } from 'vue'
-import {
-  AUTO_LAYOUT_PADDING_EDITOR_OFFSET_X,
-  AUTO_LAYOUT_PADDING_EDITOR_OFFSET_Y
-} from '@open-pencil/core/constants'
 import {
   ContextMenuPortal,
   ContextMenuRoot,
@@ -12,7 +7,16 @@ import {
   PopoverPortal,
   PopoverRoot
 } from 'reka-ui'
+import { computed, ref, type Component } from 'vue'
+import IconLucidePanelBottom from '~icons/lucide/panel-bottom'
+import IconLucidePanelLeft from '~icons/lucide/panel-left'
+import IconLucidePanelRight from '~icons/lucide/panel-right'
+import IconLucidePanelTop from '~icons/lucide/panel-top'
 
+import {
+  AUTO_LAYOUT_PADDING_EDITOR_OFFSET_X,
+  AUTO_LAYOUT_PADDING_EDITOR_OFFSET_Y
+} from '@open-pencil/core/constants'
 import {
   toolCursor,
   useCanvas,
@@ -21,15 +25,13 @@ import {
   useCanvasVirtualReference,
   useTextEdit
 } from '@open-pencil/vue'
+
 import { useCollabInjected } from '@/app/collab/use'
 import { useEditorStore } from '@/app/editor/active-store'
 import { useCanvasCollaborationAwareness } from '@/app/editor/canvas/collaboration-awareness'
 import { createCanvasContextSelection } from '@/app/editor/canvas/context-selection'
 import { fadeOutGlobalLoader } from '@/app/editor/canvas/loader-overlay'
-import IconLucidePanelBottom from '~icons/lucide/panel-bottom'
-import IconLucidePanelLeft from '~icons/lucide/panel-left'
-import IconLucidePanelRight from '~icons/lucide/panel-right'
-import IconLucidePanelTop from '~icons/lucide/panel-top'
+
 import CanvasMenu from './CanvasMenu.vue'
 import ScrubInput from './ScrubInput.vue'
 

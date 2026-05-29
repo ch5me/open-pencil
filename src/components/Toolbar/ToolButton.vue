@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { vTestId, type RequiredTestIdProps } from '@open-pencil/vue'
 import type { Component } from 'vue'
+
+import { vTestId, type RequiredTestIdProps } from '@open-pencil/vue'
 
 interface ToolButtonProps extends RequiredTestIdProps {
   icon: Component

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import { useTemplateRefsList } from '@vueuse/core'
 import {
   SelectContent,
@@ -11,12 +10,9 @@ import {
   SelectTrigger,
   SelectViewport
 } from 'reka-ui'
+import { computed, ref } from 'vue'
 
-import ScrubInput from '@/components/ScrubInput.vue'
-import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
-import BoundVariableButton from '@/components/properties/BoundVariableButton.vue'
-import VariablePickerPopover from '@/components/properties/VariablePickerPopover.vue'
-import { useSelectUI } from '@/components/ui/select'
+import type { LayoutSizing } from '@open-pencil/core/scene-graph'
 import {
   testId as testIdAttr,
   vTestId,
@@ -24,9 +20,13 @@ import {
   useLayoutControlsContext,
   useNumberVariableBinding
 } from '@open-pencil/vue'
-
-import type { LayoutSizing } from '@open-pencil/core/scene-graph'
 import type { SizeLimitProp, TestId } from '@open-pencil/vue'
+
+import BoundVariableButton from '@/components/properties/BoundVariableButton.vue'
+import VariablePickerPopover from '@/components/properties/VariablePickerPopover.vue'
+import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
+import ScrubInput from '@/components/ScrubInput.vue'
+import { useSelectUI } from '@/components/ui/select'
 
 type SizeSelectValue = LayoutSizing | `add-${SizeLimitProp}` | `remove-${SizeLimitProp}`
 

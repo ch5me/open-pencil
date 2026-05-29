@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { PositionControlsRoot, useI18n } from '@open-pencil/vue'
+
+import { useEditorStore } from '@/app/editor/active-store'
 import ScrubInput from '@/components/ScrubInput.vue'
-import Tip from '@/components/ui/Tip.vue'
 import { useIconButtonUI } from '@/components/ui/icon-button'
 import { useSectionUI } from '@/components/ui/section'
-import { useEditorStore } from '@/app/editor/active-store'
-import { PositionControlsRoot, useI18n } from '@open-pencil/vue'
+import Tip from '@/components/ui/Tip.vue'
 
 const { panels } = useI18n()
 const store = useEditorStore()

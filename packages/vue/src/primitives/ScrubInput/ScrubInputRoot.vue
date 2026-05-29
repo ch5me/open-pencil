@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, toRef, watch } from 'vue'
 import { useEventListener } from '@vueuse/core'
+import { ref, computed, toRef, watch } from 'vue'
 
 import { provideScrubInput } from '#vue/primitives/ScrubInput/context'
 import { inputNumberValue } from '#vue/shared/dom-events'

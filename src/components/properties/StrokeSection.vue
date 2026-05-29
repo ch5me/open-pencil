@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import type { Color, SceneNode, Stroke } from '@open-pencil/core/scene-graph'
 import {
   applySolidStrokeColor,
   PropertyListRoot,
@@ -10,16 +11,14 @@ import {
   useI18n
 } from '@open-pencil/vue'
 
-import ColorStyleRow from '@/components/properties/ColorStyleRow.vue'
-import { boundVariableColor } from '@/components/properties/color-style-row'
-import AppSelect from '@/components/ui/AppSelect.vue'
 import ColorInput from '@/components/ColorPicker/ColorInput.vue'
+import { boundVariableColor } from '@/components/properties/color-style-row'
+import ColorStyleRow from '@/components/properties/ColorStyleRow.vue'
 import ScrubInput from '@/components/ScrubInput.vue'
-import Tip from '@/components/ui/Tip.vue'
+import AppSelect from '@/components/ui/AppSelect.vue'
 import { useIconButtonUI } from '@/components/ui/icon-button'
 import { useSectionUI } from '@/components/ui/section'
-
-import type { Color, SceneNode, Stroke } from '@open-pencil/core/scene-graph'
+import Tip from '@/components/ui/Tip.vue'
 
 const strokeCtx = useStrokeControls()
 const strokeVarCtx = useColorVariableBinding('strokes')

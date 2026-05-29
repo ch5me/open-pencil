@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import {
   SelectContent,
   SelectItem,
@@ -10,16 +9,16 @@ import {
   SelectTrigger,
   SelectViewport
 } from 'reka-ui'
-
-import AppSelect from '@/components/ui/AppSelect.vue'
-
-import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
-import ClipContentControl from '@/components/properties/LayoutSection/ClipContentControl.vue'
-import PaddingControls from '@/components/properties/LayoutSection/PaddingControls.vue'
-import { useSelectUI } from '@/components/ui/select'
-import { useI18n, useLayoutControlsContext } from '@open-pencil/vue'
+import { ref } from 'vue'
 
 import type { LayoutDirection, LayoutAlign } from '@open-pencil/core/scene-graph'
+import { useI18n, useLayoutControlsContext } from '@open-pencil/vue'
+
+import ClipContentControl from '@/components/properties/LayoutSection/ClipContentControl.vue'
+import PaddingControls from '@/components/properties/LayoutSection/PaddingControls.vue'
+import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
+import AppSelect from '@/components/ui/AppSelect.vue'
+import { useSelectUI } from '@/components/ui/select'
 
 const ctx = useLayoutControlsContext()
 const gapFieldRef = ref<HTMLElement | null>(null)

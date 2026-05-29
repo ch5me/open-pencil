@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import { AnimatePresence, motion } from 'motion-v'
-
 import IconChevronLeft from '~icons/lucide/chevron-left'
 import IconChevronRight from '~icons/lucide/chevron-right'
 
+import type { EditorToolDef } from '@open-pencil/core/editor'
+import { toolbarToolTestId, ToolbarItem } from '@open-pencil/vue'
+import type { Tool } from '@open-pencil/vue'
+
+import ToolbarActionGroup from '@/components/Toolbar/ToolbarActionGroup.vue'
 import ToolButton from '@/components/Toolbar/ToolButton.vue'
 import ToolFlyout from '@/components/Toolbar/ToolFlyout.vue'
-import ToolbarActionGroup from '@/components/Toolbar/ToolbarActionGroup.vue'
-import { toolbarToolTestId, ToolbarItem } from '@open-pencil/vue'
-
-import type { Tool } from '@open-pencil/vue'
-import type { EditorToolDef } from '@open-pencil/core/editor'
 import type {
   ToolbarActionItem,
   ToolbarUi,

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { inputNumberValue } from '@open-pencil/vue'
 import { colorToCSS } from '@open-pencil/core/color'
+import { inputNumberValue } from '@open-pencil/vue'
 
-import PickerSlider from '@/components/PickerSlider.vue'
 import { useColorPickerPanelContext } from '@/components/ColorPickerPanel/context'
+import PickerSlider from '@/components/PickerSlider.vue'
 
 const ctx = useColorPickerPanelContext()
 </script>

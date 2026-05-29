@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
 import { TreeRoot } from 'reka-ui'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { useEditor } from '#vue/editor/context'
 import { provideLayerTree } from '#vue/primitives/LayerTree/context'
-import { useLayerDrag } from '#vue/primitives/LayerTree/useLayerDrag'
-
 import type { LayerNode } from '#vue/primitives/LayerTree/context'
+import { useLayerDrag } from '#vue/primitives/LayerTree/useLayerDrag'
 
 const { indentPerLevel = 16 } = defineProps<{
   indentPerLevel?: number

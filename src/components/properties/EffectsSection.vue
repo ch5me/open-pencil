@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import AppSelect from '@/components/ui/AppSelect.vue'
-import ColorInput from '@/components/ColorPicker/ColorInput.vue'
-import ScrubInput from '@/components/ScrubInput.vue'
-import Tip from '@/components/ui/Tip.vue'
-import { useIconButtonUI } from '@/components/ui/icon-button'
-import { useSectionUI } from '@/components/ui/section'
+import { colorToCSS } from '@open-pencil/core/color'
+import type { Effect } from '@open-pencil/core/scene-graph'
 import { PropertyListRoot, vTestId, useEffectsControls, useI18n } from '@open-pencil/vue'
 
-import { colorToCSS } from '@open-pencil/core/color'
-
-import type { Effect } from '@open-pencil/core/scene-graph'
+import ColorInput from '@/components/ColorPicker/ColorInput.vue'
+import ScrubInput from '@/components/ScrubInput.vue'
+import AppSelect from '@/components/ui/AppSelect.vue'
+import { useIconButtonUI } from '@/components/ui/icon-button'
+import { useSectionUI } from '@/components/ui/section'
+import Tip from '@/components/ui/Tip.vue'
 
 const effectsCtx = useEffectsControls()
 const { panels } = useI18n()

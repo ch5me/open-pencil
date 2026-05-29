@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, type Component } from 'vue'
+import { FlexRender } from '@tanstack/vue-table'
 import { templateRef } from '@vueuse/core'
 import {
   ContextMenuContent,
@@ -25,21 +25,21 @@ import {
   TabsRoot,
   TabsTrigger
 } from 'reka-ui'
-import { FlexRender } from '@tanstack/vue-table'
-
-import { variablesAddTestId, vTestId, useI18n, useVariablesEditor } from '@open-pencil/vue'
-
+import { watch, type Component } from 'vue'
 import IconHash from '~icons/lucide/hash'
 import IconPalette from '~icons/lucide/palette'
 import IconToggleLeft from '~icons/lucide/toggle-left'
 import IconType from '~icons/lucide/type'
 import IconX from '~icons/lucide/x'
+
+import type { VariableType } from '@open-pencil/core/scene-graph'
+import { variablesAddTestId, vTestId, useI18n, useVariablesEditor } from '@open-pencil/vue'
+
 import ColorInput from '@/components/ColorPicker/ColorInput.vue'
-import Tip from './ui/Tip.vue'
 import { useDialogUI } from '@/components/ui/dialog'
 import { useMenuUI } from '@/components/ui/menu'
 
-import type { VariableType } from '@open-pencil/core/scene-graph'
+import Tip from './ui/Tip.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 const cls = useDialogUI({ content: 'flex h-[75vh] w-[800px] max-w-[90vw] flex-col' })

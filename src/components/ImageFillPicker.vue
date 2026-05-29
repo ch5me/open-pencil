@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, shallowRef, watch } from 'vue'
 import { useFileDialog, useObjectUrl } from '@vueuse/core'
+import { computed, shallowRef, watch } from 'vue'
 
-import AppSelect from './ui/AppSelect.vue'
+import type { Fill, ImageScaleMode } from '@open-pencil/core/scene-graph'
 
 import { useEditorStore } from '@/app/editor/active-store'
 
-import type { Fill, ImageScaleMode } from '@open-pencil/core/scene-graph'
+import AppSelect from './ui/AppSelect.vue'
 
 const IMAGE_SCALE_MODES: { value: ImageScaleMode; label: string }[] = [
   { value: 'FILL', label: 'Fill' },

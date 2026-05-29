@@ -77,7 +77,7 @@ const hostedWireStats = {
   syncReplySent: 0,
   yjsUpdateSent: 0,
   awarenessSent: 0,
-  awarenessReceived: 0,
+  awarenessReceived: 0
 }
 
 type TestWindow = Window & {
@@ -247,7 +247,11 @@ function connectHostedRoom({
     const payload = JSON.parse(event.data) as WireMessage
     const data = decodeBase64(payload.data)
     hostedWireStats.messagesReceived += 1
-    if (payload.type === 'room-state' || payload.type === 'yjs-update' || payload.type === 'sync-reply') {
+    if (
+      payload.type === 'room-state' ||
+      payload.type === 'yjs-update' ||
+      payload.type === 'sync-reply'
+    ) {
       Y.applyUpdate(ydoc, data, 'remote')
       return
     }
@@ -293,7 +297,9 @@ function connectHostedRoom({
       }, 700)
     })
     socket.addEventListener('error', () => {
-      setConnectionError('Hosted collaboration connection failed. Refresh the page to retry the room.')
+      setConnectionError(
+        'Hosted collaboration connection failed. Refresh the page to retry the room.'
+      )
     })
   }
 
@@ -347,15 +353,20 @@ async function loadHostedSnapshot(options: {
   setHydrationState: (payload: { degraded: boolean; missingAssetIds: string[] }) => void
 }) {
   try {
-    const response = await fetch(`${options.apiOrigin}/api/documents/${options.documentId}/snapshot`, {
-      credentials: 'include',
-      headers: options.token ? { Authorization: `Bearer ${options.token}` } : undefined
-    })
+    const response = await fetch(
+      `${options.apiOrigin}/api/documents/${options.documentId}/snapshot`,
+      {
+        credentials: 'include',
+        headers: options.token ? { Authorization: `Bearer ${options.token}` } : undefined
+      }
+    )
 
     if (!response.ok) {
-      const errorBody = (await response.json().catch(() => null)) as
-        | { message?: string; reason?: string; error?: string }
-        | null
+      const errorBody = (await response.json().catch(() => null)) as {
+        message?: string
+        reason?: string
+        error?: string
+      } | null
       options.setHydrationState({ degraded: false, missingAssetIds: [] })
       options.setConnectionError(
         errorBody?.message ??

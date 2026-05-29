@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
+import { ACP_AGENTS } from '@open-pencil/core/constants'
+import { useI18n } from '@open-pencil/vue'
+
+import { useAIChat } from '@/app/ai/chat/use'
+import { openExternalLink } from '@/app/shell/ui'
 import ProviderSelectField from '@/components/chat/ProviderSelect/ProviderSelectField.vue'
 import AppInput from '@/components/ui/AppInput.vue'
 import AppTextButton from '@/components/ui/AppTextButton.vue'
-import { useAIChat } from '@/app/ai/chat/use'
-import { ACP_AGENTS } from '@open-pencil/core/constants'
-import { openExternalLink } from '@/app/shell/ui'
-import { useI18n } from '@open-pencil/vue'
 
 const { providerID, providerDef, setAPIKey, customBaseURL, customModelID } = useAIChat()
 const { dialogs } = useI18n()

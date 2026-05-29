@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 
-import { initials } from '@/app/shell/ui'
 import { colorToCSS } from '@open-pencil/core/color'
+
+import { initials } from '@/app/shell/ui'
 import { useMobileHudContext } from '@/components/MobileHud/context'
 
 const hud = useMobileHudContext()

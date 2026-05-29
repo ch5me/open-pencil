@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test'
+
+import {
+  createHostedDocumentBackend,
+  type HostedDocumentClient
+} from '@/app/document/io/hosted-backend'
 import { createHostedClient } from '@/app/document/io/hosted-client'
-import { createHostedDocumentBackend, type HostedDocumentClient } from '@/app/document/io/hosted-backend'
 
 describe('hosted client + backend contract', () => {
   test('client encodes base64 correctly for round-trip', async () => {
@@ -14,11 +18,14 @@ describe('hosted client + backend contract', () => {
 
     globalThis.fetch = (async (_url: string, init?: RequestInit) => {
       capturedBody = init?.body as string
-      return new Response(JSON.stringify({
-        documentId: 'doc-1',
-        snapshotId: 'snap-1',
-        storageKey: 'documents/doc-1/snapshots/snap-1.fig'
-      }), { status: 201 })
+      return new Response(
+        JSON.stringify({
+          documentId: 'doc-1',
+          snapshotId: 'snap-1',
+          storageKey: 'documents/doc-1/snapshots/snap-1.fig'
+        }),
+        { status: 201 }
+      )
     }) as typeof fetch
 
     await client.saveAs(original)
@@ -33,10 +40,25 @@ describe('hosted client + backend contract', () => {
     let saveCalled = false
     const fakeClient = {
       loadMetadata: async () => ({ mode: 'hosted-docs single-user' as const }),
-      open: async () => ({ graph: { nodes: new Map(), currentPageId: 'p1' } as any, fileName: 'test', sourceFormat: 'fig' as const }),
-      save: async () => { saveCalled = true; return { documentId: 'doc-1', latestSnapshotId: 'snap-1', sourceFormat: 'fig' } },
-      saveAs: async () => ({ documentId: 'doc-2', latestSnapshotId: 'snap-2', sourceFormat: 'fig' }),
-      autosave: async () => ({ documentId: 'doc-1', latestSnapshotId: 'snap-3', sourceFormat: 'fig' })
+      open: async () => ({
+        graph: { nodes: new Map(), currentPageId: 'p1' } as any,
+        fileName: 'test',
+        sourceFormat: 'fig' as const
+      }),
+      save: async () => {
+        saveCalled = true
+        return { documentId: 'doc-1', latestSnapshotId: 'snap-1', sourceFormat: 'fig' }
+      },
+      saveAs: async () => ({
+        documentId: 'doc-2',
+        latestSnapshotId: 'snap-2',
+        sourceFormat: 'fig'
+      }),
+      autosave: async () => ({
+        documentId: 'doc-1',
+        latestSnapshotId: 'snap-3',
+        sourceFormat: 'fig'
+      })
     } satisfies HostedDocumentClient
 
     const backend = createHostedDocumentBackend({
@@ -59,7 +81,8 @@ describe('hosted client + backend contract', () => {
       descriptor: { documentId: 'doc-1', latestSnapshotId: null, sourceFormat: 'fig' }
     })
 
-    await expect(backend.save(new Uint8Array([1])))
-      .rejects.toThrow('Hosted document runtime is not wired')
+    await expect(backend.save(new Uint8Array([1]))).rejects.toThrow(
+      'Hosted document runtime is not wired'
+    )
   })
 })

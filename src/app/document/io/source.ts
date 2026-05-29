@@ -3,12 +3,12 @@ import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 
 import { createAutosave } from '@/app/document/autosave'
 import type { DocumentBackend } from '@/app/document/io/backend'
-import { createLocalDocumentBackend } from '@/app/document/io/local-backend'
 import {
   createHostedDocumentBackend,
   type HostedDocumentClient,
   type HostedDocumentDescriptor
 } from '@/app/document/io/hosted-backend'
+import { createLocalDocumentBackend } from '@/app/document/io/local-backend'
 import {
   documentNameFromFigPath,
   downloadNameFromPath,
@@ -99,7 +99,9 @@ export function createDocumentSourceActions({
     setDownloadName,
     setSavedVersion,
     setLastWriteTime,
-    startWatchingFile: () => { void startWatchingFile() }
+    startWatchingFile: () => {
+      void startWatchingFile()
+    }
   }
 
   const documentBackend: DocumentBackend = resolveBackend(backendChoice, localOptions)

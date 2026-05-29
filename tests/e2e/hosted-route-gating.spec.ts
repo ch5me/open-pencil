@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+
 import { useEditorSetup } from '#tests/e2e/fixtures'
 
 const editor = useEditorSetup()
@@ -18,10 +19,18 @@ test('hosted route gate: unauthenticated /hosted redirects to / in local mode', 
     banner.setAttribute('data-testid', 'gate-unauth-banner')
     banner.textContent = 'BLOCKED: /hosted → / (no session, local mode)'
     Object.assign(banner.style, {
-      position: 'fixed', top: '0', left: '0', right: '0',
-      background: '#dc2626', color: '#fff', padding: '12px 16px',
-      fontSize: '14px', fontWeight: '600', zIndex: '999999',
-      fontFamily: 'monospace', textAlign: 'center'
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      right: '0',
+      background: '#dc2626',
+      color: '#fff',
+      padding: '12px 16px',
+      fontSize: '14px',
+      fontWeight: '600',
+      zIndex: '999999',
+      fontFamily: 'monospace',
+      textAlign: 'center'
     })
     document.body.appendChild(banner)
   })
@@ -37,7 +46,7 @@ test('hosted route gate: authenticated /hosted loads successfully', async () => 
   // Seed the test session BEFORE navigating so the guard passes
   await editor.page.goto('/')
   await editor.page.evaluate(() => {
-    (window as any).openPencil ??= {}
+    ;(window as any).openPencil ??= {}
     ;(window as any).openPencil.test ??= {}
     ;(window as any).openPencil.test.hostedAuthToken = 'DEV_STUB_ELF_TOKEN'
   })
@@ -58,10 +67,18 @@ test('hosted route gate: authenticated /hosted loads successfully', async () => 
     banner.setAttribute('data-testid', 'gate-auth-banner')
     banner.textContent = 'ALLOWED: /hosted loaded (valid session, local mode)'
     Object.assign(banner.style, {
-      position: 'fixed', top: '0', left: '0', right: '0',
-      background: '#16a34a', color: '#fff', padding: '12px 16px',
-      fontSize: '14px', fontWeight: '600', zIndex: '999999',
-      fontFamily: 'monospace', textAlign: 'center'
+      position: 'fixed',
+      top: '0',
+      left: '0',
+      right: '0',
+      background: '#16a34a',
+      color: '#fff',
+      padding: '12px 16px',
+      fontSize: '14px',
+      fontWeight: '600',
+      zIndex: '999999',
+      fontFamily: 'monospace',
+      textAlign: 'center'
     })
     document.body.appendChild(banner)
   })

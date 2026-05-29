@@ -1,24 +1,24 @@
 <script setup lang="ts">
-import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
+import type { Chat } from '@ai-sdk/vue'
 import { refAutoReset } from '@vueuse/core'
+import type { UIMessage } from 'ai'
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
 import { computed, markRaw, nextTick, ref, watch } from 'vue'
 
+import type { JsonObject } from '@open-pencil/core/types'
+import { useI18n } from '@open-pencil/vue'
+
 import { getAcpDebugText, clearAcpDebugLog, hasAcpDebugEntries } from '@/app/ai/acp/transport'
+import { useAIChat } from '@/app/ai/chat/use'
 import { copyChatLog } from '@/app/ai/debug'
 import { clearToolLogEntries, didHitStepLimit } from '@/app/ai/tools'
+import { toast } from '@/app/shell/ui'
 import { activeTab } from '@/app/tabs'
 import AcpPermissionDialog from '@/components/chat/AcpPermissionDialog.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
-import AppTextButton from '@/components/ui/AppTextButton.vue'
 import ProviderSetup from '@/components/chat/ProviderSetup.vue'
-import { useAIChat } from '@/app/ai/chat/use'
-import { toast } from '@/app/shell/ui'
-import { useI18n } from '@open-pencil/vue'
-
-import type { Chat } from '@ai-sdk/vue'
-import type { UIMessage } from 'ai'
-import type { JsonObject } from '@open-pencil/core/types'
+import AppTextButton from '@/components/ui/AppTextButton.vue'
 
 const IS_DEV = import.meta.env.DEV
 

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, watch } from 'vue'
 import {
   DialogClose,
   DialogContent,
@@ -8,12 +7,13 @@ import {
   DialogRoot,
   DialogTitle
 } from 'reka-ui'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 
 import type { SceneNode } from '@open-pencil/core/scene-graph'
 import { useI18n } from '@open-pencil/vue'
 
-import { nodeIcon } from '@/app/editor/icons'
 import { useEditorStore } from '@/app/editor/active-store'
+import { nodeIcon } from '@/app/editor/icons'
 import { openExternalLink } from '@/app/shell/ui'
 import AppInput from '@/components/ui/AppInput.vue'
 import { useButtonUI } from '@/components/ui/button'

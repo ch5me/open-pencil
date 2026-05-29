@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import Prism from 'prismjs'
-import 'prismjs/components/prism-jsx'
-import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
 import { useClipboard } from '@vueuse/core'
+import 'prismjs/components/prism-jsx'
+import Prism from 'prismjs'
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
 import { computed, ref } from 'vue'
 
 import { JSX_REFERENCE, selectionToJSX } from '@open-pencil/core/design-jsx'
+import type { JSXFormat } from '@open-pencil/core/design-jsx'
 import { useI18n, useSceneComputed } from '@open-pencil/vue'
 
 import { useEditorStore } from '@/app/editor/active-store'
 import AppTextButton from '@/components/ui/AppTextButton.vue'
 import Tip from '@/components/ui/Tip.vue'
-
-import type { JSXFormat } from '@open-pencil/core/design-jsx'
 
 const store = useEditorStore()
 const { copy, copied } = useClipboard({ copiedDuring: 2000 })

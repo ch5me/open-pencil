@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
 import { templateRef } from '@vueuse/core'
-
 import {
   MenubarCheckboxItem,
   MenubarContent,
@@ -16,16 +14,14 @@ import {
   MenubarSubTrigger,
   MenubarTrigger
 } from 'reka-ui'
-
+import { watch } from 'vue'
 import IconChevronRight from '~icons/lucide/chevron-right'
 
 import { vTestId, useI18n } from '@open-pencil/vue'
-import AppShortcutText from '@/components/ui/AppShortcutText.vue'
-import { useMenuUI } from '@/components/ui/menu'
-import { IS_TAURI } from '@/constants'
+
+import { useEditorStore } from '@/app/editor/active-store'
 import { useAppMenu } from '@/app/shell/menu/app-menu'
 import { useDocumentNameRename } from '@/app/shell/menu/document-name'
-import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
 import {
   hasMenuSubItems,
   isMenuCheckbox,
@@ -38,7 +34,10 @@ import {
   runMenuAction,
   updateMenuChecked
 } from '@/app/shell/menu/entry'
-import { useEditorStore } from '@/app/editor/active-store'
+import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
+import AppShortcutText from '@/components/ui/AppShortcutText.vue'
+import { useMenuUI } from '@/components/ui/menu'
+import { IS_TAURI } from '@/constants'
 
 const store = useEditorStore()
 

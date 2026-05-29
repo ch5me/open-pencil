@@ -1,21 +1,19 @@
 <script setup lang="ts">
-import ScrubInput from '@/components/ScrubInput.vue'
-import BoundVariableButton from '@/components/properties/BoundVariableButton.vue'
-import VariablePickerPopover from '@/components/properties/VariablePickerPopover.vue'
-import Tip from '@/components/ui/Tip.vue'
-import { useIconButtonUI } from '@/components/ui/icon-button'
-
+import { colorToHexRaw } from '@open-pencil/core/color'
+import type { Color } from '@open-pencil/core/types'
 import { vTestId, useI18n } from '@open-pencil/vue'
 
+import BoundVariableButton from '@/components/properties/BoundVariableButton.vue'
 import {
   opacityFromPercent,
   opacityPercent,
   variableSwatchBackground
 } from '@/components/properties/color-style-row'
-import { colorToHexRaw } from '@open-pencil/core/color'
-
 import type { ColorVariableBindingApi } from '@/components/properties/color-style-row'
-import type { Color } from '@open-pencil/core/types'
+import VariablePickerPopover from '@/components/properties/VariablePickerPopover.vue'
+import ScrubInput from '@/components/ScrubInput.vue'
+import { useIconButtonUI } from '@/components/ui/icon-button'
+import Tip from '@/components/ui/Tip.vue'
 
 const {
   item,

@@ -1,69 +1,63 @@
 import { isTauri } from './env'
 
-function safeIsHostedAuthEnabled(): boolean {
-  if (typeof window === 'undefined') return false
-  const { isHostedAuthEnabled } = require('@/app/hosted/flags')
-  return isHostedAuthEnabled()
-}
-
-function safeIsHostedDocsEnabled(): boolean {
-  if (typeof window === 'undefined') return false
-  const { isHostedDocsEnabled } = require('@/app/hosted/flags')
-  return isHostedDocsEnabled()
-}
+const BEARER_TOKEN_KEY = 'call_function_qtvl25a1v2tp_1'
 
 export const DESKTOP_CALLBACK_SCHEME = 'openpencil'
 
-export async function registerDesktopAuthCallback(
-  onCallback: (url: string) => void,
-): Promise<() => void> {
-  if (!isTauri() || !safeIsHostedAuthEnabled()) {
-    return function cleanupNoop() { /* disabled until gate flips */ }
-  }
+export type TauriOperatingMode = 'local-file' | 'hosted-docs' | 'hosted-collab'
 
+// Sync-safe gate — always false in this phase until hosted desktop auth is explicitly enabled
+function isDesktopHostedAuthEnabled(): boolean {
+  return false
+}
+
+function isDesktopHostedDocsEnabled(): boolean {
+  return false
+}
+
+// Deferred: once desktop hosted auth is enabled, wire through to the async flag system
+export async function registerDesktopAuthCallback(
+  _onCallback: (url: string) => void
+): Promise<() => void> {
+  if (!isTauri() || !isDesktopHostedAuthEnabled()) {
+    return () => {
+      /* disabled until gate flips */
+    }
+  }
   const { listen } = await import('@tauri-apps/api/event')
   const cleanup = await listen<string>('scheme-request-received', (event) => {
-    onCallback(event.payload)
+    _onCallback(event.payload)
   })
-
   return () => {
     cleanup()
   }
 }
 
-const BEARER_TOKEN_KEY = 'elf_auth_bearer_token'
-
-interface TauriStore {
+interface TauriStoreInstance {
   get: <T>(key: string) => Promise<T | undefined>
   set: (key: string, value: unknown) => Promise<void>
   delete: (key: string) => Promise<void>
   save: () => Promise<void>
 }
 
-interface TauriStoreModule {
-  Store: {
-    load: (filename: string) => Promise<TauriStore>
-  }
+interface TauriStoreLoader {
+  Store: { load: (filename: string) => Promise<TauriStoreInstance> }
 }
 
-async function loadStoreModule(): Promise<TauriStoreModule | null> {
+async function loadStore(): Promise<TauriStoreInstance | null> {
   if (!isTauri()) return null
   try {
-    // oxlint-disable-next-line import-x/no-unresolved
-    const mod = await import('@tauri-apps/plugin-store')
-    return mod as TauriStoreModule
+    const mod = (await import('@tauri-apps/plugin-store')) as TauriStoreLoader
+    return await mod.Store.load('auth.dat')
   } catch {
     return null
   }
 }
 
 export async function storeBearerToken(token: string | null): Promise<boolean> {
-  if (!safeIsHostedAuthEnabled()) return false
-
-  const mod = await loadStoreModule()
-  if (!mod) return false
-
-  const store = await mod.Store.load('auth.dat')
+  if (!isDesktopHostedAuthEnabled()) return false
+  const store = await loadStore()
+  if (!store) return false
   if (token === null) {
     await store.delete(BEARER_TOKEN_KEY)
   } else {
@@ -74,35 +68,27 @@ export async function storeBearerToken(token: string | null): Promise<boolean> {
 }
 
 export async function readBearerToken(): Promise<string | null> {
-  if (!safeIsHostedAuthEnabled()) return null
-
-  const mod = await loadStoreModule()
-  if (!mod) return null
-
-  const store = await mod.Store.load('auth.dat')
+  if (!isDesktopHostedAuthEnabled()) return null
+  const store = await loadStore()
+  if (!store) return null
   const token = await store.get<string>(BEARER_TOKEN_KEY)
   return token ?? null
 }
 
 export async function clearBearerToken(): Promise<void> {
   if (!isTauri()) return
-
-  const mod = await loadStoreModule()
-  if (!mod) return
-
-  const store = await mod.Store.load('auth.dat')
+  const store = await loadStore()
+  if (!store) return
   await store.delete(BEARER_TOKEN_KEY)
   await store.save()
 }
 
-export type TauriOperatingMode = 'local-file' | 'hosted-docs' | 'hosted-collab'
-
 export function resolveTauriOperatingMode(): TauriOperatingMode {
-  if (!safeIsHostedAuthEnabled()) return 'local-file'
-  if (safeIsHostedDocsEnabled()) return 'hosted-docs'
+  if (isDesktopHostedAuthEnabled()) return 'local-file'
+  if (isDesktopHostedDocsEnabled()) return 'hosted-docs'
   return 'local-file'
 }
 
 export function shouldShowHostedUI(): boolean {
-  return isTauri() && safeIsHostedAuthEnabled()
+  return isTauri() && isDesktopHostedAuthEnabled()
 }

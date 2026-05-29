@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { execSync } from 'node:child_process'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 
 const MANIFEST_DIR = '.build-manifests'
 const HISTORY_FILE = `${MANIFEST_DIR}/history.json`

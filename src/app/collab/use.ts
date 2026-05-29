@@ -96,7 +96,7 @@ export function useCollab(storeOrGetter: EditorStore | (() => EditorStore)) {
         sharePath: state.value.sharePath,
         degraded: state.value.degraded,
         missingAssetIds: [...state.value.missingAssetIds],
-        lastError: state.value.lastError,
+        lastError: state.value.lastError
       }
     },
     setCollabProofValue: (value: string) => {
@@ -108,8 +108,9 @@ export function useCollab(storeOrGetter: EditorStore | (() => EditorStore)) {
     setCollabYjsProofValue: (value: string) => {
       runtime.ydoc?.getMap('proof').set('value', value)
     },
-    getCollabYjsProofValue: () => (runtime.ydoc?.getMap('proof').get('value') as string | undefined) ?? null,
-    getHostedWireStats: () => getHostedWireStats(),
+    getCollabYjsProofValue: () =>
+      (runtime.ydoc?.getMap('proof').get('value') as string | undefined) ?? null,
+    getHostedWireStats: () => getHostedWireStats()
   })
 
   return {

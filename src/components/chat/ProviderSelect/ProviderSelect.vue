@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { promiseTimeout } from '@vueuse/core'
 import { computed, onMounted, ref } from 'vue'
-import type { TestIdProps } from '@open-pencil/vue'
 
-import AppGroupedSelect from '@/components/ui/AppGroupedSelect.vue'
 import {
   ACP_AGENTS,
   AI_PROVIDERS,
   AUTOMATION_HTTP_PORT,
   IS_TAURI
 } from '@open-pencil/core/constants'
+import type { TestIdProps } from '@open-pencil/vue'
+
 import { useAIChat } from '@/app/ai/chat/use'
+import AppGroupedSelect from '@/components/ui/AppGroupedSelect.vue'
 
 const { providerID, providerDef } = useAIChat()
 

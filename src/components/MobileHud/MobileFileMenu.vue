@@ -7,8 +7,8 @@ import {
   DropdownMenuTrigger
 } from 'reka-ui'
 
-import { menu, useMenuUI } from '@/components/ui/menu'
 import { useMobileHudContext } from '@/components/MobileHud/context'
+import { menu, useMenuUI } from '@/components/ui/menu'
 
 const hud = useMobileHudContext()
 const menuCls = useMenuUI({

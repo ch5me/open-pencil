@@ -1,3 +1,5 @@
+import { parseFigFile } from '@open-pencil/core/kiwi'
+
 import {
   type DocumentBackendMetadata,
   type DocumentOpenResult,
@@ -7,8 +9,6 @@ import {
   type HostedDocumentDescriptor,
   type HostedDocumentClient
 } from '@/app/document/io/hosted-backend'
-
-import { parseFigFile } from '@open-pencil/core/kiwi'
 
 export type HostedClientOptions = {
   apiOrigin: string
@@ -38,7 +38,11 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
 
     if (!response.ok) {
       const body = await response.json().catch(() => ({}))
-      throw new HostedApiError(response.status, body.error ?? 'unknown', body.message ?? response.statusText)
+      throw new HostedApiError(
+        response.status,
+        body.error ?? 'unknown',
+        body.message ?? response.statusText
+      )
     }
     return response.json()
   }
@@ -61,7 +65,9 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
     },
 
     async open(documentId: string): Promise<DocumentOpenResult> {
-      const response = await fetchWithAuth(`/api/documents/${encodeURIComponent(documentId)}/snapshot`)
+      const response = await fetchWithAuth(
+        `/api/documents/${encodeURIComponent(documentId)}/snapshot`
+      )
 
       if (!response.snapshot?.bytesBase64) {
         throw new DocumentBackendOperationError(
@@ -72,7 +78,10 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
       }
 
       const snapshotBytes = decodeBase64ToUint8Array(response.snapshot.bytesBase64)
-      const ab = snapshotBytes.buffer.slice(snapshotBytes.byteOffset, snapshotBytes.byteOffset + snapshotBytes.byteLength) as ArrayBuffer
+      const ab = snapshotBytes.buffer.slice(
+        snapshotBytes.byteOffset,
+        snapshotBytes.byteOffset + snapshotBytes.byteLength
+      ) as ArrayBuffer
       const graph = await parseFigFile(ab)
 
       return {
@@ -84,14 +93,17 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
 
     async save(documentId: string, data: Uint8Array): Promise<HostedDocumentDescriptor> {
       const snapshotId = generateSnapshotId()
-      const response = await fetchWithAuth(`/api/documents/${encodeURIComponent(documentId)}/snapshot`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          snapshotId,
-          snapshotBytesBase64: encodeUint8ArrayToBase64(data),
-          reason: 'manual-save'
-        })
-      })
+      const response = await fetchWithAuth(
+        `/api/documents/${encodeURIComponent(documentId)}/snapshot`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            snapshotId,
+            snapshotBytesBase64: encodeUint8ArrayToBase64(data),
+            reason: 'manual-save'
+          })
+        }
+      )
 
       return {
         documentId,
@@ -124,14 +136,17 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
 
     async autosave(documentId: string, data: Uint8Array): Promise<HostedDocumentDescriptor> {
       const snapshotId = generateSnapshotId()
-      const response = await fetchWithAuth(`/api/documents/${encodeURIComponent(documentId)}/snapshot`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          snapshotId,
-          snapshotBytesBase64: encodeUint8ArrayToBase64(data),
-          reason: 'autosave'
-        })
-      })
+      const response = await fetchWithAuth(
+        `/api/documents/${encodeURIComponent(documentId)}/snapshot`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            snapshotId,
+            snapshotBytesBase64: encodeUint8ArrayToBase64(data),
+            reason: 'autosave'
+          })
+        }
+      )
 
       return {
         documentId,

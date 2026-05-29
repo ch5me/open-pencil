@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { execSync } from 'node:child_process'
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 
 const MANIFEST_DIR = '.build-manifests'
 

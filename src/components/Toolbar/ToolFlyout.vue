@@ -6,12 +6,9 @@ import {
   DropdownMenuRoot,
   DropdownMenuTrigger
 } from 'reka-ui'
-
 import IconChevronDown from '~icons/lucide/chevron-down'
 
-import AppShortcutText from '@/components/ui/AppShortcutText.vue'
-import { menu } from '@/components/ui/menu'
-import ToolButton from '@/components/Toolbar/ToolButton.vue'
+import type { EditorToolDef } from '@open-pencil/core/editor'
 import {
   toolbarFlyoutItemTestId,
   toolbarFlyoutTestId,
@@ -19,10 +16,12 @@ import {
   vTestId,
   ToolbarItem
 } from '@open-pencil/vue'
-
 import type { Tool } from '@open-pencil/vue'
-import type { EditorToolDef } from '@open-pencil/core/editor'
+
+import ToolButton from '@/components/Toolbar/ToolButton.vue'
 import type { ToolbarUi, ToolIconMap, ToolLabels } from '@/components/Toolbar/types'
+import AppShortcutText from '@/components/ui/AppShortcutText.vue'
+import { menu } from '@/components/ui/menu'
 
 const {
   tool,
