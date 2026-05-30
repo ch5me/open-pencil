@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useClipboard } from '@vueuse/core'
-import 'prismjs/components/prism-jsx'
 import Prism from 'prismjs'
+import 'prismjs/components/prism-jsx'
 import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
 import { computed, ref } from 'vue'
 
