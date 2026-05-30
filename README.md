@@ -15,7 +15,7 @@ Open-source design editor. Opens `.fig` and `.pen` design files, includes built-
 **macOS (Homebrew):**
 
 ```sh
-brew install open-pencil/tap/open-pencil
+brew install openpencil
 ```
 
 Or download from the [releases page](https://git.ch5.me/ch5/open-pencil/releases/latest), or [use the web app](https://app.openpencil.dev) — no install needed.
