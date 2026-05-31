@@ -4,7 +4,8 @@
   "private": true,
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "../ch5-packages/packages/firefly/design"
   ],
   "type": "module",
   "scripts": {
@@ -54,6 +55,7 @@
     "@ai-sdk/vue": "^3.0.174",
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.1.0",
+    "@ch5me/firefly-design": "workspace:*",
     "@chenglou/pretext": "^0.0.7",
     "@open-pencil/cli": "workspace:*",
     "@open-pencil/core": "workspace:*",
