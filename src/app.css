@@ -30,6 +30,12 @@
 }
 
 @theme {
+  --spacing-control: 26px;
+  --spacing-panel-x: 12px;
+  --spacing-panel-y: 8px;
+  --spacing-panel: 6px;
+  --spacing-panel-rail: 26px;
+  --spacing-panel-icon: 14px;
   /* Shared Firefly tokens expose --ff-* baseline; local editor tokens stay authoritative for canvas, ruler, checkerboard, and code highlight identity. */
   --color-panel: #2a2a2a;
   --color-canvas: #1e1e1e;
