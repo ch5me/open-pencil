@@ -19,6 +19,26 @@ function apiOrigin(): string {
   return getHostedConfig().apiOrigin || ''
 }
 
+export function getLoginUrl(): string | null {
+  const config = getHostedConfig()
+  const apiOrigin = config.apiOrigin
+  const callbackUrl = config.authCallbackUrl
+
+  if (!apiOrigin || !callbackUrl) return null
+
+  const authUrl = new URL('/api/elf-auth/authorize', apiOrigin)
+  authUrl.searchParams.set('redirect_uri', callbackUrl)
+  authUrl.searchParams.set('response_type', 'code')
+  return authUrl.toString()
+}
+
+export function redirectToLogin(): void {
+  const url = getLoginUrl()
+  if (url) {
+    window.location.href = url
+  }
+}
+
 async function fetchSession(): Promise<SessionState> {
   const origin = apiOrigin()
   if (!origin) return { status: 'unauthenticated' }

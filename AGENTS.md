@@ -6,7 +6,7 @@ OpenPencil is a federated sub-app of the Firefly platform at `elf.dance`. Per `h
 
 - **Subdomain (canonical):** `design.elf.dance`
 - **Sub-route (transitional alias):** `app.elf.dance/pencil` redirects to canonical
-- **Auth target:** ELF custom auth + RS256+JWKS via `@ch5me/elf-auth-client`. JWKS endpoint live at `api.elf.dance/.well-known/jwks.json`.
+- **Auth target:** ELF custom auth + RS256+JWKS. JWKS endpoint live at `api.elf.dance/.well-known/jwks.json`. Frontend auth flow: `/login` (login page) → ELF authorize → `/auth/callback` (token exchange) → session established. All routes protected when `hostedAuth` is enabled. Note: `@ch5me/elf-auth-client` is a private GitHub npm package — frontend implements OAuth flow directly via API endpoints (`/api/elf-auth/authorize`, `/api/elf-auth/token`, `/api/session`).
 - **Runtime provisioning:** Per-user agent container via shared `services/kiloclaw` in firefly-cloud rig `cloud` (call with `openpencil` tag).
 - **Billing:** All OpenPencil agentic ops route through user portable OpenCode container → firefly-cloud billing/gateway. No local LLM gateway.
 - **Master alignment doc:** `/Users/hassoncs/gt/ch5_company/mayor/rig/company-master-alignment.md`
