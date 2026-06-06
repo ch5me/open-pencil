@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 import { exportFigFile, initCodec, parseFigFile, SceneGraph } from '@open-pencil/core'
 import { fontManager } from '@open-pencil/core/text'
 
-import { parseFigBuffer } from '#core/kiwi/fig/parse/core'
+import { parseFigBuffer } from '@open-pencil/kiwi/fig/parse'
 
 const FIXTURES = resolve(import.meta.dir, '../../../../fixtures')
 const INTER_ASSETS = resolve(import.meta.dir, '../../../../../packages/core/assets')
