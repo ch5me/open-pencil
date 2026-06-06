@@ -182,6 +182,7 @@
       "name": "@open-pencil/kiwi",
       "version": "0.13.2",
       "dependencies": {
+        "fflate": "^0.8.2",
         "fzstd": "^0.1.1",
       },
       "devDependencies": {
