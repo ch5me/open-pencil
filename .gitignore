@@ -55,3 +55,6 @@ scratch/
 .build-manifests/
 .hush-materialized/
 .ch5/state/
+
+# OpenCode
+.opencode/
