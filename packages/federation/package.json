@@ -1,0 +1,44 @@
+{
+  "name": "@open-pencil/federation",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "description": "Public, versioned compatibility surface for second-cohort CH5 ELF sub-app federation. Consumes the OpenPencil hosted API Worker and Durable Object room wire protocol.",
+  "imports": {
+    "#federation/*": "./src/*"
+  },
+  "peerDependencies": {
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.29"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./types": {
+      "types": "./src/types/index.ts",
+      "default": "./src/types/index.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
+    },
+    "./wire": {
+      "types": "./src/wire/index.ts",
+      "default": "./src/wire/index.ts"
+    },
+    "./errors": {
+      "types": "./src/errors.ts",
+      "default": "./src/errors.ts"
+    }
+  },
+  "scripts": {
+    "test": "bun test"
+  }
+}
