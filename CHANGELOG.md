@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- `@open-pencil/federation` workspace package: public, versioned, type-checked compatibility surface for second-cohort CH5 ELF sub-app federation. Exposes the hosted API contract (session, documents, assets, room bootstrap), the `openpencil-room.v1` WebSocket wire protocol, the public identity / document / session / wire / feature-flag types, and a typed `FederationClient` factory. See `packages/docs/development/second-cohort-integration.md` for the integration guide. Semver-locked via `FEDERATION_SURFACE_VERSION` (currently `0.1.0`).
+- Refactored `src/app/hosted/session.ts`, `src/app/document/io/hosted-client.ts`, and `src/app/collab/room.ts` (hosted branch) to consume `@open-pencil/federation` instead of duplicating wire / fetch / auth logic. The OpenPencil app is now the first in-tree consumer of the surface, proving it is real and consumable.
+
 ### Fixes
 
 - Greatly improve importing Figma `.fig` files with complex component systems: badges, avatars, icons, links, input fields, lists, date pickers, nested instances, component swaps, and variant properties now open much closer to their original Figma appearance.

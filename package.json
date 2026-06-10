@@ -59,6 +59,7 @@
     "@chenglou/pretext": "^0.0.7",
     "@open-pencil/cli": "workspace:*",
     "@open-pencil/core": "workspace:*",
+    "@open-pencil/federation": "workspace:*",
     "@open-pencil/vue": "workspace:*",
     "@openrouter/ai-sdk-provider": "^2.9.0",
     "@tailwindcss/vite": "^4.2.1",

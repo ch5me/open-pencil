@@ -20,12 +20,13 @@ Vue 3 + CanvasKit (Skia WASM) + Yoga WASM design editor. Tauri v2 desktop, also 
 
 ## Monorepo
 
-Bun workspace with three packages:
+Bun workspace with packages:
 
 - `packages/core` — `@open-pencil/core`: scene graph, renderer, layout, codec, kiwi, clipboard, vector, snap, undo. Zero DOM deps, runs headless in Bun.
 - `packages/cli` — `@open-pencil/cli`: headless CLI for .fig inspection, export, linting. Uses `citty` + `agentfmt`.
 - `packages/docs` — `@open-pencil/docs`: VitePress documentation site. Run with `cd packages/docs && bun run dev`.
 - `packages/mcp` — `@open-pencil/mcp`: MCP server for AI coding tools. Stdio + HTTP (Hono). Reuses `createServer()` factory with all core tools.
+- `packages/federation` — `@open-pencil/federation`: public, versioned compatibility surface for second-cohort CH5 ELF sub-app federation. Exposes the hosted API contract, the `openpencil-room.v1` WebSocket wire protocol, the public types, and a typed `FederationClient` factory. See `packages/docs/development/second-cohort-integration.md`.
 
 - `packages/vue` — `@open-pencil/vue`: headless Vue 3 SDK (Reka UI-style) for building custom OpenPencil-powered editor shells and embedded editing surfaces. Renderless components and composables. The app is one consumer of the SDK.
 
