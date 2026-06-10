@@ -1,23 +1,29 @@
 import { ref, readonly } from 'vue'
 
+import { createFederationClient, type SessionClient, type SessionState } from '@open-pencil/federation'
+import type { SessionUser, SessionResolveOutcome } from '@open-pencil/federation'
+
 import { getHostedConfig } from '@/app/hosted/flags'
 import { DEV_STUB_ELF_TOKEN } from '@/app/hosted/token'
 
-export interface SessionUser {
-  id: string
-}
+export type { SessionState, SessionUser, SessionResolveOutcome }
 
-export type SessionState =
-  | { status: 'loading' }
-  | { status: 'unauthenticated' }
-  | { status: 'authenticated'; user: SessionUser }
-  | { status: 'error' }
+let _client: { session: SessionClient } | null = null
+
+function getSessionClient(): { session: SessionClient } | null {
+  if (_client) return _client
+  const origin = getHostedConfig().apiOrigin
+  if (!origin) return null
+  const testToken = window.openPencil?.test?.hostedAuthToken
+  const token = testToken ?? DEV_STUB_ELF_TOKEN
+  _client = createFederationClient({
+    apiOrigin: origin,
+    getToken: () => token
+  })
+  return _client
+}
 
 const sessionState = ref<SessionState>({ status: 'loading' })
-
-function apiOrigin(): string {
-  return getHostedConfig().apiOrigin || ''
-}
 
 export function getLoginUrl(): string | null {
   const config = getHostedConfig()
@@ -40,19 +46,11 @@ export function redirectToLogin(): void {
 }
 
 async function fetchSession(): Promise<SessionState> {
-  const origin = apiOrigin()
-  if (!origin) return { status: 'unauthenticated' }
-  const testToken = window.openPencil?.test?.hostedAuthToken ?? DEV_STUB_ELF_TOKEN
+  const client = getSessionClient()
+  if (!client) return { status: 'unauthenticated' }
 
   try {
-    const res = await fetch(`${origin}/api/session`, {
-      credentials: 'include',
-      headers: testToken ? { Authorization: `Bearer ${testToken}` } : undefined
-    })
-    if (!res.ok) return { status: 'error' }
-    const body = (await res.json()) as { user: { id: string } | null; mode?: string }
-    if (!body.user) return { status: 'unauthenticated' }
-    return { status: 'authenticated', user: body.user }
+    return await client.session.state()
   } catch {
     return { status: 'error' }
   }

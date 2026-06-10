@@ -2,7 +2,14 @@ import { joinRoom as joinTrysteroRoom } from 'trystero/mqtt'
 import * as awarenessProtocol from 'y-protocols/awareness'
 import * as Y from 'yjs'
 
-import { getHostedConfig } from '@/app/hosted/flags'
+import {
+  createFederationClient,
+  connectHostedRoom as connectFederationRoom,
+  type FederationClient,
+  type HostedRoomConnectionState,
+  type ConnectHostedRoomResult
+} from '@open-pencil/federation'
+
 import { DEV_STUB_ELF_TOKEN } from '@/app/hosted/token'
 import { TRYSTERO_APP_ID } from '@/constants'
 
@@ -38,36 +45,7 @@ export type CollabRoomConnection = {
   sharePath: string
 }
 
-type WireMessageType = 'yjs-update' | 'awareness' | 'sync-step1' | 'sync-reply' | 'room-state'
-
-type WireMessage = {
-  type: WireMessageType
-  data: string
-}
-
-type HostedSnapshotPayload = {
-  document: {
-    id: string
-    title: string
-    sourceFormat: string
-    currentSnapshotId: string
-    updatedAt: string
-  }
-  snapshot: {
-    id: string
-    bytesBase64: string
-  }
-  assets: {
-    id: string
-    status: 'ready' | 'missing'
-    bytesBase64: string | null
-  }[]
-  hydration: {
-    degraded: boolean
-    missingAssetIds: string[]
-    message: string | null
-  }
-}
+let _federationClient: FederationClient | null = null
 
 const hostedWireStats = {
   opened: 0,
@@ -80,12 +58,20 @@ const hostedWireStats = {
   awarenessReceived: 0
 }
 
-type TestWindow = Window & {
-  openPencil?: {
-    test?: {
-      hostedAuthToken?: string
-    }
-  }
+function getFederationClient(): FederationClient {
+  if (_federationClient) return _federationClient
+  const apiOrigin = import.meta.env?.VITE_API_ORIGIN ?? ''
+  const token = (window as Window & { openPencil?: { test?: { hostedAuthToken?: string } } })
+    .openPencil?.test?.hostedAuthToken ?? DEV_STUB_ELF_TOKEN
+  _federationClient = createFederationClient({
+    apiOrigin,
+    getToken: () => token
+  })
+  return _federationClient
+}
+
+export function getHostedWireStats() {
+  return { ...hostedWireStats }
 }
 
 export function connectCollabRoom(options: CollabRoomOptions): CollabRoomConnection {
@@ -205,138 +191,57 @@ function connectHostedRoom({
   setConnectionError,
   setHydrationState
 }: HostedRoomOptions): CollabRoomConnection {
-  const apiOrigin = getHostedConfig().apiOrigin
-  if (!apiOrigin) {
-    throw new Error('Hosted collaboration requires VITE_API_ORIGIN.')
-  }
+  const client = getFederationClient()
+  let connection: Awaited<ReturnType<FederationClient['rooms']['resolveConnection']>> | null = null
+  let handle: ConnectHostedRoomResult | null = null
 
-  const url = new URL(`${apiOrigin}/api/documents/${documentId}/room`)
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
-
-  const token = (window as TestWindow).openPencil?.test?.hostedAuthToken ?? DEV_STUB_ELF_TOKEN
-  const protocols = ['openpencil-room.v1']
-  if (token) protocols.push(`bearer.${token}`)
-
-  void loadHostedSnapshot({
-    documentId,
-    apiOrigin,
-    token,
-    ydoc,
-    setConnectionError,
-    setHydrationState
-  })
-  setReconnecting(true)
-  setConnectionError(null)
-
-  let socket: WebSocket | null = null
-  let disposed = false
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-
-  const sendWireMessage = (type: WireMessageType, data: Uint8Array) => {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return
-    const payload: WireMessage = { type, data: encodeBase64(data) }
-    hostedWireStats.messagesSent += 1
-    if (type === 'sync-step1') hostedWireStats.syncStep1Sent += 1
-    if (type === 'sync-reply') hostedWireStats.syncReplySent += 1
-    if (type === 'yjs-update') hostedWireStats.yjsUpdateSent += 1
-    if (type === 'awareness') hostedWireStats.awarenessSent += 1
-    socket.send(JSON.stringify(payload))
-  }
-
-  const handleMessage = (event: MessageEvent<string>) => {
-    const payload = JSON.parse(event.data) as WireMessage
-    const data = decodeBase64(payload.data)
-    hostedWireStats.messagesReceived += 1
-    if (
-      payload.type === 'room-state' ||
-      payload.type === 'yjs-update' ||
-      payload.type === 'sync-reply'
-    ) {
-      Y.applyUpdate(ydoc, data, 'remote')
-      return
-    }
-    if (payload.type === 'awareness') {
-      hostedWireStats.awarenessReceived += 1
-      awarenessProtocol.applyAwarenessUpdate(awareness, data, null)
-      return
-    }
-    sendWireMessage('sync-reply', Y.encodeStateAsUpdate(ydoc, data))
-  }
-
-  function connectSocket() {
-    if (disposed) return
-    setReconnecting(true)
-    socket = new WebSocket(url.toString(), protocols)
-
-    socket.addEventListener('open', () => {
-      hostedWireStats.opened += 1
+  const onStateChange = (state: HostedRoomConnectionState) => {
+    if (state.status === 'connecting') setReconnecting(true)
+    else if (state.status === 'connected') {
       setReconnecting(false)
       setConnectionError(null)
       setConnected()
-      sendWireMessage('sync-step1', Y.encodeStateVector(ydoc))
-      sendWireMessage(
-        'awareness',
-        awarenessProtocol.encodeAwarenessUpdate(awareness, [awareness.clientID])
-      )
-    })
-    socket.addEventListener('message', handleMessage)
-    socket.addEventListener('close', () => {
-      const remoteClients = [...awareness.getStates().keys()].filter(
-        (id) => id !== awareness.clientID
-      )
-      awarenessProtocol.removeAwarenessStates(awareness, remoteClients, 'peer-left')
-      updatePeersList()
-      if (disposed) {
-        setReconnecting(false)
-        return
-      }
+    } else if (state.status === 'reconnecting') {
       setReconnecting(true)
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null
-        connectSocket()
-      }, 700)
-    })
-    socket.addEventListener('error', () => {
+    } else if (state.status === 'error') {
+      setConnectionError(state.message)
+    } else if (state.status === 'disconnected') {
+      setReconnecting(false)
+    }
+  }
+
+  void (async () => {
+    try {
+      connection = await client.rooms.resolveConnection(documentId)
+      handle = connectFederationRoom({ ydoc, awareness, connection, onStateChange })
+      const liveStats = handle.stats()
+      hostedWireStats.opened = liveStats.opened
+      hostedWireStats.messagesSent = liveStats.messagesSent
+      hostedWireStats.messagesReceived = liveStats.messagesReceived
+      hostedWireStats.syncStep1Sent = liveStats.syncStep1Sent
+      hostedWireStats.syncReplySent = liveStats.syncReplySent
+      hostedWireStats.yjsUpdateSent = liveStats.yjsUpdateSent
+      hostedWireStats.awarenessSent = liveStats.awarenessSent
+      hostedWireStats.awarenessReceived = liveStats.awarenessReceived
+      await hydrateSnapshot(client, documentId, ydoc, setConnectionError, setHydrationState)
+    } catch (error) {
+      setReconnecting(false)
       setConnectionError(
-        'Hosted collaboration connection failed. Refresh the page to retry the room.'
+        error instanceof Error
+          ? `Hosted room bootstrap failed: ${error.message}`
+          : 'Hosted room bootstrap failed. Refresh the page to retry.'
       )
-    })
-  }
+    }
+  })()
 
-  const ydocHandler = (update: Uint8Array, origin: unknown) => {
-    if (origin === 'remote') return
-    sendWireMessage('yjs-update', update)
-  }
-  ydoc.on('update', ydocHandler)
-
-  const awarenessHandler = ({
-    added,
-    updated,
-    removed
-  }: {
-    added: number[]
-    updated: number[]
-    removed: number[]
-  }) => {
-    const changedClients = [...added, ...updated, ...removed]
-    sendWireMessage('awareness', awarenessProtocol.encodeAwarenessUpdate(awareness, changedClients))
-  }
+  const awarenessHandler = () => updatePeersList()
   awareness.on('update', awarenessHandler)
-
-  connectSocket()
 
   return {
     room: {
       leave: () => {
-        disposed = true
-        if (reconnectTimer) {
-          clearTimeout(reconnectTimer)
-          reconnectTimer = null
-        }
-        ydoc.off('update', ydocHandler)
         awareness.off('update', awarenessHandler)
-        socket?.removeEventListener('message', handleMessage)
-        socket?.close()
+        handle?.leave()
       }
     },
     roomId: documentId,
@@ -344,86 +249,35 @@ function connectHostedRoom({
   }
 }
 
-async function loadHostedSnapshot(options: {
-  documentId: string
-  apiOrigin: string
-  token: string
-  ydoc: Y.Doc
-  setConnectionError: (message: string | null) => void
+async function hydrateSnapshot(
+  client: FederationClient,
+  documentId: string,
+  ydoc: Y.Doc,
+  setConnectionError: (message: string | null) => void,
   setHydrationState: (payload: { degraded: boolean; missingAssetIds: string[] }) => void
-}) {
+): Promise<void> {
   try {
-    const response = await fetch(
-      `${options.apiOrigin}/api/documents/${options.documentId}/snapshot`,
-      {
-        credentials: 'include',
-        headers: options.token ? { Authorization: `Bearer ${options.token}` } : undefined
-      }
-    )
-
-    if (!response.ok) {
-      const errorBody = (await response.json().catch(() => null)) as {
-        message?: string
-        reason?: string
-        error?: string
-      } | null
-      options.setHydrationState({ degraded: false, missingAssetIds: [] })
-      options.setConnectionError(
-        errorBody?.message ??
-          (errorBody?.reason === 'invalid-token'
-            ? 'Hosted session expired. Sign in again to reopen this room.'
-            : 'Hosted room bootstrap failed. Refresh the page to retry.')
-      )
-      return
+    const snapshot = await client.rooms.loadSnapshot(documentId)
+    Y.applyUpdate(ydoc, snapshot.snapshot.bytes, 'remote')
+    const images = ydoc.getMap<Uint8Array>('images')
+    for (const asset of snapshot.assets) {
+      if (asset.status !== 'ready' || !asset.bytes) continue
+      images.set(asset.id, asset.bytes)
     }
-
-    const payload = (await response.json()) as HostedSnapshotPayload
-    Y.applyUpdate(options.ydoc, decodeBase64(payload.snapshot.bytesBase64), 'remote')
-
-    for (const asset of payload.assets) {
-      if (asset.status !== 'ready' || !asset.bytesBase64) continue
-      const images = options.ydoc.getMap<Uint8Array>('images')
-      images.set(asset.id, decodeBase64(asset.bytesBase64))
-    }
-
-    options.setHydrationState({
-      degraded: payload.hydration.degraded,
-      missingAssetIds: payload.hydration.missingAssetIds
+    setHydrationState({
+      degraded: snapshot.hydration.degraded,
+      missingAssetIds: snapshot.hydration.missingAssetIds
     })
-
-    if (payload.hydration.degraded) {
-      options.setConnectionError(
-        payload.hydration.message ??
-          `Hosted document loaded without ${payload.hydration.missingAssetIds.length} asset(s). Re-upload missing assets to restore fidelity.`
+    if (snapshot.hydration.degraded) {
+      setConnectionError(
+        snapshot.hydration.message ??
+          `Hosted document loaded without ${snapshot.hydration.missingAssetIds.length} asset(s). Re-upload missing assets to restore fidelity.`
       )
     } else {
-      options.setConnectionError(null)
+      setConnectionError(null)
     }
   } catch {
-    options.setHydrationState({ degraded: false, missingAssetIds: [] })
-    options.setConnectionError('Hosted room bootstrap failed. Refresh the page to retry.')
+    setHydrationState({ degraded: false, missingAssetIds: [] })
+    setConnectionError('Hosted room bootstrap failed. Refresh the page to retry.')
   }
-}
-
-function encodeBase64(data: Uint8Array): string {
-  let binary = ''
-  const chunkSize = 0x8000
-  for (let index = 0; index < data.length; index += chunkSize) {
-    const chunk = data.subarray(index, index + chunkSize)
-    binary += String.fromCharCode(...chunk)
-  }
-  return btoa(binary)
-}
-
-function decodeBase64(value: string): Uint8Array {
-  const binary = atob(value)
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index++) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-  return bytes
-}
-
-export function getHostedWireStats() {
-  return { ...hostedWireStats }
 }
