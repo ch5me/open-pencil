@@ -12,9 +12,23 @@ OpenPencil remains local-first. Hosted modes add authenticated identity, cloud d
 ## Non-goals
 
 - No billing, organization, workspace, comments, broad permissions matrix, or full history product surface.
-- No desktop auth implementation in this contract.
+- No enabled desktop hosted auth rollout in this contract; only the gated deep-link and bearer-storage seam is in scope.
 - No hosted runtime code in local-only paths.
 - No public-broker Trystero dependency in hosted collaboration mode.
+
+## Federation Adoption Contract
+
+The federation adoption surface is locked to two caller shapes:
+
+- Browser sign-in: `/login` starts the ELF authorize redirect, `/auth/callback` exchanges the code through the OpenPencil API, and the app establishes a cookie-backed session before entering hosted routes.
+- Desktop sign-in: Tauri remains local-first until a later gate flips, but the callback transport shape is fixed now: the desktop app listens for an `openpencil://...` deep-link, forwards the callback URL through `registerDesktopAuthCallback()`, and stores any future bearer fallback only inside the gated desktop store boundary.
+
+Rules:
+
+- Browser remains cookie-first. Desktop/native/API callers may use bearer only at the explicit native boundary.
+- The desktop deep-link seam must stay disabled by default; locking the contract does not enable hosted desktop auth.
+- Desktop hosted auth must not change local file open/save behavior when the gate is off.
+- Browser and desktop callback payloads must converge on the same OpenPencil API session contract: one verified ELF identity, conflict rejection when cookie and bearer disagree.
 
 ## Operating Modes
 

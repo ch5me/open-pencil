@@ -6,7 +6,8 @@ import {
   storeBearerToken,
   readBearerToken,
   clearBearerToken,
-  DESKTOP_CALLBACK_SCHEME
+  DESKTOP_CALLBACK_SCHEME,
+  registerDesktopAuthCallback
 } from '@/app/tauri/hosted'
 
 describe('tauri/hosted - disabled seams', () => {
@@ -39,6 +40,14 @@ describe('tauri/hosted - disabled seams', () => {
   describe('clearBearerToken', () => {
     it('does not throw when hosted auth is off', async () => {
       await clearBearerToken()
+    })
+  })
+
+  describe('registerDesktopAuthCallback', () => {
+    it('returns a cleanup function without enabling desktop auth', async () => {
+      const cleanup = await registerDesktopAuthCallback(() => {})
+      expect(typeof cleanup).toBe('function')
+      cleanup()
     })
   })
 
