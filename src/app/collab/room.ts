@@ -11,6 +11,7 @@ import {
 } from '@open-pencil/federation'
 
 import { DEV_STUB_ELF_TOKEN } from '@/app/hosted/token'
+import { getHostedConfig } from '@/app/hosted/flags'
 import { TRYSTERO_APP_ID } from '@/constants'
 
 type SharedRoomOptions = {
@@ -60,7 +61,7 @@ const hostedWireStats = {
 
 function getFederationClient(): FederationClient {
   if (_federationClient) return _federationClient
-  const apiOrigin = import.meta.env?.VITE_API_ORIGIN ?? ''
+  const apiOrigin = getHostedConfig().apiOrigin
   const token = (window as Window & { openPencil?: { test?: { hostedAuthToken?: string } } })
     .openPencil?.test?.hostedAuthToken ?? DEV_STUB_ELF_TOKEN
   _federationClient = createFederationClient({
