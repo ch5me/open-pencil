@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { SceneGraph } from '@open-pencil/core/scene-graph'
 import {
   createHostedDocumentBackend,
   type HostedDocumentClient
@@ -30,7 +31,7 @@ describe('hosted client + backend contract', () => {
 
     await client.saveAs(original)
     expect(capturedBody).not.toBeNull()
-    const body = JSON.parse(capturedBody!)
+    const body = JSON.parse(capturedBody ?? '')
     expect(body.snapshotBytesBase64).toBeTruthy()
     const decoded = atob(body.snapshotBytesBase64)
     expect(decoded.length).toBe(original.length)
@@ -41,7 +42,7 @@ describe('hosted client + backend contract', () => {
     const fakeClient = {
       loadMetadata: async () => ({ mode: 'hosted-docs single-user' as const }),
       open: async () => ({
-        graph: { nodes: new Map(), currentPageId: 'p1' } as any,
+        graph: new SceneGraph(),
         fileName: 'test',
         sourceFormat: 'fig' as const
       }),

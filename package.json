@@ -5,7 +5,9 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
-    "../ch5-packages/packages/firefly/design"
+    "../ch5-packages/packages/firefly/design",
+    "../ch5-packages/packages/motion/motion",
+    "../ch5-packages/packages/tooling/vitest-react-native-mocks"
   ],
   "type": "module",
   "scripts": {

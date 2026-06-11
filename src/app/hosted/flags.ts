@@ -10,34 +10,13 @@
  * @module hosted-flags
  */
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import {
+  type HostedEnv,
+  type HostedFeatureFlags,
+  type HostedEnvironmentConfig
+} from '@open-pencil/core/hosted'
 
-/** Runtime environment labels. Must match .ch5/environments.yaml ids. */
-export type HostedEnv = 'local' | 'preview' | 'staging' | 'production'
-
-/** Individual hosted capabilities, each independently switchable. */
-export interface HostedFeatureFlags {
-  /** ELF-hosted auth (cookie-first web session). */
-  hostedAuth: boolean
-  /** Hosted document storage (D1 + R2 via Worker API). */
-  hostedDocs: boolean
-  /** Hosted real-time collaboration (Durable Object rooms). */
-  hostedCollab: boolean
-}
-
-/** Full environment contract: feature flags plus topology URLs. */
-export interface HostedEnvironmentConfig {
-  env: HostedEnv
-  flags: HostedFeatureFlags
-  /** Base URL for the OpenPencil API Worker. Empty string in local-only mode. */
-  apiOrigin: string
-  /** OAuth callback URL for ELF auth. Empty string when hostedAuth is off. */
-  authCallbackUrl: string
-  /** Public app URL for this environment. */
-  appUrl: string
-}
+export type { HostedEnv, HostedFeatureFlags, HostedEnvironmentConfig }
 
 // ---------------------------------------------------------------------------
 // Default per-environment topology

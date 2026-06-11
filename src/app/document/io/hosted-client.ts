@@ -5,7 +5,6 @@ import {
   HostedApiError,
   type FederationClient,
   type HostedDocumentDescriptor,
-  type HostedDocumentSourceFormat,
   type HostedSnapshotReason
 } from '@open-pencil/federation'
 
@@ -76,7 +75,7 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
 
     return {
       graph,
-      fileName: opened.document.title ?? documentId,
+      fileName: opened.document.title,
       sourceFormat: opened.document.sourceFormat
     }
   }
@@ -91,7 +90,7 @@ export function createHostedClient(options: HostedClientOptions): HostedDocument
         hosted: {
           documentId: meta.hosted.documentId,
           latestSnapshotId: meta.hosted.latestSnapshotId,
-          sourceFormat: meta.hosted.sourceFormat as HostedDocumentSourceFormat
+          sourceFormat: meta.hosted.sourceFormat
         }
       }
     },

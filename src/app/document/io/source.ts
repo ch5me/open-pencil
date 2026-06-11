@@ -8,7 +8,10 @@ import {
   type HostedDocumentClient,
   type HostedDocumentDescriptor
 } from '@/app/document/io/hosted-backend'
-import { createLocalDocumentBackend } from '@/app/document/io/local-backend'
+import {
+  createLocalDocumentBackend,
+  type LocalDocumentBackendOptions
+} from '@/app/document/io/local-backend'
 import {
   documentNameFromFigPath,
   downloadNameFromPath,
@@ -27,20 +30,7 @@ export type BackendChoice =
 
 export { createDocumentSourceState }
 
-type LocalOptions = {
-  state: DocumentSourceState
-  getFilePath: () => string | null
-  setFilePath: (path: string | null) => void
-  getFileHandle: () => FileSystemFileHandle | null
-  setFileHandle: (handle: FileSystemFileHandle | null) => void
-  getDownloadName: () => string | null
-  setDownloadName: (name: string | null) => void
-  setSavedVersion: (version: number) => void
-  setLastWriteTime: (time: number) => void
-  startWatchingFile: () => void
-}
-
-function resolveBackend(choice: BackendChoice, localOptions: LocalOptions): DocumentBackend {
+function resolveBackend(choice: BackendChoice, localOptions: LocalDocumentBackendOptions): DocumentBackend {
   if (choice.kind === 'hosted') {
     return createHostedDocumentBackend({
       descriptor: choice.descriptor,
@@ -89,7 +79,7 @@ export function createDocumentSourceActions({
     return exportFigFile(editor.graph, undefined, getRenderer() ?? undefined, state.currentPageId)
   }
 
-  const localOptions: LocalOptions = {
+  const localOptions: LocalDocumentBackendOptions = {
     state,
     getFilePath,
     setFilePath,

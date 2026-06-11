@@ -1,6 +1,7 @@
+import type { Browser, Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 
-import { CanvasHelper } from '../helpers/canvas'
+import { CanvasHelper } from '#tests/helpers/canvas'
 
 const API_ORIGIN = 'http://127.0.0.1:8787'
 const DOCUMENT_ID = 'doc_test'
@@ -48,7 +49,7 @@ type TestWindow = Window & {
   }
 }
 
-async function seedHostedMode(page: import('@playwright/test').Page, clientLabel: string) {
+async function seedHostedMode(page: Page, clientLabel: string) {
   await page.addInitScript(
     ({ apiOrigin, token, clientLabel }) => {
       const testWindow = window as TestWindow
@@ -63,7 +64,7 @@ async function seedHostedMode(page: import('@playwright/test').Page, clientLabel
   )
 }
 
-async function remoteCursorCount(page: import('@playwright/test').Page) {
+async function remoteCursorCount(page: Page) {
   return page.evaluate(() => {
     const store = (window as TestWindow).openPencil?.getStore?.()
     if (!store) throw new Error('OpenPencil store not initialized')
@@ -71,7 +72,7 @@ async function remoteCursorCount(page: import('@playwright/test').Page) {
   })
 }
 
-async function collabSnapshot(page: import('@playwright/test').Page) {
+async function collabSnapshot(page: Page) {
   return page.evaluate(() => {
     const probe = (window as TestWindow).openPencil?.test?.getCollabSnapshot
     if (!probe) throw new Error('Collab snapshot hook not registered')
@@ -79,7 +80,7 @@ async function collabSnapshot(page: import('@playwright/test').Page) {
   })
 }
 
-async function hostedWireStats(page: import('@playwright/test').Page) {
+async function hostedWireStats(page: Page) {
   return page.evaluate(() => {
     const getter = (window as TestWindow).openPencil?.test?.getHostedWireStats
     if (!getter) throw new Error('Hosted wire stats hook not registered')
@@ -88,9 +89,9 @@ async function hostedWireStats(page: import('@playwright/test').Page) {
 }
 
 async function composeProofScreenshot(options: {
-  browser: import('@playwright/test').Browser
-  alphaPage: import('@playwright/test').Page
-  betaPage: import('@playwright/test').Page
+  browser: Browser
+  alphaPage: Page
+  betaPage: Page
   unauthorizedText: string
   childCount: number
   remoteCursorCount: number
@@ -112,11 +113,11 @@ async function composeProofScreenshot(options: {
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:18px;">
-          <section style="border:2px solid #2563eb;border-radius:14px;overflow:hidden;background:#0b1220;box-shadow:0 12px 32px rgba(0,0,0,.35);">
+          <section style="border:2px solid #2563eb;border-radius:14px;overflow:hidden;background:#0b1220;box-shadow:0 12px 32px #00000059;">
             <div style="padding:10px 14px;background:#172554;font-size:15px;font-weight:700;">Client A — receives peer cursor + synced shape</div>
             <img id="alpha" style="display:block;width:100%;height:auto;" />
           </section>
-          <section style="border:2px solid #16a34a;border-radius:14px;overflow:hidden;background:#0b1220;box-shadow:0 12px 32px rgba(0,0,0,.35);">
+          <section style="border:2px solid #16a34a;border-radius:14px;overflow:hidden;background:#0b1220;box-shadow:0 12px 32px #00000059;">
             <div style="padding:10px 14px;background:#14532d;font-size:15px;font-weight:700;">Client B — creates shape + publishes awareness</div>
             <img id="beta" style="display:block;width:100%;height:auto;" />
           </section>
@@ -181,27 +182,27 @@ test('hosted collab durable-object room syncs two clients and rejects unauthoriz
   expect(betaState.connected).toBe(true)
 
   await alphaPage.waitForFunction(() => {
-    const probe = (window as any).openPencil?.test?.getCollabSnapshot
+    const probe = (window as TestWindow).openPencil?.test?.getCollabSnapshot
     return !!probe && probe().peerCount >= 1
   })
   await betaPage.waitForFunction(() => {
-    const probe = (window as any).openPencil?.test?.getCollabSnapshot
+    const probe = (window as TestWindow).openPencil?.test?.getCollabSnapshot
     return !!probe && probe().peerCount >= 1
   })
 
   await betaCanvas.hover(280, 220)
   await alphaPage.waitForFunction(() => {
-    const store = (window as any).openPencil?.getStore?.()
+    const store = (window as TestWindow).openPencil?.getStore?.()
     return !!store && store.state.remoteCursors.length >= 1
   })
 
   await alphaPage.evaluate(() => {
-    const setter = (window as any).openPencil?.test?.setCollabYjsProofValue
+    const setter = (window as TestWindow).openPencil?.test?.setCollabYjsProofValue
     if (!setter) throw new Error('Missing Yjs proof setter')
     setter('reconnect-proof')
   })
   await betaPage.waitForFunction(() => {
-    const getter = (window as any).openPencil?.test?.getCollabYjsProofValue
+    const getter = (window as TestWindow).openPencil?.test?.getCollabYjsProofValue
     return getter?.() === 'reconnect-proof'
   })
 
@@ -221,12 +222,12 @@ test('hosted collab durable-object room syncs two clients and rejects unauthoriz
   await betaPage.reload()
   await betaCanvas.waitForInit()
   await betaPage.waitForFunction(() => {
-    const probe = (window as any).openPencil?.test?.getCollabSnapshot
+    const probe = (window as TestWindow).openPencil?.test?.getCollabSnapshot
     const snapshot = probe?.()
     return !!snapshot && snapshot.connected && !snapshot.reconnecting
   })
   await betaPage.waitForFunction(() => {
-    const getter = (window as any).openPencil?.test?.getCollabYjsProofValue
+    const getter = (window as TestWindow).openPencil?.test?.getCollabYjsProofValue
     return getter?.() === 'reconnect-proof'
   })
 
@@ -235,7 +236,7 @@ test('hosted collab durable-object room syncs two clients and rejects unauthoriz
   expect(betaAfterReconnect.connected).toBe(true)
   expect(betaAfterReconnect.reconnecting).toBe(false)
   const betaYjsProof = await betaPage.evaluate(() => {
-    const getter = (window as any).openPencil?.test?.getCollabYjsProofValue
+    const getter = (window as TestWindow).openPencil?.test?.getCollabYjsProofValue
     return getter?.() ?? null
   })
   expect(betaYjsProof).toBe('reconnect-proof')

@@ -11,11 +11,11 @@ import IconZoomIn from '~icons/lucide/zoom-in'
 import { useEditorCommands, useI18n } from '@open-pencil/vue'
 
 import { DEFAULT_COLLAB_STATE, useCollabInjected } from '@/app/collab/use'
+import { shareCollabLink } from '@/app/collab/share-link'
 import { useEditorStore } from '@/app/editor/active-store'
 import { toolIcons } from '@/app/editor/icons'
 import { isHostedCollabEnabled } from '@/app/hosted/flags'
 import { openFileDialog } from '@/app/shell/menu/use'
-import { toast } from '@/app/shell/ui'
 import type { ToolbarActionItem } from '@/components/Toolbar/types'
 
 type MenuAction = ToolbarActionItem
@@ -62,16 +62,13 @@ function createMobileHudContext() {
 
   function share() {
     if (!collab) return
-    if (isHostedDocument.value && pendingDocumentId.value) {
-      collab.connectHostedDocument(pendingDocumentId.value)
-      void router.push(`/hosted/${pendingDocumentId.value}`)
-      void copy(`${window.location.origin}/hosted/${pendingDocumentId.value}`)
-    } else {
-      const roomId = collab.shareCurrentDoc()
-      void router.push(`/share/${roomId}`)
-      void copy(`${window.location.origin}/share/${roomId}`)
-    }
-    toast.info('Link copied to clipboard')
+    shareCollabLink({
+      collab,
+      copy,
+      router,
+      isHostedDocument: isHostedDocument.value,
+      pendingDocumentId: pendingDocumentId.value
+    })
   }
 
   function disconnect() {

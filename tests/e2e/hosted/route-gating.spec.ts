@@ -2,6 +2,12 @@ import { expect, test } from '@playwright/test'
 
 import { useEditorSetup } from '#tests/e2e/fixtures'
 
+type TestWindow = Window & {
+  openPencil?: {
+    test?: { hostedAuthToken?: string }
+  }
+}
+
 const editor = useEditorSetup()
 
 test('local-only path available — root loads without hosted auth', async () => {
@@ -46,9 +52,10 @@ test('hosted route gate: authenticated /hosted loads successfully', async () => 
   // Seed the test session BEFORE navigating so the guard passes
   await editor.page.goto('/')
   await editor.page.evaluate(() => {
-    ;(window as any).openPencil ??= {}
-    ;(window as any).openPencil.test ??= {}
-    ;(window as any).openPencil.test.hostedAuthToken = 'DEV_STUB_ELF_TOKEN'
+    const testWindow = window as TestWindow
+    testWindow.openPencil ??= {}
+    testWindow.openPencil.test ??= {}
+    testWindow.openPencil.test.hostedAuthToken = 'DEV_STUB_ELF_TOKEN'
   })
 
   // Now navigate to hosted route — session should be valid, no redirect

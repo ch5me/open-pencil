@@ -1,7 +1,12 @@
-import { expect, test, useEditorSetup } from './fixtures'
+import { expect, test } from '@playwright/test'
 
-type TestWindow = Window & {
-  showSaveFilePicker?: (options?: unknown) => Promise<FileSystemFileHandle>
+import { useEditorSetup } from '#tests/e2e/fixtures'
+
+type MockWritable = { write(): Promise<void>; close(): Promise<void> }
+type MockFileHandle = { name: string; createWritable(): Promise<MockWritable> }
+
+type TestWindow = Omit<Window, 'showSaveFilePicker'> & {
+  showSaveFilePicker?: (options?: unknown) => Promise<MockFileHandle>
   openPencil?: {
     test?: Record<string, unknown> & { writeCount?: () => number }
     getStore?: () => { state: { autosaveEnabled: boolean } }
@@ -13,20 +18,20 @@ const editor = useEditorSetup()
 test('local backend save and autosave use File System Access handle', async () => {
   await editor.page.evaluate(() => {
     let writes = 0
-    const mockWritable = {
+    const mockWritable: MockWritable = {
       write: async () => {
         writes++
       },
       close: async () => undefined
     }
-    const mockHandle = {
+    const mockHandle: MockFileHandle = {
       name: 'backend-evidence.fig',
       createWritable: async () => mockWritable
     }
     const testWindow = window as TestWindow
     testWindow.openPencil ??= {}
     testWindow.openPencil.test = { ...testWindow.openPencil.test, writeCount: () => writes }
-    testWindow.showSaveFilePicker = async () => mockHandle as unknown as FileSystemFileHandle
+    testWindow.showSaveFilePicker = async () => mockHandle
   })
 
   await editor.canvas.drawRect(300, 260, 96, 72)

@@ -1,3 +1,5 @@
+import type { StoreInstance } from '@tauri-apps/plugin-store'
+
 import { isTauri } from './env'
 
 const BEARER_TOKEN_KEY = 'call_function_qtvl25a1v2tp_1'
@@ -33,18 +35,11 @@ export async function registerDesktopAuthCallback(
   }
 }
 
-interface TauriStoreInstance {
-  get: <T>(key: string) => Promise<T | undefined>
-  set: (key: string, value: unknown) => Promise<void>
-  delete: (key: string) => Promise<void>
-  save: () => Promise<void>
-}
-
 interface TauriStoreLoader {
-  Store: { load: (filename: string) => Promise<TauriStoreInstance> }
+  Store: { load: (filename: string) => Promise<StoreInstance> }
 }
 
-async function loadStore(): Promise<TauriStoreInstance | null> {
+async function loadStore(): Promise<StoreInstance | null> {
   if (!isTauri()) return null
   try {
     const mod = (await import('@tauri-apps/plugin-store')) as TauriStoreLoader

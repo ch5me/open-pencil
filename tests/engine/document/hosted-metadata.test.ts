@@ -4,16 +4,16 @@ import {
   HostedDocumentMigrationError,
   createHostedDocumentMetadata,
   rejectUnsupportedHostedDocumentTransition
-} from '../../../api/src/documents/migration'
+} from '#api/documents/migration'
 import {
   ROOM_PENDING_UPDATE_COMPACTION_COUNT,
   appendPendingRoomUpdate,
   compactPersistedRoomState,
   createEmptyPersistedRoomState,
   shouldCompactPersistedRoomState
-} from '../../../api/src/documents/room-persistence'
-import { HOSTED_DOCUMENT_TABLES } from '../../../api/src/documents/schema'
-import { HOSTED_DOCUMENT_SCHEMA_SQL } from '../../../api/src/documents/schema.sql'
+} from '#api/documents/room-persistence'
+import { HOSTED_DOCUMENT_TABLES } from '#api/documents/schema'
+import { HOSTED_DOCUMENT_SCHEMA_SQL } from '#api/documents/schema.sql'
 
 describe('hosted document metadata model', () => {
   test('promotes a local .pen document into hosted metadata with owner, snapshot, asset, and lineage', () => {

@@ -26,12 +26,7 @@ export type CollabRuntime = {
   stopZoomWatch: (() => void) | null
 }
 
-type ConnectCollabSessionOptions = {
-  connection: ConnectOptions
-  runtime: CollabRuntime
-  state: Ref<CollabState>
-  store: EditorStore
-  disconnect: () => void
+type CollabEventCallbacks = {
   updatePeersList: () => void
   tickFollow: () => void
   broadcastAwareness: () => void
@@ -40,20 +35,22 @@ type ConnectCollabSessionOptions = {
   setConnectionError: (message: string | null) => void
 }
 
+type ConnectCollabSessionOptions = CollabEventCallbacks & {
+  connection: ConnectOptions
+  runtime: CollabRuntime
+  state: Ref<CollabState>
+  store: EditorStore
+  disconnect: () => void
+}
+
 type ConnectOptions =
   | { mode: 'local-p2p'; roomId: string }
   | { mode: 'hosted-do'; documentId: string }
 
-type CollabConnectionActionsOptions = {
+type CollabConnectionActionsOptions = CollabEventCallbacks & {
   runtime: CollabRuntime
   state: Ref<CollabState>
   getStore: () => EditorStore
-  updatePeersList: () => void
-  tickFollow: () => void
-  broadcastAwareness: () => void
-  applyYjsToGraph: (events: Y.YEvent<Y.Map<unknown>>[]) => void
-  syncNodeToYjs: (nodeId: string) => void
-  setConnectionError: (message: string | null) => void
   resetFollow: () => void
 }
 

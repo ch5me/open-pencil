@@ -206,7 +206,7 @@ function connectHostedRoom({
       setReconnecting(true)
     } else if (state.status === 'error') {
       setConnectionError(state.message)
-    } else if (state.status === 'disconnected') {
+    } else {
       setReconnecting(false)
     }
   }
@@ -235,13 +235,12 @@ function connectHostedRoom({
     }
   })()
 
-  const awarenessHandler = () => updatePeersList()
-  awareness.on('update', awarenessHandler)
+  awareness.on('update', updatePeersList)
 
   return {
     room: {
       leave: () => {
-        awareness.off('update', awarenessHandler)
+        awareness.off('update', updatePeersList)
         handle?.leave()
       }
     },

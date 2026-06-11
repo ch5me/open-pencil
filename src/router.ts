@@ -7,8 +7,12 @@ import AuthCallbackView from './views/AuthCallbackView.vue'
 import EditorView from './views/EditorView.vue'
 import LoginView from './views/LoginView.vue'
 
-async function requireAuth(next: (value?: string | { path: string }) => void) {
+async function requireAuth(next: (value?: string | { path: string }) => void, hostedOnly = false) {
   if (!isHostedAuthEnabled()) {
+    if (hostedOnly) {
+      next({ path: '/' })
+      return
+    }
     next()
     return
   }
@@ -61,7 +65,7 @@ const router = createRouter({
       component: EditorView,
       meta: { hostedOnly: true },
       beforeEnter: async (_to, _from, next) => {
-        await requireAuth(next)
+        await requireAuth(next, true)
       }
     },
     {
@@ -69,7 +73,7 @@ const router = createRouter({
       component: EditorView,
       meta: { hostedOnly: true },
       beforeEnter: async (_to, _from, next) => {
-        await requireAuth(next)
+        await requireAuth(next, true)
       }
     }
   ]

@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from '@open-pencil/vue'
 
 import { DEFAULT_COLLAB_STATE, useCollabInjected } from '@/app/collab/use'
+import { shareCollabLink } from '@/app/collab/share-link'
 import { isHostedCollabEnabled } from '@/app/hosted/flags'
 import { toast } from '@/app/shell/ui'
 
@@ -52,16 +53,13 @@ function createCollabPanelContext() {
   function share() {
     if (!collab || !nameDraft.value.trim()) return
     collab.setLocalName(nameDraft.value.trim())
-    if (isHostedDocument.value && pendingDocumentId.value) {
-      collab.connectHostedDocument(pendingDocumentId.value)
-      void router.push(`/hosted/${pendingDocumentId.value}`)
-      void copy(`${window.location.origin}/hosted/${pendingDocumentId.value}`)
-    } else {
-      const roomId = collab.shareCurrentDoc()
-      void router.push(`/share/${roomId}`)
-      void copy(`${window.location.origin}/share/${roomId}`)
-    }
-    toast.info('Link copied to clipboard')
+    shareCollabLink({
+      collab,
+      copy,
+      router,
+      isHostedDocument: isHostedDocument.value,
+      pendingDocumentId: pendingDocumentId.value
+    })
     popoverOpen.value = false
   }
 

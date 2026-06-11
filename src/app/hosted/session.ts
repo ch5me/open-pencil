@@ -1,7 +1,12 @@
 import { ref, readonly } from 'vue'
 
-import { createFederationClient, type SessionClient, type SessionState } from '@open-pencil/federation'
-import type { SessionUser, SessionResolveOutcome } from '@open-pencil/federation'
+import {
+  createFederationClient,
+  type SessionClient,
+  type SessionState,
+  type SessionUser,
+  type SessionResolveOutcome
+} from '@open-pencil/federation'
 
 import { getHostedConfig } from '@/app/hosted/flags'
 import { DEV_STUB_ELF_TOKEN } from '@/app/hosted/token'

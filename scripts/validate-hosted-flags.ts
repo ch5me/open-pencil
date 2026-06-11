@@ -17,7 +17,7 @@ import {
   deriveOperatingMode,
   validateHostedConfig,
   type HostedEnvironmentConfig
-} from '../packages/core/src/hosted/types.ts'
+} from '#core/hosted/types.ts'
 
 let passCount = 0
 let failCount = 0
