@@ -1,5 +1,6 @@
 export * from './snap'
 export * from './export-scale'
+export * from './coordinate'
 export * from './geometry'
 export { default as TransformMatrix } from './matrix'
 export type { Mat3 } from './matrix'
