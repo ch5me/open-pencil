@@ -1,6 +1,6 @@
 import { isTauri } from './env'
 
-const BEARER_TOKEN_KEY = 'call_function_qtvl25a1v2tp_1'
+const BEARER_TOKEN_KEY = 'elf_auth_bearer_token'
 
 export const DESKTOP_CALLBACK_SCHEME = 'openpencil'
 

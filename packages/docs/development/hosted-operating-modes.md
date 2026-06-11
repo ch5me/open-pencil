@@ -21,7 +21,7 @@ OpenPencil remains local-first. Hosted modes add authenticated identity, cloud d
 The federation adoption surface is locked to two caller shapes:
 
 - Browser sign-in: `/login` starts the ELF authorize redirect, `/auth/callback` exchanges the code through the OpenPencil API, and the app establishes a cookie-backed session before entering hosted routes.
-- Desktop sign-in: Tauri remains local-first until a later gate flips, but the callback transport shape is fixed now: the desktop app listens for an `openpencil://...` deep-link, forwards the callback URL through `registerDesktopAuthCallback()`, and stores any future bearer fallback only inside the gated desktop store boundary.
+- Desktop sign-in: Tauri remains local-first in this phase. The callback transport shape is fixed now so later rollout work reuses the same seam: the desktop app reserves the `openpencil://...` deep-link shape, forwards callback URLs through `registerDesktopAuthCallback()`, and keeps any future bearer fallback inside the gated desktop store boundary once hosted desktop auth is explicitly enabled.
 
 Rules:
 
