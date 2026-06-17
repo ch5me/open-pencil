@@ -34,21 +34,22 @@ Make Forgejo (`git.ch5.me`) the primary git and CI surface, make Verdaccio (`npm
 
 ## Current State
 
-Migration files prepared. Local install, package build, and Vite build pass.
-Full build/check is blocked by existing lint rule failures. Unit suite reached two
-existing fig roundtrip size assertion failures, then entered the heavy fixture lane.
-HQ repo created and git refs pushed. Forgejo hooks were stale for the new repo
-and were regenerated on the Dell. Forgejo parser then rejected
-`.forgejo/workflows/preview.yml`; local YAML parse now passes for every Forgejo
-workflow. Added a minimal `hq-smoke` Forgejo workflow to isolate Dasio enqueue
-proof from product CI/deploy complexity.
+Migration files prepared. Local install, package build, Vite build, and LFS fsck
+pass. Full build/check is blocked by existing lint rule failures. Unit suite
+reached two existing fig roundtrip size assertion failures, then entered the
+heavy fixture lane. HQ repo created and git refs pushed. LFS now points at
+Forgejo and all reachable LFS objects are backfilled to HQ. Forgejo hooks were
+stale for the new repo and were regenerated on the Dell. Forgejo parser then
+rejected `.forgejo/workflows/preview.yml`; local YAML parse now passes for every
+Forgejo workflow. Added a minimal `hq-smoke` Forgejo workflow to isolate Dasio
+enqueue proof from product CI/deploy complexity. Forgejo DB shows
+`hq-smoke.yml` run `454` queued with no runner task yet.
 
 ## Plan
 
-1. Inspect remotes, branch, dirty work, registry/CI/container refs.
-2. Move CH5-owned CI to Forgejo and retarget package/git/release refs.
-3. Commit migration slice on primary branch.
-4. Create/verify Forgejo repo, push HQ plus origin mirror if configured, verify Forgejo/Dasio run.
+1. Commit `.lfsconfig` Forgejo LFS fix.
+2. Push `main` to HQ and GitHub mirror.
+3. Re-check Forgejo/Dasio run status and final repo cleanliness.
 
 ## Next Update Triggers
 
