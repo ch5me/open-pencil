@@ -2,7 +2,7 @@ name: Deploy docs
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - 'packages/docs/**'
   workflow_dispatch:
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - run: bun run --filter @open-pencil/docs build
 

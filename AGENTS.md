@@ -6,7 +6,7 @@ OpenPencil is a federated sub-app of the Firefly platform at `elf.dance`. Per `h
 
 - **Subdomain (canonical):** `design.elf.dance`
 - **Sub-route (transitional alias):** `app.elf.dance/pencil` redirects to canonical
-- **Auth target:** ELF custom auth + RS256+JWKS. JWKS endpoint live at `api.elf.dance/.well-known/jwks.json`. Frontend auth flow: `/login` (login page) → ELF authorize → `/auth/callback` (token exchange) → session established. All routes protected when `hostedAuth` is enabled. Note: `@ch5me/elf-auth-client` is a private GitHub npm package — frontend implements OAuth flow directly via API endpoints (`/api/elf-auth/authorize`, `/api/elf-auth/token`, `/api/session`).
+- **Auth target:** ELF custom auth + RS256+JWKS. JWKS endpoint live at `api.elf.dance/.well-known/jwks.json`. Frontend auth flow: `/login` (login page) → ELF authorize → `/auth/callback` (token exchange) → session established. All routes protected when `hostedAuth` is enabled. Note: `@ch5me/elf-auth-client` is a private HQ Verdaccio package — frontend implements OAuth flow directly via API endpoints (`/api/elf-auth/authorize`, `/api/elf-auth/token`, `/api/session`).
 - **Runtime provisioning:** Per-user agent container via shared `services/kiloclaw` in firefly-cloud rig `cloud` (call with `openpencil` tag).
 - **Billing:** All OpenPencil agentic ops route through user portable OpenCode container → firefly-cloud billing/gateway. No local LLM gateway.
 - **Master alignment doc:** `/Users/hassoncs/gt/ch5_company/mayor/rig/company-master-alignment.md`
@@ -112,32 +112,32 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 2. Update `CHANGELOG.md` — move "Unreleased" items under new version heading with date
 3. Commit: `Release v0.x.y`
 4. Tag: `git tag v0.x.y && git push --tags`
-5. Ensure GitHub release secrets include `TAURI_SIGNING_PRIVATE_KEY` (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the updater key is password-protected); the public updater key is configured in `desktop/tauri.conf.json`.
+5. Ensure Forgejo release secrets include `TAURI_SIGNING_PRIVATE_KEY` (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the updater key is password-protected); the public updater key is configured in `desktop/tauri.conf.json`.
 6. The `build.yml` workflow triggers on `v*` tags and:
    - Builds Tauri binaries for macOS (arm64 + x64), Windows (x64 + arm64), Linux (x64)
-   - Creates a draft GitHub Release with all platform binaries
-   - Publishes `@open-pencil/core`, `@open-pencil/cli`, `@open-pencil/mcp`, and `@open-pencil/vue` to npm with provenance
-7. Go to GitHub Releases → edit the draft → paste changelog section → publish
+   - Creates a draft Forgejo Release with all platform binaries
+   - Publishes `@open-pencil/core`, `@open-pencil/cli`, `@open-pencil/mcp`, and `@open-pencil/vue` to HQ Verdaccio (`npm.ch5.me`)
+7. Go to Forgejo Releases → edit the draft → paste changelog section → publish
 
 ### CI workflows
 
 | Workflow       | Trigger                               | What it does                                                                                                                                             |
 | -------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `build.yml`    | `v*` tag push or manual               | Build Tauri desktop apps (5 targets), create GitHub Release, publish `@open-pencil/core`, `@open-pencil/cli`, `@open-pencil/mcp`, and `@open-pencil/vue` |
+| `build.yml`    | `v*` tag push or manual               | Build Tauri desktop apps (5 targets), create Forgejo Release, publish `@open-pencil/core`, `@open-pencil/cli`, `@open-pencil/mcp`, and `@open-pencil/vue` to `npm.ch5.me` |
 | `homebrew.yml` | Release published                     | Update `open-pencil/homebrew-tap` cask with new version + SHA256 hashes                                                                                  |
-| `app.yml`      | Push to `master` (non-docs)           | Build web app, deploy to staging Cloudflare Pages (`staging.design.elf.dance`), record build manifest                                                      |
+| `app.yml`      | Push to `main` (non-docs)             | Build web app, deploy to staging Cloudflare Pages (`staging.design.elf.dance`), record build manifest                                                      |
 | `promote-production.yml` | Manual workflow_dispatch | Promote staging candidate to production Cloudflare Pages (`design.elf.dance`) — no rebuild, reuses staging artifact                                         |
-| `docs.yml`     | Push to `master` (`packages/docs/**`) | Build VitePress docs, deploy to Cloudflare Pages (`design.elf.dance`)                                                                                       |
+| `docs.yml`     | Push to `main` (`packages/docs/**`)   | Build VitePress docs, deploy to Cloudflare Pages (`design.elf.dance`)                                                                                       |
 
 ### Deployment pattern
 
 OpenPencil follows the CH5 artifact promotion model:
 
-1. **Staging auto-deploys** on every push to `master` (non-docs changes)
+1. **Staging auto-deploys** on every push to `main` (non-docs changes)
    - Builds the app with staging environment variables
    - Records a build manifest (commit SHA, branch, timestamp, artifact paths)
    - Deploys to staging Cloudflare Pages (`staging.design.elf.dance`)
-   - Uploads manifest as GitHub Actions artifact for auditability
+   - Uploads manifest as Forgejo Actions artifact for auditability
 
 1. **Production promotion** via manual `workflow_dispatch`
    - Reads the recorded staging manifest

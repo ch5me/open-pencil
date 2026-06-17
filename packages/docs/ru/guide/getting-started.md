@@ -6,7 +6,7 @@ OpenPencil работает в браузере — установка не тр
 
 ## Скачать десктоп-приложение
 
-Собранные бинарные файлы для macOS, Windows и Linux доступны на [странице релизов](https://github.com/open-pencil/open-pencil/releases/latest).
+Собранные бинарные файлы для macOS, Windows и Linux доступны на [странице релизов](https://git.ch5.me/ch5/open-pencil/releases/latest).
 
 | Платформа | Загрузка |
 |----------|----------|
@@ -35,7 +35,7 @@ brew install open-pencil/tap/open-pencil
 ## Установка
 
 ```sh
-git clone https://github.com/open-pencil/open-pencil.git
+git clone https://git.ch5.me/ch5/open-pencil.git
 cd open-pencil
 bun install
 ```

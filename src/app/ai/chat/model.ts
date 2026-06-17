@@ -36,7 +36,7 @@ export function createLanguageModel(config: ModelConfig): LanguageModel {
         apiKey: config.apiKey,
         headers: {
           'X-OpenRouter-Title': 'OpenPencil',
-          'HTTP-Referer': 'https://github.com/open-pencil/open-pencil'
+          'HTTP-Referer': 'https://git.ch5.me/ch5/open-pencil'
         }
       })
       return openrouter(effectiveModelID)

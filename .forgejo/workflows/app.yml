@@ -2,7 +2,7 @@ name: Deploy app
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths-ignore:
       - 'packages/docs/**'
       - 'openspec/**'
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - name: Install oxlint
         run: bun add -g oxlint
@@ -37,7 +37,7 @@ jobs:
         run: bun run format:check
 
       - name: Build candidate
-        run: bun run build:packages && vite build
+        run: bun run build:packages && ./node_modules/.bin/vite build
 
       - name: Record staging manifest
         run: bun run release:candidate
@@ -46,7 +46,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name open-pencil --branch master
+          command: pages deploy dist --project-name open-pencil --branch main
 
       - name: Smoke test staging
         run: |

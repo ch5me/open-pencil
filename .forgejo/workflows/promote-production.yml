@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - name: Promote candidate to production
         run: bun run promote:production
@@ -36,7 +36,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name open-pencil --branch master
+          command: pages deploy dist --project-name open-pencil --branch main
 
       - name: Smoke test production
         run: |

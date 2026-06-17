@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone https://github.com/open-pencil/open-pencil.git
+git clone https://git.ch5.me/ch5/open-pencil.git
 cd open-pencil
 git clone https://github.com/open-pencil/vue-stream-markdown.git
 bun install

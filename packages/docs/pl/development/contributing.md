@@ -62,7 +62,7 @@ bun run check
 
 ### Konwencje dla agentów AI
 
-Deweloperzy i agenci AI powinni przeczytać `AGENTS.md` w katalogu głównym repo ([zobacz na GitHub](https://github.com/open-pencil/open-pencil/blob/master/AGENTS.md)). Obejmuje renderowanie, graf sceny, komponenty i instancje, layout, UI, format pliku, konwencje Tauri i znane problemy.
+Deweloperzy i agenci AI powinni przeczytać `AGENTS.md` w katalogu głównym repo ([zobacz na Forgejo](https://git.ch5.me/ch5/open-pencil/src/branch/main/AGENTS.md)). Obejmuje renderowanie, graf sceny, komponenty i instancje, layout, UI, format pliku, konwencje Tauri i znane problemy.
 
 ## Wprowadzanie zmian
 

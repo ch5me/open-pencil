@@ -2,11 +2,11 @@
 
 ## Reporting a Vulnerability
 
-Please do not report security vulnerabilities through public GitHub issues or pull requests.
+Please do not report security vulnerabilities through public Forgejo issues or pull requests.
 
-If you believe you have found a security issue in OpenPencil, report it privately using GitHub Security Advisories:
+If you believe you have found a security issue in OpenPencil, report it privately using Forgejo private issue:
 
-https://github.com/open-pencil/open-pencil/security/advisories/new
+https://git.ch5.me/ch5/open-pencil/issues/new
 
 Please include as much detail as possible:
 

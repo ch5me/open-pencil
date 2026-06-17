@@ -1,5 +1,8 @@
 name: Update Homebrew Tap
 
+# External distribution exception: the public Homebrew tap remains on GitHub.
+# Build/release authority stays in Forgejo; this workflow only syncs the tap.
+
 on:
   release:
     types: [published]
@@ -41,8 +44,8 @@ jobs:
             -e "/on_intel/,/end/{s/sha256 \".*\"/sha256 \"$SHA_X64\"/;}" \
             Casks/open-pencil.rb
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "forgejo-actions[bot]"
+          git config user.email "forgejo-actions[bot]@git.ch5.me"
           git add Casks/open-pencil.rb
           git commit -m "Update OpenPencil to $VERSION"
           git push

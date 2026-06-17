@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  id-token: write
 
 jobs:
   build:
@@ -51,7 +50,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - name: Extract release notes
         id: changelog
@@ -67,7 +66,6 @@ jobs:
         id: release_body
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_NOTES: ${{ steps.changelog.outputs.release_notes }}
         run: |
           PREV_TAG=$(git tag -l 'v*' --sort=-version:refname | sed -n '2p')
@@ -123,16 +121,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24.x
-          registry-url: https://registry.npmjs.org/
+          registry-url: https://npm.ch5.me/
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - name: Build packages for publish
         run: |
@@ -224,7 +221,7 @@ jobs:
             local name=$(node -p "require('./$dir/package.json').name")
             local version=$(node -p "require('./$dir/package.json').version")
             local publish_dir=".publish/$(basename "$dir")"
-            if npm view "${name}@${version}" version 2>/dev/null; then
+            if npm view "${name}@${version}" version --registry https://npm.ch5.me/ 2>/dev/null; then
               echo "${name}@${version} already published, skipping pack"
             else
               (cd "$publish_dir" && npm pack --pack-destination "$root_dir/.npm-packages")
@@ -245,12 +242,12 @@ jobs:
             local dir=$1
             local name=$(node -p "require('./$dir/package.json').name")
             local version=$(node -p "require('./$dir/package.json').version")
-            if npm view "${name}@${version}" version 2>/dev/null; then
+            if npm view "${name}@${version}" version --registry https://npm.ch5.me/ 2>/dev/null; then
               echo "${name}@${version} already published, skipping"
             else
               local tarball
               tarball=$(cd .npm-packages && ls open-pencil-$(basename "$dir")-${version}.tgz)
-              npm publish "./.npm-packages/${tarball}" --access public --provenance
+              npm publish "./.npm-packages/${tarball}" --access public --registry https://npm.ch5.me/
             fi
           }
           publish_if_new packages/core

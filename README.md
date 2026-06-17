@@ -6,7 +6,7 @@ Open-source design editor. Opens `.fig` and `.pen` design files, includes built-
 >
 > **Note:** There is another open-source project with the same name — [OpenPencil by ZSeven-W](https://github.com/ZSeven-W/openpencil), focused on AI-native design-to-code workflows. This project focuses on Figma-compatible visual design with real-time collaboration.
 
-**[Try it online →](https://app.openpencil.dev/demo)** · [Download](https://github.com/open-pencil/open-pencil/releases/latest) · [Documentation](https://openpencil.dev) · [llms.txt](https://openpencil.dev/llms.txt)
+**[Try it online →](https://app.openpencil.dev/demo)** · [Download](https://git.ch5.me/ch5/open-pencil/releases/latest) · [Documentation](https://openpencil.dev) · [llms.txt](https://openpencil.dev/llms.txt)
 
 ![OpenPencil](packages/docs/public/screenshot.png)
 
@@ -18,7 +18,7 @@ Open-source design editor. Opens `.fig` and `.pen` design files, includes built-
 brew install open-pencil/tap/open-pencil
 ```
 
-Or download from the [releases page](https://github.com/open-pencil/open-pencil/releases/latest), or [use the web app](https://app.openpencil.dev) — no install needed.
+Or download from the [releases page](https://git.ch5.me/ch5/open-pencil/releases/latest), or [use the web app](https://app.openpencil.dev) — no install needed.
 
 ## What it does
 

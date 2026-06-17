@@ -62,7 +62,7 @@ bun run check
 
 ### Convenzioni per agenti IA
 
-Sviluppatori e agenti IA dovrebbero leggere `AGENTS.md` nella root del repo ([vedi su GitHub](https://github.com/open-pencil/open-pencil/blob/master/AGENTS.md)). Copre rendering, grafo scena, componenti e istanze, layout, UI, formato file, convenzioni Tauri e problemi noti.
+Sviluppatori e agenti IA dovrebbero leggere `AGENTS.md` nella root del repo ([vedi su Forgejo](https://git.ch5.me/ch5/open-pencil/src/branch/main/AGENTS.md)). Copre rendering, grafo scena, componenti e istanze, layout, UI, formato file, convenzioni Tauri e problemi noti.
 
 ## Apportare modifiche
 

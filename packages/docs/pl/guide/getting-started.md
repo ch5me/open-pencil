@@ -6,7 +6,7 @@ OpenPencil działa w przeglądarce — bez instalacji. Otwórz [app.openpencil.d
 
 ## Pobierz aplikację desktopową
 
-Binaria dla macOS, Windows i Linux na [stronie wydań](https://github.com/open-pencil/open-pencil/releases/latest).
+Binaria dla macOS, Windows i Linux na [stronie wydań](https://git.ch5.me/ch5/open-pencil/releases/latest).
 
 | Platforma | Pobieranie |
 |-----------|-----------|
@@ -19,7 +19,7 @@ Binaria dla macOS, Windows i Linux na [stronie wydań](https://github.com/open-p
 ## Kompilacja ze źródeł
 
 ```sh
-git clone https://github.com/open-pencil/open-pencil.git
+git clone https://git.ch5.me/ch5/open-pencil.git
 cd open-pencil
 bun install
 bun run dev

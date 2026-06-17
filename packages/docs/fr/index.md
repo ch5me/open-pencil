@@ -13,10 +13,10 @@ hero:
       link: https://app.openpencil.dev/demo
     - theme: alt
       text: Télécharger
-      link: https://github.com/open-pencil/open-pencil/releases/latest
+      link: https://git.ch5.me/ch5/open-pencil/releases/latest
     - theme: alt
-      text: GitHub
-      link: https://github.com/open-pencil/open-pencil
+      text: Forgejo
+      link: https://git.ch5.me/ch5/open-pencil
 
 features:
   - icon: 📂

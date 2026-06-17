@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
         with:
           lfs: 'true'
 

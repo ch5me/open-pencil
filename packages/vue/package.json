@@ -30,12 +30,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/open-pencil/open-pencil.git",
+    "url": "git+https://git.ch5.me/ch5/open-pencil.git",
     "directory": "packages/vue"
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true
+    "registry": "https://npm.ch5.me/"
   },
   "peerDependencies": {
     "vue": "^3.4.0",

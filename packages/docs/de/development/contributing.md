@@ -59,7 +59,7 @@ bun run check
 
 ### KI-Agent-Konventionen
 
-Entwickler und KI-Agenten sollten `AGENTS.md` im Repo-Root lesen ([auf GitHub ansehen](https://github.com/open-pencil/open-pencil/blob/master/AGENTS.md)). Behandelt Rendering, Szenengraph, Komponenten & Instanzen, Layout, UI, Dateiformat, Tauri-Konventionen und bekannte Probleme.
+Entwickler und KI-Agenten sollten `AGENTS.md` im Repo-Root lesen ([auf Forgejo ansehen](https://git.ch5.me/ch5/open-pencil/src/branch/main/AGENTS.md)). Behandelt Rendering, Szenengraph, Komponenten & Instanzen, Layout, UI, Dateiformat, Tauri-Konventionen und bekannte Probleme.
 
 ## Änderungen vornehmen
 

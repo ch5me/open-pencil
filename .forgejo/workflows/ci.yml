@@ -2,13 +2,13 @@ name: CI
 
 on:
   pull_request:
-    branches: [master]
+    branches: [main]
     paths-ignore:
       - 'packages/docs/**'
       - 'openspec/**'
       - '*.md'
   push:
-    branches: [master]
+    branches: [main]
     paths-ignore:
       - 'packages/docs/**'
       - 'openspec/**'
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
         with:
           lfs: 'true'
 
@@ -47,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - name: Install API dependencies
         working-directory: api
@@ -68,7 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - name: Install API dependencies
         working-directory: api

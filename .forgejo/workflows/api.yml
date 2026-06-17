@@ -2,10 +2,10 @@ name: Deploy API
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - 'api/**'
-      - '.github/workflows/api.yml'
+      - '.forgejo/workflows/api.yml'
   workflow_dispatch:
 
 concurrency:
@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/setup-bun
+      - uses: ./.forgejo/actions/setup-bun
 
       - name: Install API dependencies
         working-directory: api

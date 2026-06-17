@@ -166,12 +166,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/open-pencil/open-pencil.git",
+    "url": "git+https://git.ch5.me/ch5/open-pencil.git",
     "directory": "packages/core"
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true
+    "registry": "https://npm.ch5.me/"
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.7",

@@ -15,7 +15,7 @@ export const WATCH_IGNORED = [
   '**/packages/docs/**',
   '**/tests/**',
   '**/.worktrees/**',
-  '**/.github/**',
+  '**/.forgejo/**',
   '**/.pi/**',
   ignoreMarkdownOutsideSource
 ]
