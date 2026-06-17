@@ -42,7 +42,7 @@ jobs:
           command: pages deploy dist --project-name=openpencil-app --branch=${{ github.event.pull_request.head.ref }}
 
       - name: Report preview URL
-        run: echo "Preview: ${{ steps.deploy.outputs.deployment-url }}"
+        run: 'echo "Preview: ${{ steps.deploy.outputs.deployment-url }}"'
 
       - name: Validate preview deploy
         env:

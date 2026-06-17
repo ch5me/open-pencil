@@ -38,8 +38,9 @@ Migration files prepared. Local install, package build, and Vite build pass.
 Full build/check is blocked by existing lint rule failures. Unit suite reached two
 existing fig roundtrip size assertion failures, then entered the heavy fixture lane.
 HQ repo created and git refs pushed. Forgejo hooks were stale for the new repo
-and were regenerated on the Dell; CI now has `workflow_dispatch` for manual
-Dasio proof.
+and were regenerated on the Dell. Forgejo parser then rejected
+`.forgejo/workflows/preview.yml`; local YAML parse now passes for every Forgejo
+workflow.
 
 ## Plan
 
