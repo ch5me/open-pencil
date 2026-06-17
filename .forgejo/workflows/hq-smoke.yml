@@ -1,0 +1,13 @@
+name: HQ Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm Forgejo Actions
+        run: echo "open-pencil hq smoke"

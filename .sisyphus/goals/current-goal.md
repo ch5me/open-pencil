@@ -40,7 +40,8 @@ existing fig roundtrip size assertion failures, then entered the heavy fixture l
 HQ repo created and git refs pushed. Forgejo hooks were stale for the new repo
 and were regenerated on the Dell. Forgejo parser then rejected
 `.forgejo/workflows/preview.yml`; local YAML parse now passes for every Forgejo
-workflow.
+workflow. Added a minimal `hq-smoke` Forgejo workflow to isolate Dasio enqueue
+proof from product CI/deploy complexity.
 
 ## Plan
 
