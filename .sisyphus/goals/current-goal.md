@@ -37,7 +37,9 @@ Make Forgejo (`git.ch5.me`) the primary git and CI surface, make Verdaccio (`npm
 Migration files prepared. Local install, package build, and Vite build pass.
 Full build/check is blocked by existing lint rule failures. Unit suite reached two
 existing fig roundtrip size assertion failures, then entered the heavy fixture lane.
-HQ repo still needs Forgejo creation/push verification.
+HQ repo created and git refs pushed. Forgejo hooks were stale for the new repo
+and were regenerated on the Dell; CI now has `workflow_dispatch` for manual
+Dasio proof.
 
 ## Plan
 
