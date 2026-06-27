@@ -9,7 +9,7 @@ on:
       - '*.md'
 
 concurrency:
-  group: preview-${{ github.event.pull_request.number }}
+  group: preview-${{ forgejo.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ forgejo.event.pull_request.head.sha }}
 
       - uses: ./.forgejo/actions/setup-bun
 
@@ -39,7 +39,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=openpencil-app --branch=${{ github.event.pull_request.head.ref }}
+          command: pages deploy dist --project-name=openpencil-app --branch=${{ forgejo.event.pull_request.head.ref }}
 
       - name: Report preview URL
         run: 'echo "Preview: ${{ steps.deploy.outputs.deployment-url }}"'

@@ -57,12 +57,12 @@ jobs:
         shell: bash
         run: |
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "release_notes<<$EOF" >> "$GITHUB_OUTPUT"
-          awk '/^## /{if(found)exit; found=1; next} found{print}' CHANGELOG.md >> "$GITHUB_OUTPUT"
-          echo "$EOF" >> "$GITHUB_OUTPUT"
+          echo "release_notes<<$EOF" >> "$FORGEJO_OUTPUT"
+          awk '/^## /{if(found)exit; found=1; next} found{print}' CHANGELOG.md >> "$FORGEJO_OUTPUT"
+          echo "$EOF" >> "$FORGEJO_OUTPUT"
 
       - name: Add new contributors to release notes
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(forgejo.ref, 'refs/tags/v')
         id: release_body
         shell: bash
         env:
@@ -73,10 +73,10 @@ jobs:
           if [ -n "$PREV_TAG" ]; then
             PREV=$(git log "$PREV_TAG" --format='%aE' | sort -u)
             NEW=$(comm -23 \
-              <(git log "${PREV_TAG}..${{ github.ref_name }}" --format='%aE' | sort -u) \
+              <(git log "${PREV_TAG}..${{ forgejo.ref_name }}" --format='%aE' | sort -u) \
               <(echo "$PREV") \
             | while read -r email; do
-                git log "${PREV_TAG}..${{ github.ref_name }}" --format="%aE %aN" \
+                git log "${PREV_TAG}..${{ forgejo.ref_name }}" --format="%aE %aN" \
                   | grep "^${email} " | head -1 | sed 's/^[^ ]* //'
               done)
           fi
@@ -92,12 +92,11 @@ jobs:
               echo "$NEW" | while read -r name; do echo "- $name"; done
             fi
             echo "$EOF"
-          } >> "$GITHUB_OUTPUT"
+          } >> "$FORGEJO_OUTPUT"
 
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -108,15 +107,15 @@ jobs:
         with:
           tauriScript: bunx tauri
           args: --target ${{ matrix.target }}
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/v') && format('OpenPencil {0}', github.ref_name) || '' }}
+          tagName: ${{ startsWith(forgejo.ref, 'refs/tags/v') && forgejo.ref_name || '' }}
+          releaseName: ${{ startsWith(forgejo.ref, 'refs/tags/v') && format('OpenPencil {0}', forgejo.ref_name) || '' }}
           releaseBody: ${{ steps.release_body.outputs.body || steps.changelog.outputs.release_notes }}
           releaseDraft: true
           uploadUpdaterJson: true
           uploadUpdaterSignatures: true
 
   publish-npm:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(forgejo.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     permissions:

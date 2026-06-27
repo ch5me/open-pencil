@@ -16,7 +16,7 @@ on:
       - '*.md'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ forgejo.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -84,7 +84,7 @@ jobs:
         run: |
           npx wrangler dev --env preview --port 8787 &
           WRANGLER_PID=$!
-          echo "WRANGLER_PID=$WRANGLER_PID" >> $GITHUB_ENV
+          echo "WRANGLER_PID=$WRANGLER_PID" >> $FORGEJO_ENV
           echo "Waiting for Worker..."
           for i in $(seq 1 20); do
             STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:8787/health || true)

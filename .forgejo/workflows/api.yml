@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: api-deploy-${{ github.ref }}
+  group: api-deploy-${{ forgejo.ref }}
   cancel-in-progress: true
 
 jobs:

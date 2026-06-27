@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: app-deploy-${{ github.ref }}
+  group: app-deploy-${{ forgejo.ref }}
   cancel-in-progress: true
 
 env:
