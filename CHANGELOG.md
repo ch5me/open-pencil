@@ -33,6 +33,7 @@
 
 ### Fixes
 
+- Match Figma auto-layout reflow when deleting children or hiding optional instance slots, including HUG-height component instances.
 - Fix clone operations (duplicate, instance creation, clipboard copy) sharing mutable references with the original — editing fills, strokes, variable bindings, overrides, or vector networks on one no longer corrupts the other.
 - Fix instance overrides shallow-copied on clone — override values containing objects are now deep-copied.
 - Fix stale variable bindings not cleaned up when fills/strokes arrays shrink — any indexed sub-path is now handled, not just `/color`.
