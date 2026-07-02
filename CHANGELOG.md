@@ -33,6 +33,7 @@
 
 ### Fixes
 
+- Resize auto-height text when typography metrics such as line height or font size change, keeping imported Figma text bounds editable and undoable.
 - Match Figma auto-layout reflow when deleting children or hiding optional instance slots, including HUG-height component instances.
 - Fix clone operations (duplicate, instance creation, clipboard copy) sharing mutable references with the original — editing fills, strokes, variable bindings, overrides, or vector networks on one no longer corrupts the other.
 - Fix instance overrides shallow-copied on clone — override values containing objects are now deep-copied.

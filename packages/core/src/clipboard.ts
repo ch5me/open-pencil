@@ -7,7 +7,11 @@ import { decodeBinarySchema, compileSchema, ByteBuffer } from '@open-pencil/kiwi
 import { shapeTextForClipboard } from './canvas/text'
 import { populateAndApplyOverrides } from './kiwi/fig/instance-overrides'
 import type { InstanceNodeChange } from './kiwi/fig/instance-overrides'
-import { nodeChangeToProps, sortChildren } from './kiwi/fig/node-change/convert'
+import {
+  nodeChangeToProps,
+  shouldImportTextAsAutoSize,
+  sortChildren
+} from './kiwi/fig/node-change/convert'
 import {
   sceneNodeToKiwi,
   buildFigKiwi,
@@ -243,6 +247,9 @@ export function importClipboardNodes(
 
     const { nodeType, ...props } = nodeChangeToProps(nc, blobs)
     if (nodeType === 'DOCUMENT' || nodeType === 'VARIABLE') return
+    if (shouldImportTextAsAutoSize(nc, guidMap.get(parentMap.get(figmaId) ?? ''))) {
+      props.textAutoResize = 'WIDTH_AND_HEIGHT'
+    }
 
     if (ourParentId === targetParentId) {
       props.x = (props.x ?? 0) + offsetX
