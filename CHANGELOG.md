@@ -31,6 +31,7 @@
 - Add world-matrix visual bounds to overlap analysis, covering vector/stroke/text geometry, ancestor clipping, rotated clipping frames, and nested ancestor rotations.
 - Add the `@open-pencil/core/package.json` subpath export for package metadata consumers.
 - Add explicit document/page targeting for live MCP and CLI automation, including `list_documents` / `openpencil documents` discovery and `document_id` / `page_id` target fields.
+- Add standalone browser-openable HTML export with inline CSS or Tailwind browser runtime previews.
 
 ### Fixes
 
