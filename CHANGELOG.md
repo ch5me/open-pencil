@@ -32,7 +32,6 @@
 - Add the `@open-pencil/core/package.json` subpath export for package metadata consumers.
 - Add explicit document/page targeting for live MCP and CLI automation, including `list_documents` / `openpencil documents` discovery and `document_id` / `page_id` target fields.
 - Add standalone browser-openable HTML export with inline CSS or Tailwind browser runtime previews.
-- Add standalone browser-openable HTML export with precompiled CSS, font links, and optional external asset bundles.
 
 ### Fixes
 
