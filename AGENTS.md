@@ -126,7 +126,7 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 | `build.yml`    | `v*` tag push or manual               | Build Tauri desktop apps (5 targets), create Forgejo Release, publish `@open-pencil/core`, `@open-pencil/cli`, `@open-pencil/mcp`, and `@open-pencil/vue` to `npm.ch5.me` |
 | `homebrew.yml` | Release published                     | Update `open-pencil/homebrew-tap` cask with new version + SHA256 hashes                                                                                  |
 | `app.yml`      | Push to `main` (non-docs)             | Build web app, deploy to staging Cloudflare Pages (`staging.design.elf.dance`), record build manifest                                                      |
-| `promote-production.yml` | Manual workflow_dispatch | Promote staging candidate to production Cloudflare Pages (`design.elf.dance`) — no rebuild, reuses staging artifact                                         |
+| `promote-production.yml` | Manual workflow_dispatch | Rebuild the web app with `OPENPENCIL_HOSTED_ENV=production` and deploy to production Cloudflare Pages (`design.elf.dance`)                                  |
 | `docs.yml`     | Push to `main` (`packages/docs/**`)   | Build VitePress docs, deploy to Cloudflare Pages (`design.elf.dance`)                                                                                       |
 
 ### Deployment pattern
@@ -387,7 +387,7 @@ Self-review checklist:
 
 ## Publishing
 
-- `bun publish` from package dirs — resolves `workspace:*` → actual versions
+- Packages publish via CI: the `build.yml` `publish-npm` job (on `v*` tags or manual dispatch) builds each package and runs `npm publish` from prepared `.publish/` dirs — not manual `bun publish`
 - Core: `prepublishOnly` runs `tsc` to build `dist/` for Node.js consumers
 - CLI requires Bun runtime (`#!/usr/bin/env bun`)
 
