@@ -9,7 +9,7 @@ OpenPencil is a federated sub-app of the Firefly platform at `elf.dance`. Per `h
 - **Auth target:** ELF custom auth + RS256+JWKS. JWKS endpoint live at `api.elf.dance/.well-known/jwks.json`. Frontend auth flow: `/login` (login page) → ELF authorize → `/auth/callback` (token exchange) → session established. All routes protected when `hostedAuth` is enabled. Note: `@ch5me/elf-auth-client` is a private HQ Verdaccio package — frontend implements OAuth flow directly via API endpoints (`/api/elf-auth/authorize`, `/api/elf-auth/token`, `/api/session`).
 - **Runtime provisioning:** Per-user agent container via the firefly-cloud runtime/box registry (call with `openpencil` tag). Retired KiloClaw service names are historical only, not active provisioning authority.
 - **Billing:** All OpenPencil agentic ops route through user portable OpenCode container → firefly-cloud billing/gateway. No local LLM gateway.
-- **Master alignment doc:** `/Users/hassoncs/gt/ch5_company/mayor/rig/company-master-alignment.md`
+- **Master alignment doc:** `~/src/ch5/ch5-company/docs/company/company-master-alignment.md`
 - **Hosted readiness contract:** `packages/docs/development/hosted-operating-modes.md` defines operating modes, canonical hosted identities, local-to-hosted promotion, and deterministic room derivation.
 
 ## Project Overview
@@ -20,7 +20,7 @@ Vue 3 + CanvasKit (Skia WASM) + Yoga WASM design editor. Tauri v2 desktop, also 
 
 ## Monorepo
 
-Bun workspace with three packages:
+Bun workspace with five packages:
 
 - `packages/core` — `@open-pencil/core`: scene graph, renderer, layout, codec, kiwi, clipboard, vector, snap, undo. Zero DOM deps, runs headless in Bun.
 - `packages/cli` — `@open-pencil/cli`: headless CLI for .fig inspection, export, linting. Uses `citty` + `agentfmt`.
