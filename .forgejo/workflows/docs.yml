@@ -20,8 +20,10 @@ jobs:
 
       - run: bun run --filter @open-pencil/docs build
 
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy packages/docs/.vitepress/dist --project-name=openpencil-docs
+      - name: Setup Hush (hush-in-CI)
+        run: bash scripts/ci-setup-hush.sh wrangler-deploy-staging
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Deploy docs to Cloudflare Pages
+        run: hush run --target wrangler-deploy-staging -- bunx wrangler pages deploy packages/docs/.vitepress/dist --project-name=openpencil-docs

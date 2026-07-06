@@ -18,15 +18,15 @@
     "ELF_ISSUER": "https://app.elf.dance",
     "ELF_AUDIENCE": "https://api.elf.dance"
   },
+  // Top-level config is the default (production) environment: api.design.elf.dance.
   "routes": [
-    { "pattern": "api.staging.design.elf.dance/*", "zone_name": "elf.dance" },
     { "pattern": "api.design.elf.dance/*", "zone_name": "elf.dance" }
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "openpencil-db",
-      "database_id": "local-id-openpencil-db",
+      "database_id": "9d83abfa-9f06-4613-95e4-0b93ce41c2c8",
       "migrations_dir": "migrations"
     }
   ],
@@ -53,5 +53,53 @@
         "class_name": "DocumentRoomDO"
       }
     ]
+  },
+  // Named environments do NOT inherit bindings/vars — each stage repeats its own.
+  // Staging deploys as openpencil-api-staging against api.staging.design.elf.dance
+  // and the openpencil-db-staging D1.
+  "env": {
+    "staging": {
+      "workers_dev": true,
+      "vars": {
+        "ELF_JWKS_URL": "https://api.elf.dance/.well-known/jwks.json",
+        "ELF_ISSUER": "https://app.elf.dance",
+        "ELF_AUDIENCE": "https://api.elf.dance"
+      },
+      "routes": [
+        { "pattern": "api.staging.design.elf.dance/*", "zone_name": "elf.dance" }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "openpencil-db-staging",
+          "database_id": "7e8af747-bef1-4fee-9431-4fc7b0108f35",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "DOCUMENTS",
+          "bucket_name": "openpencil-documents"
+        },
+        {
+          "binding": "ASSETS",
+          "bucket_name": "openpencil-assets"
+        }
+      ],
+      "migrations": [
+        {
+          "tag": "v1",
+          "new_classes": ["DocumentRoomDO"]
+        }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "DOCUMENT_ROOM",
+            "class_name": "DocumentRoomDO"
+          }
+        ]
+      }
+    }
   }
 }

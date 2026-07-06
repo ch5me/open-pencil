@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@ch5me/elf-auth-client": "^0.3.0",
-    "hono": "^4.12.5"
+    "hono": "^4.12.5",
+    "yjs": "^13.6.29"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.0",

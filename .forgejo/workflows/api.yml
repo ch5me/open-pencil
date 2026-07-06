@@ -40,13 +40,19 @@ jobs:
         env:
           OPENPENCIL_HOSTED_ENV: staging
 
-      - uses: cloudflare/wrangler-action@v3
+      - name: Setup Hush (hush-in-CI)
+        run: bash scripts/ci-setup-hush.sh wrangler-deploy-staging
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Deploy API worker to staging
         id: deploy
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: api
-          command: deploy --env staging
+        working-directory: api
+        run: |
+          set -eo pipefail
+          hush run --target wrangler-deploy-staging -- bunx wrangler deploy --env staging 2>&1 | tee deploy.log
+          url="$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)"
+          echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Smoke test deployed Worker
         run: |

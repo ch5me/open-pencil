@@ -34,12 +34,18 @@ jobs:
 
       - run: bun run build
 
-      - uses: cloudflare/wrangler-action@v3
+      - name: Setup Hush (hush-in-CI)
+        run: bash scripts/ci-setup-hush.sh wrangler-deploy-staging
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Deploy preview to Cloudflare Pages
         id: deploy
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=openpencil-app --branch=${{ forgejo.event.pull_request.head.ref }}
+        run: |
+          set -eo pipefail
+          hush run --target wrangler-deploy-staging -- bunx wrangler pages deploy dist --project-name=openpencil-app --branch=${{ forgejo.event.pull_request.head.ref }} 2>&1 | tee deploy.log
+          url="$(grep -oE 'https://[a-z0-9.-]+\.pages\.dev' deploy.log | head -1)"
+          echo "deployment-url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Report preview URL
         run: 'echo "Preview: ${{ steps.deploy.outputs.deployment-url }}"'

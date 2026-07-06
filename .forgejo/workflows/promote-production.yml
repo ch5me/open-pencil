@@ -32,11 +32,13 @@ jobs:
       - name: Promote candidate to production
         run: bun run promote:production
 
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name open-pencil --branch main
+      - name: Setup Hush (hush-in-CI)
+        run: bash scripts/ci-setup-hush.sh wrangler-deploy-prod
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+
+      - name: Deploy production to Cloudflare Pages
+        run: hush run --target wrangler-deploy-prod -- bunx wrangler pages deploy dist --project-name open-pencil --branch main
 
       - name: Smoke test production
         run: |

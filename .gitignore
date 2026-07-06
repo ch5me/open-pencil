@@ -53,3 +53,4 @@ scratch/
 
 # Build manifests (deployment artifacts)
 .build-manifests/
+.hush-materialized/
