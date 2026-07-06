@@ -51,7 +51,8 @@ function getRealVerifier(): ElfVerifier | null {
 
 // ---------------------------------------------------------------------------
 // Stub verifier — returns fixed user for DEV_STUB_ELF_TOKEN
-// Used when no real JWKS endpoint is configured (local dev).
+// Local-dev only: reachable exclusively when ALLOW_DEV_STUB_AUTH=1 is set AND no
+// real verifier is configured. Never reached in a deployed environment.
 // ---------------------------------------------------------------------------
 
 async function stubVerify(token: string): Promise<ElfTokenPayload | null> {
@@ -67,7 +68,10 @@ async function stubVerify(token: string): Promise<ElfTokenPayload | null> {
 // verifyElfToken — THE single auth swap boundary
 //
 // When a real ELF verifier is available (ELF_JWKS_URL set), use RS256/JWKS
-// verification. Otherwise, fall back to stub for local dev.
+// verification. Otherwise fail closed (return null → 401), UNLESS the explicit
+// local-dev opt-in ALLOW_DEV_STUB_AUTH=1 is set. Deployed environments never set
+// that flag, so the hardcoded dev-stub token can never authenticate in prod even
+// if ELF_JWKS_URL is somehow unset.
 // ---------------------------------------------------------------------------
 
 export async function verifyElfToken(token: string): Promise<ElfTokenPayload | null> {
@@ -83,7 +87,10 @@ export async function verifyElfToken(token: string): Promise<ElfTokenPayload | n
     }
     return null
   }
-  return stubVerify(token)
+  if (globalThis.process?.env?.ALLOW_DEV_STUB_AUTH === '1') {
+    return stubVerify(token)
+  }
+  return null
 }
 
 // ---------------------------------------------------------------------------

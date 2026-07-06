@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'bun:test'
 
+// The dev-stub verifier is opt-in and never active in deployed environments.
+// Enable it here so the stub-path tests below can exercise the auth flow; the
+// fail-closed guard tests at the bottom toggle it off explicitly.
+process.env.ALLOW_DEV_STUB_AUTH = '1'
+
 import {
   DEV_STUB_ELF_TOKEN,
   ELF_JWT_COOKIE,
@@ -129,5 +134,40 @@ describe('resolveSession', () => {
     const result = await resolveSession(new Request('http://localhost/api/test', { headers }))
     expect(result.type).toBe('authenticated')
     expect((result as any).token).toBe(DEV_STUB_ELF_TOKEN)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Fail-closed guard — the dev-stub token must NOT authenticate in a deployed
+// environment. With no real verifier configured (ELF_JWKS_URL unset) and the
+// ALLOW_DEV_STUB_AUTH opt-in absent, verification returns null → 401. This is
+// the security regression guard for the hardcoded stub token.
+// ---------------------------------------------------------------------------
+
+describe('verifyElfToken fail-closed (deployed default)', () => {
+  async function withoutDevStub<T>(fn: () => Promise<T>): Promise<T> {
+    const prev = process.env.ALLOW_DEV_STUB_AUTH
+    delete process.env.ALLOW_DEV_STUB_AUTH
+    try {
+      return await fn()
+    } finally {
+      if (prev !== undefined) process.env.ALLOW_DEV_STUB_AUTH = prev
+    }
+  }
+
+  it('rejects the dev-stub token when the opt-in flag is unset', async () => {
+    await withoutDevStub(async () => {
+      expect(await verifyElfToken(DEV_STUB_ELF_TOKEN)).toBeNull()
+    })
+  })
+
+  it('resolveSession returns unauthorized/invalid-token for the stub token when the flag is unset', async () => {
+    await withoutDevStub(async () => {
+      const result = await resolveSession(new Request('http://localhost/api/test', {
+        headers: { authorization: `Bearer ${DEV_STUB_ELF_TOKEN}` }
+      }))
+      expect(result.type).toBe('unauthorized')
+      expect((result as any).reason).toBe('invalid-token')
+    })
   })
 })

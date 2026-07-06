@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
+// These API tests exercise the auth-gated routes with the dev-stub token, which
+// is only honoured when this opt-in flag is set (deployed envs never set it).
+process.env.ALLOW_DEV_STUB_AUTH = '1'
+
 import worker from './index'
 import { DEV_STUB_ELF_TOKEN } from './auth'
 
