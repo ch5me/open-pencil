@@ -30,9 +30,9 @@ Each flag resolves from its env var override first; when the var is unset, the p
 | Environment | `hostedAuth` | `hostedDocs` | `hostedCollab` | API Origin | Auth Callback URL | App URL |
 |---|---|---|---|---|---|---|
 | `local` | off | off | off | (empty) | (empty) | `http://localhost:1420` |
-| `preview` | on | off | off | `https://api.staging.design.elf.dance` | `https://design.elf.dance/api/auth/callback` | Pages-deployed URL |
-| `staging` | on | on | off | `https://api.staging.design.elf.dance` | `https://staging.design.elf.dance/api/auth/callback` | `https://staging.design.elf.dance` |
-| `production` | on | on | off | `https://api.design.elf.dance` | `https://design.elf.dance/api/auth/callback` | `https://design.elf.dance` |
+| `preview` | on | off | off | `https://staging-openpencil-api.elf.dance` | `https://design.elf.dance/api/auth/callback` | Pages-deployed URL |
+| `staging` | on | on | off | `https://staging-openpencil-api.elf.dance` | `https://staging.design.elf.dance/api/auth/callback` | `https://staging.design.elf.dance` |
+| `production` | on | on | off | `https://openpencil-api.elf.dance` | `https://design.elf.dance/api/auth/callback` | `https://design.elf.dance` |
 
 ### Design Rationale <!-- oc:id=sec_ae -->
 

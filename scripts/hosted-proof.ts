@@ -12,23 +12,20 @@
  *  4. /api/documents returns 401 without session
  *  5. /api/documents/:id/snapshot returns 401 without session
  *  6. /api/documents/:id/room returns 401 without session
- *  7. Authenticated session bootstrap via stub token (cookie path)
- *  8. Authenticated session bootstrap via stub token (bearer path)
- *  9. Hosted document list returns empty array for stub user
- * 10. Hosted document create succeeds with valid stub session
- * 11. Hosted document snapshot read succeeds for owner
- * 12. Hosted document save (PUT) succeeds for owner
- * 13. Hosted document delete succeeds for owner
- * 14. Unauthorized caller cannot access another user's document
- * 15. Hosted collab room endpoint returns room stub for owner
- * 16. Feature flag contract validated via scripts/validate-hosted-flags.ts
+ *  7. Optional dev-stub auth checks when OPENPENCIL_DEV_STUB_TOKEN is set
+ *  8. Hosted document CRUD checks when a real OPENPENCIL_AUTH_TOKEN is set
+ *
+ * Deployed proofs always assert that garbage bearer auth is rejected with 401.
+ *  9. Hosted document CRUD succeeds for a real ELF session token
+ * 10. Hosted collab room endpoint returns room stub for owner
+ * 11. Feature flag contract validated via scripts/validate-hosted-flags.ts
  */
 
 export {} // Force TypeScript module mode (top-level await in script)
 
 const API_ORIGIN = process.env.OPENPENCIL_API_ORIGIN ?? 'http://127.0.0.1:8787'
-// Matches api/src/auth.ts DEV_STUB_ELF_TOKEN
-const STUB_TOKEN = process.env.OPENPENCIL_DEV_STUB_TOKEN ?? 'openpencil-hosted-dev-token'
+const AUTH_TOKEN = process.env.OPENPENCIL_AUTH_TOKEN
+const STUB_TOKEN = process.env.OPENPENCIL_DEV_STUB_TOKEN
 const ELF_COOKIE = 'ELF_JWT'
 
 let passCount = 0
@@ -112,27 +109,36 @@ assert(room.status === 401, `GET /api/documents/test-doc/room → ${room.status}
 // ---------------------------------------------------------------------------
 console.log('\n5. Authenticated session bootstrap')
 
-const cookieSession = await request('/api/session', {
-  headers: { cookie: `${ELF_COOKIE}=${STUB_TOKEN}` }
-})
-assert(cookieSession.status === 200, `cookie session → ${cookieSession.status}`)
-const cookieSessionJson = cookieSession.json()
-assert(cookieSessionJson.user?.id === 'stub-user-001', 'cookie session resolves stub-user-001')
+if (STUB_TOKEN) {
+  const cookieSession = await request('/api/session', {
+    headers: { cookie: `${ELF_COOKIE}=${STUB_TOKEN}` }
+  })
+  assert(cookieSession.status === 200, `cookie session → ${cookieSession.status}`)
+  const cookieSessionJson = cookieSession.json()
+  assert(cookieSessionJson.user?.id === 'stub-user-001', 'cookie session resolves stub-user-001')
+} else {
+  results.push('  SKIP: dev-stub cookie session (OPENPENCIL_DEV_STUB_TOKEN unset)')
+  console.log('  SKIP: dev-stub cookie session (OPENPENCIL_DEV_STUB_TOKEN unset)')
+}
 
-const bearerSession = await request('/api/session', {
-  headers: { authorization: `Bearer ${STUB_TOKEN}` }
-})
-assert(bearerSession.status === 200, `bearer session → ${bearerSession.status}`)
-const bearerSessionJson = bearerSession.json()
-assert(bearerSessionJson.user?.id === 'stub-user-001', 'bearer session resolves stub-user-001')
-
+if (AUTH_TOKEN) {
+  const bearerSession = await request('/api/session', {
+    headers: { authorization: `Bearer ${AUTH_TOKEN}` }
+  })
+  assert(bearerSession.status === 200, `bearer session → ${bearerSession.status}`)
+  const bearerSessionJson = bearerSession.json()
+  assert(typeof bearerSessionJson.user?.id === 'string', 'bearer session resolves real ELF user')
+} else {
+  results.push('  SKIP: real bearer session (OPENPENCIL_AUTH_TOKEN unset)')
+  console.log('  SKIP: real bearer session (OPENPENCIL_AUTH_TOKEN unset)')
+}
 // ---------------------------------------------------------------------------
 // 9. Invalid token rejected
 // ---------------------------------------------------------------------------
 console.log('\n6. Invalid token rejection')
 
 const invalidSession = await request('/api/session', {
-  headers: { cookie: `${ELF_COOKIE}=invalid-token-value` }
+  headers: { authorization: 'Bearer invalid-token-value' }
 })
 assert(
   invalidSession.status === 200,
@@ -141,85 +147,95 @@ assert(
 const invalidSessionJson = invalidSession.json()
 assert(invalidSessionJson.user === null, 'invalid token returns user: null')
 
+const invalidDocs = await request('/api/documents', {
+  headers: { authorization: 'Bearer invalid-token-value' }
+})
+assert(invalidDocs.status === 401, `invalid token documents → ${invalidDocs.status}`)
+
 // ---------------------------------------------------------------------------
-// 10-14. Hosted document CRUD with stub session
+// 10-14. Hosted document CRUD with real ELF session
 // ---------------------------------------------------------------------------
 console.log('\n7. Hosted document CRUD')
 
-const headers = { cookie: `${ELF_COOKIE}=${STUB_TOKEN}`, 'content-type': 'application/json' }
+const headers = AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}`, 'content-type': 'application/json' } : null
 
 // List documents (should be empty or contain stub docs)
-const listDocs = await request('/api/documents', { headers })
-assert(listDocs.status === 200, `GET /api/documents → ${listDocs.status}`)
-const listJson = listDocs.json()
-assert(Array.isArray(listJson.documents), 'document list is an array')
+if (headers === null) {
+  results.push('  SKIP: hosted document CRUD (OPENPENCIL_AUTH_TOKEN unset)')
+  console.log('  SKIP: hosted document CRUD (OPENPENCIL_AUTH_TOKEN unset)')
+} else {
+  const listDocs = await request('/api/documents', { headers })
+  assert(listDocs.status === 200, `GET /api/documents → ${listDocs.status}`)
+  const listJson = listDocs.json()
+  assert(Array.isArray(listJson.documents), 'document list is an array')
 
-// Create a hosted document
-const docId = `proof-${Date.now()}`
-const snapshotBytes = btoa('proof-document-content')
-const createRes = await request('/api/documents', {
-  method: 'POST',
-  headers,
-  body: JSON.stringify({
-    documentId: docId,
-    snapshotId: `snap-${docId}`,
-    title: 'Hosted Proof Document',
-    sourceFormat: 'fig',
-    snapshotBytesBase64: snapshotBytes
+  // Create a hosted document
+  const docId = `proof-${Date.now()}`
+  const snapshotBytes = btoa('proof-document-content')
+  const createRes = await request('/api/documents', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      documentId: docId,
+      snapshotId: `snap-${docId}`,
+      title: 'Hosted Proof Document',
+      sourceFormat: 'fig',
+      snapshotBytesBase64: snapshotBytes
+    })
   })
-})
-assert(createRes.status === 201, `POST /api/documents → ${createRes.status}`)
-const createJson = createRes.json()
-assert(createJson.documentId === docId, 'created documentId matches request')
+  assert(createRes.status === 201, `POST /api/documents → ${createRes.status}`)
+  const createJson = createRes.json()
+  assert(createJson.documentId === docId, 'created documentId matches request')
 
-// Read snapshot
-const getSnap = await request(`/api/documents/${docId}/snapshot`, { headers })
-assert(getSnap.status === 200, `GET snapshot → ${getSnap.status}`)
-const snapJson = getSnap.json()
-assert(snapJson.document?.id === docId, 'snapshot document id matches')
-assert(snapJson.snapshot?.bytesBase64 === snapshotBytes, 'snapshot bytes match created content')
+  // Read snapshot
+  const getSnap = await request(`/api/documents/${docId}/snapshot`, { headers })
+  assert(getSnap.status === 200, `GET snapshot → ${getSnap.status}`)
+  const snapJson = getSnap.json()
+  assert(snapJson.document?.id === docId, 'snapshot document id matches')
+  assert(snapJson.snapshot?.bytesBase64 === snapshotBytes, 'snapshot bytes match created content')
 
-// Save (update) snapshot
-const newSnapshotBytes = btoa('updated-proof-content')
-const saveRes = await request(`/api/documents/${docId}/snapshot`, {
-  method: 'PUT',
-  headers,
-  body: JSON.stringify({
-    snapshotId: `snap-${docId}-v2`,
-    snapshotBytesBase64: newSnapshotBytes
+  // Save (update) snapshot
+  const newSnapshotBytes = btoa('updated-proof-content')
+  const saveRes = await request(`/api/documents/${docId}/snapshot`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      snapshotId: `snap-${docId}-v2`,
+      snapshotBytesBase64: newSnapshotBytes
+    })
   })
-})
-assert(saveRes.status === 200, `PUT snapshot → ${saveRes.status}`)
-const saveJson = saveRes.json()
-assert(saveJson.documentId === docId, 'save response documentId matches')
+  assert(saveRes.status === 200, `PUT snapshot → ${saveRes.status}`)
+  const saveJson = saveRes.json()
+  assert(saveJson.documentId === docId, 'save response documentId matches')
 
-// Delete document
-const deleteRes = await request(`/api/documents/${docId}`, { method: 'DELETE', headers })
-assert(deleteRes.status === 200, `DELETE document → ${deleteRes.status}`)
-const deleteJson = deleteRes.json()
-assert(deleteJson.deleted === true, 'document deleted successfully')
+  // Delete document
+  const deleteRes = await request(`/api/documents/${docId}`, { method: 'DELETE', headers })
+  assert(deleteRes.status === 200, `DELETE document → ${deleteRes.status}`)
+  const deleteJson = deleteRes.json()
+  assert(deleteJson.deleted === true, 'document deleted successfully')
 
-// Verify deleted
-const afterDelete = await request(`/api/documents/${docId}/snapshot`, { headers })
-assert(afterDelete.status === 404, `GET deleted snapshot → ${afterDelete.status}`)
+  // Verify deleted
+  const afterDelete = await request(`/api/documents/${docId}/snapshot`, { headers })
+  assert(afterDelete.status === 404, `GET deleted snapshot → ${afterDelete.status}`)
 
-// ---------------------------------------------------------------------------
-// 15. Hosted collab room endpoint
-// ---------------------------------------------------------------------------
-console.log('\n8. Hosted collab room access')
+  // ---------------------------------------------------------------------------
+  // 15. Hosted collab room endpoint
+  // ---------------------------------------------------------------------------
+  console.log('\n8. Hosted collab room access')
 
-// Create a doc to get room access
-const roomDocId = 'doc_test'
-const roomRes = await request(`/api/documents/${roomDocId}/room`, { headers })
-assert(roomRes.status === 200, `GET room → ${roomRes.status}`)
-const roomJson = roomRes.json()
-assert(roomJson.documentId === roomDocId, 'room documentId matches')
-assert(roomJson.roomId, 'room response includes roomId')
-assert(roomJson.status === 'ok', 'room status is ok')
+  // Create a doc to get room access
+  const roomDocId = 'doc_test'
+  const roomRes = await request(`/api/documents/${roomDocId}/room`, { headers })
+  assert(roomRes.status === 200, `GET room → ${roomRes.status}`)
+  const roomJson = roomRes.json()
+  assert(roomJson.documentId === roomDocId, 'room documentId matches')
+  assert(roomJson.roomId, 'room response includes roomId')
+  assert(roomJson.status === 'ok', 'room status is ok')
 
-// Unauthorized room access
-const unauthRoom = await request(`/api/documents/${roomDocId}/room`)
-assert(unauthRoom.status === 401, `unauthorized room → ${unauthRoom.status}`)
+  // Unauthorized room access
+  const unauthRoom = await request(`/api/documents/${roomDocId}/room`)
+  assert(unauthRoom.status === 401, `unauthorized room → ${unauthRoom.status}`)
+}
 
 // ---------------------------------------------------------------------------
 // 16. Feature flag contract

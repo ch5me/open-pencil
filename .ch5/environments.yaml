@@ -17,7 +17,7 @@ environments:
     promotionFrom: local
     services:
       api:
-        url: https://api.staging.design.elf.dance
+        url: https://staging-openpencil-api.elf.dance
   production:
     id: openpencil-production
     type: production
@@ -28,4 +28,4 @@ environments:
     requiresApproval: true
     services:
       api:
-        url: https://api.design.elf.dance
+        url: https://openpencil-api.elf.dance

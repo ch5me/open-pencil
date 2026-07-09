@@ -1,6 +1,6 @@
 {
   "name": "openpencil-api",
-  "main": "src/index.ts",
+  "main": "src/worker.ts",
   "compatibility_date": "2026-05-28",
   "compatibility_flags": ["nodejs_compat"],
   "account_id": "25bb5f8d9ec4a36106f0ff6b519133b1",
@@ -18,9 +18,9 @@
     "ELF_ISSUER": "https://app.elf.dance",
     "ELF_AUDIENCE": "https://api.elf.dance"
   },
-  // Top-level config is the default (production) environment: api.design.elf.dance.
+  // Top-level config is the default (production) environment: openpencil-api.elf.dance.
   "routes": [
-    { "pattern": "api.design.elf.dance/*", "zone_name": "elf.dance" }
+    { "pattern": "openpencil-api.elf.dance/*", "zone_name": "elf.dance" }
   ],
   "d1_databases": [
     {
@@ -55,7 +55,7 @@
     ]
   },
   // Named environments do NOT inherit bindings/vars — each stage repeats its own.
-  // Staging deploys as openpencil-api-staging against api.staging.design.elf.dance
+  // Staging deploys as openpencil-api-staging against staging-openpencil-api.elf.dance
   // and the openpencil-db-staging D1.
   "env": {
     "staging": {
@@ -66,7 +66,7 @@
         "ELF_AUDIENCE": "https://api.elf.dance"
       },
       "routes": [
-        { "pattern": "api.staging.design.elf.dance/*", "zone_name": "elf.dance" }
+        { "pattern": "staging-openpencil-api.elf.dance/*", "zone_name": "elf.dance" }
       ],
       "d1_databases": [
         {

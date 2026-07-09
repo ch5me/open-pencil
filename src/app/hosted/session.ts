@@ -1,7 +1,6 @@
 import { ref, readonly } from 'vue'
 
 import { getHostedConfig } from '@/app/hosted/flags'
-import { DEV_STUB_ELF_TOKEN } from '@/app/hosted/token'
 
 export interface SessionUser {
   id: string
@@ -42,7 +41,7 @@ export function redirectToLogin(): void {
 async function fetchSession(): Promise<SessionState> {
   const origin = apiOrigin()
   if (!origin) return { status: 'unauthenticated' }
-  const testToken = window.openPencil?.test?.hostedAuthToken ?? DEV_STUB_ELF_TOKEN
+  const testToken = window.openPencil?.test?.hostedAuthToken
 
   try {
     const res = await fetch(`${origin}/api/session`, {
@@ -80,7 +79,7 @@ export function getSessionUserId(): string | null {
 export function seedHostedTestSession() {
   window.openPencil ??= {}
   window.openPencil.test ??= {}
-  window.openPencil.test.hostedAuthToken = DEV_STUB_ELF_TOKEN
+  window.openPencil.test.hostedAuthToken = 'openpencil-hosted-dev-token'
   sessionState.value = {
     status: 'authenticated',
     user: { id: 'stub-user-001' }

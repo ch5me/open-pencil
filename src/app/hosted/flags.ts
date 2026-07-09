@@ -55,19 +55,19 @@ const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
   },
   preview: {
     flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
-    apiOrigin: 'https://api.staging.design.elf.dance',
+    apiOrigin: 'https://staging-openpencil-api.elf.dance',
     authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
     appUrl: '' // resolved at deploy time by Pages
   },
   staging: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-    apiOrigin: 'https://api.staging.design.elf.dance',
+    apiOrigin: 'https://staging-openpencil-api.elf.dance',
     authCallbackUrl: 'https://staging.design.elf.dance/api/auth/callback',
     appUrl: 'https://staging.design.elf.dance'
   },
   production: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-    apiOrigin: 'https://api.design.elf.dance',
+    apiOrigin: 'https://openpencil-api.elf.dance',
     authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
     appUrl: 'https://design.elf.dance'
   }

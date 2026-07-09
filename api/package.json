@@ -10,7 +10,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@ch5me/elf-auth-client": "^0.3.0",
+    "@ch5me/elf-auth-client": "^0.3.2",
     "hono": "^4.12.5",
     "yjs": "^13.6.29"
   },

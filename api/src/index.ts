@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import type { D1Database, R2Bucket, DurableObjectNamespace } from '@cloudflare/workers-types'
-import { resolveSession, requireSession } from './auth'
+import { AuthConfigurationError, assertAuthConfigured, resolveSession, requireSession } from './auth'
 import { hydrateHostedSnapshotAssets } from './documents/assets'
 import { deriveHostedRoomId } from './documents/room-id'
 import { DocumentRoomDO } from './documents/room'
@@ -21,34 +21,25 @@ export interface Env {
   DOCUMENTS: R2Bucket
   ASSETS: R2Bucket
   DOCUMENT_ROOM: DurableObjectNamespace
+  ELF_JWKS_URL?: string
+  ELF_ISSUER?: string
+  ELF_AUDIENCE?: string
+  ALLOW_DEV_STUB_AUTH?: string
 }
 
-const app = new Hono<{ Bindings: Env }>()
-
-app.use(async (c, next) => {
-  const start = Date.now()
-  try {
-    await next()
-  } finally {
-    const latencyMs = Date.now() - start
-    const statusCode = c.res.status
-    console.log(JSON.stringify({
-      event: 'request.completed',
-      method: c.req.method,
-      path: c.req.path,
-      statusCode,
-      latencyMs
-    }))
-  }
-})
+export const app = new Hono<{ Bindings: Env }>()
 
 app.onError((err, c) => {
   console.error(JSON.stringify({
     event: 'request.failed',
     method: c.req.method,
     path: c.req.path,
-    error: err instanceof Error ? err.message : String(err)
+    error: err instanceof Error ? err.message : String(err),
+    code: err instanceof AuthConfigurationError ? err.code : undefined
   }))
+  if (err instanceof AuthConfigurationError) {
+    return c.json({ error: 'auth-misconfigured', code: err.code, message: err.message }, 500)
+  }
   return c.json({ error: 'internal-server-error' }, 500)
 })
 
@@ -115,7 +106,7 @@ app.get('/', (c) => {
 // Session bootstrap — returns current authenticated user or null.
 // Unauthenticated callers get { user: null } (not a 401) so the app can gate UI.
 app.get('/api/session', async (c) => {
-  const result = await resolveSession(c.req.raw)
+  const result = await resolveSession(c.req.raw, { env: c.env })
   if (result.type !== 'authenticated') {
     return c.json({ user: null, mode: result.type })
   }
@@ -367,10 +358,14 @@ app.get('/api/documents/:documentId/room', async (c) => {
   return c.json({ documentId, roomId, status: 'ok' })
 })
 
-export default {
-  fetch: app.fetch,
-  DocumentRoomDO
+export const worker = {
+  fetch(request: Request, env: Env, ctx?: ExecutionContext): Response | Promise<Response> {
+    assertAuthConfigured(env)
+    return app.fetch(request, env, ctx)
+  }
 }
+
+export default worker
 
 function encodeBase64(bytes: Uint8Array) {
   let binary = ''

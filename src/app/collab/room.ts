@@ -3,7 +3,6 @@ import * as awarenessProtocol from 'y-protocols/awareness'
 import * as Y from 'yjs'
 
 import { getHostedConfig } from '@/app/hosted/flags'
-import { DEV_STUB_ELF_TOKEN } from '@/app/hosted/token'
 import { TRYSTERO_APP_ID } from '@/constants'
 
 type SharedRoomOptions = {
@@ -213,7 +212,7 @@ function connectHostedRoom({
   const url = new URL(`${apiOrigin}/api/documents/${documentId}/room`)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
 
-  const token = (window as TestWindow).openPencil?.test?.hostedAuthToken ?? DEV_STUB_ELF_TOKEN
+  const token = (window as TestWindow).openPencil?.test?.hostedAuthToken
   const protocols = ['openpencil-room.v1']
   if (token) protocols.push(`bearer.${token}`)
 
@@ -347,7 +346,7 @@ function connectHostedRoom({
 async function loadHostedSnapshot(options: {
   documentId: string
   apiOrigin: string
-  token: string
+  token: string | undefined
   ydoc: Y.Doc
   setConnectionError: (message: string | null) => void
   setHydrationState: (payload: { degraded: boolean; missingAssetIds: string[] }) => void

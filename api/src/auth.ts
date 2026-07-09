@@ -1,4 +1,4 @@
-import type { ElfVerifier } from '@ch5me/elf-auth-client'
+import { createElfVerifier, type ElfVerifier } from '@ch5me/elf-auth-client'
 
 export type ElfUserId = string
 
@@ -13,40 +13,60 @@ export type SessionResult =
   | { type: 'unauthenticated' }
   | { type: 'unauthorized'; reason: 'identity-conflict' | 'invalid-token' }
 
+export type AuthEnv = {
+  ELF_JWKS_URL?: string
+  ELF_ISSUER?: string
+  ELF_AUDIENCE?: string
+  ALLOW_DEV_STUB_AUTH?: string
+}
+
+export class AuthConfigurationError extends Error {
+  readonly code = 'OPENPENCIL_AUTH_MISSING_PRECONDITION'
+
+  constructor(name: keyof AuthEnv) {
+    super(`Missing auth precondition: ${name}`)
+    this.name = 'AuthConfigurationError'
+  }
+}
+
 export const ELF_JWT_COOKIE = 'ELF_JWT'
 export const DEV_STUB_ELF_TOKEN = 'call_30525cb2f86a407bad6be0f6'
 
-// ---------------------------------------------------------------------------
-// Real ELF verifier wiring
-// ---------------------------------------------------------------------------
-// When ELF_JWKS_URL is set, use the canonical @ch5me/elf-auth-client verifier
-// for RS256/JWKS token verification. When unset, fall back to the stub verifier
-// for local development.
-// ---------------------------------------------------------------------------
+let verifierCache: { key: string; verifier: ElfVerifier } | null = null
 
-let _verifier: ElfVerifier | null = null
-let _verifierInitialized = false
+function readAuthEnv(env: AuthEnv | undefined, key: keyof AuthEnv): string | undefined {
+  return env ? env[key] : globalThis.process?.env?.[key]
+}
 
-function getRealVerifier(): ElfVerifier | null {
-  if (_verifierInitialized) return _verifier
-  _verifierInitialized = true
+function isDevStubEnabled(env?: AuthEnv): boolean {
+  return readAuthEnv(env, 'ALLOW_DEV_STUB_AUTH') === '1'
+}
 
-  const jwksUrl = globalThis.process?.env?.ELF_JWKS_URL
-  if (!jwksUrl) return null
+function requireAuthEnv(env: AuthEnv | undefined, key: keyof AuthEnv): string {
+  const value = readAuthEnv(env, key)
+  if (!value) throw new AuthConfigurationError(key)
+  return value
+}
 
-  const issuer = globalThis.process?.env?.ELF_ISSUER ?? 'https://api.elf.dance'
-  const audience = globalThis.process?.env?.ELF_AUDIENCE ?? 'elf-client'
+export function assertAuthConfigured(env?: AuthEnv): void {
+  if (isDevStubEnabled(env)) return
+  requireAuthEnv(env, 'ELF_JWKS_URL')
+  requireAuthEnv(env, 'ELF_ISSUER')
+  requireAuthEnv(env, 'ELF_AUDIENCE')
+}
 
-  try {
-    // Dynamic import to avoid crashing when the package is unavailable
-    // (e.g., during local dev without the dependency installed)
-    const { createElfVerifier } = require('@ch5me/elf-auth-client') as typeof import('@ch5me/elf-auth-client')
-    _verifier = createElfVerifier({ jwksUrl, issuer, audience })
-    return _verifier
-  } catch {
-    // Package not available — fall through to stub
-    return null
-  }
+function getRealVerifier(env?: AuthEnv): ElfVerifier | null {
+  if (!readAuthEnv(env, 'ELF_JWKS_URL') && isDevStubEnabled(env)) return null
+
+  const jwksUrl = requireAuthEnv(env, 'ELF_JWKS_URL')
+  const issuer = requireAuthEnv(env, 'ELF_ISSUER')
+  const audience = requireAuthEnv(env, 'ELF_AUDIENCE')
+  const key = `${jwksUrl}\n${issuer}\n${audience}`
+  if (verifierCache?.key === key) return verifierCache.verifier
+
+  const verifier = createElfVerifier({ jwksUrl, issuer, audience })
+  verifierCache = { key, verifier }
+  return verifier
 }
 
 // ---------------------------------------------------------------------------
@@ -64,18 +84,8 @@ async function stubVerify(token: string): Promise<ElfTokenPayload | null> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// verifyElfToken — THE single auth swap boundary
-//
-// When a real ELF verifier is available (ELF_JWKS_URL set), use RS256/JWKS
-// verification. Otherwise fail closed (return null → 401), UNLESS the explicit
-// local-dev opt-in ALLOW_DEV_STUB_AUTH=1 is set. Deployed environments never set
-// that flag, so the hardcoded dev-stub token can never authenticate in prod even
-// if ELF_JWKS_URL is somehow unset.
-// ---------------------------------------------------------------------------
-
-export async function verifyElfToken(token: string): Promise<ElfTokenPayload | null> {
-  const verifier = getRealVerifier()
+export async function verifyElfToken(token: string, env?: AuthEnv): Promise<ElfTokenPayload | null> {
+  const verifier = getRealVerifier(env)
   if (verifier) {
     const result = await verifier.verify(token)
     if (result.valid) {
@@ -87,7 +97,7 @@ export async function verifyElfToken(token: string): Promise<ElfTokenPayload | n
     }
     return null
   }
-  if (globalThis.process?.env?.ALLOW_DEV_STUB_AUTH === '1') {
+  if (isDevStubEnabled(env)) {
     return stubVerify(token)
   }
   return null
@@ -125,7 +135,7 @@ export function protocolToken(header: string | undefined | null): string | null 
 
 export async function resolveSession(
   request: Request,
-  opts?: { cookieName?: string }
+  opts?: { cookieName?: string; env?: AuthEnv }
 ): Promise<SessionResult> {
   const cookieName = opts?.cookieName ?? ELF_JWT_COOKIE
   const cookieValue = cookieToken(request.headers.get('cookie'), cookieName)
@@ -141,7 +151,7 @@ export async function resolveSession(
   }
 
   const token = credentials[0] ?? ''
-  const payload = await verifyElfToken(token)
+  const payload = await verifyElfToken(token, opts?.env)
   if (!payload) return { type: 'unauthorized', reason: 'invalid-token' }
   return { type: 'authenticated', userId: payload.elfUserId, token }
 }
@@ -150,7 +160,7 @@ import type { MiddlewareHandler } from 'hono'
 
 export function requireSession(opts?: { cookieName?: string }): MiddlewareHandler {
   return async (c, next) => {
-    const result = await resolveSession(c.req.raw, opts)
+    const result = await resolveSession(c.req.raw, { ...opts, env: c.env })
     if (result.type !== 'authenticated') {
       return c.json(
         {

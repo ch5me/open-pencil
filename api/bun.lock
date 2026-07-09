@@ -5,7 +5,7 @@
     "": {
       "name": "@open-pencil/api",
       "dependencies": {
-        "@ch5me/elf-auth-client": "^0.3.0",
+        "@ch5me/elf-auth-client": "^0.3.2",
         "hono": "^4.12.5",
         "yjs": "^13.6.29",
       },
@@ -20,7 +20,7 @@
     },
   },
   "packages": {
-    "@ch5me/elf-auth-client": ["@ch5me/elf-auth-client@0.3.0", "https://npm.ch5.me/@ch5me/elf-auth-client/-/elf-auth-client-0.3.0.tgz", { "dependencies": { "@types/react-dom": "^19.2.3", "jose": "^5", "zod": ">=3.23" }, "peerDependencies": { "hono": ">=4", "react": ">=19" } }, "sha512-5JL5EdrzUqQMvFNngBolpz5ySKN7lPeKY2WGMj9fL4CDQGWo1LFL6YIA0792wDuzMewyfBW25QiUXEYyl5tPZA=="],
+    "@ch5me/elf-auth-client": ["@ch5me/elf-auth-client@0.3.2", "https://npm.ch5.me/@ch5me/elf-auth-client/-/elf-auth-client-0.3.2.tgz", { "dependencies": { "@types/react-dom": "^19.2.3", "jose": "^6.2.3", "zod": "^4.4.3" }, "peerDependencies": { "hono": ">=4", "react": ">=19" }, "optionalPeers": ["hono", "react"] }, "sha512-uQiE8Oq6UfOSTvvLqvq4EuefJ7aYsBQcxpOyQKoSY+8i/dBGz3wu/OJpY6EStvl98pxyfyK19yY61p6Tq2zvtQ=="],
 
     "@cloudflare/kv-asset-handler": ["@cloudflare/kv-asset-handler@0.5.0", "", {}, "sha512-jxQYkj8dSIzc0cD6cMMNdOc1UVjqSqu8BZdor5s8cGjW2I8BjODt/kWPVdY+u9zj3ms75Q5qaZgnxUad83+eAg=="],
 
@@ -416,7 +416,7 @@
 
     "youch-core": ["youch-core@0.3.3", "", { "dependencies": { "@poppinss/exception": "^1.2.2", "error-stack-parser-es": "^1.0.5" } }, "sha512-ho7XuGjLaJ2hWHoK8yFnsUGy2Y5uDpqSTq1FkHLK4/oqKtyUU1AFbOOxY4IpC9f0fTLjwYbslUz0Po5BpD1wrA=="],
 
-    "zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
+    "zod": ["zod@4.4.3", "", {}, "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="],
 
     "@cloudflare/vitest-pool-workers/wrangler": ["wrangler@4.35.0", "", { "dependencies": { "@cloudflare/kv-asset-handler": "0.4.0", "@cloudflare/unenv-preset": "2.7.3", "blake3-wasm": "2.1.5", "esbuild": "0.25.4", "miniflare": "4.20250906.0", "path-to-regexp": "6.3.0", "unenv": "2.0.0-rc.21", "workerd": "1.20250906.0" }, "optionalDependencies": { "fsevents": "~2.3.2" }, "peerDependencies": { "@cloudflare/workers-types": "^4.20250906.0" }, "optionalPeers": ["@cloudflare/workers-types"], "bin": { "wrangler": "bin/wrangler.js", "wrangler2": "bin/wrangler.js" } }, "sha512-HbyXtbrh4Fi3mU8ussY85tVdQ74qpVS1vctUgaPc+bPrXBTqfDLkZ6VRtHAVF/eBhz4SFmhJtCQpN1caY2Ak8A=="],
 

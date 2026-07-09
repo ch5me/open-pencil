@@ -4,7 +4,7 @@ import { describe, expect, test } from 'bun:test'
 // is only honoured when this opt-in flag is set (deployed envs never set it).
 process.env.ALLOW_DEV_STUB_AUTH = '1'
 
-import worker from './index'
+import { worker } from './index'
 import { DEV_STUB_ELF_TOKEN } from './auth'
 
 const TEST_USER = 'stub-user-001'
@@ -103,7 +103,8 @@ function createEnv() {
       DB: createMockDb(rows),
       DOCUMENTS: createMockBucket({}),
       ASSETS: createMockBucket(assets),
-      DOCUMENT_ROOM: {} as any
+      DOCUMENT_ROOM: {} as any,
+      ALLOW_DEV_STUB_AUTH: '1'
     },
     assets,
     rows

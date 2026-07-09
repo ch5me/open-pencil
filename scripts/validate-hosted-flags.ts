@@ -49,11 +49,11 @@ assert(envYaml.includes('openpencil-staging'), 'envs.yaml declares staging')
 assert(envYaml.includes('openpencil-production'), 'envs.yaml declares production')
 assert(envYaml.includes('openpencil-local'), 'envs.yaml declares local')
 assert(
-  topology.environments.staging.apiOrigin === 'https://api.staging.design.elf.dance',
+  topology.environments.staging.apiOrigin === 'https://staging-openpencil-api.elf.dance',
   'staging apiOrigin matches envs.yaml API URL'
 )
 assert(
-  topology.environments.production.apiOrigin === 'https://api.design.elf.dance',
+  topology.environments.production.apiOrigin === 'https://openpencil-api.elf.dance',
   'production apiOrigin matches envs.yaml API URL'
 )
 
@@ -63,7 +63,7 @@ console.log('\n3. Flag dependency constraints (validateHostedConfig)')
 const validConfig: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-  apiOrigin: 'https://api.staging.design.elf.dance',
+  apiOrigin: 'https://staging-openpencil-api.elf.dance',
   authCallbackUrl: 'https://staging.design.elf.dance/api/auth/callback',
   appUrl: 'https://staging.design.elf.dance'
 }
@@ -109,7 +109,7 @@ assert(
 const hostedAuthNoCallback: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
-  apiOrigin: 'https://api.staging.design.elf.dance',
+  apiOrigin: 'https://staging-openpencil-api.elf.dance',
   authCallbackUrl: '',
   appUrl: 'https://staging.design.elf.dance'
 }

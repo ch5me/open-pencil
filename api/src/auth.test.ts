@@ -1,23 +1,45 @@
-import { describe, it, expect } from 'bun:test'
-
-// The dev-stub verifier is opt-in and never active in deployed environments.
-// Enable it here so the stub-path tests below can exercise the auth flow; the
-// fail-closed guard tests at the bottom toggle it off explicitly.
-process.env.ALLOW_DEV_STUB_AUTH = '1'
+import { afterAll, describe, expect, it } from 'bun:test'
+import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 
 import {
+  AuthConfigurationError,
   DEV_STUB_ELF_TOKEN,
   ELF_JWT_COOKIE,
+  assertAuthConfigured,
   bearerToken,
   cookieToken,
   protocolToken,
   resolveSession,
-  verifyElfToken
+  verifyElfToken,
+  type AuthEnv,
+  type SessionResult
 } from './auth'
 
-// ---------------------------------------------------------------------------
-// Helper: build a Request with specific cookie and/or auth header
-// ---------------------------------------------------------------------------
+const stubAuthEnv: AuthEnv = { ALLOW_DEV_STUB_AUTH: '1' }
+const issuer = 'https://auth.test'
+const audience = 'open-pencil-test'
+const keyId = 'open-pencil-test-key'
+const { privateKey, publicKey } = await generateKeyPair('RS256')
+const jwk = {
+  ...await exportJWK(publicKey),
+  alg: 'RS256',
+  kid: keyId,
+  use: 'sig'
+}
+const jwksServer = Bun.serve({
+  hostname: '127.0.0.1',
+  port: 0,
+  fetch: () => Response.json({ keys: [jwk] })
+})
+const realAuthEnv: AuthEnv = {
+  ELF_JWKS_URL: `http://127.0.0.1:${jwksServer.port}/jwks.json`,
+  ELF_ISSUER: issuer,
+  ELF_AUDIENCE: audience
+}
+
+afterAll(() => {
+  jwksServer.stop(true)
+})
 
 function makeRequest(opts: { cookie?: string; authorization?: string } = {}) {
   const headers = new Headers()
@@ -26,9 +48,28 @@ function makeRequest(opts: { cookie?: string; authorization?: string } = {}) {
   return new Request('http://localhost/api/test', { headers })
 }
 
-// ---------------------------------------------------------------------------
-// Cookie + bearer extraction
-// ---------------------------------------------------------------------------
+function expectAuthenticated(result: SessionResult) {
+  expect(result.type).toBe('authenticated')
+  if (result.type !== 'authenticated') throw new Error(`Expected authenticated, got ${result.type}`)
+  return result
+}
+
+function expectUnauthorized(result: SessionResult) {
+  expect(result.type).toBe('unauthorized')
+  if (result.type !== 'unauthorized') throw new Error(`Expected unauthorized, got ${result.type}`)
+  return result
+}
+
+function captureConfigurationError(run: () => void): AuthConfigurationError {
+  try {
+    run()
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthConfigurationError)
+    if (error instanceof AuthConfigurationError) return error
+    throw error
+  }
+  throw new Error('Expected AuthConfigurationError')
+}
 
 describe('token extraction', () => {
   it('extracts bearer token from Authorization header', () => {
@@ -48,79 +89,110 @@ describe('token extraction', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// Stub verifier always returns the same user
-// ---------------------------------------------------------------------------
+describe('auth configuration', () => {
+  const missingConfigCases: Array<{
+    env: AuthEnv
+    missing: 'ELF_JWKS_URL' | 'ELF_ISSUER' | 'ELF_AUDIENCE'
+  }> = [
+    { env: {}, missing: 'ELF_JWKS_URL' },
+    { env: { ELF_JWKS_URL: 'https://auth.test/jwks' }, missing: 'ELF_ISSUER' },
+    {
+      env: { ELF_JWKS_URL: 'https://auth.test/jwks', ELF_ISSUER: issuer },
+      missing: 'ELF_AUDIENCE'
+    }
+  ]
 
-describe('verifyElfToken (stub)', () => {
-  it('returns a fixed stub user for the dev token', async () => {
-    const payload = await verifyElfToken(DEV_STUB_ELF_TOKEN)
-    expect(payload).not.toBeNull()
+  for (const { env, missing } of missingConfigCases) {
+    it(`throws typed error when ${missing} is missing`, () => {
+      const error = captureConfigurationError(() => assertAuthConfigured(env))
+      expect(error.code).toBe('OPENPENCIL_AUTH_MISSING_PRECONDITION')
+      expect(error.message).toBe(`Missing auth precondition: ${missing}`)
+    })
+  }
+
+  it('enables the dev stub only for the exact value 1', async () => {
+    const payload = await verifyElfToken(DEV_STUB_ELF_TOKEN, stubAuthEnv)
     expect(payload?.elfUserId).toBe('stub-user-001')
-    expect(payload?.exp).toBeGreaterThan(Date.now() / 1000)
+
+    for (const env of [{}, { ALLOW_DEV_STUB_AUTH: '0' }, { ALLOW_DEV_STUB_AUTH: 'true' }]) {
+      await expect(verifyElfToken(DEV_STUB_ELF_TOKEN, env)).rejects.toBeInstanceOf(
+        AuthConfigurationError
+      )
+    }
   })
 
-  it('rejects any other token', async () => {
-    expect(await verifyElfToken('anything-else')).toBeNull()
+  it('rejects non-stub tokens while explicit dev mode is enabled', async () => {
+    expect(await verifyElfToken('anything-else', stubAuthEnv)).toBeNull()
   })
 })
 
-// ---------------------------------------------------------------------------
-// Session resolver — doctrine tests
-// ---------------------------------------------------------------------------
+describe('configured RS256/JWKS verifier', () => {
+  it('accepts a valid token from the configured issuer and audience', async () => {
+    const issuedAt = 1_800_000_000
+    const token = await new SignJWT({
+      version: 3,
+      elfUserId: 'elf-user-123',
+      apiTokenPepper: null
+    })
+      .setProtectedHeader({ alg: 'RS256', kid: keyId })
+      .setIssuer(issuer)
+      .setAudience(audience)
+      .setIssuedAt(issuedAt)
+      .setExpirationTime(issuedAt + 300)
+      .sign(privateKey)
+
+    expect(await verifyElfToken(token, realAuthEnv)).toEqual({
+      elfUserId: 'elf-user-123',
+      exp: issuedAt + 300,
+      iat: issuedAt
+    })
+  })
+
+  it('rejects garbage instead of authenticating it', async () => {
+    expect(await verifyElfToken('not-a-jwt', realAuthEnv)).toBeNull()
+  })
+})
 
 describe('resolveSession', () => {
-  it('returns unauthenticated when no credentials provided', async () => {
-    const result = await resolveSession(makeRequest())
-    expect(result.type).toBe('unauthenticated')
+  it('returns unauthenticated when no credentials are provided', async () => {
+    expect(await resolveSession(makeRequest())).toEqual({ type: 'unauthenticated' })
   })
 
-  it('authenticates with cookie-only (web browser path)', async () => {
-    const result = await resolveSession(makeRequest({
+  it('authenticates with cookie-only credentials', async () => {
+    const result = expectAuthenticated(await resolveSession(makeRequest({
       cookie: `${ELF_JWT_COOKIE}=${DEV_STUB_ELF_TOKEN}`
-    }))
-    expect(result.type).toBe('authenticated')
-    expect((result as any).userId).toBe('stub-user-001')
+    }), { env: stubAuthEnv }))
+    expect(result.userId).toBe('stub-user-001')
   })
 
-  it('authenticates with bearer-only (native/API path)', async () => {
-    const result = await resolveSession(makeRequest({
+  it('authenticates with bearer-only credentials', async () => {
+    const result = expectAuthenticated(await resolveSession(makeRequest({
       authorization: `Bearer ${DEV_STUB_ELF_TOKEN}`
-    }))
-    expect(result.type).toBe('authenticated')
-    expect((result as any).userId).toBe('stub-user-001')
+    }), { env: stubAuthEnv }))
+    expect(result.userId).toBe('stub-user-001')
   })
 
-  it('accepts cookie + bearer when same identity (idempotent)', async () => {
-    const result = await resolveSession(makeRequest({
+  it('accepts matching cookie and bearer credentials', async () => {
+    const result = expectAuthenticated(await resolveSession(makeRequest({
       cookie: `${ELF_JWT_COOKIE}=${DEV_STUB_ELF_TOKEN}`,
       authorization: `Bearer ${DEV_STUB_ELF_TOKEN}`
-    }))
-    expect(result.type).toBe('authenticated')
-    expect((result as any).userId).toBe('stub-user-001')
+    }), { env: stubAuthEnv }))
+    expect(result.userId).toBe('stub-user-001')
   })
 
-  it('rejects with identity-conflict when cookie and bearer differ', async () => {
-    const result = await resolveSession(makeRequest({
-      cookie: `${ELF_JWT_COOKIE}=cookie-tok`,
-      authorization: 'Bearer bearer-tok'
-    }))
-    expect(result.type).toBe('unauthorized')
-    expect((result as any).reason).toBe('identity-conflict')
+  it('rejects conflicting cookie and bearer credentials before verification', async () => {
+    const result = expectUnauthorized(await resolveSession(makeRequest({
+      cookie: `${ELF_JWT_COOKIE}=cookie-token`,
+      authorization: 'Bearer bearer-token'
+    })))
+    expect(result.reason).toBe('identity-conflict')
   })
 
-  it('custom cookie name works', async () => {
-    const result = await resolveSession(makeRequest({
-      cookie: 'custom_session=abc'
-    }), { cookieName: 'custom_session' })
-    expect(result.type).toBe('unauthorized')
-  })
-
-  it('custom cookie name works with the dev token', async () => {
-    const result = await resolveSession(makeRequest({
+  it('uses a custom cookie name', async () => {
+    const result = expectAuthenticated(await resolveSession(makeRequest({
       cookie: `custom_session=${DEV_STUB_ELF_TOKEN}`
-    }), { cookieName: 'custom_session' })
-    expect(result.type).toBe('authenticated')
+    }), { cookieName: 'custom_session', env: stubAuthEnv }))
+    expect(result.userId).toBe('stub-user-001')
   })
 
   it('extracts protocol token', () => {
@@ -128,46 +200,14 @@ describe('resolveSession', () => {
     expect(protocolToken('openpencil-room.v1')).toBeNull()
   })
 
-  it('authenticates with protocol token', async () => {
-    const headers = new Headers()
-    headers.set('sec-websocket-protocol', `openpencil-room.v1, bearer.${DEV_STUB_ELF_TOKEN}`)
-    const result = await resolveSession(new Request('http://localhost/api/test', { headers }))
-    expect(result.type).toBe('authenticated')
-    expect((result as any).token).toBe(DEV_STUB_ELF_TOKEN)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// Fail-closed guard — the dev-stub token must NOT authenticate in a deployed
-// environment. With no real verifier configured (ELF_JWKS_URL unset) and the
-// ALLOW_DEV_STUB_AUTH opt-in absent, verification returns null → 401. This is
-// the security regression guard for the hardcoded stub token.
-// ---------------------------------------------------------------------------
-
-describe('verifyElfToken fail-closed (deployed default)', () => {
-  async function withoutDevStub<T>(fn: () => Promise<T>): Promise<T> {
-    const prev = process.env.ALLOW_DEV_STUB_AUTH
-    delete process.env.ALLOW_DEV_STUB_AUTH
-    try {
-      return await fn()
-    } finally {
-      if (prev !== undefined) process.env.ALLOW_DEV_STUB_AUTH = prev
-    }
-  }
-
-  it('rejects the dev-stub token when the opt-in flag is unset', async () => {
-    await withoutDevStub(async () => {
-      expect(await verifyElfToken(DEV_STUB_ELF_TOKEN)).toBeNull()
+  it('authenticates with protocol credentials', async () => {
+    const headers = new Headers({
+      'sec-websocket-protocol': `openpencil-room.v1, bearer.${DEV_STUB_ELF_TOKEN}`
     })
-  })
-
-  it('resolveSession returns unauthorized/invalid-token for the stub token when the flag is unset', async () => {
-    await withoutDevStub(async () => {
-      const result = await resolveSession(new Request('http://localhost/api/test', {
-        headers: { authorization: `Bearer ${DEV_STUB_ELF_TOKEN}` }
-      }))
-      expect(result.type).toBe('unauthorized')
-      expect((result as any).reason).toBe('invalid-token')
-    })
+    const result = expectAuthenticated(await resolveSession(
+      new Request('http://localhost/api/test', { headers }),
+      { env: stubAuthEnv }
+    ))
+    expect(result.token).toBe(DEV_STUB_ELF_TOKEN)
   })
 })
