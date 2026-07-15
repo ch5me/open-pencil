@@ -7,6 +7,9 @@
   "type": "module",
   "scripts": {
     "dev": "./node_modules/.bin/vite",
+    "svc:ensure": "./node_modules/.bin/devmux ensure app && ./node_modules/.bin/devmux ensure docs",
+    "svc:status": "./node_modules/.bin/devmux status",
+    "svc:stop": "./node_modules/.bin/devmux stop all",
     "build": "bun run build:packages && bun run lint && ./node_modules/.bin/vite build",
     "preview": "./node_modules/.bin/vite preview",
     "tauri": "./node_modules/.bin/tauri",
@@ -102,6 +105,7 @@
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "^0.14.1",
+    "@chriscode/devmux": "1.11.1",
     "@feature-sliced/steiger-plugin": "^0.5.8",
     "@figma/plugin-typings": "^1.126.0",
     "@hono/node-server": "^1.19.11",

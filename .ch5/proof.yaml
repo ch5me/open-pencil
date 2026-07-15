@@ -1,0 +1,5 @@
+version: 2
+commands: {}
+# Exact tests use CH5 built-in Vitest, Playwright, Node, or Bun adapters.
+# routeScreenshots: "bun x playwright test {files}"
+proofs: []

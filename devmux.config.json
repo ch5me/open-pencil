@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/chriscode/devmux/main/schema.json",
+  "version": 1,
+  "project": "open-pencil",
+  "proxy": {
+    "enabled": true,
+    "hostnamePattern": "{service}.{instance}.{project}.localhost"
+  },
+  "services": {
+    "app": {
+      "cwd": ".",
+      "command": "./node_modules/.bin/vite --host 127.0.0.1 --port {{PORT}} --strictPort",
+      "port": 1420,
+      "health": {
+        "type": "http",
+        "url": "http://127.0.0.1:1420/",
+        "expectStatus": 200
+      },
+      "proxy": true,
+      "dashboard": false
+    },
+    "docs": {
+      "cwd": "packages/docs",
+      "command": "./node_modules/.bin/vitepress dev . --host 127.0.0.1 --port {{PORT}} --strictPort",
+      "port": 5173,
+      "health": {
+        "type": "http",
+        "url": "http://127.0.0.1:5173/",
+        "expectStatus": 200
+      },
+      "proxy": true,
+      "dashboard": false
+    }
+  }
+}

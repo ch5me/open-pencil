@@ -84,6 +84,9 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 
 ## Commands
 
+- `bun run svc:ensure` — idempotently start Grove-isolated app + docs through DevMux
+- `bun run svc:status` — show resolved ports, instance identity, and local DNS
+- `bun run svc:stop` — stop all OpenPencil services owned by this Grove
 - `bun run check` — type-aware lint + typecheck via oxlint + tsgo (run before committing)
 - `bun run check:vue` — vue-tsc type-check for .vue files (has pre-existing errors, fix progressively)
 - `bun run test:dupes` — jscpd copy-paste detection across all TS sources
@@ -180,6 +183,7 @@ bun run test           # Playwright E2E
 ## Vendor breadcrumbs
 
 - Resend powers OpenPencil auth email delivery through `RESEND_API_KEY` for Hush-backed API targets `api-staging` and `api-production`; global recovery doctrine lives in `resend-email`.
+- HQ Verdaccio (`https://npm.ch5.me/`) supplies private `@ch5me/*` dependencies. Repo-scoped read-only `NPM_TOKEN` lives only in Hush target `dependency-install`; provision it through `ch5me-npm-packages`, then verify `npm whoami` resolves as `open-pencil`.
 
 When adding features, update `CHANGELOG.md` (Unreleased section) and `README.md` (if user-facing). Update `AGENTS.md` when architecture or conventions change.
 

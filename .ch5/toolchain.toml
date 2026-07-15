@@ -4,14 +4,14 @@ schemaVersion = 1
 id = "open-pencil"
 kind = "node-app"
 packageManager = "bun"
-lockfiles = ["bun.lock", "package.json"]
+lockfiles = ["bun.lock", "package.json", "api/bun.lock", "api/package.json"]
 
 [[verify]]
 name = "repository structure: package.json"
 command = "test -f package.json"
 
 [deps]
-install = "bun install --frozen-lockfile"
+install = "hush run --target dependency-install -- bun install --frozen-lockfile && hush run --target dependency-install -- bun install --cwd api --frozen-lockfile"
 
 [warm]
-command = "bun install --frozen-lockfile"
+command = "hush run --target dependency-install -- bun install --frozen-lockfile && hush run --target dependency-install -- bun install --cwd api --frozen-lockfile"
