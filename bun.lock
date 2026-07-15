@@ -63,7 +63,7 @@
       },
       "devDependencies": {
         "@agentclientprotocol/sdk": "^0.14.1",
-        "@chriscode/devmux": "1.11.1",
+        "@chriscode/devmux": "1.15.4",
         "@feature-sliced/steiger-plugin": "^0.5.8",
         "@figma/plugin-typings": "^1.126.0",
         "@hono/node-server": "^1.19.11",
@@ -584,7 +584,7 @@
 
     "@chevrotain/types": ["@chevrotain/types@11.1.2", "", {}, "sha512-U+HFai5+zmJCkK86QsaJtoITlboZHBqrVketcO2ROv865xfCMSFpELQoz1GkX5GzME8pTa+3kbKrZHQtI0gdbw=="],
 
-    "@chriscode/devmux": ["@chriscode/devmux@1.11.1", "https://npm.ch5.me/@chriscode/devmux/-/devmux-1.11.1.tgz", { "dependencies": { "citty": "^0.1.6", "execa": "^9.6.1", "fkill": "^10.0.3", "pid-port": "^2.0.1", "ps-list": "^9.0.0" }, "bin": { "devmux": "bin/devmux.js" } }, "sha512-KI1CIjcYp2nGlk0mvHqUuTu1DSYW8YB9/1nPbmEcJGYkEDdtGQm4uo5URnJYuvtybyGQBBNzZYKzHLDWZ9vTNQ=="],
+    "@chriscode/devmux": ["@chriscode/devmux@1.15.4", "https://npm.ch5.me/@chriscode/devmux/-/devmux-1.15.4.tgz", { "dependencies": { "citty": "^0.1.6", "execa": "^9.6.1", "fkill": "^10.0.3", "pid-port": "^2.0.1", "ps-list": "^9.0.0" }, "bin": { "devmux": "bin/devmux.js" } }, "sha512-aNrSpWmU9iyi+GiyIY2ATsZH43gXi5ckK1EM3wW9iklRlLweAP7QTXaxMYklPx99MC3/mM3z8p0xgiyEV7aoUQ=="],
 
     "@clack/core": ["@clack/core@0.4.1", "", { "dependencies": { "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-Pxhij4UXg8KSr7rPek6Zowm+5M22rbd2g1nfojHJkxp5YkFqiZ2+YLEM/XGVIzvGOcM0nqjIFxrpDwWRZYWYjA=="],
 
