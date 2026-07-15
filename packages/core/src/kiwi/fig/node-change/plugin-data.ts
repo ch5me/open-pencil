@@ -6,7 +6,7 @@ import {
   type ExportSetting,
   type PluginDataEntry,
   type PluginRelaunchDataEntry
-} from '@open-pencil/scene-graph'
+} from '#core/scene-graph'
 
 export const OPEN_PENCIL_PLUGIN_ID = 'open-pencil'
 export const TEXT_DIRECTION_PLUGIN_KEY = 'textDirection'

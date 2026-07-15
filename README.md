@@ -262,8 +262,7 @@ bun run tauri dev  # Desktop app (requires Rust)
 
 ```
 packages/
-  scene-graph/    @open-pencil/scene-graph — nodes, primitives, hit testing, copy/snap/undo
-  pen/            @open-pencil/pen — Pencil document format helpers
+  core/           @open-pencil/core — scene graph, canvas, editor, and format helpers
   kiwi/           @open-pencil/kiwi — Kiwi runtime and low-level .fig container parsing
   fig/            @open-pencil/fig — focused .fig package entrypoint
   core/           @open-pencil/core — editor engine, renderer, layout, tools, RPC, document I/O

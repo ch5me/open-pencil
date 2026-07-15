@@ -7,7 +7,7 @@
  */
 import { describe, expect, test } from 'bun:test'
 
-import { getWorldMatrix, SceneGraph, TransformMatrix } from '@open-pencil/scene-graph'
+import { getWorldMatrix, SceneGraph, TransformMatrix } from '@open-pencil/core'
 
 function pageId(graph: SceneGraph) {
   return graph.getPages()[0].id

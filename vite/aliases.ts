@@ -26,13 +26,6 @@ export function createOpenPencilAliases(rootDir: string) {
       find: /^@open-pencil\/dom-css$/,
       replacement: resolve(rootDir, 'packages/dom-css/src/index.ts')
     },
-    {
-      find: /^@open-pencil\/scene-graph$/,
-      replacement: resolve(rootDir, 'packages/scene-graph/src/index.ts')
-    },
-    { find: '@open-pencil/scene-graph', replacement: resolve(rootDir, 'packages/scene-graph/src') },
-    { find: /^@open-pencil\/pen$/, replacement: resolve(rootDir, 'packages/pen/src/index.ts') },
-    { find: '@open-pencil/pen', replacement: resolve(rootDir, 'packages/pen/src') },
     { find: /^@open-pencil\/kiwi$/, replacement: resolve(rootDir, 'packages/kiwi/src/index.ts') },
     { find: '@open-pencil/kiwi', replacement: resolve(rootDir, 'packages/kiwi/src') },
     { find: /^@open-pencil\/fig$/, replacement: resolve(rootDir, 'packages/fig/src/index.ts') },
@@ -43,7 +36,7 @@ export function createOpenPencilAliases(rootDir: string) {
     { find: '@open-pencil/core', replacement: resolve(rootDir, 'packages/core/src') },
     {
       find: 'opentype.js',
-      replacement: resolve(rootDir, 'node_modules/opentype.js/dist/opentype.module.js')
+      replacement: resolve(rootDir, 'node_modules/opentype.js/dist/opentype.mjs')
     },
     { find: 'mermaid', replacement: resolve(rootDir, 'src/app/shell/markdown/index.ts') },
     { find: 'beautiful-mermaid', replacement: resolve(rootDir, 'src/app/shell/markdown/index.ts') }

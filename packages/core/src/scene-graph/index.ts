@@ -1,9 +1,9 @@
 export * from './snap'
 export * from './export-scale'
-export * from './coordinate'
-export * from './geometry'
-export { default as TransformMatrix } from './matrix'
-export type { Mat3 } from './matrix'
+export * from '#core/canvas/coordinate'
+export * from '#core/geometry'
+export { default as TransformMatrix } from '#core/canvas/matrix'
+export type { Mat3 } from '#core/canvas/matrix'
 export { UndoManager, type UndoEntry, type UndoManagerOptions } from './undo'
 
 import { omit } from 'es-toolkit/object'
@@ -42,6 +42,7 @@ import type {
 } from './types'
 
 export { cloneVectorNetwork, normalizeVectorNetwork, validateVectorNetwork } from './vector-network'
+export { cloneNodeProps } from './copy'
 
 function removeStaleBindings(
   node: SceneNode,
