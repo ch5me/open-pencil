@@ -3,10 +3,7 @@
   "version": "0.12.2",
   "private": true,
   "license": "MIT",
-  "workspaces": [
-    "packages/*",
-    "../ch5-packages/packages/*/*"
-  ],
+  "workspaces": ["packages/*"],
   "type": "module",
   "scripts": {
     "dev": "./node_modules/.bin/vite",
@@ -55,7 +52,7 @@
     "@ai-sdk/vue": "^3.0.174",
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.9",
     "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.1.0",
-    "@ch5me/firefly-design": "workspace:*",
+    "@ch5me/firefly-design": "^0.1.3",
     "@chenglou/pretext": "^0.0.7",
     "@open-pencil/cli": "workspace:*",
     "@open-pencil/core": "workspace:*",
