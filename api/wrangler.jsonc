@@ -76,14 +76,19 @@
           "migrations_dir": "migrations"
         }
       ],
+      // Staging MUST NOT point at the production buckets. It did until 2026-07-25:
+      // both bindings named the prod bucket while `d1_databases` correctly named
+      // openpencil-db-staging, so staging snapshots and assets were written into
+      // production storage — and because deleteHostedDocument/deleteHostedAsset key
+      // objects by userId, a staging delete could remove a production object.
       "r2_buckets": [
         {
           "binding": "DOCUMENTS",
-          "bucket_name": "openpencil-documents"
+          "bucket_name": "openpencil-documents-staging"
         },
         {
           "binding": "ASSETS",
-          "bucket_name": "openpencil-assets"
+          "bucket_name": "openpencil-assets-staging"
         }
       ],
       "migrations": [
