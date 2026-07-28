@@ -7,9 +7,9 @@
   "type": "module",
   "scripts": {
     "dev": "./node_modules/.bin/vite",
-    "svc:ensure": "./node_modules/.bin/devmux ensure app && ./node_modules/.bin/devmux ensure docs",
-    "svc:status": "./node_modules/.bin/devmux status",
-    "svc:stop": "./node_modules/.bin/devmux stop all",
+    "svc:ensure": "pitchfork start app docs",
+    "svc:status": "pitchfork list --json",
+    "svc:stop": "pitchfork stop --local",
     "build": "bun run build:packages && bun run lint && ./node_modules/.bin/vite build",
     "preview": "./node_modules/.bin/vite preview",
     "tauri": "./node_modules/.bin/tauri",

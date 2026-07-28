@@ -87,9 +87,21 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 
 ## Commands
 
-- `bun run svc:ensure` — idempotently start Grove-isolated app + docs through DevMux
-- `bun run svc:status` — show resolved ports, instance identity, and local DNS
-- `bun run svc:stop` — stop all OpenPencil services owned by this Grove
+- `bun run svc:ensure` — `pitchfork start app docs`; idempotent (a second start does not restart — never add `--force`)
+- `bun run svc:status` — `pitchfork list --json`. **Box-wide**: pitchfork 2.19.0 has no namespace filter, so this lists every daemon on the machine. Filter on the `namespace` field (the directory basename — `open-pencil` canonically, the Tree name inside a Grove Tree).
+- `bun run svc:stop` — `pitchfork stop --local`. Never `pitchfork stop --all`: that is box-wide and kills other repos' daemons.
+- `pitchfork logs app --follow` — read a service's output (replaces `devmux attach`; there is no PTY attach)
+
+Services are declared in `pitchfork.toml` (migrated from devmux 2026-07-28).
+`devmux.config.json` and the `@chriscode/devmux` dependency are kept only until
+Phase 2 removes them. Two behaviour changes: no proxy slug is registered, so
+`app.<instance>.open-pencil.localhost` no longer resolves — use `127.0.0.1:1420`
+(app) and `127.0.0.1:5173` (docs); and ports are pinned rather than per-Tree
+offset, so two Grove Trees of this repo cannot run `svc:ensure` at once — and a
+colliding Tree can be reported ready by the *other* Tree's service, because a
+literal ready check cannot tell a foreign process on that port apart from ours.
+Cross-check `active_port` in `svc:status` against the configured port before
+believing a green ready.
 - `bun run check` — type-aware lint + typecheck via oxlint + tsgo (run before committing)
 - `bun run check:vue` — vue-tsc type-check for .vue files (has pre-existing errors, fix progressively)
 - `bun run test:dupes` — jscpd copy-paste detection across all TS sources
