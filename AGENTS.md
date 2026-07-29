@@ -18,6 +18,37 @@ Vue 3 + CanvasKit (Skia WASM) + Yoga WASM design editor. Tauri v2 desktop, also 
 
 **Roadmap:** `PLAN.md` — phases, tech stack, CLI architecture, test strategy, keyboard shortcuts.
 
+## Running this repo's dev services
+
+`ch5-svc` is the one front door. `pitchfork.toml` in this repo declares the
+services; you do not choose ports and you do not launch dev servers in a harness
+pane.
+
+```bash
+ch5-svc up            # start this repo's services (serialized) and print URLs
+ch5-svc status        # status, resolved port, measured liveness, URL
+ch5-svc logs <name>   # tail one service
+ch5-svc down          # stop this repo's services only
+```
+
+Services here: `app`, `docs`
+
+URLs are `http://<service>.<tree>.localhost:7300/`, where `<tree>` is the
+directory basename — the repo name in the canonical checkout, the Grove Tree name
+in a Tree. So two Grove Trees of this repo are reachable at once, each at its own
+hostname, and nobody types a port. `ch5-svc status` prints the exact URLs; do not
+guess or hardcode them.
+
+If a URL shows a "not answering" page, the service is declared but down — the page
+has a button that starts it. Never `pitchfork stop --all` (box-wide) and never add
+`--force` (`start` is already idempotent).
+
+Measured 2026-07-28, kept because it explains why liveness is measured rather than
+trusted: under the previous pinned-port setup a second Grove Tree of this repo was
+reported *ready* by the other Tree's already-listening service — a literal ready
+check cannot tell a foreign process on a port apart from ours. Believe measured
+liveness from `ch5-svc status`, never a bare "started" line.
+
 ## Monorepo
 
 Bun workspace with five packages:
@@ -87,20 +118,8 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 
 ## Commands
 
-- `bun run svc:ensure` — `pitchfork start app docs`; idempotent (a second start does not restart — never add `--force`)
-- `bun run svc:status` — `pitchfork list --json`. **Box-wide**: pitchfork 2.19.0 has no namespace filter, so this lists every daemon on the machine. Filter on the `namespace` field (the directory basename — `open-pencil` canonically, the Tree name inside a Grove Tree).
-- `bun run svc:stop` — `pitchfork stop --local`. Never `pitchfork stop --all`: that is box-wide and kills other repos' daemons.
-- `pitchfork logs app --follow` — read a service's output (replaces `devmux attach`; there is no PTY attach)
+Dev services: see *Running this repo's dev services* above.
 
-Services are declared in `pitchfork.toml` (migrated from devmux 2026-07-28).
-Two behaviour changes vs devmux: no proxy slug is registered, so
-`app.<instance>.open-pencil.localhost` no longer resolves — use `127.0.0.1:1420`
-(app) and `127.0.0.1:5173` (docs); and ports are pinned rather than per-Tree
-offset, so two Grove Trees of this repo cannot run `svc:ensure` at once — and a
-colliding Tree can be reported ready by the *other* Tree's service, because a
-literal ready check cannot tell a foreign process on that port apart from ours.
-Cross-check `active_port` in `svc:status` against the configured port before
-believing a green ready.
 - `bun run check` — type-aware lint + typecheck via oxlint + tsgo (run before committing)
 - `bun run check:vue` — vue-tsc type-check for .vue files (has pre-existing errors, fix progressively)
 - `bun run test:dupes` — jscpd copy-paste detection across all TS sources
