@@ -93,8 +93,7 @@ The app editor session (`src/app/editor/session/create.ts`) is a thin Vue wrappe
 - `pitchfork logs app --follow` — read a service's output (replaces `devmux attach`; there is no PTY attach)
 
 Services are declared in `pitchfork.toml` (migrated from devmux 2026-07-28).
-`devmux.config.json` and the `@chriscode/devmux` dependency are kept only until
-Phase 2 removes them. Two behaviour changes: no proxy slug is registered, so
+Two behaviour changes vs devmux: no proxy slug is registered, so
 `app.<instance>.open-pencil.localhost` no longer resolves — use `127.0.0.1:1420`
 (app) and `127.0.0.1:5173` (docs); and ports are pinned rather than per-Tree
 offset, so two Grove Trees of this repo cannot run `svc:ensure` at once — and a
