@@ -4,11 +4,11 @@ enable = true
 [daemons.app]
 run = "./node_modules/.bin/vite --host 127.0.0.1 --port $PORT --strictPort"
 dir = "."
-port = 1420
-ready_http = { url = "http://127.0.0.1:1420/", status = [200], timeout = "30s" }
+port = { expect = [1420], bump = 20 }
+ready_port = { port = 1420, timeout = "30s" }
 
 [daemons.docs]
 run = "./node_modules/.bin/vitepress dev . --host 127.0.0.1 --port $PORT --strictPort"
 dir = "packages/docs"
-port = 5173
-ready_http = { url = "http://127.0.0.1:5173/", status = [200], timeout = "30s" }
+port = { expect = [5173], bump = 20 }
+ready_port = { port = 5173, timeout = "30s" }
