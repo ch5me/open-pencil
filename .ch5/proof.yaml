@@ -1,5 +1,44 @@
 version: 2
-commands: {}
-# Exact tests use CH5 built-in Vitest, Playwright, Node, or Bun adapters.
-# routeScreenshots: "bun x playwright test {files}"
-proofs: []
+commands:
+  genericReviewReceiptHostile: "bun run build:packages && bun test tests/engine/cli/lint.test.ts"
+  genericReviewProvenanceHostile: "bun test tests/engine/cli/implementation-provenance.test.ts"
+proofs:
+  - id: generic-review-receipt-hostile
+    kind: integration
+    stages: [dev, staging, production]
+    run:
+      command: genericReviewReceiptHostile
+    evidence:
+      path: artifacts/proof/generic-review-receipt-hostile
+    triggers:
+      - paths:
+          - packages/cli/src/ch5-review-receipt.ts
+          - packages/cli/src/commands/lint.ts
+          - packages/cli/src/headless.ts
+          - packages/cli/src/implementation-provenance.ts
+          - packages/cli/src/index.ts
+          - packages/cli/src/main.ts
+          - packages/cli/tsdown.config.ts
+          - packages/core/package.json
+          - packages/core/src/lint/linter.ts
+          - packages/core/tsdown.config.ts
+          - tests/engine/cli/lint.test.ts
+          - tests/helpers/cli.ts
+          - bun.lock
+  - id: generic-review-provenance-hostile
+    kind: integration
+    stages: [dev, staging, production]
+    run:
+      command: genericReviewProvenanceHostile
+    evidence:
+      path: artifacts/proof/generic-review-provenance-hostile
+    triggers:
+      - paths:
+          - packages/cli/src/implementation-provenance.ts
+          - packages/cli/src/headless.ts
+          - packages/cli/src/index.ts
+          - packages/cli/src/main.ts
+          - packages/cli/tsdown.config.ts
+          - tests/engine/cli/implementation-provenance.test.ts
+          - tests/engine/cli/lint.test.ts
+          - tests/helpers/cli.ts

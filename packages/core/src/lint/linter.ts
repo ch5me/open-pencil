@@ -49,6 +49,25 @@ export class Linter {
     const roots = rootIds && rootIds.length > 0 ? rootIds : graph.getPages().map((p) => p.id)
     for (const id of roots) this.capture(graph, id, undefined)
     for (const id of roots) this.lintNode(id)
+    return this.result()
+  }
+
+  lintChecks(graph: SceneGraph, checks: Array<{ ruleId: string; nodeId: string }>): LintResult {
+    this.messages = []
+    this.nodes.clear()
+    for (const page of graph.getPages()) this.capture(graph, page.id, undefined)
+    for (const { ruleId, nodeId } of checks) {
+      const node = this.nodes.get(nodeId)
+      if (!node) throw new Error(`lint target node does not exist: ${nodeId}`)
+      if (!this.rules.has(ruleId)) throw new Error(`lint target rule is not enabled: ${ruleId}`)
+      if (!this.lintRule(node, ruleId)) {
+        throw new Error(`lint target rule does not apply: ${ruleId}/${nodeId}`)
+      }
+    }
+    return this.result()
+  }
+
+  private result(): LintResult {
     return {
       messages: this.messages,
       errorCount: this.messages.filter((m) => m.severity === 'error').length,
@@ -113,32 +132,36 @@ export class Linter {
   private lintNode(id: string) {
     const node = this.nodes.get(id)
     if (!node) return
-    for (const [ruleId, rule] of this.rules) {
-      if (rule.match && !rule.match.includes(node.type)) continue
-      const config = this.ruleConfigs.get(ruleId)
-      if (!config || config.severity === 'off') continue
-      const context: RuleContext = {
-        report: ({ node, message, suggest }) => {
-          this.messages.push({
-            ruleId,
-            severity: config.severity as Exclude<Severity, 'off'>,
-            message,
-            nodeId: node.id,
-            nodeName: node.name,
-            nodePath: getNodePath(this.nodes.get(node.id) ?? node),
-            suggest
-          })
-        },
-        getConfig: () => config.options,
-        getParent: (node) => this.nodes.get(node.id)?.parent ?? null,
-        getChildren: (node) =>
-          node.childIds
-            .map((childId) => this.nodes.get(childId))
-            .filter((child): child is LintNode => !!child)
-      }
-      rule.check(node, context)
-    }
+    for (const ruleId of this.rules.keys()) this.lintRule(node, ruleId)
     for (const childId of node.childIds) this.lintNode(childId)
+  }
+
+  private lintRule(node: LintNode, ruleId: string) {
+    const rule = this.rules.get(ruleId)
+    if (!rule || (rule.match && !rule.match.includes(node.type))) return false
+    const config = this.ruleConfigs.get(ruleId)
+    if (!config || config.severity === 'off') return false
+    const context: RuleContext = {
+      report: ({ node, message, suggest }) => {
+        this.messages.push({
+          ruleId,
+          severity: config.severity as Exclude<Severity, 'off'>,
+          message,
+          nodeId: node.id,
+          nodeName: node.name,
+          nodePath: getNodePath(this.nodes.get(node.id) ?? node),
+          suggest
+        })
+      },
+      getConfig: () => config.options,
+      getParent: (node) => this.nodes.get(node.id)?.parent ?? null,
+      getChildren: (node) =>
+        node.childIds
+          .map((childId) => this.nodes.get(childId))
+          .filter((child): child is LintNode => !!child)
+    }
+    rule.check(node, context)
+    return true
   }
 }
 

@@ -432,6 +432,9 @@ Self-review checklist:
 
 - Packages publish via CI: the `build.yml` `publish-npm` job (on `v*` tags or manual dispatch) builds each package and runs `npm publish` from prepared `.publish/` dirs — not manual `bun publish`
 - Core: `prepublishOnly` runs `tsc` to build `dist/` for Node.js consumers
+- Core declaration builds keep dependencies and optional type peers external through `tsdown.config.ts`; declare optional peers in `peerDependenciesMeta` and include peers in `neverBundle`
+- CH5 staged generic-review receipt proof must build packages inside the staged command view because ignored `dist/` is not inherited from source
+- Hostile packed-copy tests may make their copied files writable before mutation; never weaken the read-only staged source or dependency store
 - CLI requires Bun runtime (`#!/usr/bin/env bun`)
 
 ## Reference

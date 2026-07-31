@@ -78,6 +78,10 @@ scratch/
 
 # Build manifests (deployment artifacts)
 .build-manifests/
+
+# Local CH5 proof output
+.ch5/artifacts/
+artifacts/proof/
 .hush-materialized/
 .ch5/state/
 

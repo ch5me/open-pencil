@@ -5,6 +5,7 @@ import type { Plugin } from 'rolldown'
 
 const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
   dependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
 }
 
 function rawText(): Plugin {
@@ -35,7 +36,11 @@ export default defineConfig({
   clean: true,
   outDir: './dist',
   deps: {
-    neverBundle: [...Object.keys(packageJson.dependencies ?? {}), /^node:/],
+    neverBundle: [
+      ...Object.keys(packageJson.dependencies ?? {}),
+      ...Object.keys(packageJson.peerDependencies ?? {}),
+      /^node:/
+    ],
     onlyBundle: false
   }
 })

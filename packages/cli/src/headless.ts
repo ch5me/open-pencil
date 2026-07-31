@@ -8,9 +8,13 @@ export { initCanvasKit }
 
 const io = new IORegistry(BUILTIN_IO_FORMATS)
 
-export async function loadDocument(filePath: string): Promise<SceneGraph> {
-  const bytes = new Uint8Array(await readFile(filePath))
-  const { graph } = await io.readDocument({ name: filePath, data: bytes })
+export async function loadDocumentBytes(name: string, bytes: Uint8Array): Promise<SceneGraph> {
+  const { graph } = await io.readDocument({ name, data: bytes })
   computeAllLayouts(graph)
   return graph
+}
+
+export async function loadDocument(filePath: string): Promise<SceneGraph> {
+  const bytes = new Uint8Array(await readFile(filePath))
+  return loadDocumentBytes(filePath, bytes)
 }

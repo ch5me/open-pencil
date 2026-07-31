@@ -197,6 +197,22 @@
     "twirlwind": "^0.3.0",
     "yoga-layout": "npm:@open-pencil/yoga-layout@3.3.0-grid.3"
   },
+  "peerDependencies": {
+    "@ai-sdk/valibot": "^2.0.27",
+    "ai": "^6.0.174",
+    "valibot": "^1.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk/valibot": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    },
+    "valibot": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/culori": "^4.0.1",
     "@types/diff": "^8.0.0",
