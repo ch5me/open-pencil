@@ -268,16 +268,21 @@ async function assertCleanSource(
   const paths = packages
     .filter((pkg) => pkg.layout === 'source')
     .map((pkg) => relative(repositoryRoot, pkg.root))
-  const process = Bun.spawnSync(
+  const status = Bun.spawnSync(
     ['git', 'status', '--porcelain=v1', '--untracked-files=all', '--', ...paths],
-    { cwd: repositoryRoot, stdout: 'pipe', stderr: 'pipe' }
+    {
+      cwd: repositoryRoot,
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+      stdout: 'pipe',
+      stderr: 'pipe'
+    }
   )
-  if (!process.success) {
+  if (!status.success) {
     throw new Error(
-      `implementation provenance could not verify source state: ${process.stderr.toString().trim()}`
+      `implementation provenance could not verify source state: ${status.stderr.toString().trim()}`
     )
   }
-  if (process.stdout.byteLength > 0) {
+  if (status.stdout.byteLength > 0) {
     throw new Error('CH5 review receipt requires clean source implementation bytes')
   }
 }

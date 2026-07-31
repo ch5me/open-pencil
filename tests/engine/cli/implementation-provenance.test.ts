@@ -9,7 +9,9 @@ import {
   realpath,
   rename,
   rm,
+  stat,
   symlink,
+  utimes,
   unlink
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -111,6 +113,26 @@ async function replaceLink(locator: string, target: string): Promise<void> {
   await unlink(locator)
   await symlink(target, locator)
 }
+
+test('source provenance does not refresh the Git index', async () => {
+  const root = await createSourceProvenanceRoot()
+  try {
+    const { captureImplementationProvenance } = await import('#cli/implementation-provenance')
+    const indexPath = join(root, '.git/index')
+    const sourcePath = join(root, 'packages/core/src/constants.ts')
+    const sourceStats = await stat(sourcePath)
+    const indexBefore = await stat(indexPath, { bigint: true })
+
+    await utimes(sourcePath, sourceStats.atime, new Date(sourceStats.mtimeMs + 1_000))
+    await captureImplementationProvenance(root)
+
+    const indexAfter = await stat(indexPath, { bigint: true })
+    expect(indexAfter.mtimeNs).toBe(indexBefore.mtimeNs)
+    expect(indexAfter.ctimeNs).toBe(indexBefore.ctimeNs)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
 
 test('implementation digest binds dependency edges, not only package byte multiset', async () => {
   const root = await createSourceProvenanceRoot()
