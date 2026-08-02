@@ -1,5 +1,11 @@
 # OpenPencil
 
+## Provenance — this is a fork
+
+This repo is a **fork** of [`github.com/open-pencil/open-pencil`](https://github.com/open-pencil/open-pencil), created and primarily authored by **Danila Poyarkov** (`dannote`), MIT licensed (see `LICENSE`, copyright retained). The large majority of commits and functionality are upstream's work.
+
+CH5's additions on top of upstream are narrow: the Elf sign-in integration (see "CH5 Federation Context" below) and hosting this fork at `design.elf.dance`. Do not describe or document this project as CH5-authored — it is CH5-hosted and CH5-extended.
+
 ## CH5 Federation Context (2026-05-16)
 
 OpenPencil is a federated sub-app of the Firefly platform at `elf.dance`. Per `hq-qyx6` decision: sub-apps stay in their own independent repos and federate into Firefly via the published `@ch5me/elf-auth-client` package (RS256 + JWKS verifier).

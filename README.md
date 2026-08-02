@@ -300,6 +300,10 @@ bun run tauri build
 
 Thanks to [@sld0Ant](https://github.com/sld0Ant) (Anton Soldatov) for creating and maintaining the [documentation site](https://openpencil.dev).
 
+## About this fork (CH5)
+
+This is CH5's fork of [OpenPencil](https://github.com/open-pencil/open-pencil), created and primarily authored by [Danila Poyarkov](https://github.com/dannote) (`dannote`). MIT licensed, copyright retained — see `LICENSE`. CH5's additions on top of upstream are the Elf sign-in integration and hosting this fork at [`design.elf.dance`](https://design.elf.dance).
+
 ## License
 
 MIT
