@@ -21,3 +21,56 @@ project:
       role: planning
     - locator: docs/operator/DEPLOYMENT.md
       role: deployment
+  branding:
+    visual_summary: >-
+      A single sharpened wooden pencil rendered as a bold faceted pictogram in
+      pencil-yellow, eraser-pink, and graphite — the literal object the product
+      is named after, filling the icon edge to edge.
+    icon_prompt: >-
+      A single sharpened wooden pencil, drawn as a bold geometric pictogram, held
+      at a 45-degree diagonal so its faceted hexagonal barrel and angled graphite
+      tip fill the entire square frame edge to edge — the pencil's own painted
+      surface IS the icon background; no page, no canvas, no card shape, no empty
+      margin anywhere in the image. Barrel in warm pencil-yellow (#F2B400) with a
+      darker gold facet on its shaded side, a narrow graphite-black ferrule band,
+      and a sharpened wood cone tapering to a dark graphite point. The pencil is
+      sized to fill about 70% of the square, cropped tight by the frame at the
+      upper-right so it reads as one large confident diagonal shape, not a small
+      object centered in white space. This is a drawing of a physical pencil, NOT
+      a written character, NOT a letter, NOT calligraphy, NOT a logo wordmark, NOT
+      an abstract gem or diamond — no writing of any script anywhere in the image.
+      Flat bold vector shading with a few hard-edged highlight facets, high
+      contrast, no soft photographic gradients, no glassy reflections, no drop
+      shadow, no background pattern, no purple.
+    cover_prompt: >-
+      A single sharpened wooden pencil, angled diagonally across a wide banner
+      frame, its faceted pencil-yellow barrel and graphite tip filling the frame
+      edge to edge on the left two-thirds — the pencil surface IS the background,
+      no floating card, no empty page behind it. Graphite-black ferrule band,
+      eraser-pink facet catching light along one edge of the barrel, dark graphite
+      near-black negative space filling the right third for a header-text crop.
+      This is a drawing of a physical pencil, NOT a written character, NOT
+      calligraphy, no lettering of any script anywhere in the image. Flat bold
+      vector shading, hard-edged facets, high contrast, no soft gradients, no
+      glassy reflections, no purple, no generic AI-sparkle motifs.
+    splash_prompt: >-
+      Centered on a solid graphite-black (#1C1F26) background, the same
+      sharpened-pencil pictogram mark — faceted pencil-yellow barrel, graphite-
+      black ferrule, tapered wood cone to a graphite point — sized to occupy
+      about 35% of the frame height, pencil held upright, tip pointing down. Flat
+      bold vector shading with hard-edged facets, a thin eraser-pink accent facet
+      along one edge of the barrel, no gradient background, no page or canvas
+      shape behind the mark, no lettering of any script anywhere in the image.
+    colors:
+      primary: '#F2B400'
+      accent: '#FF5D8F'
+      neutral: '#1C1F26'
+    assets:
+      icon_source: .ch5/assets/master/icon.png
+      icon_variant_profile: ch5-master-icon-v2
+    anti_goals:
+      - generic purple-AI-SaaS gradient background, or #A855F7 as an accent
+      - abstract gem/diamond/teardrop shape standing in for the pencil tip
+      - an icon-shaped card floating in empty margin instead of filling the square
+      - any wordmark, lettering, or calligraphy of any script
+      - soft photographic gradients, glassy reflections, or drop shadows
