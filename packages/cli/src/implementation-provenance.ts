@@ -468,10 +468,20 @@ export async function verifyImplementationProvenance(
 }
 
 export async function prepareImplementationProvenance(argv: readonly string[]): Promise<void> {
-  const hasReviewContext = argv.some(
+  const contextIndex = argv.findIndex(
     (arg) => arg === '--ch5-review-context' || arg.startsWith('--ch5-review-context=')
   )
-  if (!hasReviewContext) return
+  if (contextIndex < 0) return
+  const contextArg = argv[contextIndex]
+  const contextPath =
+    contextArg.startsWith('--ch5-review-context=') &&
+    contextArg.length > '--ch5-review-context='.length
+      ? contextArg.slice('--ch5-review-context='.length)
+      : argv[contextIndex + 1]
+  if (!contextPath) throw new Error('--ch5-review-context requires a context path')
+  // Reject malformed review context before the expensive provenance walk.
+  const { readCh5ReviewContext } = await import('./ch5-review-receipt')
+  await readCh5ReviewContext(contextPath)
   activeSnapshot = await captureImplementationProvenance()
 }
 
