@@ -452,3 +452,16 @@ Self-review checklist:
 ## Known issues
 
 - Safari ew-resize/col-resize/ns-resize cursor bug (WebKit #303845) — fixed in Safari 26.3 Beta
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository has an OpenWiki companion at `openwiki/`. Start with
+`openwiki/quickstart.md`, then follow its links.
+
+Refresh it with `ch5-openwiki refresh open-pencil`. Cadence lives in
+`ch5-devtools/config/openwiki.json`. This repo uses Forgejo and lands directly
+on `main`; do not add the upstream OpenWiki GitHub/PR workflow.
+
+<!-- OPENWIKI:END -->
