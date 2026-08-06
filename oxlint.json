@@ -492,5 +492,8 @@
   ],
   "categories": {
     "correctness": "error"
-  }
+  },
+  "extends": [
+    "./node_modules/@ch5me/oxlint-config/react.json"
+  ]
 }

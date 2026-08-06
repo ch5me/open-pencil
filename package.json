@@ -3,7 +3,9 @@
   "version": "0.13.2",
   "private": true,
   "license": "MIT",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "type": "module",
   "scripts": {
     "dev": "./node_modules/.bin/vite",
@@ -44,7 +46,9 @@
     "proof:all": "bun run proof:flags && bun run proof:hosted",
     "release:candidate": "node scripts/build-candidate.mjs",
     "promote:production": "node scripts/promote.mjs production",
-    "rollback:production": "node scripts/promote.mjs production --previous"
+    "rollback:production": "node scripts/promote.mjs production --previous",
+    "lint:fix": "oxlint --fix",
+    "fix": "npm run lint:fix && npm run format"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.74",
@@ -127,8 +131,8 @@
     "hono": "^4.12.5",
     "jscpd": "^4.0.8",
     "mitata": "^1.0.34",
-    "oxfmt": "^0.35.0",
-    "oxlint": "^1.50.0",
+    "oxfmt": "0.60.0",
+    "oxlint": "1.75.0",
     "oxlint-tsgolint": "^0.16.0",
     "steiger": "^0.5.12",
     "tsdown": "^0.21.7",
@@ -142,6 +146,8 @@
     "vite-plugin-pwa": "^1.2.0",
     "vue-tsc": "^3.2.5",
     "workbox-window": "^7.4.0",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "@ch5me/oxlint-config": "0.6.0",
+    "@ch5me/tsconfig": "0.1.0"
   }
 }
