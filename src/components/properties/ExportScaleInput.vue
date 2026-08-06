@@ -1,59 +1,58 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { vTestId, type TestIdProps } from "@open-pencil/vue";
 import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuRoot,
-  DropdownMenuTrigger
-} from 'reka-ui'
+  DropdownMenuTrigger,
+} from "reka-ui";
+import { ref, watch } from "vue";
 
-import { vTestId, type TestIdProps } from '@open-pencil/vue'
-
-import { useInputUI } from '@/components/ui/input'
-import { menuItem, useMenuUI } from '@/components/ui/menu'
+import { useInputUI } from "@/components/ui/input";
+import { menuItem, useMenuUI } from "@/components/ui/menu";
 
 interface ExportScaleInputProps extends TestIdProps {
-  presets: readonly number[]
-  clamp: (scale: number) => number
-  label?: string
+  presets: readonly number[];
+  clamp: (scale: number) => number;
+  label?: string;
 }
 
 const {
   presets,
   clamp,
   label,
-  testId = 'export-scale-input'
-} = defineProps<ExportScaleInputProps>()
+  testId = "export-scale-input",
+} = defineProps<ExportScaleInputProps>();
 
-const modelValue = defineModel<number>({ required: true })
+const modelValue = defineModel<number>({ required: true });
 
-const open = ref(false)
-const inputRef = ref<HTMLInputElement | null>(null)
-const text = ref('')
+const open = ref(false);
+const inputRef = ref<HTMLInputElement | null>(null);
+const text = ref("");
 
 // Keep the editable text in sync with the committed scale (e.g. 1.5 -> "1.5x").
-watch(modelValue, (value) => (text.value = `${value}x`), { immediate: true })
+watch(modelValue, (value) => (text.value = `${value}x`), { immediate: true });
 
-const inputClass = useInputUI({ size: 'sm', ui: { base: 'min-w-0 flex-1' } }).base
-const menuCls = useMenuUI({ content: 'min-w-[7rem]' })
-const itemCls = menuItem({ justify: 'between' })
+const inputClass = useInputUI({ size: "sm", ui: { base: "min-w-0 flex-1" } }).base;
+const menuCls = useMenuUI({ content: "min-w-[7rem]" });
+const itemCls = menuItem({ justify: "between" });
 
 function commit() {
-  const parsed = Number.parseFloat(text.value.replace(/[^0-9.]/g, ''))
-  if (Number.isFinite(parsed) && parsed > 0) modelValue.value = clamp(parsed)
+  const parsed = Number.parseFloat(text.value.replace(/[^0-9.]/g, ""));
+  if (Number.isFinite(parsed) && parsed > 0) modelValue.value = clamp(parsed);
   // Reformat from the resulting value: normalizes "9" -> "9x", reverts invalid
   // input, and reflects clamping (e.g. "9999999" -> "1024x").
-  text.value = `${modelValue.value}x`
+  text.value = `${modelValue.value}x`;
 }
 
 function pick(scale: number) {
-  modelValue.value = scale
-  open.value = false
+  modelValue.value = scale;
+  open.value = false;
 }
 
 function isActive(scale: number) {
-  return Math.abs(modelValue.value - scale) < 1e-9
+  return Math.abs(modelValue.value - scale) < 1e-9;
 }
 </script>
 

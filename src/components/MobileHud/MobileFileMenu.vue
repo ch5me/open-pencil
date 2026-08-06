@@ -4,17 +4,17 @@ import {
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuRoot,
-  DropdownMenuTrigger
-} from 'reka-ui'
+  DropdownMenuTrigger,
+} from "reka-ui";
 
-import { useMobileHudContext } from '@/components/MobileHud/context'
-import { menu, useMenuUI } from '@/components/ui/menu'
+import { useMobileHudContext } from "@/components/MobileHud/context";
+import { menu, useMenuUI } from "@/components/ui/menu";
 
-const hud = useMobileHudContext()
+const hud = useMobileHudContext();
 const menuCls = useMenuUI({
-  content: 'w-48 rounded-xl p-1.5 shadow-xl',
-  item: 'w-full gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 active:bg-hover'
-})
+  content: "w-48 rounded-xl p-1.5 shadow-xl",
+  item: "w-full gap-2.5 rounded-lg border-none bg-transparent px-2.5 py-2 active:bg-hover",
+});
 </script>
 
 <template>

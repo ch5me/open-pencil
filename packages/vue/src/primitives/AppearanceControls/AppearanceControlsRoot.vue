@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { useAppearance } from '#vue/controls/appearance/use'
+import { useAppearance } from "#vue/controls/appearance/use";
 
-const ctx = useAppearance()
+const ctx = useAppearance();
 const actions = {
   updateProp: ctx.updateProp,
   commitProp: ctx.commitProp,
   toggleVisibility: ctx.toggleVisibility,
   toggleIndependentCorners: ctx.toggleIndependentCorners,
   updateCornerProp: ctx.updateCornerProp,
-  commitCornerProp: ctx.commitCornerProp
-}
+  commitCornerProp: ctx.commitCornerProp,
+};
 </script>
 
 <template>

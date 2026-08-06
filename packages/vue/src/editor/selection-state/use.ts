@@ -1,9 +1,8 @@
-import { computed } from 'vue'
+import type { SceneNode } from "@open-pencil/core/scene-graph";
+import { computed } from "vue";
 
-import type { SceneNode } from '@open-pencil/core/scene-graph'
-
-import { useEditor } from '#vue/editor/context'
-import { useSceneComputed } from '#vue/internal/scene-computed/use'
+import { useEditor } from "#vue/editor/context";
+import { useSceneComputed } from "#vue/internal/scene-computed/use";
 
 /**
  * Returns reactive selection-derived state for the current editor.
@@ -12,29 +11,29 @@ import { useSceneComputed } from '#vue/internal/scene-computed/use'
  * reading graph state in every component.
  */
 export function useSelectionState() {
-  const editor = useEditor()
+  const editor = useEditor();
 
-  const selectedIds = useSceneComputed(() => editor.state.selectedIds)
+  const selectedIds = useSceneComputed(() => editor.state.selectedIds);
 
-  const hasSelection = computed(() => selectedIds.value.size > 0)
+  const hasSelection = computed(() => selectedIds.value.size > 0);
 
-  const selectedNode = useSceneComputed<SceneNode | null>(() => editor.getSelectedNode() ?? null)
+  const selectedNode = useSceneComputed<SceneNode | null>(() => editor.getSelectedNode() ?? null);
 
-  const selectedCount = computed(() => selectedIds.value.size)
+  const selectedCount = computed(() => selectedIds.value.size);
 
-  const selectedNodeType = computed(() => selectedNode.value?.type ?? null)
+  const selectedNodeType = computed(() => selectedNode.value?.type ?? null);
 
-  const isInstance = computed(() => selectedNodeType.value === 'INSTANCE')
-  const isComponent = computed(() => selectedNodeType.value === 'COMPONENT')
-  const isGroup = computed(() => selectedNodeType.value === 'GROUP')
+  const isInstance = computed(() => selectedNodeType.value === "INSTANCE");
+  const isComponent = computed(() => selectedNodeType.value === "COMPONENT");
+  const isGroup = computed(() => selectedNodeType.value === "GROUP");
 
   const canCreateComponentSet = useSceneComputed(() => {
-    if (selectedIds.value.size < 2) return false
+    if (selectedIds.value.size < 2) return false;
     for (const id of selectedIds.value) {
-      if (editor.graph.getNode(id)?.type !== 'COMPONENT') return false
+      if (editor.graph.getNode(id)?.type !== "COMPONENT") return false;
     }
-    return true
-  })
+    return true;
+  });
 
   return {
     editor,
@@ -46,6 +45,6 @@ export function useSelectionState() {
     isInstance,
     isComponent,
     isGroup,
-    canCreateComponentSet
-  }
+    canCreateComponentSet,
+  };
 }

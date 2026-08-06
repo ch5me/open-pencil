@@ -1,2 +1,2 @@
-export type GridTrackProp = 'gridTemplateColumns' | 'gridTemplateRows'
-export type PaddingProp = 'paddingTop' | 'paddingRight' | 'paddingBottom' | 'paddingLeft'
+export type GridTrackProp = "gridTemplateColumns" | "gridTemplateRows";
+export type PaddingProp = "paddingTop" | "paddingRight" | "paddingBottom" | "paddingLeft";

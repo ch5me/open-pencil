@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { LayoutDirection, LayoutAlign } from "@open-pencil/core/scene-graph";
+import { useI18n, useLayoutControlsContext } from "@open-pencil/vue";
 import {
   SelectContent,
   SelectItem,
@@ -7,37 +9,34 @@ import {
   SelectPortal,
   SelectRoot,
   SelectTrigger,
-  SelectViewport
-} from 'reka-ui'
-import { ref } from 'vue'
+  SelectViewport,
+} from "reka-ui";
+import { ref } from "vue";
 
-import type { LayoutDirection, LayoutAlign } from '@open-pencil/core/scene-graph'
-import { useI18n, useLayoutControlsContext } from '@open-pencil/vue'
+import ClipContentControl from "@/components/properties/LayoutSection/ClipContentControl.vue";
+import PaddingControls from "@/components/properties/LayoutSection/PaddingControls.vue";
+import VariableScrubInput from "@/components/properties/VariableScrubInput.vue";
+import AppSelect from "@/components/ui/AppSelect.vue";
+import { useSelectUI } from "@/components/ui/select";
 
-import ClipContentControl from '@/components/properties/LayoutSection/ClipContentControl.vue'
-import PaddingControls from '@/components/properties/LayoutSection/PaddingControls.vue'
-import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
-import AppSelect from '@/components/ui/AppSelect.vue'
-import { useSelectUI } from '@/components/ui/select'
+const ctx = useLayoutControlsContext();
+const gapFieldRef = ref<HTMLElement | null>(null);
 
-const ctx = useLayoutControlsContext()
-const gapFieldRef = ref<HTMLElement | null>(null)
-
-const { panels } = useI18n()
-const gapSelect = useSelectUI({ item: 'rounded py-1.5 pr-2 pl-6 text-xs' })
+const { panels } = useI18n();
+const gapSelect = useSelectUI({ item: "rounded py-1.5 pr-2 pl-6 text-xs" });
 
 function anchorRef(element: HTMLElement | null): HTMLElement | undefined {
-  return element ?? undefined
+  return element ?? undefined;
 }
 
 function setGapMode(value: string) {
-  ctx.setGapAuto(value === 'AUTO')
+  ctx.setGapAuto(value === "AUTO");
 }
 
 function isAlignmentActive(primary: LayoutAlign, counter: string) {
   if (ctx.gapAuto)
-    return ctx.node.primaryAxisAlign === 'SPACE_BETWEEN' && ctx.node.counterAxisAlign === counter
-  return ctx.node.primaryAxisAlign === primary && ctx.node.counterAxisAlign === counter
+    return ctx.node.primaryAxisAlign === "SPACE_BETWEEN" && ctx.node.counterAxisAlign === counter;
+  return ctx.node.primaryAxisAlign === primary && ctx.node.counterAxisAlign === counter;
 }
 </script>
 
@@ -49,7 +48,7 @@ function isAlignmentActive(primary: LayoutAlign, counter: string) {
       :options="[
         { value: 'AUTO', label: panels.auto },
         { value: 'LTR', label: 'LTR' },
-        { value: 'RTL', label: 'RTL' }
+        { value: 'RTL', label: 'RTL' },
       ]"
       @update:model-value="ctx.setLayoutDirection($event as LayoutDirection)"
     />

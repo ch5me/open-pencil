@@ -1,28 +1,28 @@
-import { expect, test, useEditorSetup } from '#tests/e2e/fixtures'
-import { CanvasHelper } from '#tests/helpers/canvas'
+import { expect, test, useEditorSetup } from "#tests/e2e/fixtures";
+import { CanvasHelper } from "#tests/helpers/canvas";
 
-const editor = useEditorSetup()
+const editor = useEditorSetup();
 
-test('autosave triggers after scene changes with a file handle', async () => {
+test("autosave triggers after scene changes with a file handle", async () => {
   const writeCount = await editor.page.evaluate(() => {
-    let writes = 0
+    let writes = 0;
     const mockWritable = {
       write: async () => {
-        writes++
+        writes++;
       },
-      close: async () => undefined
-    }
+      close: async () => undefined,
+    };
     const mockHandle = {
-      createWritable: async () => mockWritable
-    } as FileSystemFileHandle
+      createWritable: async () => mockWritable,
+    } as FileSystemFileHandle;
 
-    window.openPencil ??= {}
-    window.openPencil.test = { writeCount: () => writes, mockHandle }
+    window.openPencil ??= {};
+    window.openPencil.test = { writeCount: () => writes, mockHandle };
 
-    return writes
-  })
+    return writes;
+  });
 
-  expect(writeCount).toBe(0)
+  expect(writeCount).toBe(0);
 
   // Inject the file handle into the store's internal state
   // We do this by calling a save first to establish the handle
@@ -32,60 +32,60 @@ test('autosave triggers after scene changes with a file handle', async () => {
     // The cleanest way: mock showSaveFilePicker to return our handle
     const mockWritable = {
       write: async () => undefined,
-      close: async () => undefined
-    }
+      close: async () => undefined,
+    };
     const mockHandle = {
-      createWritable: async () => mockWritable
-    }
-    window.showSaveFilePicker = async () => mockHandle as FileSystemFileHandle
-  })
+      createWritable: async () => mockWritable,
+    };
+    window.showSaveFilePicker = async () => mockHandle as FileSystemFileHandle;
+  });
 
   // Trigger Save As to establish the file handle
-  await editor.page.keyboard.press('Meta+Shift+s')
-  await editor.page.waitForTimeout(500)
+  await editor.page.keyboard.press("Meta+Shift+s");
+  await editor.page.waitForTimeout(500);
 
   // Now draw a shape — this should trigger autosave after 3s
-  await editor.canvas.drawRect(400, 400, 60, 60)
+  await editor.canvas.drawRect(400, 400, 60, 60);
 
   // Check that the scene version changed
   const versionAfterDraw = await editor.page.evaluate(() => {
-    const store = window.openPencil?.getStore?.()
-    if (!store) throw new Error('OpenPencil store not initialized')
-    return store.state.sceneVersion
-  })
-  expect(versionAfterDraw).toBeGreaterThan(0)
+    const store = window.openPencil?.getStore?.();
+    if (!store) throw new Error("OpenPencil store not initialized");
+    return store.state.sceneVersion;
+  });
+  expect(versionAfterDraw).toBeGreaterThan(0);
 
   // Wait for autosave debounce (3s) + buffer
-  await editor.page.waitForTimeout(4000)
+  await editor.page.waitForTimeout(4000);
 
   // Verify a write happened by checking the mock was called
   const writeHappened = await editor.page.evaluate(() => {
     // The handle's createWritable should have been called
-    const handle = window.showSaveFilePicker
-    return handle !== undefined
-  })
-  expect(writeHappened).toBe(true)
-})
+    const handle = window.showSaveFilePicker;
+    return handle !== undefined;
+  });
+  expect(writeHappened).toBe(true);
+});
 
-test('no autosave without file handle', async ({ browser }) => {
+test("no autosave without file handle", async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 2
-  })
-  const freshPage = await context.newPage()
-  await freshPage.goto('/')
-  const freshCanvas = new CanvasHelper(freshPage)
-  await freshCanvas.waitForInit()
+    deviceScaleFactor: 2,
+  });
+  const freshPage = await context.newPage();
+  await freshPage.goto("/");
+  const freshCanvas = new CanvasHelper(freshPage);
+  await freshCanvas.waitForInit();
 
   await freshPage.evaluate(() => {
-    Reflect.deleteProperty(window, 'showSaveFilePicker')
-  })
+    Reflect.deleteProperty(window, "showSaveFilePicker");
+  });
 
-  await freshCanvas.drawRect(100, 100, 50, 50)
-  await freshPage.waitForTimeout(4000)
+  await freshCanvas.drawRect(100, 100, 50, 50);
+  await freshPage.waitForTimeout(4000);
 
-  freshCanvas.assertNoErrors()
+  freshCanvas.assertNoErrors();
 
-  await freshPage.close()
-  await context.close()
-})
+  await freshPage.close();
+  await context.close();
+});

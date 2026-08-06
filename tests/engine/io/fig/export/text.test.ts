@@ -1,294 +1,294 @@
-import { describe, expect, setDefaultTimeout, test } from 'bun:test'
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
 
 import {
   decompressFigKiwiDataAsync,
   exportFigFile,
   initCodec,
   parseFigFile,
-  SceneGraph
-} from '@open-pencil/core'
-import type { JsonObject } from '@open-pencil/core/types'
+  SceneGraph,
+} from "@open-pencil/core";
+import type { JsonObject } from "@open-pencil/core/types";
 
-import { expectDefined } from '#tests/helpers/assert'
-import { parseFixture } from '#tests/helpers/fig-fixtures'
-import { runsHeavyTests } from '#tests/helpers/test-utils'
+import { expectDefined } from "#tests/helpers/assert";
+import { parseFixture } from "#tests/helpers/fig-fixtures";
+import { runsHeavyTests } from "#tests/helpers/test-utils";
 
-setDefaultTimeout(60_000)
+setDefaultTimeout(60_000);
 
-describe('text node export', () => {
-  test('text nodes have derivedTextData and textUserLayoutVersion', async () => {
-    await initCodec()
+describe("text node export", () => {
+  test("text nodes have derivedTextData and textUserLayoutVersion", async () => {
+    await initCodec();
 
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    graph.createNode('TEXT', page.id, {
-      name: 'Greeting',
-      text: 'Hello World',
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    graph.createNode("TEXT", page.id, {
+      name: "Greeting",
+      text: "Hello World",
       width: 120,
       height: 24,
-      fontFamily: 'Inter',
+      fontFamily: "Inter",
       fontWeight: 400,
-      fontSize: 16
-    })
+      fontSize: 16,
+    });
 
-    const exported = await exportFigFile(graph)
-    const reimported = await parseFigFile(exported.buffer as ArrayBuffer)
+    const exported = await exportFigFile(graph);
+    const reimported = await parseFigFile(exported.buffer as ArrayBuffer);
 
-    const textNode = [...reimported.getAllNodes()].find((n) => n.name === 'Greeting')
-    expect(textNode).toBeDefined()
-    expect(expectDefined(textNode, 'textNode').type).toBe('TEXT')
-    expect(textNode.text).toBe('Hello World')
-    expect(textNode.fontFamily).toBe('Inter')
-    expect(textNode.fontSize).toBe(16)
-  })
+    const textNode = [...reimported.getAllNodes()].find((n) => n.name === "Greeting");
+    expect(textNode).toBeDefined();
+    expect(expectDefined(textNode, "textNode").type).toBe("TEXT");
+    expect(textNode.text).toBe("Hello World");
+    expect(textNode.fontFamily).toBe("Inter");
+    expect(textNode.fontSize).toBe(16);
+  });
 
-  test('text node has lines in textData', async () => {
-    await initCodec()
+  test("text node has lines in textData", async () => {
+    await initCodec();
 
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    graph.createNode('TEXT', page.id, {
-      name: 'Multiline',
-      text: 'Line 1\nLine 2\nLine 3',
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    graph.createNode("TEXT", page.id, {
+      name: "Multiline",
+      text: "Line 1\nLine 2\nLine 3",
       width: 100,
       height: 60,
-      fontFamily: 'Inter',
+      fontFamily: "Inter",
       fontWeight: 400,
-      fontSize: 14
-    })
+      fontSize: 14,
+    });
 
-    const exported = await exportFigFile(graph)
-    const reimported = await parseFigFile(exported.buffer as ArrayBuffer)
+    const exported = await exportFigFile(graph);
+    const reimported = await parseFigFile(exported.buffer as ArrayBuffer);
 
-    const textNode = [...reimported.getAllNodes()].find((n) => n.name === 'Multiline')
-    expect(textNode).toBeDefined()
-    expect(expectDefined(textNode, 'textNode').text).toBe('Line 1\nLine 2\nLine 3')
-  })
+    const textNode = [...reimported.getAllNodes()].find((n) => n.name === "Multiline");
+    expect(textNode).toBeDefined();
+    expect(expectDefined(textNode, "textNode").text).toBe("Line 1\nLine 2\nLine 3");
+  });
 
-  test('derivedTextData fields present in raw binary', async () => {
-    await initCodec()
+  test("derivedTextData fields present in raw binary", async () => {
+    await initCodec();
 
-    const { unzipSync, inflateSync } = await import('fflate')
+    const { unzipSync, inflateSync } = await import("fflate");
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
-      await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+      await import("@open-pencil/kiwi/schema-runtime");
+    const { parseFigKiwiChunks } = await import("@open-pencil/core");
 
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    graph.createNode('TEXT', page.id, {
-      name: 'Raw Test',
-      text: 'Check binary',
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    graph.createNode("TEXT", page.id, {
+      name: "Raw Test",
+      text: "Check binary",
       width: 80,
       height: 18,
-      fontFamily: 'Roboto',
+      fontFamily: "Roboto",
       fontWeight: 700,
-      fontSize: 12
-    })
+      fontSize: 12,
+    });
 
-    const exported = await exportFigFile(graph)
-    const zip = unzipSync(new Uint8Array(exported))
-    const canvasData = zip['canvas.fig'] ?? zip['canvas']
-    expect(canvasData).toBeDefined()
+    const exported = await exportFigFile(graph);
+    const zip = unzipSync(new Uint8Array(exported));
+    const canvasData = zip["canvas.fig"] ?? zip["canvas"];
+    expect(canvasData).toBeDefined();
 
-    const chunks = parseFigKiwiChunks(canvasData)
-    expect(chunks).not.toBeNull()
-    expect(chunks?.length).toBeGreaterThanOrEqual(2)
+    const chunks = parseFigKiwiChunks(canvasData);
+    expect(chunks).not.toBeNull();
+    expect(chunks?.length).toBeGreaterThanOrEqual(2);
 
-    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array())
-    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes))
+    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array());
+    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes));
     const compiled = compileSchema(schema) as {
-      decodeMessage(data: Uint8Array): Record<string, unknown>
-    }
-    const dataRaw = await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array())
-    const message = compiled.decodeMessage(dataRaw)
+      decodeMessage(data: Uint8Array): Record<string, unknown>;
+    };
+    const dataRaw = await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array());
+    const message = compiled.decodeMessage(dataRaw);
 
-    const nodeChanges = message.nodeChanges as JsonObject[]
-    const textNc = nodeChanges.find((nc) => nc.type === 'TEXT')
-    expect(textNc).toBeDefined()
+    const nodeChanges = message.nodeChanges as JsonObject[];
+    const textNc = nodeChanges.find((nc) => nc.type === "TEXT");
+    expect(textNc).toBeDefined();
 
-    expect(textNc.textData.characters).toBe('Check binary')
-    expect(textNc.textData.lines).toBeDefined()
-    expect(textNc.textData.lines.length).toBeGreaterThanOrEqual(1)
-    expect(textNc.textData.lines[0].lineType).toBe('PLAIN')
+    expect(textNc.textData.characters).toBe("Check binary");
+    expect(textNc.textData.lines).toBeDefined();
+    expect(textNc.textData.lines.length).toBeGreaterThanOrEqual(1);
+    expect(textNc.textData.lines[0].lineType).toBe("PLAIN");
 
-    expect(textNc.textUserLayoutVersion).toBe(4)
+    expect(textNc.textUserLayoutVersion).toBe(4);
 
-    expect(textNc.derivedTextData).toBeDefined()
-    expect(textNc.derivedTextData.layoutSize).toBeDefined()
-    expect(textNc.derivedTextData.layoutSize.x).toBe(80)
-    expect(textNc.derivedTextData.layoutSize.y).toBe(18)
+    expect(textNc.derivedTextData).toBeDefined();
+    expect(textNc.derivedTextData.layoutSize).toBeDefined();
+    expect(textNc.derivedTextData.layoutSize.x).toBe(80);
+    expect(textNc.derivedTextData.layoutSize.y).toBe(18);
 
-    expect(textNc.derivedTextData.fontMetaData).toBeDefined()
-    expect(textNc.derivedTextData.fontMetaData.length).toBe(1)
-    expect(textNc.fontName.style).toBe('Bold')
-    expect(textNc.derivedTextData.fontMetaData[0].key.family).toBe('Roboto')
-    expect(textNc.derivedTextData.fontMetaData[0].key.style).toBe('Bold')
-    expect(textNc.derivedTextData.fontMetaData[0].fontWeight).toBe(700)
-    expect(textNc.derivedTextData.fontMetaData[0].fontStyle).toBe('NORMAL')
-  })
+    expect(textNc.derivedTextData.fontMetaData).toBeDefined();
+    expect(textNc.derivedTextData.fontMetaData.length).toBe(1);
+    expect(textNc.fontName.style).toBe("Bold");
+    expect(textNc.derivedTextData.fontMetaData[0].key.family).toBe("Roboto");
+    expect(textNc.derivedTextData.fontMetaData[0].key.style).toBe("Bold");
+    expect(textNc.derivedTextData.fontMetaData[0].fontWeight).toBe(700);
+    expect(textNc.derivedTextData.fontMetaData[0].fontStyle).toBe("NORMAL");
+  });
 
-  test('uses Figma font style names for weighted text', async () => {
-    await initCodec()
+  test("uses Figma font style names for weighted text", async () => {
+    await initCodec();
 
-    const { unzipSync, inflateSync } = await import('fflate')
+    const { unzipSync, inflateSync } = await import("fflate");
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
-      await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+      await import("@open-pencil/kiwi/schema-runtime");
+    const { parseFigKiwiChunks } = await import("@open-pencil/core");
 
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    graph.createNode('TEXT', page.id, {
-      name: 'Weighted',
-      text: 'Semi bold',
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    graph.createNode("TEXT", page.id, {
+      name: "Weighted",
+      text: "Semi bold",
       width: 120,
       height: 24,
-      fontFamily: 'Inter',
+      fontFamily: "Inter",
       fontWeight: 600,
-      fontSize: 16
-    })
+      fontSize: 16,
+    });
 
-    const exported = await exportFigFile(graph)
-    const zip = unzipSync(new Uint8Array(exported))
-    const chunks = parseFigKiwiChunks(zip['canvas.fig'] ?? zip['canvas'])
-    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array())
-    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes))
+    const exported = await exportFigFile(graph);
+    const zip = unzipSync(new Uint8Array(exported));
+    const chunks = parseFigKiwiChunks(zip["canvas.fig"] ?? zip["canvas"]);
+    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array());
+    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes));
     const compiled = compileSchema(schema) as {
-      decodeMessage(data: Uint8Array): Record<string, unknown>
-    }
+      decodeMessage(data: Uint8Array): Record<string, unknown>;
+    };
     const message = compiled.decodeMessage(
-      await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array())
-    )
-    const nodeChanges = message.nodeChanges as JsonObject[]
+      await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array()),
+    );
+    const nodeChanges = message.nodeChanges as JsonObject[];
     const textNc = expectDefined(
-      nodeChanges.find((nc) => nc.type === 'TEXT'),
-      'text node change'
-    )
-    const derivedTextData = textNc.derivedTextData as JsonObject
+      nodeChanges.find((nc) => nc.type === "TEXT"),
+      "text node change",
+    );
+    const derivedTextData = textNc.derivedTextData as JsonObject;
     const fontMetaData = expectDefined(
       derivedTextData.fontMetaData as JsonObject[] | undefined,
-      'font metadata'
-    )
+      "font metadata",
+    );
 
-    expect((textNc.fontName as JsonObject).style).toBe('Semi Bold')
-    expect((fontMetaData[0].key as JsonObject).style).toBe('Semi Bold')
-  })
+    expect((textNc.fontName as JsonObject).style).toBe("Semi Bold");
+    expect((fontMetaData[0].key as JsonObject).style).toBe("Semi Bold");
+  });
 
-  test('auto-layout text children export height auto-resize for Figma rendering', async () => {
-    await initCodec()
+  test("auto-layout text children export height auto-resize for Figma rendering", async () => {
+    await initCodec();
 
-    const { unzipSync, inflateSync } = await import('fflate')
+    const { unzipSync, inflateSync } = await import("fflate");
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
-      await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+      await import("@open-pencil/kiwi/schema-runtime");
+    const { parseFigKiwiChunks } = await import("@open-pencil/core");
 
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    const frame = graph.createNode('FRAME', page.id, {
-      name: 'Card',
-      layoutMode: 'VERTICAL',
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    const frame = graph.createNode("FRAME", page.id, {
+      name: "Card",
+      layoutMode: "VERTICAL",
       width: 280,
-      height: 160
-    })
-    graph.createNode('TEXT', frame.id, {
-      name: 'Body',
-      text: 'Track your key metrics and performance indicators in real time.',
+      height: 160,
+    });
+    graph.createNode("TEXT", frame.id, {
+      name: "Body",
+      text: "Track your key metrics and performance indicators in real time.",
       width: 240,
       height: 36,
-      fontFamily: 'Inter',
+      fontFamily: "Inter",
       fontSize: 13,
       fontWeight: 400,
-      textAutoResize: 'NONE'
-    })
+      textAutoResize: "NONE",
+    });
 
-    const exported = await exportFigFile(graph)
-    const zip = unzipSync(new Uint8Array(exported))
-    const chunks = parseFigKiwiChunks(zip['canvas.fig'] ?? zip['canvas'])
-    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array())
-    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes))
+    const exported = await exportFigFile(graph);
+    const zip = unzipSync(new Uint8Array(exported));
+    const chunks = parseFigKiwiChunks(zip["canvas.fig"] ?? zip["canvas"]);
+    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array());
+    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes));
     const compiled = compileSchema(schema) as {
-      decodeMessage(data: Uint8Array): Record<string, unknown>
-    }
+      decodeMessage(data: Uint8Array): Record<string, unknown>;
+    };
     const message = compiled.decodeMessage(
-      await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array())
-    )
-    const nodeChanges = message.nodeChanges as JsonObject[]
+      await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array()),
+    );
+    const nodeChanges = message.nodeChanges as JsonObject[];
     const textNc = expectDefined(
-      nodeChanges.find((nc) => nc.type === 'TEXT'),
-      'text node change'
-    )
+      nodeChanges.find((nc) => nc.type === "TEXT"),
+      "text node change",
+    );
 
-    expect(textNc.textAutoResize).toBe('HEIGHT')
-    expect(textNc.lineHeight).toBeUndefined()
-    expect(textNc.stackChildAlignSelf).toBeUndefined()
-  })
+    expect(textNc.textAutoResize).toBe("HEIGHT");
+    expect(textNc.lineHeight).toBeUndefined();
+    expect(textNc.stackChildAlignSelf).toBeUndefined();
+  });
 
-  test('style runs produce multiple fontMetaData entries', async () => {
-    await initCodec()
+  test("style runs produce multiple fontMetaData entries", async () => {
+    await initCodec();
 
-    const { unzipSync, inflateSync } = await import('fflate')
+    const { unzipSync, inflateSync } = await import("fflate");
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
-      await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+      await import("@open-pencil/kiwi/schema-runtime");
+    const { parseFigKiwiChunks } = await import("@open-pencil/core");
 
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    graph.createNode('TEXT', page.id, {
-      name: 'Styled',
-      text: 'Bold and Normal',
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    graph.createNode("TEXT", page.id, {
+      name: "Styled",
+      text: "Bold and Normal",
       width: 150,
       height: 20,
-      fontFamily: 'Inter',
+      fontFamily: "Inter",
       fontWeight: 400,
       fontSize: 16,
       styleRuns: [
         { start: 0, length: 4, style: { fontWeight: 700 } },
-        { start: 5, length: 10, style: {} }
-      ]
-    })
+        { start: 5, length: 10, style: {} },
+      ],
+    });
 
-    const exported = await exportFigFile(graph)
-    const zip = unzipSync(new Uint8Array(exported))
-    const canvasData = zip['canvas.fig'] ?? zip['canvas']
-    const chunks = parseFigKiwiChunks(canvasData)
-    expect(chunks).toBeDefined()
+    const exported = await exportFigFile(graph);
+    const zip = unzipSync(new Uint8Array(exported));
+    const canvasData = zip["canvas.fig"] ?? zip["canvas"];
+    const chunks = parseFigKiwiChunks(canvasData);
+    expect(chunks).toBeDefined();
 
-    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array())
-    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes))
+    const schemaBytes = inflateSync(chunks?.[0] ?? new Uint8Array());
+    const schema = decodeBinarySchema(new ByteBuffer(schemaBytes));
     const compiled = compileSchema(schema) as {
-      decodeMessage(data: Uint8Array): Record<string, unknown>
-    }
-    const dataRaw = await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array())
-    const message = compiled.decodeMessage(dataRaw)
+      decodeMessage(data: Uint8Array): Record<string, unknown>;
+    };
+    const dataRaw = await decompressFigKiwiDataAsync(chunks?.[1] ?? new Uint8Array());
+    const message = compiled.decodeMessage(dataRaw);
 
-    const nodeChanges = message.nodeChanges as JsonObject[]
-    const textNc = nodeChanges.find((nc) => nc.type === 'TEXT')
+    const nodeChanges = message.nodeChanges as JsonObject[];
+    const textNc = nodeChanges.find((nc) => nc.type === "TEXT");
 
-    const derivedTextData = textNc?.derivedTextData as JsonObject | undefined
-    const fontMetaData = derivedTextData?.fontMetaData as JsonObject[] | undefined
-    expect(fontMetaData?.length).toBe(2)
+    const derivedTextData = textNc?.derivedTextData as JsonObject | undefined;
+    const fontMetaData = derivedTextData?.fontMetaData as JsonObject[] | undefined;
+    expect(fontMetaData?.length).toBe(2);
 
-    const families = (fontMetaData ?? []).map((m) => (m.key as JsonObject)?.style as string)
-    expect(families).toContain('Bold')
-    expect(families).toContain('Regular')
-  })
+    const families = (fontMetaData ?? []).map((m) => (m.key as JsonObject)?.style as string);
+    expect(families).toContain("Bold");
+    expect(families).toContain("Regular");
+  });
 
   test.if(runsHeavyTests)(
-    'material3.fig text nodes have derivedTextData after round-trip',
+    "material3.fig text nodes have derivedTextData after round-trip",
     async () => {
-      const original = await parseFixture('material3.fig')
+      const original = await parseFixture("material3.fig");
 
-      const textNodes = [...original.getAllNodes()].filter((n) => n.type === 'TEXT')
-      expect(textNodes.length).toBeGreaterThan(0)
+      const textNodes = [...original.getAllNodes()].filter((n) => n.type === "TEXT");
+      expect(textNodes.length).toBeGreaterThan(0);
 
-      const exported = await exportFigFile(original)
-      const reimported = await parseFigFile(exported.buffer as ArrayBuffer)
+      const exported = await exportFigFile(original);
+      const reimported = await parseFigFile(exported.buffer as ArrayBuffer);
 
-      const reimportedText = [...reimported.getAllNodes()].filter((n) => n.type === 'TEXT')
-      expect(reimportedText.length).toBe(textNodes.length)
+      const reimportedText = [...reimported.getAllNodes()].filter((n) => n.type === "TEXT");
+      expect(reimportedText.length).toBe(textNodes.length);
 
       for (const node of reimportedText.slice(0, 10)) {
-        expect(node.text.length).toBeGreaterThan(0)
+        expect(node.text.length).toBeGreaterThan(0);
       }
-    }
-  )
-})
+    },
+  );
+});

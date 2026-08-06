@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type { Variable } from "@open-pencil/core/scene-graph";
+import { vTestId } from "@open-pencil/vue";
 import {
   ComboboxContent,
   ComboboxInput,
@@ -7,16 +9,13 @@ import {
   PopoverContent,
   PopoverPortal,
   PopoverRoot,
-  PopoverTrigger
-} from 'reka-ui'
-import { computed, nextTick, ref, watch } from 'vue'
+  PopoverTrigger,
+} from "reka-ui";
+import { computed, nextTick, ref, watch } from "vue";
 
-import type { Variable } from '@open-pencil/core/scene-graph'
-import { vTestId } from '@open-pencil/vue'
+import { useTooltipUI } from "@/components/ui/tooltip";
 
-import { useTooltipUI } from '@/components/ui/tooltip'
-
-const searchTerm = defineModel<string>('searchTerm', { default: '' })
+const searchTerm = defineModel<string>("searchTerm", { default: "" });
 
 const {
   variables,
@@ -24,57 +23,57 @@ const {
   searchPlaceholder,
   emptyLabel,
   createLabel,
-  createNamePlaceholder = 'Variable name',
-  createSubmitLabel = 'Create',
-  createDefaultName = '',
+  createNamePlaceholder = "Variable name",
+  createSubmitLabel = "Create",
+  createDefaultName = "",
   createTestId,
   triggerTestId,
-  swatchBackground
+  swatchBackground,
 } = defineProps<{
-  variables: Variable[]
-  triggerLabel: string
-  searchPlaceholder: string
-  emptyLabel: string
-  createLabel?: string
-  createNamePlaceholder?: string
-  createSubmitLabel?: string
-  createDefaultName?: string
-  createTestId?: string
-  triggerTestId?: string
-  swatchBackground?: (variableId: string) => string
-}>()
+  variables: Variable[];
+  triggerLabel: string;
+  searchPlaceholder: string;
+  emptyLabel: string;
+  createLabel?: string;
+  createNamePlaceholder?: string;
+  createSubmitLabel?: string;
+  createDefaultName?: string;
+  createTestId?: string;
+  triggerTestId?: string;
+  swatchBackground?: (variableId: string) => string;
+}>();
 
 const emit = defineEmits<{
-  select: [variable: Variable]
-  create: [name: string]
-}>()
+  select: [variable: Variable];
+  create: [name: string];
+}>();
 
-const open = ref(false)
-const tooltipOpen = ref(false)
-const creating = ref(false)
-const createName = ref('')
-const createInput = ref<HTMLInputElement | null>(null)
-const canCreate = computed(() => createName.value.trim().length > 0)
-const tooltipCls = useTooltipUI({ content: 'animate-in zoom-in-95 fade-in' })
+const open = ref(false);
+const tooltipOpen = ref(false);
+const creating = ref(false);
+const createName = ref("");
+const createInput = ref<HTMLInputElement | null>(null);
+const canCreate = computed(() => createName.value.trim().length > 0);
+const tooltipCls = useTooltipUI({ content: "animate-in zoom-in-95 fade-in" });
 
 watch(open, (value) => {
-  if (!value) creating.value = false
-})
+  if (!value) creating.value = false;
+});
 
 function startCreate() {
-  creating.value = true
-  createName.value = createDefaultName
+  creating.value = true;
+  createName.value = createDefaultName;
   void nextTick(() => {
-    createInput.value?.focus()
-    createInput.value?.select()
-  })
+    createInput.value?.focus();
+    createInput.value?.select();
+  });
 }
 
 function submitCreate() {
-  const name = createName.value.trim()
-  if (!name) return
-  emit('create', name)
-  open.value = false
+  const name = createName.value.trim();
+  if (!name) return;
+  emit("create", name);
+  open.value = false;
 }
 </script>
 
@@ -116,8 +115,8 @@ function submitCreate() {
           @update:model-value="
             ($event) => {
               if ($event) {
-                emit('select', $event as Variable)
-                open = false
+                emit('select', $event as Variable);
+                open = false;
               }
             }
           "

@@ -1,6 +1,6 @@
-import { zipSync, type Zippable } from 'fflate'
+import { zipSync, type Zippable } from "fflate";
 
-import { buildFigKiwi } from '#core/kiwi/fig/node-change/serialize'
+import { buildFigKiwi } from "#core/kiwi/fig/node-change/serialize";
 
 export function compressFigDataSync(
   schemaDeflated: Uint8Array,
@@ -8,16 +8,16 @@ export function compressFigDataSync(
   thumbnailPng: Uint8Array,
   metaJson: string,
   imageEntries: Array<{ name: string; data: Uint8Array }>,
-  figKiwiVersion?: number
+  figKiwiVersion?: number,
 ): Uint8Array {
-  const canvasData = buildFigKiwi(schemaDeflated, kiwiData, figKiwiVersion)
+  const canvasData = buildFigKiwi(schemaDeflated, kiwiData, figKiwiVersion);
   const zipEntries: Zippable = {
-    'canvas.fig': [canvasData, { level: 0 }],
-    'thumbnail.png': [thumbnailPng, { level: 0 }],
-    'meta.json': new TextEncoder().encode(metaJson)
-  }
+    "canvas.fig": [canvasData, { level: 0 }],
+    "thumbnail.png": [thumbnailPng, { level: 0 }],
+    "meta.json": new TextEncoder().encode(metaJson),
+  };
   for (const entry of imageEntries) {
-    zipEntries[entry.name] = [entry.data, { level: 0 }]
+    zipEntries[entry.name] = [entry.data, { level: 0 }];
   }
-  return zipSync(zipEntries)
+  return zipSync(zipEntries);
 }

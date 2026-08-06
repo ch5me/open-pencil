@@ -1,92 +1,91 @@
 <script setup lang="ts">
-import { useClipboard } from '@vueuse/core'
-import Prism from 'prismjs'
-import 'prismjs/components/prism-jsx'
-import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
-import { computed, ref, watch } from 'vue'
+import { JSX_REFERENCE, selectionToJSX } from "@open-pencil/core/design-jsx";
+import type { JSXFormat } from "@open-pencil/core/design-jsx";
+import "prismjs/components/prism-jsx";
+import { useI18n, useSceneComputed } from "@open-pencil/vue";
+import { useClipboard } from "@vueuse/core";
+import Prism from "prismjs";
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from "reka-ui";
+import { computed, ref, watch } from "vue";
 
-import { JSX_REFERENCE, selectionToJSX } from '@open-pencil/core/design-jsx'
-import type { JSXFormat } from '@open-pencil/core/design-jsx'
-import { useI18n, useSceneComputed } from '@open-pencil/vue'
+import { useEditorStore } from "@/app/editor/active-store";
+import AppTextButton from "@/components/ui/AppTextButton.vue";
+import Tip from "@/components/ui/Tip.vue";
 
-import { useEditorStore } from '@/app/editor/active-store'
-import AppTextButton from '@/components/ui/AppTextButton.vue'
-import Tip from '@/components/ui/Tip.vue'
-
-const store = useEditorStore()
-const { copy, copied } = useClipboard({ copiedDuring: 2000 })
-const { dialogs } = useI18n()
-const jsxFormat = ref<JSXFormat>('openpencil')
-const showImporter = ref(false)
-const importHTML = ref('')
-const importCSS = ref('')
-const importError = ref('')
-const importing = ref(false)
+const store = useEditorStore();
+const { copy, copied } = useClipboard({ copiedDuring: 2000 });
+const { dialogs } = useI18n();
+const jsxFormat = ref<JSXFormat>("openpencil");
+const showImporter = ref(false);
+const importHTML = ref("");
+const importCSS = ref("");
+const importError = ref("");
+const importing = ref(false);
 
 function toggleFormat() {
-  jsxFormat.value = jsxFormat.value === 'openpencil' ? 'tailwind' : 'openpencil'
+  jsxFormat.value = jsxFormat.value === "openpencil" ? "tailwind" : "openpencil";
 }
 
 const jsxCode = useSceneComputed(() => {
-  void store.state.sceneVersion
-  const ids = [...store.state.selectedIds]
-  if (ids.length === 0) return ''
-  return selectionToJSX(ids, store.graph, jsxFormat.value)
-})
+  void store.state.sceneVersion;
+  const ids = [...store.state.selectedIds];
+  if (ids.length === 0) return "";
+  return selectionToJSX(ids, store.graph, jsxFormat.value);
+});
 
 const highlightedLines = computed(() => {
-  if (!jsxCode.value) return []
-  const grammar = Prism.languages.jsx ?? Prism.languages.javascript
-  return jsxCode.value.split('\n').map((line) => Prism.highlight(line, grammar, 'jsx'))
-})
+  if (!jsxCode.value) return [];
+  const grammar = Prism.languages.jsx ?? Prism.languages.javascript;
+  return jsxCode.value.split("\n").map((line) => Prism.highlight(line, grammar, "jsx"));
+});
 
-const { copy: copyRef, copied: copiedRef } = useClipboard({ copiedDuring: 2000 })
+const { copy: copyRef, copied: copiedRef } = useClipboard({ copiedDuring: 2000 });
 
-const canImport = computed(() => importHTML.value.trim().length > 0)
+const canImport = computed(() => importHTML.value.trim().length > 0);
 
 watch([importHTML, importCSS], () => {
-  importError.value = ''
-})
+  importError.value = "";
+});
 
 function errorMessage(error: unknown) {
-  if (error instanceof Error && error.message) return error.message
-  return 'Import failed. Check the HTML and CSS, then try again.'
+  if (error instanceof Error && error.message) return error.message;
+  return "Import failed. Check the HTML and CSS, then try again.";
 }
 
 function toggleImporter() {
-  showImporter.value = !showImporter.value
+  showImporter.value = !showImporter.value;
 }
 
 async function pasteImportHTML() {
   try {
-    importError.value = ''
-    importHTML.value = await navigator.clipboard.readText()
+    importError.value = "";
+    importHTML.value = await navigator.clipboard.readText();
   } catch (e) {
-    importError.value = errorMessage(e)
+    importError.value = errorMessage(e);
   }
 }
 
 async function importCode() {
-  if (!canImport.value || importing.value) return
+  if (!canImport.value || importing.value) return;
   try {
-    importing.value = true
-    importError.value = ''
+    importing.value = true;
+    importError.value = "";
     await store.importDOMText(importHTML.value, {
-      cssText: importCSS.value.trim() || undefined
-    })
+      cssText: importCSS.value.trim() || undefined,
+    });
   } catch (e) {
-    importError.value = errorMessage(e)
+    importError.value = errorMessage(e);
   } finally {
-    importing.value = false
+    importing.value = false;
   }
 }
 
 function copyCode() {
-  copy(jsxCode.value)
+  copy(jsxCode.value);
 }
 
 function copyReference() {
-  copyRef(JSX_REFERENCE)
+  copyRef(JSX_REFERENCE);
 }
 </script>
 
@@ -104,7 +103,7 @@ function copyReference() {
           :ui="{ base: 'rounded px-1.5 py-0.5 text-[11px] hover:bg-hover' }"
           @click="toggleFormat"
         >
-          {{ jsxFormat === 'openpencil' ? 'OpenPencil' : 'Tailwind' }}
+          {{ jsxFormat === "openpencil" ? "OpenPencil" : "Tailwind" }}
         </AppTextButton>
       </div>
       <div class="flex items-center gap-1">
@@ -120,7 +119,7 @@ function copyReference() {
           <AppTextButton
             test-id="code-panel-copy-ref"
             :ui="{
-              base: 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-hover'
+              base: 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-hover',
             }"
             @click="copyReference"
           >
@@ -190,12 +189,12 @@ function copyReference() {
               'rounded px-2 py-1 text-[11px]',
               canImport && !importing
                 ? 'bg-accent text-black hover:bg-accent/90'
-                : 'cursor-not-allowed opacity-50'
-            ].join(' ')
+                : 'cursor-not-allowed opacity-50',
+            ].join(' '),
           }"
           @click="importCode"
         >
-          {{ importing ? 'Importing…' : 'Import to canvas' }}
+          {{ importing ? "Importing…" : "Import to canvas" }}
         </AppTextButton>
       </div>
     </div>

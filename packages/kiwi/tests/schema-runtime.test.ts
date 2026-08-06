@@ -1,12 +1,12 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from "bun:test";
 
 import {
   compileSchema,
   expectEnumValue,
   expectFieldNumber,
   parseSchema,
-  validateSchema
-} from '../src/schema-runtime'
+  validateSchema,
+} from "../src/schema-runtime";
 
 const schemaText = `
 package Example;
@@ -22,34 +22,34 @@ message Item {
   Kind kind = 3;
   string[] tags = 4;
 }
-`
+`;
 
-describe('Kiwi schema runtime', () => {
-  test('parses and validates inline schemas', () => {
-    const schema = parseSchema(schemaText)
-    validateSchema(schema)
+describe("Kiwi schema runtime", () => {
+  test("parses and validates inline schemas", () => {
+    const schema = parseSchema(schemaText);
+    validateSchema(schema);
 
-    expectFieldNumber(schema, 'Item', 'name', 2)
-    expectFieldNumber(schema, 'Item', 'tags', 4)
-    expectEnumValue(schema, 'Kind', 'BADGE', 2)
-  })
+    expectFieldNumber(schema, "Item", "name", 2);
+    expectFieldNumber(schema, "Item", "tags", 4);
+    expectEnumValue(schema, "Kind", "BADGE", 2);
+  });
 
-  test('compiles schemas and round-trips messages', () => {
-    const schema = parseSchema(schemaText)
+  test("compiles schemas and round-trips messages", () => {
+    const schema = parseSchema(schemaText);
     interface ItemCodec {
-      encodeItem(value: unknown): Uint8Array
-      decodeItem(value: Uint8Array): unknown
+      encodeItem(value: unknown): Uint8Array;
+      decodeItem(value: Uint8Array): unknown;
     }
 
-    const codec = compileSchema(schema) as ItemCodec
+    const codec = compileSchema(schema) as ItemCodec;
 
-    const encoded = codec.encodeItem({ id: 42, name: 'OpenPencil', kind: 'CARD', tags: ['kiwi'] })
-    expect(encoded.length).toBeGreaterThan(0)
+    const encoded = codec.encodeItem({ id: 42, name: "OpenPencil", kind: "CARD", tags: ["kiwi"] });
+    expect(encoded.length).toBeGreaterThan(0);
     expect(codec.decodeItem(encoded)).toEqual({
       id: 42,
-      name: 'OpenPencil',
-      kind: 'CARD',
-      tags: ['kiwi']
-    })
-  })
-})
+      name: "OpenPencil",
+      kind: "CARD",
+      tags: ["kiwi"],
+    });
+  });
+});

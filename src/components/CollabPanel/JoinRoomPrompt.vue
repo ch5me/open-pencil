@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useCollabPanelContext } from '@/components/CollabPanel/context'
-import AppInput from '@/components/ui/AppInput.vue'
+import { useCollabPanelContext } from "@/components/CollabPanel/context";
+import AppInput from "@/components/ui/AppInput.vue";
 
-const collab = useCollabPanelContext()
+const collab = useCollabPanelContext();
 </script>
 
 <template>

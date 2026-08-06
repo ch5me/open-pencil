@@ -1,6 +1,5 @@
-import { ref } from 'vue'
-
-import { IS_BROWSER } from '@open-pencil/core/constants'
+import { IS_BROWSER } from "@open-pencil/core/constants";
+import { ref } from "vue";
 
 import {
   apiKey,
@@ -16,13 +15,13 @@ import {
   providerID,
   registerAIChatEffects,
   setAPIKey,
-  unsplashAccessKey
-} from '@/app/ai/chat/storage'
-import { createChatSessionManager } from '@/app/ai/chat/transports'
-import { exposeChatTransportOverride } from '@/app/browser-bridge'
-import { getActiveEditorStore } from '@/app/editor/active-store'
+  unsplashAccessKey,
+} from "@/app/ai/chat/storage";
+import { createChatSessionManager } from "@/app/ai/chat/transports";
+import { exposeChatTransportOverride } from "@/app/browser-bridge";
+import { getActiveEditorStore } from "@/app/editor/active-store";
 
-const activeTab = ref<'design' | 'code' | 'ai'>('design')
+const activeTab = ref<"design" | "code" | "ai">("design");
 
 const chatSession = createChatSessionManager({
   isConfigured,
@@ -34,15 +33,15 @@ const chatSession = createChatSessionManager({
   customBaseURL,
   customAPIType,
   maxOutputTokens,
-  getActiveEditorStore
-})
+  getActiveEditorStore,
+});
 
-registerAIChatEffects(chatSession.markTransportDirty)
+registerAIChatEffects(chatSession.markTransportDirty);
 
 if (IS_BROWSER) {
   exposeChatTransportOverride((factory) => {
-    chatSession.setOverrideTransport(factory)
-  })
+    chatSession.setOverrideTransport(factory);
+  });
 }
 
 export function useAIChat() {
@@ -61,6 +60,6 @@ export function useAIChat() {
     activeTab,
     isConfigured,
     ensureChat: chatSession.ensureChat,
-    resetChat: chatSession.resetChat
-  }
+    resetChat: chatSession.resetChat,
+  };
 }

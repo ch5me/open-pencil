@@ -1,21 +1,20 @@
 <script setup lang="ts">
-import { AnimatePresence, motion } from 'motion-v'
-import IconChevronLeft from '~icons/lucide/chevron-left'
-import IconChevronRight from '~icons/lucide/chevron-right'
+import type { EditorToolDef } from "@open-pencil/core/editor";
+import { toolbarToolTestId, ToolbarItem } from "@open-pencil/vue";
+import type { Tool } from "@open-pencil/vue";
+import { AnimatePresence, motion } from "motion-v";
+import IconChevronLeft from "~icons/lucide/chevron-left";
+import IconChevronRight from "~icons/lucide/chevron-right";
 
-import type { EditorToolDef } from '@open-pencil/core/editor'
-import { toolbarToolTestId, ToolbarItem } from '@open-pencil/vue'
-import type { Tool } from '@open-pencil/vue'
-
-import ToolbarActionGroup from '@/components/Toolbar/ToolbarActionGroup.vue'
-import ToolButton from '@/components/Toolbar/ToolButton.vue'
-import ToolFlyout from '@/components/Toolbar/ToolFlyout.vue'
+import ToolbarActionGroup from "@/components/Toolbar/ToolbarActionGroup.vue";
+import ToolButton from "@/components/Toolbar/ToolButton.vue";
+import ToolFlyout from "@/components/Toolbar/ToolFlyout.vue";
 import type {
   ToolbarActionItem,
   ToolbarUi,
   ToolIconMap,
-  ToolLabels
-} from '@/components/Toolbar/types'
+  ToolLabels,
+} from "@/components/Toolbar/types";
 
 const {
   tools,
@@ -29,37 +28,37 @@ const {
   hasPrev,
   hasNext,
   editActions,
-  arrangeActions
+  arrangeActions,
 } = defineProps<{
-  tools: EditorToolDef[]
-  activeTool: Tool
-  toolIcons: ToolIconMap
-  toolLabels: ToolLabels
-  toolShortcuts: Record<Tool, string>
-  ui?: ToolbarUi
-  mobileCategory: number
-  slideDirection: number
-  hasPrev: boolean
-  hasNext: boolean
-  editActions: ToolbarActionItem[]
-  arrangeActions: ToolbarActionItem[]
-}>()
+  tools: EditorToolDef[];
+  activeTool: Tool;
+  toolIcons: ToolIconMap;
+  toolLabels: ToolLabels;
+  toolShortcuts: Record<Tool, string>;
+  ui?: ToolbarUi;
+  mobileCategory: number;
+  slideDirection: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  editActions: ToolbarActionItem[];
+  arrangeActions: ToolbarActionItem[];
+}>();
 
 const emit = defineEmits<{
-  setTool: [tool: Tool]
-  prev: []
-  next: []
-  action: [item: ToolbarActionItem]
-}>()
+  setTool: [tool: Tool];
+  prev: [];
+  next: [];
+  action: [item: ToolbarActionItem];
+}>();
 
 const slideVariants = {
   initial: (dir: unknown) => ({ opacity: 0, x: (dir as number) * 20 }),
   animate: { opacity: 1, x: 0 },
-  exit: (dir: unknown) => ({ opacity: 0, x: (dir as number) * -20 })
-}
+  exit: (dir: unknown) => ({ opacity: 0, x: (dir as number) * -20 }),
+};
 
 function activeKeyForTool(tool: EditorToolDef) {
-  return tool.flyout?.includes(activeTool) ? activeTool : tool.key
+  return tool.flyout?.includes(activeTool) ? activeTool : tool.key;
 }
 </script>
 
@@ -69,7 +68,7 @@ function activeKeyForTool(tool: EditorToolDef) {
     class="fixed left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5"
     :style="{
       maxWidth: 'calc(100vw - 2rem)',
-      bottom: `calc(56px + env(safe-area-inset-bottom) + 0.75rem)`
+      bottom: `calc(56px + env(safe-area-inset-bottom) + 0.75rem)`,
     }"
   >
     <motion.button

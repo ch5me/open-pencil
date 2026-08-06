@@ -1,49 +1,48 @@
 <script setup lang="ts">
-import { templateRef } from '@vueuse/core'
-import { ref } from 'vue'
-
-import type { GradientStop } from '@open-pencil/core/scene-graph'
+import type { GradientStop } from "@open-pencil/core/scene-graph";
+import { templateRef } from "@vueuse/core";
+import { ref } from "vue";
 
 const { stops, ui } = defineProps<{
-  stops: GradientStop[]
-  activeStopIndex: number
-  barBackground: string
+  stops: GradientStop[];
+  activeStopIndex: number;
+  barBackground: string;
   ui?: {
-    bar?: string
-  }
-}>()
+    bar?: string;
+  };
+}>();
 
 const emit = defineEmits<{
-  selectStop: [index: number]
-  dragStop: [index: number, position: number]
-}>()
+  selectStop: [index: number];
+  dragStop: [index: number, position: number];
+}>();
 
-const barRef = templateRef<HTMLElement>('barRef')
-const draggingIndex = ref<number | null>(null)
+const barRef = templateRef<HTMLElement>("barRef");
+const draggingIndex = ref<number | null>(null);
 
 function stopPointerDown(index: number, e: PointerEvent) {
-  emit('selectStop', index)
-  draggingIndex.value = index
-  barRef.value?.setPointerCapture(e.pointerId)
+  emit("selectStop", index);
+  draggingIndex.value = index;
+  barRef.value?.setPointerCapture(e.pointerId);
 }
 
 function onPointerMove(e: PointerEvent) {
-  const el = barRef.value
-  if (!el || draggingIndex.value === null || !el.hasPointerCapture(e.pointerId)) return
-  const rect = el.getBoundingClientRect()
-  const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
-  emit('dragStop', draggingIndex.value, pos)
+  const el = barRef.value;
+  if (!el || draggingIndex.value === null || !el.hasPointerCapture(e.pointerId)) return;
+  const rect = el.getBoundingClientRect();
+  const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  emit("dragStop", draggingIndex.value, pos);
 }
 
 function onPointerUp() {
-  draggingIndex.value = null
+  draggingIndex.value = null;
 }
 
 const actions = {
-  stopPointerDown
-}
+  stopPointerDown,
+};
 
-defineExpose({ barRef })
+defineExpose({ barRef });
 </script>
 
 <template>

@@ -1,23 +1,22 @@
 <script setup lang="ts">
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { computed } from 'vue'
-
-import { colorToCSS } from '@open-pencil/core/color'
-import type { Color } from '@open-pencil/core/types'
+import { colorToCSS } from "@open-pencil/core/color";
+import type { Color } from "@open-pencil/core/types";
+import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
+import { computed } from "vue";
 
 export interface ColorPickerUi {
-  content?: string
-  swatch?: string
+  content?: string;
+  swatch?: string;
 }
 
 const { color, ui } = defineProps<{
-  color: Color
-  ui?: ColorPickerUi
-}>()
+  color: Color;
+  ui?: ColorPickerUi;
+}>();
 
-const emit = defineEmits<{ update: [color: Color] }>()
+const emit = defineEmits<{ update: [color: Color] }>();
 
-const swatchBg = computed(() => colorToCSS(color))
+const swatchBg = computed(() => colorToCSS(color));
 </script>
 
 <template>

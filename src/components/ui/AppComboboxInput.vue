@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TestIdProps } from "@open-pencil/vue";
 import {
   ComboboxContent,
   ComboboxInput,
@@ -6,67 +7,65 @@ import {
   ComboboxPortal,
   ComboboxRoot,
   ComboboxViewport,
-  type AcceptableValue
-} from 'reka-ui'
-import { computed, ref } from 'vue'
+  type AcceptableValue,
+} from "reka-ui";
+import { computed, ref } from "vue";
 
-import type { TestIdProps } from '@open-pencil/vue'
-
-import AppBadge from '@/components/ui/AppBadge.vue'
-import { useInputUI } from '@/components/ui/input'
-import { useSelectUI } from '@/components/ui/select'
+import AppBadge from "@/components/ui/AppBadge.vue";
+import { useInputUI } from "@/components/ui/input";
+import { useSelectUI } from "@/components/ui/select";
 
 export type AppComboboxOption = {
-  value: string
-  label: string
-  meta?: string
-}
+  value: string;
+  label: string;
+  meta?: string;
+};
 
 interface AppComboboxInputProps extends TestIdProps {
-  options: AppComboboxOption[]
-  placeholder?: string
+  options: AppComboboxOption[];
+  placeholder?: string;
   ui?: {
-    input?: string
-    content?: string
-    item?: string
-    viewport?: string
-    empty?: string
-  }
+    input?: string;
+    content?: string;
+    item?: string;
+    viewport?: string;
+    empty?: string;
+  };
 }
 
 const {
   options,
   placeholder,
-  testId = 'app-combobox-input',
-  ui
-} = defineProps<AppComboboxInputProps>()
+  testId = "app-combobox-input",
+  ui,
+} = defineProps<AppComboboxInputProps>();
 
-const modelValue = defineModel<string>({ required: true })
-const open = ref(false)
+const modelValue = defineModel<string>({ required: true });
+const open = ref(false);
 
 const select = useSelectUI({
-  content: ui?.content ?? 'max-h-56 min-w-[var(--reka-combobox-trigger-width)]',
-  item: ui?.item ?? 'gap-2 rounded px-2 py-1.5 text-[11px]'
-})
-const inputClass = computed(() => useInputUI({ size: 'sm', ui: { base: ui?.input } }).base)
-const viewportClass = ui?.viewport ?? 'max-h-56 overflow-y-auto p-0.5'
-const emptyClass = ui?.empty ?? 'px-2 py-2 text-[11px] text-muted'
+  content: ui?.content ?? "max-h-56 min-w-[var(--reka-combobox-trigger-width)]",
+  item: ui?.item ?? "gap-2 rounded px-2 py-1.5 text-[11px]",
+});
+const inputClass = computed(() => useInputUI({ size: "sm", ui: { base: ui?.input } }).base);
+const viewportClass = ui?.viewport ?? "max-h-56 overflow-y-auto p-0.5";
+const emptyClass = ui?.empty ?? "px-2 py-2 text-[11px] text-muted";
 
 const filteredOptions = computed(() => {
-  const query = modelValue.value.trim().toLowerCase()
-  if (!query) return options.slice(0, 50)
+  const query = modelValue.value.trim().toLowerCase();
+  if (!query) return options.slice(0, 50);
   return options
     .filter((option) => {
-      const value = option.value.toLowerCase()
-      const label = option.label.toLowerCase()
-      return value.includes(query) || label.includes(query)
+      const value = option.value.toLowerCase();
+      const label = option.label.toLowerCase();
+      return value.includes(query) || label.includes(query);
     })
-    .slice(0, 50)
-})
+    .slice(0, 50);
+});
 
 function updateValue(value: AcceptableValue) {
-  if (typeof value !== 'string') return
-  modelValue.value = value
+  if (typeof value !== "string") return;
+  modelValue.value = value;
 }
 </script>
 

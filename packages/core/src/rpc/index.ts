@@ -1,4 +1,4 @@
-export { executeRpcCommand, ALL_RPC_COMMANDS } from './commands'
+export { executeRpcCommand, ALL_RPC_COMMANDS } from "./commands";
 export type {
   InfoResult,
   PageItem,
@@ -24,5 +24,5 @@ export type {
   AnalyzeOverlapsArgs,
   AnalyzeOverlapsResult,
   TypographyStyle,
-  AutomationDocumentSummary
-} from './commands'
+  AutomationDocumentSummary,
+} from "./commands";

@@ -1,34 +1,34 @@
-import { expect, setDefaultTimeout, test } from 'bun:test'
+import { expect, setDefaultTimeout, test } from "bun:test";
 
-import { cliSourcePath, repoPath } from '#tests/helpers/paths'
-import { heavy } from '#tests/helpers/test-utils'
+import { cliSourcePath, repoPath } from "#tests/helpers/paths";
+import { heavy } from "#tests/helpers/test-utils";
 
-setDefaultTimeout(30_000)
+setDefaultTimeout(30_000);
 
-const CLI = cliSourcePath('index.ts')
-const FIXTURE = repoPath('tests/fixtures/gold-preview.fig')
+const CLI = cliSourcePath("index.ts");
+const FIXTURE = repoPath("tests/fixtures/gold-preview.fig");
 
 async function evalCode(
-  code: string
+  code: string,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-  const proc = Bun.spawn(['bun', CLI, 'eval', FIXTURE, '--code', code, '--json'], {
-    stdout: 'pipe',
-    stderr: 'pipe'
-  })
+  const proc = Bun.spawn(["bun", CLI, "eval", FIXTURE, "--code", code, "--json"], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
   const [stdout, stderr] = await Promise.all([
     new Response(proc.stdout).text(),
-    new Response(proc.stderr).text()
-  ])
-  const exitCode = await proc.exited
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode }
+    new Response(proc.stderr).text(),
+  ]);
+  const exitCode = await proc.exited;
+  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }
 
 function parseJSON<T>(stdout: string): T {
-  return JSON.parse(stdout) as T
+  return JSON.parse(stdout) as T;
 }
 
-heavy('CLI tool operations via eval', () => {
-  test('create and read back a node', async () => {
+heavy("CLI tool operations via eval", () => {
+  test("create and read back a node", async () => {
     const { stdout, exitCode } = await evalCode(`
       const r = figma.createRectangle()
       r.name = 'TestRect'
@@ -36,30 +36,30 @@ heavy('CLI tool operations via eval', () => {
       r.y = 200
       r.resize(300, 150)
       return r.toJSON()
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.name).toBe('TestRect')
-    expect(result.x).toBe(100)
-    expect(result.y).toBe(200)
-    expect(result.width).toBe(300)
-    expect(result.height).toBe(150)
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.name).toBe("TestRect");
+    expect(result.x).toBe(100);
+    expect(result.y).toBe(200);
+    expect(result.width).toBe(300);
+    expect(result.height).toBe(150);
+  });
 
-  test('set fill on a node', async () => {
+  test("set fill on a node", async () => {
     const { stdout, exitCode } = await evalCode(`
       const r = figma.createRectangle()
       r.resize(50, 50)
       r.fills = [{ type: 'SOLID', color: { r: 1, g: 0, b: 0, a: 1 }, opacity: 1, visible: true }]
       return { fills: r.fills }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.fills.length).toBe(1)
-    expect(result.fills[0].color.r).toBe(1)
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.fills.length).toBe(1);
+    expect(result.fills[0].color.r).toBe(1);
+  });
 
-  test('set layout on a frame', async () => {
+  test("set layout on a frame", async () => {
     const { stdout, exitCode } = await evalCode(`
       const f = figma.createFrame()
       f.resize(300, 200)
@@ -74,29 +74,29 @@ heavy('CLI tool operations via eval', () => {
         itemSpacing: f.itemSpacing,
         paddingLeft: f.paddingLeft
       }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.layoutMode).toBe('VERTICAL')
-    expect(result.itemSpacing).toBe(16)
-    expect(result.paddingLeft).toBe(20)
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.layoutMode).toBe("VERTICAL");
+    expect(result.itemSpacing).toBe(16);
+    expect(result.paddingLeft).toBe(20);
+  });
 
-  test('create component from node', async () => {
+  test("create component from node", async () => {
     const { stdout, exitCode } = await evalCode(`
       const f = figma.createFrame()
       f.name = 'Button'
       f.resize(200, 48)
       const comp = figma.createComponentFromNode(f)
       return { name: comp.name, type: comp.type }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.name).toBe('Button')
-    expect(result.type).toBe('COMPONENT')
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.name).toBe("Button");
+    expect(result.type).toBe("COMPONENT");
+  });
 
-  test('group and ungroup nodes', async () => {
+  test("group and ungroup nodes", async () => {
     const { stdout, exitCode } = await evalCode(`
       const r1 = figma.createRectangle()
       r1.resize(50, 50)
@@ -108,26 +108,26 @@ heavy('CLI tool operations via eval', () => {
       figma.ungroup(group)
       const ungrouped = figma.getNodeById(group.id)
       return { groupType, childCount, ungroupedExists: ungrouped !== null }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.groupType).toBe('GROUP')
-    expect(result.childCount).toBe(2)
-    expect(result.ungroupedExists).toBe(false)
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.groupType).toBe("GROUP");
+    expect(result.childCount).toBe(2);
+    expect(result.ungroupedExists).toBe(false);
+  });
 
-  test('find nodes by type on fixture', async () => {
+  test("find nodes by type on fixture", async () => {
     const { stdout, exitCode } = await evalCode(`
       const texts = figma.currentPage.findAllWithCriteria({ types: ['TEXT'] })
       return { count: texts.length, hasTexts: texts.length > 0 }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.hasTexts).toBe(true)
-    expect(result.count).toBeGreaterThan(0)
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.hasTexts).toBe(true);
+    expect(result.count).toBeGreaterThan(0);
+  });
 
-  test('clone a node', async () => {
+  test("clone a node", async () => {
     const { stdout, exitCode } = await evalCode(`
       const r = figma.createRectangle()
       r.name = 'Original'
@@ -138,15 +138,15 @@ heavy('CLI tool operations via eval', () => {
         cloneName: clone.name,
         cloneWidth: clone.width
       }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.same).toBe(false)
-    expect(result.cloneName).toBe('Original')
-    expect(result.cloneWidth).toBe(100)
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.same).toBe(false);
+    expect(result.cloneName).toBe("Original");
+    expect(result.cloneWidth).toBe(100);
+  });
 
-  test('reparent node into frame', async () => {
+  test("reparent node into frame", async () => {
     const { stdout, exitCode } = await evalCode(`
       const frame = figma.createFrame()
       frame.resize(300, 300)
@@ -157,26 +157,26 @@ heavy('CLI tool operations via eval', () => {
         parentId: rect.parent?.id,
         isChild: frame.children.some(c => c.id === rect.id)
       }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.isChild).toBe(true)
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.isChild).toBe(true);
+  });
 
-  test('set constraints', async () => {
+  test("set constraints", async () => {
     const { stdout, exitCode } = await evalCode(`
       const r = figma.createRectangle()
       r.resize(100, 100)
       r.constraints = { horizontal: 'CENTER', vertical: 'STRETCH' }
       return r.constraints
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.horizontal).toBe('CENTER')
-    expect(result.vertical).toBe('STRETCH')
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.horizontal).toBe("CENTER");
+    expect(result.vertical).toBe("STRETCH");
+  });
 
-  test('set effects', async () => {
+  test("set effects", async () => {
     const { stdout, exitCode } = await evalCode(`
       const f = figma.createFrame()
       f.resize(100, 100)
@@ -189,35 +189,35 @@ heavy('CLI tool operations via eval', () => {
         visible: true
       }]
       return { count: f.effects.length, type: f.effects[0].type }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.count).toBe(1)
-    expect(result.type).toBe('DROP_SHADOW')
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.count).toBe(1);
+    expect(result.type).toBe("DROP_SHADOW");
+  });
 
-  test('list variables from fixture', async () => {
+  test("list variables from fixture", async () => {
     const { stdout, exitCode } = await evalCode(`
       const vars = figma.getLocalVariables()
       const cols = figma.getLocalVariableCollections()
       return { variables: vars.length, collections: cols.length }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(typeof result.variables).toBe('number')
-    expect(typeof result.collections).toBe('number')
-  })
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(typeof result.variables).toBe("number");
+    expect(typeof result.collections).toBe("number");
+  });
 
-  test('switch page', async () => {
+  test("switch page", async () => {
     const { stdout, exitCode } = await evalCode(`
       const pages = figma.root.children
       const first = pages[0]
       figma.currentPage = first
       return { page: figma.currentPage.name, pageCount: pages.length }
-    `)
-    expect(exitCode).toBe(0)
-    const result = parseJSON<Record<string, unknown>>(stdout)
-    expect(result.page).toBeTruthy()
-    expect(result.pageCount).toBeGreaterThanOrEqual(1)
-  })
-})
+    `);
+    expect(exitCode).toBe(0);
+    const result = parseJSON<Record<string, unknown>>(stdout);
+    expect(result.page).toBeTruthy();
+    expect(result.pageCount).toBeGreaterThanOrEqual(1);
+  });
+});

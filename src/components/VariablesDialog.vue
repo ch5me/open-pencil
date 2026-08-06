@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { FlexRender } from '@tanstack/vue-table'
-import { templateRef } from '@vueuse/core'
+import type { VariableType } from "@open-pencil/core/scene-graph";
+import { variablesAddTestId, vTestId, useI18n, useVariablesEditor } from "@open-pencil/vue";
+import { FlexRender } from "@tanstack/vue-table";
+import { templateRef } from "@vueuse/core";
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -23,86 +25,83 @@ import {
   TabsContent,
   TabsList,
   TabsRoot,
-  TabsTrigger
-} from 'reka-ui'
-import { watch, type Component } from 'vue'
-import IconHash from '~icons/lucide/hash'
-import IconPalette from '~icons/lucide/palette'
-import IconToggleLeft from '~icons/lucide/toggle-left'
-import IconType from '~icons/lucide/type'
-import IconX from '~icons/lucide/x'
+  TabsTrigger,
+} from "reka-ui";
+import { watch, type Component } from "vue";
+import IconHash from "~icons/lucide/hash";
+import IconPalette from "~icons/lucide/palette";
+import IconToggleLeft from "~icons/lucide/toggle-left";
+import IconType from "~icons/lucide/type";
+import IconX from "~icons/lucide/x";
 
-import type { VariableType } from '@open-pencil/core/scene-graph'
-import { variablesAddTestId, vTestId, useI18n, useVariablesEditor } from '@open-pencil/vue'
+import ColorInput from "@/components/ColorPicker/ColorInput.vue";
+import { useDialogUI } from "@/components/ui/dialog";
+import { useMenuUI } from "@/components/ui/menu";
 
-import ColorInput from '@/components/ColorPicker/ColorInput.vue'
-import { useDialogUI } from '@/components/ui/dialog'
-import { useMenuUI } from '@/components/ui/menu'
+import Tip from "./ui/Tip.vue";
 
-import Tip from './ui/Tip.vue'
-
-const open = defineModel<boolean>('open', { default: false })
-const cls = useDialogUI({ content: 'flex h-[75vh] w-[800px] max-w-[90vw] flex-col' })
-const menuCls = useMenuUI({ content: 'w-40' })
+const open = defineModel<boolean>("open", { default: false });
+const cls = useDialogUI({ content: "flex h-[75vh] w-[800px] max-w-[90vw] flex-col" });
+const menuCls = useMenuUI({ content: "w-40" });
 
 const variableTypeIcons: Record<VariableType, Component> = {
   COLOR: IconPalette,
   FLOAT: IconHash,
   STRING: IconType,
-  BOOLEAN: IconToggleLeft
-}
+  BOOLEAN: IconToggleLeft,
+};
 
-const { dialogs, panels, variableTypes: variableTypeText } = useI18n()
+const { dialogs, panels, variableTypes: variableTypeText } = useI18n();
 
 const variableTypes: Array<{
-  type: VariableType
-  label: () => string
-  description: () => string
+  type: VariableType;
+  label: () => string;
+  description: () => string;
 }> = [
   {
-    type: 'COLOR',
+    type: "COLOR",
     label: () => variableTypeText.value.color,
-    description: () => variableTypeText.value.colorHint
+    description: () => variableTypeText.value.colorHint,
   },
   {
-    type: 'FLOAT',
+    type: "FLOAT",
     label: () => variableTypeText.value.number,
-    description: () => variableTypeText.value.numberHint
+    description: () => variableTypeText.value.numberHint,
   },
   {
-    type: 'STRING',
+    type: "STRING",
     label: () => variableTypeText.value.text,
-    description: () => variableTypeText.value.textHint
+    description: () => variableTypeText.value.textHint,
   },
   {
-    type: 'BOOLEAN',
+    type: "BOOLEAN",
     label: () => variableTypeText.value.boolean,
-    description: () => variableTypeText.value.booleanHint
-  }
-]
+    description: () => variableTypeText.value.booleanHint,
+  },
+];
 
 const ctx = useVariablesEditor({
   colorInput: ColorInput,
   icons: variableTypeIcons,
   fallbackIcon: IconToggleLeft,
-  deleteIcon: IconX
-})
-const collectionInput = templateRef<HTMLInputElement>('collectionInput')
-const modeInput = templateRef<HTMLInputElement>('modeInput')
+  deleteIcon: IconX,
+});
+const collectionInput = templateRef<HTMLInputElement>("collectionInput");
+const modeInput = templateRef<HTMLInputElement>("modeInput");
 
 watch(collectionInput, (input) => {
-  void ctx.collectionRename.focusInput(input)
-})
+  void ctx.collectionRename.focusInput(input);
+});
 watch(modeInput, (input) => {
-  void ctx.modeRename.focusInput(input)
-})
+  void ctx.modeRename.focusInput(input);
+});
 
 function getModeId(columnId: string): string | undefined {
-  return columnId.startsWith('mode-') ? columnId.slice(5) : undefined
+  return columnId.startsWith("mode-") ? columnId.slice(5) : undefined;
 }
 
 function modeId(columnId: string): string {
-  return columnId.slice(5)
+  return columnId.slice(5);
 }
 </script>
 

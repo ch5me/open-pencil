@@ -1,121 +1,120 @@
 <script setup lang="ts">
-import type { Chat } from '@ai-sdk/vue'
-import { refAutoReset } from '@vueuse/core'
-import type { UIMessage } from 'ai'
-import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
-import { computed, markRaw, nextTick, ref, watch } from 'vue'
+import type { Chat } from "@ai-sdk/vue";
+import type { JsonObject } from "@open-pencil/core/types";
+import { useI18n } from "@open-pencil/vue";
+import { refAutoReset } from "@vueuse/core";
+import type { UIMessage } from "ai";
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from "reka-ui";
+import { computed, markRaw, nextTick, ref, watch } from "vue";
 
-import type { JsonObject } from '@open-pencil/core/types'
-import { useI18n } from '@open-pencil/vue'
+import { getAcpDebugText, clearAcpDebugLog, hasAcpDebugEntries } from "@/app/ai/acp/transport";
+import { useAIChat } from "@/app/ai/chat/use";
+import { copyChatLog } from "@/app/ai/debug";
+import { clearToolLogEntries, didHitStepLimit } from "@/app/ai/tools";
+import { toast } from "@/app/shell/ui";
+import { activeTab } from "@/app/tabs";
+import AcpPermissionDialog from "@/components/chat/AcpPermissionDialog.vue";
+import ChatInput from "@/components/chat/ChatInput.vue";
+import ChatMessage from "@/components/chat/ChatMessage.vue";
+import ProviderSetup from "@/components/chat/ProviderSetup.vue";
+import AppTextButton from "@/components/ui/AppTextButton.vue";
 
-import { getAcpDebugText, clearAcpDebugLog, hasAcpDebugEntries } from '@/app/ai/acp/transport'
-import { useAIChat } from '@/app/ai/chat/use'
-import { copyChatLog } from '@/app/ai/debug'
-import { clearToolLogEntries, didHitStepLimit } from '@/app/ai/tools'
-import { toast } from '@/app/shell/ui'
-import { activeTab } from '@/app/tabs'
-import AcpPermissionDialog from '@/components/chat/AcpPermissionDialog.vue'
-import ChatInput from '@/components/chat/ChatInput.vue'
-import ChatMessage from '@/components/chat/ChatMessage.vue'
-import ProviderSetup from '@/components/chat/ProviderSetup.vue'
-import AppTextButton from '@/components/ui/AppTextButton.vue'
+const IS_DEV = import.meta.env.DEV;
 
-const IS_DEV = import.meta.env.DEV
+const { isConfigured, ensureChat, resetChat } = useAIChat();
+const { dialogs } = useI18n();
 
-const { isConfigured, ensureChat, resetChat } = useAIChat()
-const { dialogs } = useI18n()
-
-const chat = ref<Chat<UIMessage> | null>(null)
+const chat = ref<Chat<UIMessage> | null>(null);
 
 ensureChat().then((c) => {
-  if (c) chat.value = markRaw(c)
-})
-const messagesEnd = ref<HTMLDivElement>()
-const debugCopied = refAutoReset(false, 1500)
-const acpLogCopied = refAutoReset(false, 1500)
+  if (c) chat.value = markRaw(c);
+});
+const messagesEnd = ref<HTMLDivElement>();
+const debugCopied = refAutoReset(false, 1500);
+const acpLogCopied = refAutoReset(false, 1500);
 
-const messages = computed(() => chat.value?.messages ?? [])
-const status = computed(() => chat.value?.status ?? 'ready')
+const messages = computed(() => chat.value?.messages ?? []);
+const status = computed(() => chat.value?.status ?? "ready");
 const isThinking = computed(() => {
-  const s = status.value
-  if (s !== 'submitted' && s !== 'streaming') return false
-  if (messages.value.length === 0) return true
-  const last = messages.value[messages.value.length - 1]
-  if (last.role !== 'assistant') return true
-  const parts = last.parts
-  if (parts.length === 0) return true
-  const lastPart = parts[parts.length - 1] as JsonObject
-  if (lastPart.type === 'step-start') return true
-  if ('toolCallId' in lastPart && lastPart.state === 'output-available') return true
-  if ('toolCallId' in lastPart && lastPart.state === 'output-error') return true
-  return s === 'submitted'
-})
+  const s = status.value;
+  if (s !== "submitted" && s !== "streaming") return false;
+  if (messages.value.length === 0) return true;
+  const last = messages.value[messages.value.length - 1];
+  if (last.role !== "assistant") return true;
+  const parts = last.parts;
+  if (parts.length === 0) return true;
+  const lastPart = parts[parts.length - 1] as JsonObject;
+  if (lastPart.type === "step-start") return true;
+  if ("toolCallId" in lastPart && lastPart.state === "output-available") return true;
+  if ("toolCallId" in lastPart && lastPart.state === "output-error") return true;
+  return s === "submitted";
+});
 
 const showContinue = computed(() => {
-  if (status.value !== 'ready') return false
-  if (messages.value.length === 0) return false
-  const last = messages.value[messages.value.length - 1]
-  return last.role === 'assistant' && didHitStepLimit()
-})
+  if (status.value !== "ready") return false;
+  if (messages.value.length === 0) return false;
+  const last = messages.value[messages.value.length - 1];
+  return last.role === "assistant" && didHitStepLimit();
+});
 
 function scrollToBottom() {
   nextTick(() => {
-    messagesEnd.value?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  })
+    messagesEnd.value?.scrollIntoView({ behavior: "smooth", block: "end" });
+  });
 }
 
-watch(messages, scrollToBottom, { deep: true })
+watch(messages, scrollToBottom, { deep: true });
 watch(
   () => chat.value?.error,
   (error) => {
-    if (error) toast.error(error.message)
-  }
-)
+    if (error) toast.error(error.message);
+  },
+);
 watch(
   () => activeTab.value?.id,
   async () => {
-    const nextChat = await ensureChat()
-    chat.value = nextChat ? markRaw(nextChat) : null
-  }
-)
+    const nextChat = await ensureChat();
+    chat.value = nextChat ? markRaw(nextChat) : null;
+  },
+);
 
 async function handleSubmit(text: string) {
-  if (status.value === 'streaming' || status.value === 'submitted') return
+  if (status.value === "streaming" || status.value === "submitted") return;
   try {
-    const c = await ensureChat()
-    if (c) chat.value = markRaw(c)
+    const c = await ensureChat();
+    if (c) chat.value = markRaw(c);
   } catch (e) {
-    console.error('Failed to initialize chat:', e)
-    toast.error(e instanceof Error ? e.message : String(e))
-    return
+    console.error("Failed to initialize chat:", e);
+    toast.error(e instanceof Error ? e.message : String(e));
+    return;
   }
   chat.value?.sendMessage({ text }).catch((e: unknown) => {
-    console.error('Chat error:', e)
-    toast.error(e instanceof Error ? e.message : String(e))
-  })
+    console.error("Chat error:", e);
+    toast.error(e instanceof Error ? e.message : String(e));
+  });
 }
 
 function handleStop() {
-  chat.value?.stop()
+  chat.value?.stop();
 }
 
 async function handleCopyDebug() {
-  await copyChatLog(messages.value)
-  debugCopied.value = true
+  await copyChatLog(messages.value);
+  debugCopied.value = true;
 }
 
 async function handleCopyAcpLog() {
-  const text = getAcpDebugText()
-  if (!text) return
-  await navigator.clipboard.writeText(text)
-  acpLogCopied.value = true
+  const text = getAcpDebugText();
+  if (!text) return;
+  await navigator.clipboard.writeText(text);
+  acpLogCopied.value = true;
 }
 
 function handleClearChat() {
-  chat.value = null
-  resetChat()
-  clearToolLogEntries()
-  clearAcpDebugLog()
+  chat.value = null;
+  resetChat();
+  clearToolLogEntries();
+  clearAcpDebugLog();
 }
 </script>
 
@@ -194,7 +193,7 @@ function handleClearChat() {
         >
           <icon-lucide-clipboard-copy v-if="!debugCopied" class="size-3" />
           <icon-lucide-check v-else class="size-3 text-green-400" />
-          {{ debugCopied ? 'Copied' : 'Copy log' }}
+          {{ debugCopied ? "Copied" : "Copy log" }}
         </AppTextButton>
         <AppTextButton
           v-if="IS_DEV && hasAcpDebugEntries()"
@@ -203,7 +202,7 @@ function handleClearChat() {
         >
           <icon-lucide-bug v-if="!acpLogCopied" class="size-3" />
           <icon-lucide-check v-else class="size-3 text-green-400" />
-          {{ acpLogCopied ? 'Copied' : 'ACP log' }}
+          {{ acpLogCopied ? "Copied" : "ACP log" }}
         </AppTextButton>
         <AppTextButton
           :ui="{ base: 'flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-hover' }"

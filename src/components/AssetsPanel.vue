@@ -1,174 +1,173 @@
 <script setup lang="ts">
+import type { SceneNode } from "@open-pencil/core/scene-graph";
+import { useI18n } from "@open-pencil/vue";
 import {
   DialogClose,
   DialogContent,
   DialogOverlay,
   DialogPortal,
   DialogRoot,
-  DialogTitle
-} from 'reka-ui'
-import { computed, onScopeDispose, ref, watch } from 'vue'
+  DialogTitle,
+} from "reka-ui";
+import { computed, onScopeDispose, ref, watch } from "vue";
 
-import type { SceneNode } from '@open-pencil/core/scene-graph'
-import { useI18n } from '@open-pencil/vue'
-
-import { useEditorStore } from '@/app/editor/active-store'
-import { nodeIcon } from '@/app/editor/icons'
-import { openExternalLink } from '@/app/shell/ui'
-import AppInput from '@/components/ui/AppInput.vue'
-import { useButtonUI } from '@/components/ui/button'
-import { useDialogUI } from '@/components/ui/dialog'
-import Tip from '@/components/ui/Tip.vue'
+import { useEditorStore } from "@/app/editor/active-store";
+import { nodeIcon } from "@/app/editor/icons";
+import { openExternalLink } from "@/app/shell/ui";
+import AppInput from "@/components/ui/AppInput.vue";
+import { useButtonUI } from "@/components/ui/button";
+import { useDialogUI } from "@/components/ui/dialog";
+import Tip from "@/components/ui/Tip.vue";
 
 type LocalAsset = {
-  id: string
-  name: string
-  node: SceneNode
-  componentId: string | null
-  variants: Array<{ name: string; values: string[] }>
-  variantCount: number
-  hasConflicts: boolean
-  sourceLibraryKey: string | null
-  description: string
-  docsUrl: string | null
-}
+  id: string;
+  name: string;
+  node: SceneNode;
+  componentId: string | null;
+  variants: Array<{ name: string; values: string[] }>;
+  variantCount: number;
+  hasConflicts: boolean;
+  sourceLibraryKey: string | null;
+  description: string;
+  docsUrl: string | null;
+};
 
-const editor = useEditorStore()
-const { panels, commands } = useI18n()
-const query = ref('')
-const detailsOpen = ref(false)
-const selectedAssetId = ref<string | null>(null)
-const previewUrl = ref<string | null>(null)
-const previewLoading = ref(false)
-let previewRequestId = 0
-const insertButton = useButtonUI({ tone: 'ghost', size: 'iconSm' })
-const primaryButton = useButtonUI({ tone: 'accent', size: 'md' })
-const dialog = useDialogUI({ content: 'flex w-[720px] max-w-[92vw] flex-col overflow-hidden' })
+const editor = useEditorStore();
+const { panels, commands } = useI18n();
+const query = ref("");
+const detailsOpen = ref(false);
+const selectedAssetId = ref<string | null>(null);
+const previewUrl = ref<string | null>(null);
+const previewLoading = ref(false);
+let previewRequestId = 0;
+const insertButton = useButtonUI({ tone: "ghost", size: "iconSm" });
+const primaryButton = useButtonUI({ tone: "accent", size: "md" });
+const dialog = useDialogUI({ content: "flex w-[720px] max-w-[92vw] flex-col overflow-hidden" });
 
 function componentSetVariantInfo(componentSetId: string) {
   return [...editor.collectVariantOptions(componentSetId)].map(([name, values]) => ({
     name,
-    values: [...values].sort((a, b) => a.localeCompare(b))
-  }))
+    values: [...values].sort((a, b) => a.localeCompare(b)),
+  }));
 }
 
 const graphNodes = computed(() => ({
   sceneVersion: editor.state.sceneVersion,
-  nodes: [...editor.graph.nodes.values()]
-}))
+  nodes: [...editor.graph.nodes.values()],
+}));
 
 const assets = computed<LocalAsset[]>(() => {
   return graphNodes.value.nodes
-    .filter((node) => node.type === 'COMPONENT' || node.type === 'COMPONENT_SET')
+    .filter((node) => node.type === "COMPONENT" || node.type === "COMPONENT_SET")
     .filter((node) => {
-      if (node.type === 'COMPONENT_SET') return true
-      const parent = node.parentId ? editor.graph.getNode(node.parentId) : null
-      return parent?.type !== 'COMPONENT_SET'
+      if (node.type === "COMPONENT_SET") return true;
+      const parent = node.parentId ? editor.graph.getNode(node.parentId) : null;
+      return parent?.type !== "COMPONENT_SET";
     })
     .map((node) => {
       const defaultVariant =
-        node.type === 'COMPONENT_SET' ? editor.getDefaultVariantForComponentSet(node.id) : node
+        node.type === "COMPONENT_SET" ? editor.getDefaultVariantForComponentSet(node.id) : node;
       const conflicts =
-        node.type === 'COMPONENT_SET' ? editor.getComponentSetVariantConflicts(node.id) : []
-      const variants = node.type === 'COMPONENT_SET' ? componentSetVariantInfo(node.id) : []
+        node.type === "COMPONENT_SET" ? editor.getComponentSetVariantConflicts(node.id) : [];
+      const variants = node.type === "COMPONENT_SET" ? componentSetVariantInfo(node.id) : [];
       return {
         id: node.id,
         name: node.name,
         node,
         componentId: defaultVariant?.id ?? null,
         variants,
-        variantCount: node.type === 'COMPONENT_SET' ? node.childIds.length : 0,
+        variantCount: node.type === "COMPONENT_SET" ? node.childIds.length : 0,
         hasConflicts: conflicts.length > 0,
         sourceLibraryKey: node.sourceLibraryKey,
         description: node.symbolDescription,
-        docsUrl: node.symbolLinks[0]?.uri ?? null
-      }
+        docsUrl: node.symbolLinks[0]?.uri ?? null,
+      };
     })
-    .sort((a, b) => a.name.localeCompare(b.name))
-})
+    .sort((a, b) => a.name.localeCompare(b.name));
+});
 
 const filteredAssets = computed(() => {
-  const normalized = query.value.trim().toLowerCase()
-  if (!normalized) return assets.value
-  return assets.value.filter((asset) => asset.name.toLowerCase().includes(normalized))
-})
+  const normalized = query.value.trim().toLowerCase();
+  if (!normalized) return assets.value;
+  return assets.value.filter((asset) => asset.name.toLowerCase().includes(normalized));
+});
 
 const selectedAsset = computed(
-  () => assets.value.find((asset) => asset.id === selectedAssetId.value) ?? null
-)
-const selectedPreviewNodeId = computed(() => selectedAsset.value?.componentId ?? null)
+  () => assets.value.find((asset) => asset.id === selectedAssetId.value) ?? null,
+);
+const selectedPreviewNodeId = computed(() => selectedAsset.value?.componentId ?? null);
 
 function revokePreview() {
-  if (!previewUrl.value) return
-  URL.revokeObjectURL(previewUrl.value)
-  previewUrl.value = null
+  if (!previewUrl.value) return;
+  URL.revokeObjectURL(previewUrl.value);
+  previewUrl.value = null;
 }
 
 async function updatePreview() {
-  const requestId = ++previewRequestId
-  const nodeId = selectedPreviewNodeId.value
+  const requestId = ++previewRequestId;
+  const nodeId = selectedPreviewNodeId.value;
   if (!detailsOpen.value || !nodeId) {
-    revokePreview()
-    return
+    revokePreview();
+    return;
   }
 
-  const node = editor.getNode(nodeId)
+  const node = editor.getNode(nodeId);
   if (!node) {
-    revokePreview()
-    return
+    revokePreview();
+    return;
   }
 
-  previewLoading.value = true
+  previewLoading.value = true;
   try {
-    const maxSize = Math.max(node.width, node.height, 1)
-    const scale = Math.min(176 / maxSize, 2)
-    const data = await editor.renderExportImage([nodeId], scale, 'PNG')
-    if (requestId !== previewRequestId) return
-    revokePreview()
-    if (data) previewUrl.value = URL.createObjectURL(new Blob([data], { type: 'image/png' }))
+    const maxSize = Math.max(node.width, node.height, 1);
+    const scale = Math.min(176 / maxSize, 2);
+    const data = await editor.renderExportImage([nodeId], scale, "PNG");
+    if (requestId !== previewRequestId) return;
+    revokePreview();
+    if (data) previewUrl.value = URL.createObjectURL(new Blob([data], { type: "image/png" }));
   } finally {
-    if (requestId === previewRequestId) previewLoading.value = false
+    if (requestId === previewRequestId) previewLoading.value = false;
   }
 }
 
 watch([detailsOpen, selectedPreviewNodeId, () => editor.state.sceneVersion], updatePreview, {
-  flush: 'post'
-})
+  flush: "post",
+});
 
-onScopeDispose(revokePreview)
+onScopeDispose(revokePreview);
 
 function openDetails(asset: LocalAsset) {
-  selectedAssetId.value = asset.id
-  detailsOpen.value = true
+  selectedAssetId.value = asset.id;
+  detailsOpen.value = true;
 }
 
 function insertionPoint(component: SceneNode, parentId: string) {
-  const canvasCenter = editor.viewportCanvasCenter()
-  const center = editor.screenToCanvas(canvasCenter.x, canvasCenter.y)
+  const canvasCenter = editor.viewportCanvasCenter();
+  const center = editor.screenToCanvas(canvasCenter.x, canvasCenter.y);
   const parentOffset =
     parentId === editor.state.currentPageId
       ? { x: 0, y: 0 }
-      : editor.graph.getAbsolutePosition(parentId)
+      : editor.graph.getAbsolutePosition(parentId);
   return {
     x: center.x - parentOffset.x - component.width / 2,
-    y: center.y - parentOffset.y - component.height / 2
-  }
+    y: center.y - parentOffset.y - component.height / 2,
+  };
 }
 
 function insertAsset(asset: LocalAsset) {
-  if (!asset.componentId) return
-  const component = editor.graph.getNode(asset.componentId)
-  if (!component) return
-  const parentId = editor.state.enteredContainerId ?? editor.state.currentPageId
-  const point = insertionPoint(component, parentId)
-  editor.createInstanceFromComponent(asset.componentId, point.x, point.y, parentId)
-  editor.requestRender()
+  if (!asset.componentId) return;
+  const component = editor.graph.getNode(asset.componentId);
+  if (!component) return;
+  const parentId = editor.state.enteredContainerId ?? editor.state.currentPageId;
+  const point = insertionPoint(component, parentId);
+  editor.createInstanceFromComponent(asset.componentId, point.x, point.y, parentId);
+  editor.requestRender();
 }
 
 function insertSelectedAsset() {
-  if (!selectedAsset.value) return
-  insertAsset(selectedAsset.value)
-  detailsOpen.value = false
+  if (!selectedAsset.value) return;
+  insertAsset(selectedAsset.value);
+  detailsOpen.value = false;
 }
 </script>
 
@@ -221,7 +220,7 @@ function insertSelectedAsset() {
             {{
               panels.assetVariantSummary({
                 count: asset.variantCount,
-                names: asset.variants.map((variant) => variant.name).join(', ')
+                names: asset.variants.map((variant) => variant.name).join(", "),
               })
             }}
           </span>
@@ -292,7 +291,7 @@ function insertSelectedAsset() {
                 }}</DialogTitle>
                 <p class="mt-0.5 text-[11px] text-muted">
                   {{
-                    selectedAsset.node.type === 'COMPONENT_SET'
+                    selectedAsset.node.type === "COMPONENT_SET"
                       ? panels.componentSet
                       : panels.component
                   }}
@@ -398,7 +397,7 @@ function insertSelectedAsset() {
                     class="rounded border border-border bg-input/40 px-2 py-1.5"
                   >
                     <div class="text-xs font-medium text-surface">{{ variant.name }}</div>
-                    <div class="mt-1 text-[11px] text-muted">{{ variant.values.join(', ') }}</div>
+                    <div class="mt-1 text-[11px] text-muted">{{ variant.values.join(", ") }}</div>
                   </div>
                 </div>
               </section>

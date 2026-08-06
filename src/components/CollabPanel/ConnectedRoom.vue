@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { selectTarget } from '@open-pencil/vue'
+import { selectTarget } from "@open-pencil/vue";
 
-import { useCollabPanelContext } from '@/components/CollabPanel/context'
-import AppInput from '@/components/ui/AppInput.vue'
+import { useCollabPanelContext } from "@/components/CollabPanel/context";
+import AppInput from "@/components/ui/AppInput.vue";
 
-const collab = useCollabPanelContext()
+const collab = useCollabPanelContext();
 </script>
 
 <template>
@@ -24,12 +24,12 @@ const collab = useCollabPanelContext()
     >
       <icon-lucide-check v-if="collab.copied" class="size-3" />
       <icon-lucide-copy v-else class="size-3" />
-      {{ collab.copied ? 'Copied' : 'Copy' }}
+      {{ collab.copied ? "Copied" : "Copy" }}
     </button>
   </div>
 
   <div class="mb-2 text-xs font-medium text-surface">
-    {{ collab.peers.length + 1 }} {{ collab.peers.length === 0 ? 'person' : 'people' }} in this room
+    {{ collab.peers.length + 1 }} {{ collab.peers.length === 0 ? "person" : "people" }} in this room
   </div>
 
   <button

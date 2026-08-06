@@ -1,36 +1,35 @@
 <script setup lang="ts">
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { onMounted, ref } from 'vue'
+import { useI18n } from "@open-pencil/vue";
+import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
+import { onMounted, ref } from "vue";
 
-import { useI18n } from '@open-pencil/vue'
+import { isTauri } from "@/app/tauri/env";
+import { useFontSettings } from "@/components/FontSettings/use";
+import { useButtonUI } from "@/components/ui/button";
+import { usePopoverUI } from "@/components/ui/popover";
+import Tip from "@/components/ui/Tip.vue";
 
-import { isTauri } from '@/app/tauri/env'
-import { useFontSettings } from '@/components/FontSettings/use'
-import { useButtonUI } from '@/components/ui/button'
-import { usePopoverUI } from '@/components/ui/popover'
-import Tip from '@/components/ui/Tip.vue'
-
-const { dialogs } = useI18n()
-const cls = usePopoverUI({ content: 'isolate z-[51] w-80 p-3' })
+const { dialogs } = useI18n();
+const cls = usePopoverUI({ content: "isolate z-[51] w-80 p-3" });
 const trigger = useButtonUI({
-  tone: 'ghost',
-  size: 'iconSm',
-  ui: { base: 'shrink-0 border border-border bg-input' }
-})
+  tone: "ghost",
+  size: "iconSm",
+  ui: { base: "shrink-0 border border-border bg-input" },
+});
 const secondaryButton = useButtonUI({
-  tone: 'ghost',
-  size: 'sm',
+  tone: "ghost",
+  size: "sm",
   ui: {
-    base: 'w-full bg-input px-2 py-1.5 text-[10px] font-medium text-surface hover:bg-hover disabled:opacity-50'
-  }
-})
+    base: "w-full bg-input px-2 py-1.5 text-[10px] font-medium text-surface hover:bg-hover disabled:opacity-50",
+  },
+});
 const primaryButton = useButtonUI({
-  tone: 'accent',
-  size: 'sm',
-  ui: { base: 'w-full px-2 py-1.5 text-[10px] font-medium disabled:opacity-50' }
-})
-const showDownloadedFonts = isTauri()
-const popoverOpen = ref(false)
+  tone: "accent",
+  size: "sm",
+  ui: { base: "w-full px-2 py-1.5 text-[10px] font-medium disabled:opacity-50" },
+});
+const showDownloadedFonts = isTauri();
+const popoverOpen = ref(false);
 
 const {
   accessState,
@@ -46,17 +45,17 @@ const {
   downloadFallbacks,
   refreshSummary,
   requestAccess,
-  setGoogleFontsEnabled
-} = useFontSettings()
+  setGoogleFontsEnabled,
+} = useFontSettings();
 
 function setPopoverOpen(value: boolean) {
-  popoverOpen.value = value
-  if (value) void refreshSummary()
+  popoverOpen.value = value;
+  if (value) void refreshSummary();
 }
 
 onMounted(() => {
-  void refreshSummary()
-})
+  void refreshSummary();
+});
 </script>
 
 <template>
@@ -89,8 +88,8 @@ onMounted(() => {
               <p class="mt-0.5 text-[10px] leading-relaxed text-muted">
                 {{
                   showDownloadedFonts
-                    ? 'Access system fonts, Google Fonts, fallback packs, and cached downloads.'
-                    : 'Allow browser access to local fonts and manage Google Fonts.'
+                    ? "Access system fonts, Google Fonts, fallback packs, and cached downloads."
+                    : "Allow browser access to local fonts and manage Google Fonts."
                 }}
               </p>
             </div>
@@ -103,7 +102,7 @@ onMounted(() => {
             </div>
             <div class="flex justify-between gap-3 text-muted">
               <span>Google Fonts</span>
-              <span class="text-surface">{{ googleFontsEnabled ? 'Enabled' : 'Disabled' }}</span>
+              <span class="text-surface">{{ googleFontsEnabled ? "Enabled" : "Disabled" }}</span>
             </div>
             <div v-if="showDownloadedFonts" class="flex justify-between gap-3 text-muted">
               <span>Downloaded cache</span>
@@ -121,9 +120,9 @@ onMounted(() => {
                 <p class="text-[10px] font-medium text-surface">System font access</p>
                 <p class="mt-0.5 text-[10px] leading-relaxed text-muted">
                   {{
-                    accessState === 'granted'
-                      ? 'System fonts are available.'
-                      : 'Allow browser font access when system fonts are missing.'
+                    accessState === "granted"
+                      ? "System fonts are available."
+                      : "Allow browser font access when system fonts are missing."
                   }}
                 </p>
               </div>
@@ -134,7 +133,7 @@ onMounted(() => {
                 :disabled="busyAction !== null || !canRequestLocalFonts"
                 @click="requestAccess"
               >
-                {{ busyAction === 'access' ? 'Requesting…' : 'Allow' }}
+                {{ busyAction === "access" ? "Requesting…" : "Allow" }}
               </button>
             </div>
 
@@ -152,7 +151,7 @@ onMounted(() => {
                 :disabled="busyAction !== null"
                 @click="setGoogleFontsEnabled(!googleFontsEnabled)"
               >
-                {{ googleFontsEnabled ? 'Disable' : 'Enable' }}
+                {{ googleFontsEnabled ? "Disable" : "Enable" }}
               </button>
             </div>
 
@@ -173,7 +172,7 @@ onMounted(() => {
                 :disabled="busyAction !== null"
                 @click="downloadFallbacks"
               >
-                {{ busyAction === 'download' ? 'Downloading…' : 'Download' }}
+                {{ busyAction === "download" ? "Downloading…" : "Download" }}
               </button>
             </div>
           </div>

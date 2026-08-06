@@ -1,83 +1,82 @@
 <script setup lang="ts">
 import {
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
-  ContextMenuPortal
-} from 'reka-ui'
-import type { Component } from 'vue'
-import IconCombine from '~icons/lucide/combine'
-import IconCopyMinus from '~icons/lucide/copy-minus'
-import IconCopyX from '~icons/lucide/copy-x'
-import IconListCollapse from '~icons/lucide/list-collapse'
-import IconSpline from '~icons/lucide/spline'
-import IconSquaresIntersect from '~icons/lucide/squares-intersect'
-import IconTypeOutline from '~icons/lucide/type-outline'
-
-import {
   vTestId,
   useEditorCommands,
   useI18n,
   useMenuModel,
   useSelectionState,
   editorCommandMetadata,
-  formatShortcut
-} from '@open-pencil/vue'
-import type { EditorCommandId } from '@open-pencil/vue'
+  formatShortcut,
+} from "@open-pencil/vue";
+import type { EditorCommandId } from "@open-pencil/vue";
+import {
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuPortal,
+} from "reka-ui";
+import type { Component } from "vue";
+import IconCombine from "~icons/lucide/combine";
+import IconCopyMinus from "~icons/lucide/copy-minus";
+import IconCopyX from "~icons/lucide/copy-x";
+import IconListCollapse from "~icons/lucide/list-collapse";
+import IconSpline from "~icons/lucide/spline";
+import IconSquaresIntersect from "~icons/lucide/squares-intersect";
+import IconTypeOutline from "~icons/lucide/type-outline";
 
-import { useEditorStore } from '@/app/editor/active-store'
-import { createCanvasMenuActions } from '@/app/editor/canvas/menu/actions'
-import { useCanvasContextMenu } from '@/app/editor/canvas/menu/context'
-import { canvasMenuItemClass, canvasMenuShortcutClass } from '@/app/editor/canvas/menu/model'
-import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
-import AppShortcutText from '@/components/ui/AppShortcutText.vue'
-import { menu, useMenuUI } from '@/components/ui/menu'
+import { useEditorStore } from "@/app/editor/active-store";
+import { createCanvasMenuActions } from "@/app/editor/canvas/menu/actions";
+import { useCanvasContextMenu } from "@/app/editor/canvas/menu/context";
+import { canvasMenuItemClass, canvasMenuShortcutClass } from "@/app/editor/canvas/menu/model";
+import { appMenuShortcutLabel } from "@/app/shell/menu/shortcut";
+import AppShortcutText from "@/components/ui/AppShortcutText.vue";
+import { menu, useMenuUI } from "@/components/ui/menu";
 
-const store = useEditorStore()
+const store = useEditorStore();
 
-const { editor, selectedIds, hasSelection } = useSelectionState()
-const { getCommand } = useEditorCommands()
-const { canvasMenu } = useMenuModel()
-const { menu: t } = useI18n()
+const { editor, selectedIds, hasSelection } = useSelectionState();
+const { getCommand } = useEditorCommands();
+const { canvasMenu } = useMenuModel();
+const { menu: t } = useI18n();
 
-const canvasMenuActions = createCanvasMenuActions(store, selectedIds)
-const { execCommand } = canvasMenuActions
-const contextMenu = useCanvasContextMenu(canvasMenu, hasSelection, editor, canvasMenuActions, t)
+const canvasMenuActions = createCanvasMenuActions(store, selectedIds);
+const { execCommand } = canvasMenuActions;
+const contextMenu = useCanvasContextMenu(canvasMenu, hasSelection, editor, canvasMenuActions, t);
 
 const menuCls = useMenuUI({
-  content: 'min-w-56 shadow-[0_8px_30px_rgb(0_0_0/0.4)] animate-in fade-in zoom-in-95',
-  separator: 'my-1'
-})
-const componentMenu = menu({ tone: 'component' })
+  content: "min-w-56 shadow-[0_8px_30px_rgb(0_0_0/0.4)] animate-in fade-in zoom-in-95",
+  separator: "my-1",
+});
+const componentMenu = menu({ tone: "component" });
 
 const cls = {
   menu: menuCls.content,
-  submenu: menuCls.content.replace('min-w-56', 'min-w-0 w-max'),
+  submenu: menuCls.content.replace("min-w-56", "min-w-0 w-max"),
   item: menuCls.item,
   component: componentMenu.item(),
-  sep: menuCls.separator
-}
+  sep: menuCls.separator,
+};
 
 const booleanCommandIcons = {
-  'selection.booleanUnion': IconCombine,
-  'selection.booleanSubtract': IconCopyMinus,
-  'selection.booleanIntersect': IconSquaresIntersect,
-  'selection.booleanExclude': IconCopyX,
-  'selection.flatten': IconListCollapse,
-  'selection.outlineText': IconTypeOutline,
-  'selection.outlineStroke': IconSpline
-} satisfies Partial<Record<EditorCommandId, Component>>
+  "selection.booleanUnion": IconCombine,
+  "selection.booleanSubtract": IconCopyMinus,
+  "selection.booleanIntersect": IconSquaresIntersect,
+  "selection.booleanExclude": IconCopyX,
+  "selection.flatten": IconListCollapse,
+  "selection.outlineText": IconTypeOutline,
+  "selection.outlineStroke": IconSpline,
+} satisfies Partial<Record<EditorCommandId, Component>>;
 
 function contextCommandTestId(id: EditorCommandId | undefined): string | undefined {
-  return id ? editorCommandMetadata(id).contextTestId : undefined
+  return id ? editorCommandMetadata(id).contextTestId : undefined;
 }
 
 function contextCommandIcon(id: EditorCommandId | undefined): Component | undefined {
-  if (!id) return undefined
-  return (booleanCommandIcons as Partial<Record<EditorCommandId, Component>>)[id]
+  if (!id) return undefined;
+  return (booleanCommandIcons as Partial<Record<EditorCommandId, Component>>)[id];
 }
 </script>
 
@@ -90,7 +89,7 @@ function contextCommandIcon(id: EditorCommandId | undefined): Component | undefi
       @select="execCommand('copy')"
     >
       <span>{{ t.copy }}</span
-      ><AppShortcutText>{{ appMenuShortcutLabel('copy') }}</AppShortcutText>
+      ><AppShortcutText>{{ appMenuShortcutLabel("copy") }}</AppShortcutText>
     </ContextMenuItem>
     <ContextMenuItem
       data-test-id="context-cut"
@@ -99,11 +98,11 @@ function contextCommandIcon(id: EditorCommandId | undefined): Component | undefi
       @select="execCommand('cut')"
     >
       <span>{{ t.cut }}</span
-      ><AppShortcutText>{{ appMenuShortcutLabel('cut') }}</AppShortcutText>
+      ><AppShortcutText>{{ appMenuShortcutLabel("cut") }}</AppShortcutText>
     </ContextMenuItem>
     <ContextMenuItem data-test-id="context-paste" :class="cls.item" @select="execCommand('paste')">
       <span>{{ t.pasteHere }}</span
-      ><AppShortcutText>{{ appMenuShortcutLabel('paste') }}</AppShortcutText>
+      ><AppShortcutText>{{ appMenuShortcutLabel("paste") }}</AppShortcutText>
     </ContextMenuItem>
     <ContextMenuItem
       data-test-id="context-paste-to-replace"
@@ -119,9 +118,9 @@ function contextCommandIcon(id: EditorCommandId | undefined): Component | undefi
       :disabled="!hasSelection"
       @select="getCommand('selection.duplicate').run()"
     >
-      <span>{{ getCommand('selection.duplicate').label }}</span
+      <span>{{ getCommand("selection.duplicate").label }}</span
       ><AppShortcutText>{{
-        formatShortcut(editorCommandMetadata('selection.duplicate').shortcut)
+        formatShortcut(editorCommandMetadata("selection.duplicate").shortcut)
       }}</AppShortcutText>
     </ContextMenuItem>
     <ContextMenuItem
@@ -130,8 +129,8 @@ function contextCommandIcon(id: EditorCommandId | undefined): Component | undefi
       :disabled="!hasSelection"
       @select="getCommand('selection.delete').run()"
     >
-      <span>{{ getCommand('selection.delete').label }}</span
-      ><AppShortcutText>{{ editorCommandMetadata('selection.delete').shortcut }}</AppShortcutText>
+      <span>{{ getCommand("selection.delete").label }}</span
+      ><AppShortcutText>{{ editorCommandMetadata("selection.delete").shortcut }}</AppShortcutText>
     </ContextMenuItem>
 
     <template v-for="(item, i) in contextMenu" :key="`menu-${i}`">

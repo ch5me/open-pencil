@@ -1,63 +1,62 @@
 <script setup lang="ts">
-import { useFileDialog, useObjectUrl } from '@vueuse/core'
-import { computed, shallowRef, watch } from 'vue'
+import type { Fill, ImageScaleMode } from "@open-pencil/core/scene-graph";
+import { useFileDialog, useObjectUrl } from "@vueuse/core";
+import { computed, shallowRef, watch } from "vue";
 
-import type { Fill, ImageScaleMode } from '@open-pencil/core/scene-graph'
+import { useEditorStore } from "@/app/editor/active-store";
 
-import { useEditorStore } from '@/app/editor/active-store'
-
-import AppSelect from './ui/AppSelect.vue'
+import AppSelect from "./ui/AppSelect.vue";
 
 const IMAGE_SCALE_MODES: { value: ImageScaleMode; label: string }[] = [
-  { value: 'FILL', label: 'Fill' },
-  { value: 'FIT', label: 'Fit' },
-  { value: 'CROP', label: 'Crop' },
-  { value: 'TILE', label: 'Tile' }
-]
+  { value: "FILL", label: "Fill" },
+  { value: "FIT", label: "Fit" },
+  { value: "CROP", label: "Crop" },
+  { value: "TILE", label: "Tile" },
+];
 
-const { fill } = defineProps<{ fill: Fill }>()
-const emit = defineEmits<{ update: [fill: Fill] }>()
+const { fill } = defineProps<{ fill: Fill }>();
+const emit = defineEmits<{ update: [fill: Fill] }>();
 
-const store = useEditorStore()
+const store = useEditorStore();
 
-const imageBlob = shallowRef<Blob | null>(null)
-const imagePreviewUrl = useObjectUrl(imageBlob)
+const imageBlob = shallowRef<Blob | null>(null);
+const imagePreviewUrl = useObjectUrl(imageBlob);
 
 watch(
   () => fill.imageHash,
   (hash) => {
     if (!hash) {
-      imageBlob.value = null
-      return
+      imageBlob.value = null;
+      return;
     }
-    const data = store.getImage(hash)
-    imageBlob.value = data ? new Blob([data]) : null
+    const data = store.getImage(hash);
+    imageBlob.value = data ? new Blob([data]) : null;
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 const { open: pickImage, onChange: onFileChange } = useFileDialog({
-  accept: 'image/png,image/jpeg,image/webp',
-  multiple: false
-})
+  accept: "image/png,image/jpeg,image/webp",
+  multiple: false,
+});
 
 onFileChange(async (files) => {
-  const file = files?.[0]
-  if (!file) return
-  const bytes = new Uint8Array(await file.arrayBuffer())
-  const hash = store.storeImage(bytes)
-  emit('update', {
+  const file = files?.[0];
+  if (!file) return;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const hash = store.storeImage(bytes);
+  emit("update", {
     ...fill,
-    type: 'IMAGE',
+    type: "IMAGE",
     imageHash: hash,
-    imageScaleMode: fill.imageScaleMode ?? 'FILL'
-  })
-})
+    imageScaleMode: fill.imageScaleMode ?? "FILL",
+  });
+});
 
 const scaleMode = computed({
-  get: () => fill.imageScaleMode ?? ('FILL' as ImageScaleMode),
-  set: (mode: ImageScaleMode) => emit('update', { ...fill, imageScaleMode: mode })
-})
+  get: () => fill.imageScaleMode ?? ("FILL" as ImageScaleMode),
+  set: (mode: ImageScaleMode) => emit("update", { ...fill, imageScaleMode: mode }),
+});
 </script>
 
 <template>
@@ -74,7 +73,7 @@ const scaleMode = computed({
       @click="pickImage()"
     >
       <icon-lucide-image class="size-3" />
-      {{ fill.imageHash ? 'Replace' : 'Choose image' }}
+      {{ fill.imageHash ? "Replace" : "Choose image" }}
     </button>
     <AppSelect
       :model-value="scaleMode"

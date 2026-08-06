@@ -1,32 +1,32 @@
 <script setup lang="ts">
-import type { EditorToolDef } from '@open-pencil/core/editor'
-import { toolbarToolTestId, ToolbarItem } from '@open-pencil/vue'
-import type { Tool } from '@open-pencil/vue'
+import type { EditorToolDef } from "@open-pencil/core/editor";
+import { toolbarToolTestId, ToolbarItem } from "@open-pencil/vue";
+import type { Tool } from "@open-pencil/vue";
 
-import ToolButton from '@/components/Toolbar/ToolButton.vue'
-import ToolFlyout from '@/components/Toolbar/ToolFlyout.vue'
-import type { ToolbarUi, ToolIconMap, ToolLabels } from '@/components/Toolbar/types'
-import Tip from '@/components/ui/Tip.vue'
+import ToolButton from "@/components/Toolbar/ToolButton.vue";
+import ToolFlyout from "@/components/Toolbar/ToolFlyout.vue";
+import type { ToolbarUi, ToolIconMap, ToolLabels } from "@/components/Toolbar/types";
+import Tip from "@/components/ui/Tip.vue";
 
 const { tools, activeTool, toolIcons, toolLabels, toolShortcuts, ui } = defineProps<{
-  tools: EditorToolDef[]
-  activeTool: Tool
-  toolIcons: ToolIconMap
-  toolLabels: ToolLabels
-  toolShortcuts: Record<Tool, string>
-  ui?: ToolbarUi
-}>()
+  tools: EditorToolDef[];
+  activeTool: Tool;
+  toolIcons: ToolIconMap;
+  toolLabels: ToolLabels;
+  toolShortcuts: Record<Tool, string>;
+  ui?: ToolbarUi;
+}>();
 
 const emit = defineEmits<{
-  setTool: [tool: Tool]
-}>()
+  setTool: [tool: Tool];
+}>();
 
 function isActive(tool: EditorToolDef) {
-  return tool.key === activeTool || (tool.flyout?.includes(activeTool) ?? false)
+  return tool.key === activeTool || (tool.flyout?.includes(activeTool) ?? false);
 }
 
 function activeKeyForTool(tool: EditorToolDef) {
-  return tool.flyout?.includes(activeTool) ? activeTool : tool.key
+  return tool.flyout?.includes(activeTool) ? activeTool : tool.key;
 }
 </script>
 

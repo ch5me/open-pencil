@@ -1,67 +1,69 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from "bun:test";
 
-import { SceneGraph } from '@open-pencil/core'
-import noHardcodedColors from '@open-pencil/core/lint/rules/no-hardcoded-colors'
+import { SceneGraph } from "@open-pencil/core";
+import noHardcodedColors from "@open-pencil/core/lint/rules/no-hardcoded-colors";
 
 function pageId(graph: SceneGraph): string {
-  return graph.getPages()[0].id
+  return graph.getPages()[0].id;
 }
 
 function setupColorVars(graph: SceneGraph, ...ids: string[]): void {
   graph.addCollection({
-    id: 'col1',
-    name: 'Colors',
-    modes: [{ modeId: 'm1', name: 'Light' }],
-    defaultModeId: 'm1',
-    variableIds: []
-  })
+    id: "col1",
+    name: "Colors",
+    modes: [{ modeId: "m1", name: "Light" }],
+    defaultModeId: "m1",
+    variableIds: [],
+  });
   for (const id of ids) {
     graph.addVariable({
       id,
       name: `Var ${id}`,
-      type: 'COLOR',
-      collectionId: 'col1',
+      type: "COLOR",
+      collectionId: "col1",
       valuesByMode: { m1: { r: 0.5, g: 0.5, b: 0.5, a: 1 } },
-      description: '',
-      hiddenFromPublishing: false
-    })
+      description: "",
+      hiddenFromPublishing: false,
+    });
   }
 }
 
 // ─── bindVariable emits node:updated event ──────────────────────────────────
 
-describe('bindVariable emits node:updated event', () => {
-  test('bindVariable emits node:updated event', () => {
-    const graph = new SceneGraph()
-    setupColorVars(graph, 'v1')
-    const node = graph.createNode('RECTANGLE', pageId(graph), {
-      name: 'Rect',
-      fills: [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, visible: true, opacity: 1 }]
-    })
+describe("bindVariable emits node:updated event", () => {
+  test("bindVariable emits node:updated event", () => {
+    const graph = new SceneGraph();
+    setupColorVars(graph, "v1");
+    const node = graph.createNode("RECTANGLE", pageId(graph), {
+      name: "Rect",
+      fills: [
+        { type: "SOLID", color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, visible: true, opacity: 1 },
+      ],
+    });
 
-    const events: Array<{ nodeId: string; changes: Record<string, unknown> }> = []
+    const events: Array<{ nodeId: string; changes: Record<string, unknown> }> = [];
     graph.onNodeEvents({
       updated: (nodeId, changes) => {
-        events.push({ nodeId, changes })
-      }
-    })
+        events.push({ nodeId, changes });
+      },
+    });
 
-    graph.bindVariable(node.id, 'fills/0/color', 'v1')
+    graph.bindVariable(node.id, "fills/0/color", "v1");
 
-    expect(events.length).toBeGreaterThanOrEqual(1)
-    expect(events[0].nodeId).toBe(node.id)
-    expect(events[0].changes).toHaveProperty('boundVariables')
-  })
-})
+    expect(events.length).toBeGreaterThanOrEqual(1);
+    expect(events[0].nodeId).toBe(node.id);
+    expect(events[0].changes).toHaveProperty("boundVariables");
+  });
+});
 
 // ─── no-hardcoded-colors lint checks indexed bindings ──────────────────────
 
-describe('no-hardcoded-colors lint checks indexed bindings', () => {
-  test('node with fills/0/color binding passes lint (no false positive)', () => {
+describe("no-hardcoded-colors lint checks indexed bindings", () => {
+  test("node with fills/0/color binding passes lint (no false positive)", () => {
     const node = {
-      id: 'n1',
-      name: 'Rect',
-      type: 'RECTANGLE',
+      id: "n1",
+      name: "Rect",
+      type: "RECTANGLE",
       width: 100,
       height: 100,
       x: 0,
@@ -69,7 +71,7 @@ describe('no-hardcoded-colors lint checks indexed bindings', () => {
       rotation: 0,
       visible: true,
       locked: false,
-      layoutMode: 'NONE',
+      layoutMode: "NONE",
       itemSpacing: 0,
       paddingTop: 0,
       paddingRight: 0,
@@ -77,33 +79,33 @@ describe('no-hardcoded-colors lint checks indexed bindings', () => {
       paddingLeft: 0,
       cornerRadius: 0,
       childIds: [],
-      text: '',
+      text: "",
       fontSize: 14,
       styleRunCount: 0,
-      boundVariables: { 'fills/0/color': 'v1' },
-      fills: [{ type: 'SOLID', visible: true, opacity: 1, color: { r: 0.5, g: 0.5, b: 0.5 } }],
+      boundVariables: { "fills/0/color": "v1" },
+      fills: [{ type: "SOLID", visible: true, opacity: 1, color: { r: 0.5, g: 0.5, b: 0.5 } }],
       strokes: [],
-      effects: []
-    }
+      effects: [],
+    };
 
-    const messages: Array<{ message: string }> = []
+    const messages: Array<{ message: string }> = [];
     const context = {
       report: (issue: { message: string }) => messages.push(issue),
       getConfig: () => ({}),
       getParent: () => null,
-      getChildren: () => []
-    }
+      getChildren: () => [],
+    };
 
-    noHardcodedColors.check(node, context)
+    noHardcodedColors.check(node, context);
     // Should NOT report a violation — the color is bound to a variable
-    expect(messages.length).toBe(0)
-  })
+    expect(messages.length).toBe(0);
+  });
 
-  test('node with top-level fills binding still reports violation (no false negative)', () => {
+  test("node with top-level fills binding still reports violation (no false negative)", () => {
     const node = {
-      id: 'n2',
-      name: 'Rect',
-      type: 'RECTANGLE',
+      id: "n2",
+      name: "Rect",
+      type: "RECTANGLE",
       width: 100,
       height: 100,
       x: 0,
@@ -111,7 +113,7 @@ describe('no-hardcoded-colors lint checks indexed bindings', () => {
       rotation: 0,
       visible: true,
       locked: false,
-      layoutMode: 'NONE',
+      layoutMode: "NONE",
       itemSpacing: 0,
       paddingTop: 0,
       paddingRight: 0,
@@ -119,110 +121,112 @@ describe('no-hardcoded-colors lint checks indexed bindings', () => {
       paddingLeft: 0,
       cornerRadius: 0,
       childIds: [],
-      text: '',
+      text: "",
       fontSize: 14,
       styleRunCount: 0,
-      boundVariables: { fills: 'v1' }, // top-level — renderer-ignored
-      fills: [{ type: 'SOLID', visible: true, opacity: 1, color: { r: 0.5, g: 0.5, b: 0.5 } }],
+      boundVariables: { fills: "v1" }, // top-level — renderer-ignored
+      fills: [{ type: "SOLID", visible: true, opacity: 1, color: { r: 0.5, g: 0.5, b: 0.5 } }],
       strokes: [],
-      effects: []
-    }
+      effects: [],
+    };
 
-    const messages: Array<{ message: string }> = []
+    const messages: Array<{ message: string }> = [];
     const context = {
       report: (issue: { message: string }) => messages.push(issue),
       getConfig: () => ({}),
       getParent: () => null,
-      getChildren: () => []
-    }
+      getChildren: () => [],
+    };
 
-    noHardcodedColors.check(node, context)
+    noHardcodedColors.check(node, context);
     // SHOULD report a violation — top-level 'fills' binding is renderer-ignored
-    expect(messages.length).toBeGreaterThanOrEqual(1)
-  })
-})
+    expect(messages.length).toBeGreaterThanOrEqual(1);
+  });
+});
 
 // ─── bindVariable validation ──────────────────────────────────────────────
 
-describe('bindVariable validation', () => {
+describe("bindVariable validation", () => {
   function setupGraph(): SceneGraph {
-    const graph = new SceneGraph()
+    const graph = new SceneGraph();
     graph.addCollection({
-      id: 'col1',
-      name: 'Colors',
-      modes: [{ modeId: 'm1', name: 'Light' }],
-      defaultModeId: 'm1',
-      variableIds: []
-    })
+      id: "col1",
+      name: "Colors",
+      modes: [{ modeId: "m1", name: "Light" }],
+      defaultModeId: "m1",
+      variableIds: [],
+    });
     graph.addVariable({
-      id: 'v-color',
-      name: 'Primary',
-      type: 'COLOR',
-      collectionId: 'col1',
+      id: "v-color",
+      name: "Primary",
+      type: "COLOR",
+      collectionId: "col1",
       valuesByMode: { m1: { r: 1, g: 0, b: 0, a: 1 } },
-      description: '',
-      hiddenFromPublishing: false
-    })
+      description: "",
+      hiddenFromPublishing: false,
+    });
     graph.addVariable({
-      id: 'v-float',
-      name: 'Spacing',
-      type: 'FLOAT',
-      collectionId: 'col1',
+      id: "v-float",
+      name: "Spacing",
+      type: "FLOAT",
+      collectionId: "col1",
       valuesByMode: { m1: 16 },
-      description: '',
-      hiddenFromPublishing: false
-    })
-    return graph
+      description: "",
+      hiddenFromPublishing: false,
+    });
+    return graph;
   }
 
-  test('bindVariable rejects nonexistent variable', () => {
-    const graph = setupGraph()
-    const node = graph.createNode('RECTANGLE', pageId(graph), { name: 'Rect' })
+  test("bindVariable rejects nonexistent variable", () => {
+    const graph = setupGraph();
+    const node = graph.createNode("RECTANGLE", pageId(graph), { name: "Rect" });
     expect(() => {
-      graph.bindVariable(node.id, 'fills/0/color', 'nonexistent')
-    }).toThrow()
-    expect(graph.getNode(node.id).boundVariables['fills/0/color']).toBeUndefined()
-  })
+      graph.bindVariable(node.id, "fills/0/color", "nonexistent");
+    }).toThrow();
+    expect(graph.getNode(node.id).boundVariables["fills/0/color"]).toBeUndefined();
+  });
 
-  test('bindVariable rejects FLOAT variable on color field', () => {
-    const graph = setupGraph()
-    const node = graph.createNode('RECTANGLE', pageId(graph), { name: 'Rect' })
+  test("bindVariable rejects FLOAT variable on color field", () => {
+    const graph = setupGraph();
+    const node = graph.createNode("RECTANGLE", pageId(graph), { name: "Rect" });
     expect(() => {
-      graph.bindVariable(node.id, 'fills/0/color', 'v-float')
-    }).toThrow()
-    expect(graph.getNode(node.id).boundVariables['fills/0/color']).toBeUndefined()
-  })
+      graph.bindVariable(node.id, "fills/0/color", "v-float");
+    }).toThrow();
+    expect(graph.getNode(node.id).boundVariables["fills/0/color"]).toBeUndefined();
+  });
 
-  test('bindVariable rejects COLOR variable on scalar field', () => {
-    const graph = setupGraph()
-    const node = graph.createNode('RECTANGLE', pageId(graph), { name: 'Rect' })
+  test("bindVariable rejects COLOR variable on scalar field", () => {
+    const graph = setupGraph();
+    const node = graph.createNode("RECTANGLE", pageId(graph), { name: "Rect" });
     expect(() => {
-      graph.bindVariable(node.id, 'opacity', 'v-color')
-    }).toThrow()
-    expect(graph.getNode(node.id).boundVariables['opacity']).toBeUndefined()
-  })
+      graph.bindVariable(node.id, "opacity", "v-color");
+    }).toThrow();
+    expect(graph.getNode(node.id).boundVariables["opacity"]).toBeUndefined();
+  });
 
-  test('bindVariable rejects binding to fills that do not yet exist', () => {
-    const graph = setupGraph()
-    const node = graph.createNode('RECTANGLE', pageId(graph), { name: 'Rect' })
+  test("bindVariable rejects binding to fills that do not yet exist", () => {
+    const graph = setupGraph();
+    const node = graph.createNode("RECTANGLE", pageId(graph), { name: "Rect" });
     // Rect has 0 fills — binding to fills/0/color must be rejected (index >= length)
     expect(() => {
-      graph.bindVariable(node.id, 'fills/0/color', 'v-color')
-    }).toThrow(/out of range/)
-  })
+      graph.bindVariable(node.id, "fills/0/color", "v-color");
+    }).toThrow(/out of range/);
+  });
 
-  test('bindVariable auto-removes top-level fills binding when indexed binding is set', () => {
-    const graph = setupGraph()
-    const node = graph.createNode('RECTANGLE', pageId(graph), {
-      name: 'Rect',
-      fills: [{ type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, visible: true, opacity: 1 }]
-    })
-    const n = graph.getNode(node.id)
+  test("bindVariable auto-removes top-level fills binding when indexed binding is set", () => {
+    const graph = setupGraph();
+    const node = graph.createNode("RECTANGLE", pageId(graph), {
+      name: "Rect",
+      fills: [
+        { type: "SOLID", color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, visible: true, opacity: 1 },
+      ],
+    });
+    const n = graph.getNode(node.id);
     // Set top-level dead data first
-    n.boundVariables['fills'] = 'v-color'
+    n.boundVariables["fills"] = "v-color";
     // Now set a proper indexed binding — should auto-remove top-level
-    graph.bindVariable(node.id, 'fills/0/color', 'v-color')
-    expect(n.boundVariables['fills']).toBeUndefined()
-    expect(n.boundVariables['fills/0/color']).toBe('v-color')
-  })
-})
+    graph.bindVariable(node.id, "fills/0/color", "v-color");
+    expect(n.boundVariables["fills"]).toBeUndefined();
+    expect(n.boundVariables["fills/0/color"]).toBe("v-color");
+  });
+});

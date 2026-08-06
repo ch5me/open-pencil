@@ -1,19 +1,19 @@
 <script setup lang="ts">
-import { colorToHexRaw } from '@open-pencil/core/color'
-import type { Color } from '@open-pencil/core/types'
-import { vTestId, useI18n } from '@open-pencil/vue'
+import { colorToHexRaw } from "@open-pencil/core/color";
+import type { Color } from "@open-pencil/core/types";
+import { vTestId, useI18n } from "@open-pencil/vue";
 
-import BoundVariableButton from '@/components/properties/BoundVariableButton.vue'
+import BoundVariableButton from "@/components/properties/BoundVariableButton.vue";
 import {
   opacityFromPercent,
   opacityPercent,
-  variableSwatchBackground
-} from '@/components/properties/color-style-row'
-import type { ColorVariableBindingApi } from '@/components/properties/color-style-row'
-import VariablePickerPopover from '@/components/properties/VariablePickerPopover.vue'
-import ScrubInput from '@/components/ScrubInput.vue'
-import { useIconButtonUI } from '@/components/ui/icon-button'
-import Tip from '@/components/ui/Tip.vue'
+  variableSwatchBackground,
+} from "@/components/properties/color-style-row";
+import type { ColorVariableBindingApi } from "@/components/properties/color-style-row";
+import VariablePickerPopover from "@/components/properties/VariablePickerPopover.vue";
+import ScrubInput from "@/components/ScrubInput.vue";
+import { useIconButtonUI } from "@/components/ui/icon-button";
+import Tip from "@/components/ui/Tip.vue";
 
 const {
   item,
@@ -24,26 +24,26 @@ const {
   applyVariableTestId,
   unbindTestId,
   variableColor,
-  removeLabel
+  removeLabel,
 } = defineProps<{
-  item: { opacity: number; visible: boolean }
-  index: number
-  activeNodeId?: string | null
-  bindingApi: ColorVariableBindingApi
-  visibilityTestId: string
-  applyVariableTestId?: string
-  unbindTestId?: string
-  variableColor?: Color
-  removeLabel: string
-}>()
+  item: { opacity: number; visible: boolean };
+  index: number;
+  activeNodeId?: string | null;
+  bindingApi: ColorVariableBindingApi;
+  visibilityTestId: string;
+  applyVariableTestId?: string;
+  unbindTestId?: string;
+  variableColor?: Color;
+  removeLabel: string;
+}>();
 
 const emit = defineEmits<{
-  patch: [changes: Record<string, unknown>]
-  toggleVisibility: []
-  remove: []
-}>()
+  patch: [changes: Record<string, unknown>];
+  toggleVisibility: [];
+  remove: [];
+}>();
 
-const { panels, dialogs } = useI18n()
+const { panels, dialogs } = useI18n();
 </script>
 
 <template>

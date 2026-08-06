@@ -1,26 +1,26 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from "bun:test";
 
-import { ellipsizeLabelText } from '#core/canvas/labels/text'
+import { ellipsizeLabelText } from "#core/canvas/labels/text";
 
 const fixedWidthFont = {
   getGlyphIDs(text: string) {
-    return [...text].map((_, index) => index)
+    return [...text].map((_, index) => index);
   },
   getGlyphWidths(glyphs: number[]) {
-    return glyphs.map(() => 10)
-  }
-} as Parameters<typeof ellipsizeLabelText>[0]
+    return glyphs.map(() => 10);
+  },
+} as Parameters<typeof ellipsizeLabelText>[0];
 
-describe('label text', () => {
-  test('keeps labels that fit inside the component width', () => {
-    expect(ellipsizeLabelText(fixedWidthFont, 'Button', 60)).toBe('Button')
-  })
+describe("label text", () => {
+  test("keeps labels that fit inside the component width", () => {
+    expect(ellipsizeLabelText(fixedWidthFont, "Button", 60)).toBe("Button");
+  });
 
-  test('ellipsizes labels that exceed the component width', () => {
-    expect(ellipsizeLabelText(fixedWidthFont, 'Very long component', 55)).toBe('Very…')
-  })
+  test("ellipsizes labels that exceed the component width", () => {
+    expect(ellipsizeLabelText(fixedWidthFont, "Very long component", 55)).toBe("Very…");
+  });
 
-  test('returns only ellipsis when only the ellipsis fits', () => {
-    expect(ellipsizeLabelText(fixedWidthFont, 'Component', 10)).toBe('…')
-  })
-})
+  test("returns only ellipsis when only the ellipsis fits", () => {
+    expect(ellipsizeLabelText(fixedWidthFont, "Component", 10)).toBe("…");
+  });
+});

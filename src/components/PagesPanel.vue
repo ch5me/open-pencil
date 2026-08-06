@@ -1,37 +1,36 @@
 <script setup lang="ts">
-import { templateRef } from '@vueuse/core'
-import { ref, watch } from 'vue'
+import { PageListRoot, useI18n, useInlineRename } from "@open-pencil/vue";
+import { templateRef } from "@vueuse/core";
+import { ref, watch } from "vue";
 
-import { PageListRoot, useI18n, useInlineRename } from '@open-pencil/vue'
+import Tip from "@/components/ui/Tip.vue";
 
-import Tip from '@/components/ui/Tip.vue'
-
-const pageInput = templateRef<HTMLInputElement>('pageInput')
-const rename = useInlineRename((id, name) => pageActions.value?.rename(id, name))
-const { panels } = useI18n()
+const pageInput = templateRef<HTMLInputElement>("pageInput");
+const rename = useInlineRename((id, name) => pageActions.value?.rename(id, name));
+const { panels } = useI18n();
 
 const pageActions = ref<{
-  rename: (pageId: string, name: string) => void
-} | null>(null)
+  rename: (pageId: string, name: string) => void;
+} | null>(null);
 
 function setPageActions(renamePage: (pageId: string, name: string) => void) {
-  pageActions.value = { rename: renamePage }
+  pageActions.value = { rename: renamePage };
 }
 
 watch(pageInput, (input) => {
-  if (input) void rename.focusInput(input)
-})
+  if (input) void rename.focusInput(input);
+});
 
 function startRename(pg: { id: string; name: string }) {
-  rename.start(pg.id, pg.name)
+  rename.start(pg.id, pg.name);
 }
 
 function handlePageDblClick(
   pg: { id: string; name: string },
-  renamePage: (pageId: string, name: string) => void
+  renamePage: (pageId: string, name: string) => void,
 ) {
-  setPageActions(renamePage)
-  startRename(pg)
+  setPageActions(renamePage);
+  startRename(pg);
 }
 </script>
 

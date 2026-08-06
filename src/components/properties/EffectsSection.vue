@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { colorToCSS } from '@open-pencil/core/color'
-import type { Effect } from '@open-pencil/core/scene-graph'
-import { PropertyListRoot, vTestId, useEffectsControls, useI18n } from '@open-pencil/vue'
+import { colorToCSS } from "@open-pencil/core/color";
+import type { Effect } from "@open-pencil/core/scene-graph";
+import { PropertyListRoot, vTestId, useEffectsControls, useI18n } from "@open-pencil/vue";
 
-import ColorInput from '@/components/ColorPicker/ColorInput.vue'
-import ScrubInput from '@/components/ScrubInput.vue'
-import AppSelect from '@/components/ui/AppSelect.vue'
-import { useIconButtonUI } from '@/components/ui/icon-button'
-import { useSectionUI } from '@/components/ui/section'
-import Tip from '@/components/ui/Tip.vue'
+import ColorInput from "@/components/ColorPicker/ColorInput.vue";
+import ScrubInput from "@/components/ScrubInput.vue";
+import AppSelect from "@/components/ui/AppSelect.vue";
+import { useIconButtonUI } from "@/components/ui/icon-button";
+import { useSectionUI } from "@/components/ui/section";
+import Tip from "@/components/ui/Tip.vue";
 
-const effectsCtx = useEffectsControls()
-const { panels } = useI18n()
-const sectionCls = useSectionUI()
+const effectsCtx = useEffectsControls();
+const { panels } = useI18n();
+const sectionCls = useSectionUI();
 </script>
 
 <template>
@@ -108,12 +108,12 @@ const sectionCls = useSectionUI()
                   :model-value="effect.offset.x"
                   @update:model-value="
                     effectsCtx.scrubEffect(activeNode, i, {
-                      offset: { ...effect.offset, x: $event }
+                      offset: { ...effect.offset, x: $event },
                     })
                   "
                   @commit="
                     effectsCtx.commitEffect(activeNode, i, {
-                      offset: { ...effect.offset, x: $event }
+                      offset: { ...effect.offset, x: $event },
                     })
                   "
                 />
@@ -124,12 +124,12 @@ const sectionCls = useSectionUI()
                   :model-value="effect.offset.y"
                   @update:model-value="
                     effectsCtx.scrubEffect(activeNode, i, {
-                      offset: { ...effect.offset, y: $event }
+                      offset: { ...effect.offset, y: $event },
                     })
                   "
                   @commit="
                     effectsCtx.commitEffect(activeNode, i, {
-                      offset: { ...effect.offset, y: $event }
+                      offset: { ...effect.offset, y: $event },
                     })
                   "
                 />
@@ -171,12 +171,12 @@ const sectionCls = useSectionUI()
                   :max="100"
                   @update:model-value="
                     effectsCtx.scrubEffect(activeNode, i, {
-                      color: { ...effect.color, a: Math.max(0, Math.min(1, $event / 100)) }
+                      color: { ...effect.color, a: Math.max(0, Math.min(1, $event / 100)) },
                     })
                   "
                   @commit="
                     effectsCtx.commitEffect(activeNode, i, {
-                      color: { ...effect.color, a: Math.max(0, Math.min(1, $event / 100)) }
+                      color: { ...effect.color, a: Math.max(0, Math.min(1, $event / 100)) },
                     })
                   "
                 />

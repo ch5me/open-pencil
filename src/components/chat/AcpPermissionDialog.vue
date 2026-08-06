@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { acpPermissionOptionTestId, vTestId } from "@open-pencil/vue";
 import {
   AlertDialogAction,
   AlertDialogCancel,
@@ -7,56 +8,54 @@ import {
   AlertDialogOverlay,
   AlertDialogPortal,
   AlertDialogRoot,
-  AlertDialogTitle
-} from 'reka-ui'
-import { computed } from 'vue'
-
-import { acpPermissionOptionTestId, vTestId } from '@open-pencil/vue'
+  AlertDialogTitle,
+} from "reka-ui";
+import { computed } from "vue";
 
 import {
   currentPermission,
   rejectCurrentPermission,
-  respondToPermission
-} from '@/app/ai/acp/permission'
-import { useDialogUI } from '@/components/ui/dialog'
+  respondToPermission,
+} from "@/app/ai/acp/permission";
+import { useDialogUI } from "@/components/ui/dialog";
 
-const open = computed(() => currentPermission.value !== null)
+const open = computed(() => currentPermission.value !== null);
 const cls = useDialogUI({
-  overlay: 'z-50',
-  content: 'w-80 rounded-lg p-4 shadow-xl'
-})
+  overlay: "z-50",
+  content: "w-80 rounded-lg p-4 shadow-xl",
+});
 
 interface ToolCallInfo {
-  title?: string
-  rawInput?: unknown
+  title?: string;
+  rawInput?: unknown;
 }
 
 const toolCall = computed(
-  (): ToolCallInfo => (currentPermission.value?.request.toolCall as ToolCallInfo) ?? {}
-)
+  (): ToolCallInfo => (currentPermission.value?.request.toolCall as ToolCallInfo) ?? {},
+);
 
-const toolName = computed(() => toolCall.value.title ?? 'Unknown tool')
+const toolName = computed(() => toolCall.value.title ?? "Unknown tool");
 
 const toolInput = computed(() => {
-  const raw = toolCall.value.rawInput
-  if (!raw) return null
+  const raw = toolCall.value.rawInput;
+  if (!raw) return null;
   try {
-    return JSON.stringify(raw, null, 2)
+    return JSON.stringify(raw, null, 2);
   } catch {
-    return String(raw)
+    return String(raw);
   }
-})
+});
 
 const allowOptions = computed(
-  () => currentPermission.value?.request.options.filter((o) => o.kind.startsWith('allow')) ?? []
-)
+  () => currentPermission.value?.request.options.filter((o) => o.kind.startsWith("allow")) ?? [],
+);
 
 const rejectOptions = computed(
-  () => currentPermission.value?.request.options.filter((o) => o.kind.startsWith('reject')) ?? []
-)
+  () => currentPermission.value?.request.options.filter((o) => o.kind.startsWith("reject")) ?? [],
+);
 
 function handleDismiss() {
-  rejectCurrentPermission()
+  rejectCurrentPermission();
 }
 </script>
 
@@ -80,8 +79,7 @@ function handleDismiss() {
         <pre
           v-if="toolInput"
           class="mt-2 max-h-32 overflow-auto rounded bg-input p-2 text-[10px] text-muted"
-          >{{ toolInput }}</pre
-        >
+          >{{ toolInput }}</pre>
 
         <div class="mt-4 flex flex-col gap-2">
           <AlertDialogAction

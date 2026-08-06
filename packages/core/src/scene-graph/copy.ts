@@ -18,36 +18,36 @@ import type {
   GradientStop,
   SceneNode,
   Stroke,
-  StyleRun
-} from './'
-import { cloneVectorNetwork } from './vector-network'
+  StyleRun,
+} from "./";
+import { cloneVectorNetwork } from "./vector-network";
 
 // --- Individual copy functions ---
 
 export function copyFill(f: Fill): Fill {
-  const copy: Fill = { ...f, color: { ...f.color } }
-  if (f.gradientStops) copy.gradientStops = f.gradientStops.map(copyGradientStop)
-  if (f.gradientTransform) copy.gradientTransform = { ...f.gradientTransform }
-  if (f.imageTransform) copy.imageTransform = { ...f.imageTransform }
-  if (f.patternSpacing) copy.patternSpacing = { ...f.patternSpacing }
-  if (f.noiseSize) copy.noiseSize = { ...f.noiseSize }
-  return copy
+  const copy: Fill = { ...f, color: { ...f.color } };
+  if (f.gradientStops) copy.gradientStops = f.gradientStops.map(copyGradientStop);
+  if (f.gradientTransform) copy.gradientTransform = { ...f.gradientTransform };
+  if (f.imageTransform) copy.imageTransform = { ...f.imageTransform };
+  if (f.patternSpacing) copy.patternSpacing = { ...f.patternSpacing };
+  if (f.noiseSize) copy.noiseSize = { ...f.noiseSize };
+  return copy;
 }
 
 export function copyStroke(s: Stroke): Stroke {
-  const copy: Stroke = { ...s, color: { ...s.color } }
+  const copy: Stroke = { ...s, color: { ...s.color } };
   if (s.dashPattern) {
-    copy.dashPattern = [...s.dashPattern]
+    copy.dashPattern = [...s.dashPattern];
   }
-  return copy
+  return copy;
 }
 
 export function copyEffect(e: Effect): Effect {
   return {
     ...e,
     color: { ...e.color },
-    offset: { ...e.offset }
-  }
+    offset: { ...e.offset },
+  };
 }
 
 export function copyStyleRun(r: StyleRun): StyleRun {
@@ -62,72 +62,74 @@ export function copyStyleRun(r: StyleRun): StyleRun {
       fontVariations: r.style.fontVariations
         ? r.style.fontVariations.map((v) => ({ ...v }))
         : undefined,
-      fontFeatures: r.style.fontFeatures ? r.style.fontFeatures.map((v) => ({ ...v })) : undefined
-    }
-  }
+      fontFeatures: r.style.fontFeatures ? r.style.fontFeatures.map((v) => ({ ...v })) : undefined,
+    },
+  };
 }
 
 // --- Array copy functions ---
 
 export function copyFills(fills: Fill[]): Fill[] {
-  return fills.map(copyFill)
+  return fills.map(copyFill);
 }
 
 export function copyStrokes(strokes: Stroke[]): Stroke[] {
-  return strokes.map(copyStroke)
+  return strokes.map(copyStroke);
 }
 
 export function copyEffects(effects: Effect[]): Effect[] {
-  return effects.map(copyEffect)
+  return effects.map(copyEffect);
 }
 
 export function copyStyleRuns(runs: StyleRun[]): StyleRun[] {
-  return runs.map(copyStyleRun)
+  return runs.map(copyStyleRun);
 }
 
 export function copyGeometryPaths(paths: GeometryPath[]): GeometryPath[] {
   return paths.map((p) => ({
     windingRule: p.windingRule,
-    commandsBlob: p.commandsBlob.slice()
-  }))
+    commandsBlob: p.commandsBlob.slice(),
+  }));
 }
 
 // --- Internal helpers ---
 
 /** Copy an optional array: non-empty → mapped, empty → [], undefined → undefined. */
 function copyOpt<T, U>(arr: T[] | undefined, fn: (arr: T[]) => U[]): U[] | undefined {
-  if (arr === undefined) return undefined
-  return arr.length > 0 ? fn(arr) : []
+  if (arr === undefined) return undefined;
+  return arr.length > 0 ? fn(arr) : [];
 }
 
 function copyGradientStop(gs: GradientStop): GradientStop {
-  return { color: { ...gs.color }, position: gs.position }
+  return { color: { ...gs.color }, position: gs.position };
 }
 
 function copySpread<T extends object>(arr: T[] | undefined): T[] {
-  return arr?.map((item) => ({ ...item })) ?? []
+  return arr?.map((item) => ({ ...item })) ?? [];
 }
 
 function copyPropertyDefs(
-  defs: ComponentPropertyDefinition[] | undefined
+  defs: ComponentPropertyDefinition[] | undefined,
 ): ComponentPropertyDefinition[] {
   return (
     defs?.map((d) => ({
       ...d,
-      variantOptions: d.variantOptions ? [...d.variantOptions] : undefined
+      variantOptions: d.variantOptions ? [...d.variantOptions] : undefined,
     })) ?? []
-  )
+  );
 }
 
 function copyGlyphs(glyphs: FigmaDerivedTextGlyph[] | null): FigmaDerivedTextGlyph[] | null {
-  return glyphs ? glyphs.map((g) => ({ ...g, commandsBlob: new Uint8Array(g.commandsBlob) })) : null
+  return glyphs
+    ? glyphs.map((g) => ({ ...g, commandsBlob: new Uint8Array(g.commandsBlob) }))
+    : null;
 }
 
 // --- Complex structure copy functions ---
 // These replace structuredClone for known types, avoiding its ~24× overhead.
 
 function copyArcData(a: ArcData): ArcData {
-  return { startingAngle: a.startingAngle, endingAngle: a.endingAngle, innerRadius: a.innerRadius }
+  return { startingAngle: a.startingAngle, endingAngle: a.endingAngle, innerRadius: a.innerRadius };
 }
 
 // --- Deep-copy clone props ---
@@ -140,7 +142,7 @@ function copyArcData(a: ArcData): ArcData {
  * add its copy behavior here or document why sharing is intentional.
  */
 export function cloneNodeProps(src: SceneNode, componentId: string | null): Partial<SceneNode> {
-  const { id: _, parentId: _p, childIds: _c, ...rest } = src
+  const { id: _, parentId: _p, childIds: _c, ...rest } = src;
   return {
     ...rest,
     ...(componentId !== null ? { componentId } : {}),
@@ -173,6 +175,6 @@ export function cloneNodeProps(src: SceneNode, componentId: string | null): Part
     vectorNetwork: src.vectorNetwork ? cloneVectorNetwork(src.vectorNetwork) : null,
     textPicture: src.textPicture ? new Uint8Array(src.textPicture) : null,
     figmaDerivedTextGlyphs: copyGlyphs(src.figmaDerivedTextGlyphs),
-    gridPosition: src.gridPosition ? { ...src.gridPosition } : null
-  }
+    gridPosition: src.gridPosition ? { ...src.gridPosition } : null,
+  };
 }

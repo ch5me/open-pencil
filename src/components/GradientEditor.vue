@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { colorToCSS } from '@open-pencil/core/color'
-import type { Fill } from '@open-pencil/core/scene-graph'
+import { colorToCSS } from "@open-pencil/core/color";
+import type { Fill } from "@open-pencil/core/scene-graph";
 import {
   GradientEditorRoot,
   GradientEditorBar,
   GradientEditorStop,
   inputValue,
-  useI18n
-} from '@open-pencil/vue'
+  useI18n,
+} from "@open-pencil/vue";
 
-import ColorPickerPanel from '@/components/ColorPickerPanel/ColorPickerPanel.vue'
+import ColorPickerPanel from "@/components/ColorPickerPanel/ColorPickerPanel.vue";
 
-import ScrubInput from './ScrubInput.vue'
-import AppSelect from './ui/AppSelect.vue'
-import Tip from './ui/Tip.vue'
+import ScrubInput from "./ScrubInput.vue";
+import AppSelect from "./ui/AppSelect.vue";
+import Tip from "./ui/Tip.vue";
 
-const { fill } = defineProps<{ fill: Fill }>()
-const emit = defineEmits<{ update: [fill: Fill] }>()
-const { panels } = useI18n()
+const { fill } = defineProps<{ fill: Fill }>();
+const emit = defineEmits<{ update: [fill: Fill] }>();
+const { panels } = useI18n();
 </script>
 
 <template>

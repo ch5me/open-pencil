@@ -1,84 +1,83 @@
-import { defineCommand } from 'citty'
+import type { AnalyzeClustersResult } from "@open-pencil/core/rpc";
+import { calcClusterConfidence } from "@open-pencil/core/tools";
+import { defineCommand } from "citty";
 
-import type { AnalyzeClustersResult } from '@open-pencil/core/rpc'
-import { calcClusterConfidence } from '@open-pencil/core/tools'
-
-import { appTargetOptions } from '#cli/app-target'
-import { bold, fmtList, fmtSummary } from '#cli/format'
-import { loadRpcData } from '#cli/rpc-data'
+import { appTargetOptions } from "#cli/app-target";
+import { bold, fmtList, fmtSummary } from "#cli/format";
+import { loadRpcData } from "#cli/rpc-data";
 
 function formatSignature(sig: string): string {
-  const [typeSize, children] = sig.split('|')
-  const type = typeSize.split(':')[0]
-  if (!type) return sig
-  const typeName = type.charAt(0) + type.slice(1).toLowerCase()
-  if (!children) return typeName
+  const [typeSize, children] = sig.split("|");
+  const type = typeSize.split(":")[0];
+  if (!type) return sig;
+  const typeName = type.charAt(0) + type.slice(1).toLowerCase();
+  if (!children) return typeName;
 
-  const childParts = children.split(',').map((c) => {
-    const [t, count] = c.split(':')
-    if (!t) return ''
-    const name = t.charAt(0) + t.slice(1).toLowerCase()
-    return Number(count) > 1 ? `${name}×${count}` : name
-  })
+  const childParts = children.split(",").map((c) => {
+    const [t, count] = c.split(":");
+    if (!t) return "";
+    const name = t.charAt(0) + t.slice(1).toLowerCase();
+    return Number(count) > 1 ? `${name}×${count}` : name;
+  });
 
-  return `${typeName} > [${childParts.join(', ')}]`
+  return `${typeName} > [${childParts.join(", ")}]`;
 }
 
 export default defineCommand({
-  meta: { description: 'Find repeated design patterns (potential components)' },
+  meta: { description: "Find repeated design patterns (potential components)" },
   args: {
     file: {
-      type: 'positional',
-      description: '.fig file path (omit to connect to running app)',
-      required: false
+      type: "positional",
+      description: ".fig file path (omit to connect to running app)",
+      required: false,
     },
-    limit: { type: 'string', description: 'Max clusters to show', default: '20' },
-    'min-size': { type: 'string', description: 'Min node size in px', default: '30' },
-    'min-count': { type: 'string', description: 'Min instances to form cluster', default: '2' },
+    limit: { type: "string", description: "Max clusters to show", default: "20" },
+    "min-size": { type: "string", description: "Min node size in px", default: "30" },
+    "min-count": { type: "string", description: "Min instances to form cluster", default: "2" },
     ...appTargetOptions,
-    json: { type: 'boolean', description: 'Output as JSON' }
+    json: { type: "boolean", description: "Output as JSON" },
   },
   async run({ args }) {
     const data = await loadRpcData<AnalyzeClustersResult>(
       args.file,
-      'analyze_clusters',
+      "analyze_clusters",
       {
         limit: Number(args.limit),
-        minSize: Number(args['min-size']),
-        minCount: Number(args['min-count'])
+        minSize: Number(args["min-size"]),
+        minCount: Number(args["min-count"]),
       },
-      args
-    )
+      args,
+    );
 
     if (args.json) {
-      console.log(JSON.stringify(data, null, 2))
-      return
+      console.log(JSON.stringify(data, null, 2));
+      return;
     }
 
     if (data.clusters.length === 0) {
-      console.log('No repeated patterns found.')
-      return
+      console.log("No repeated patterns found.");
+      return;
     }
 
-    console.log('')
-    console.log(bold('  Repeated patterns'))
-    console.log('')
+    console.log("");
+    console.log(bold("  Repeated patterns"));
+    console.log("");
 
     const items = data.clusters.map((c) => {
-      const first = c.nodes[0]
-      const confidence = calcClusterConfidence(c.nodes)
+      const first = c.nodes[0];
+      const confidence = calcClusterConfidence(c.nodes);
 
-      const widths = c.nodes.map((n) => n.width)
-      const heights = c.nodes.map((n) => n.height)
-      const wRange = Math.max(...widths) - Math.min(...widths)
-      const hRange = Math.max(...heights) - Math.min(...heights)
-      const avgW = Math.round(widths.reduce((a, b) => a + b, 0) / widths.length)
-      const avgH = Math.round(heights.reduce((a, b) => a + b, 0) / heights.length)
+      const widths = c.nodes.map((n) => n.width);
+      const heights = c.nodes.map((n) => n.height);
+      const wRange = Math.max(...widths) - Math.min(...widths);
+      const hRange = Math.max(...heights) - Math.min(...heights);
+      const avgW = Math.round(widths.reduce((a, b) => a + b, 0) / widths.length);
+      const avgH = Math.round(heights.reduce((a, b) => a + b, 0) / heights.length);
 
       const sizeStr =
         wRange <= 4 && hRange <= 4
           ? `${avgW}×${avgH}`
-          : `${avgW}×${avgH} (±${Math.max(wRange, hRange)}px)`
+          : `${avgW}×${avgH} (±${Math.max(wRange, hRange)}px)`;
 
       return {
         header: `${c.nodes.length}× ${first.type.toLowerCase()} "${first.name}" (${confidence}% match)`,
@@ -88,22 +87,22 @@ export default defineCommand({
           examples: c.nodes
             .slice(0, 3)
             .map((n) => n.id)
-            .join(', ')
-        }
-      }
-    })
+            .join(", "),
+        },
+      };
+    });
 
-    console.log(fmtList(items, { numbered: true }))
+    console.log(fmtList(items, { numbered: true }));
 
-    const clusteredNodes = data.clusters.reduce((sum, c) => sum + c.nodes.length, 0)
-    console.log('')
+    const clusteredNodes = data.clusters.reduce((sum, c) => sum + c.nodes.length, 0);
+    console.log("");
     console.log(
       fmtSummary({
         clusters: data.clusters.length,
-        'total nodes': data.totalNodes,
-        clustered: clusteredNodes
-      })
-    )
-    console.log('')
-  }
-})
+        "total nodes": data.totalNodes,
+        clustered: clusteredNodes,
+      }),
+    );
+    console.log("");
+  },
+});

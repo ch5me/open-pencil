@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { useTemplateRefsList } from '@vueuse/core'
+import type { LayoutSizing } from "@open-pencil/core/scene-graph";
+import {
+  testId as testIdAttr,
+  vTestId,
+  useI18n,
+  useLayoutControlsContext,
+  useNumberVariableBinding,
+} from "@open-pencil/vue";
+import type { SizeLimitProp, TestId } from "@open-pencil/vue";
+import { useTemplateRefsList } from "@vueuse/core";
 import {
   SelectContent,
   SelectItem,
@@ -8,162 +17,152 @@ import {
   SelectPortal,
   SelectRoot,
   SelectTrigger,
-  SelectViewport
-} from 'reka-ui'
-import { computed, ref } from 'vue'
+  SelectViewport,
+} from "reka-ui";
+import { computed, ref } from "vue";
 
-import type { LayoutSizing } from '@open-pencil/core/scene-graph'
-import {
-  testId as testIdAttr,
-  vTestId,
-  useI18n,
-  useLayoutControlsContext,
-  useNumberVariableBinding
-} from '@open-pencil/vue'
-import type { SizeLimitProp, TestId } from '@open-pencil/vue'
+import BoundVariableButton from "@/components/properties/BoundVariableButton.vue";
+import VariablePickerPopover from "@/components/properties/VariablePickerPopover.vue";
+import VariableScrubInput from "@/components/properties/VariableScrubInput.vue";
+import ScrubInput from "@/components/ScrubInput.vue";
+import { useSelectUI } from "@/components/ui/select";
 
-import BoundVariableButton from '@/components/properties/BoundVariableButton.vue'
-import VariablePickerPopover from '@/components/properties/VariablePickerPopover.vue'
-import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
-import ScrubInput from '@/components/ScrubInput.vue'
-import { useSelectUI } from '@/components/ui/select'
-
-type SizeSelectValue = LayoutSizing | `add-${SizeLimitProp}` | `remove-${SizeLimitProp}`
+type SizeSelectValue = LayoutSizing | `add-${SizeLimitProp}` | `remove-${SizeLimitProp}`;
 
 type ActiveSizeLimit = {
-  prop: SizeLimitProp
-  testId: TestId
-  icon: () => string
-  value: () => number | null
-  setLabel: () => string
-  removeLabel: () => string
-}
+  prop: SizeLimitProp;
+  testId: TestId;
+  icon: () => string;
+  value: () => number | null;
+  setLabel: () => string;
+  removeLabel: () => string;
+};
 
-const ctx = useLayoutControlsContext()
-const widthVariableBinding = useNumberVariableBinding('width')
-const heightVariableBinding = useNumberVariableBinding('height')
-const widthFieldRef = ref<HTMLElement | null>(null)
-const heightFieldRef = ref<HTMLElement | null>(null)
-const limitFieldRefs = useTemplateRefsList<HTMLElement>()
+const ctx = useLayoutControlsContext();
+const widthVariableBinding = useNumberVariableBinding("width");
+const heightVariableBinding = useNumberVariableBinding("height");
+const widthFieldRef = ref<HTMLElement | null>(null);
+const heightFieldRef = ref<HTMLElement | null>(null);
+const limitFieldRefs = useTemplateRefsList<HTMLElement>();
 
-const { panels, dialogs } = useI18n()
-const sizingSelect = useSelectUI({ item: 'rounded py-1.5 pr-2 pl-6 text-xs' })
+const { panels, dialogs } = useI18n();
+const sizingSelect = useSelectUI({ item: "rounded py-1.5 pr-2 pl-6 text-xs" });
 
 const widthLimitItems = [
   {
-    prop: 'minWidth' as const,
+    prop: "minWidth" as const,
     addLabel: () => panels.value.addMinWidth,
-    removeLabel: () => panels.value.removeMinWidth
+    removeLabel: () => panels.value.removeMinWidth,
   },
   {
-    prop: 'maxWidth' as const,
+    prop: "maxWidth" as const,
     addLabel: () => panels.value.addMaxWidth,
-    removeLabel: () => panels.value.removeMaxWidth
-  }
-]
+    removeLabel: () => panels.value.removeMaxWidth,
+  },
+];
 
 const activeSizeLimits: ActiveSizeLimit[] = [
   {
-    prop: 'minWidth',
-    testId: 'layout-min-width-input',
+    prop: "minWidth",
+    testId: "layout-min-width-input",
     icon: () => panels.value.minWidthShort,
     value: () => ctx.node.minWidth,
     setLabel: () => panels.value.setToCurrentWidth,
-    removeLabel: () => panels.value.removeMinWidth
+    removeLabel: () => panels.value.removeMinWidth,
   },
   {
-    prop: 'maxWidth',
-    testId: 'layout-max-width-input',
+    prop: "maxWidth",
+    testId: "layout-max-width-input",
     icon: () => panels.value.maxWidthShort,
     value: () => ctx.node.maxWidth,
     setLabel: () => panels.value.setToCurrentWidth,
-    removeLabel: () => panels.value.removeMaxWidth
+    removeLabel: () => panels.value.removeMaxWidth,
   },
   {
-    prop: 'minHeight',
-    testId: 'layout-min-height-input',
+    prop: "minHeight",
+    testId: "layout-min-height-input",
     icon: () => panels.value.minHeightShort,
     value: () => ctx.node.minHeight,
     setLabel: () => panels.value.setToCurrentHeight,
-    removeLabel: () => panels.value.removeMinHeight
+    removeLabel: () => panels.value.removeMinHeight,
   },
   {
-    prop: 'maxHeight',
-    testId: 'layout-max-height-input',
+    prop: "maxHeight",
+    testId: "layout-max-height-input",
     icon: () => panels.value.maxHeightShort,
     value: () => ctx.node.maxHeight,
     setLabel: () => panels.value.setToCurrentHeight,
-    removeLabel: () => panels.value.removeMaxHeight
-  }
-]
+    removeLabel: () => panels.value.removeMaxHeight,
+  },
+];
 
-const visibleSizeLimits = computed(() => activeSizeLimits.filter((item) => item.value() != null))
+const visibleSizeLimits = computed(() => activeSizeLimits.filter((item) => item.value() != null));
 
 const heightLimitItems = [
   {
-    prop: 'minHeight' as const,
+    prop: "minHeight" as const,
     addLabel: () => panels.value.addMinHeight,
-    removeLabel: () => panels.value.removeMinHeight
+    removeLabel: () => panels.value.removeMinHeight,
   },
   {
-    prop: 'maxHeight' as const,
+    prop: "maxHeight" as const,
     addLabel: () => panels.value.addMaxHeight,
-    removeLabel: () => panels.value.removeMaxHeight
-  }
-]
+    removeLabel: () => panels.value.removeMaxHeight,
+  },
+];
 
 function anchorRef(element: HTMLElement | null): HTMLElement | undefined {
-  return element ?? undefined
+  return element ?? undefined;
 }
 
 function limitFieldAnchor(index: number): HTMLElement | undefined {
-  return anchorRef(limitFieldRefs.value[index] ?? null)
+  return anchorRef(limitFieldRefs.value[index] ?? null);
 }
 
 function handleLimitSelect(prop: SizeLimitProp, value: string) {
-  if (value === 'CURRENT') ctx.setSizeLimitToCurrent(prop)
-  else if (value === 'REMOVE') ctx.removeSizeLimit(prop)
+  if (value === "CURRENT") ctx.setSizeLimitToCurrent(prop);
+  else if (value === "REMOVE") ctx.removeSizeLimit(prop);
 }
 
-function resolvedBoundNumber(axis: 'width' | 'height'): number | undefined {
-  const binding = axis === 'width' ? widthVariableBinding : heightVariableBinding
-  const variable = binding.getBoundVariable(ctx.node.id)
-  return variable ? binding.store.resolveNumberVariable(variable.id) : undefined
+function resolvedBoundNumber(axis: "width" | "height"): number | undefined {
+  const binding = axis === "width" ? widthVariableBinding : heightVariableBinding;
+  const variable = binding.getBoundVariable(ctx.node.id);
+  return variable ? binding.store.resolveNumberVariable(variable.id) : undefined;
 }
 
-function updateSizeProp(axis: 'width' | 'height', value: number) {
-  const binding = axis === 'width' ? widthVariableBinding : heightVariableBinding
-  if (binding.getBoundVariable(ctx.node.id)) binding.unbindVariable(ctx.node.id)
-  ctx.updateProp(axis, value)
+function updateSizeProp(axis: "width" | "height", value: number) {
+  const binding = axis === "width" ? widthVariableBinding : heightVariableBinding;
+  if (binding.getBoundVariable(ctx.node.id)) binding.unbindVariable(ctx.node.id);
+  ctx.updateProp(axis, value);
 }
 
-function commitSizeProp(axis: 'width' | 'height', value: number, previous: number) {
-  ctx.commitProp(axis, value, previous)
+function commitSizeProp(axis: "width" | "height", value: number, previous: number) {
+  ctx.commitProp(axis, value, previous);
 }
 
-function bindSizeVariable(axis: 'width' | 'height', variableId: string) {
-  const binding = axis === 'width' ? widthVariableBinding : heightVariableBinding
-  binding.bindVariable(ctx.node.id, variableId)
-  const value = binding.store.resolveNumberVariable(variableId)
-  if (value != null) ctx.updateProp(axis, value)
+function bindSizeVariable(axis: "width" | "height", variableId: string) {
+  const binding = axis === "width" ? widthVariableBinding : heightVariableBinding;
+  binding.bindVariable(ctx.node.id, variableId);
+  const value = binding.store.resolveNumberVariable(variableId);
+  if (value != null) ctx.updateProp(axis, value);
 }
 
-function createAndBindSizeVariable(axis: 'width' | 'height', name: string) {
-  const binding = axis === 'width' ? widthVariableBinding : heightVariableBinding
-  const value = ctx.node[axis]
-  binding.createAndBindVariable(ctx.node.id, value, name)
+function createAndBindSizeVariable(axis: "width" | "height", name: string) {
+  const binding = axis === "width" ? widthVariableBinding : heightVariableBinding;
+  const value = ctx.node[axis];
+  binding.createAndBindVariable(ctx.node.id, value, name);
 }
 
-function handleSizeSelect(axis: 'width' | 'height', value: SizeSelectValue) {
-  if (value === 'FIXED' || value === 'HUG' || value === 'FILL') {
-    if (axis === 'width') ctx.setWidthSizing(value)
-    else ctx.setHeightSizing(value)
-    return
+function handleSizeSelect(axis: "width" | "height", value: SizeSelectValue) {
+  if (value === "FIXED" || value === "HUG" || value === "FILL") {
+    if (axis === "width") ctx.setWidthSizing(value);
+    else ctx.setHeightSizing(value);
+    return;
   }
 
-  const [action, prop] = value.split('-') as ['add' | 'remove', SizeLimitProp]
-  if (action === 'add') ctx.addSizeLimit(prop)
-  else ctx.removeSizeLimit(prop)
+  const [action, prop] = value.split("-") as ["add" | "remove", SizeLimitProp];
+  if (action === "add") ctx.addSizeLimit(prop);
+  else ctx.removeSizeLimit(prop);
 }
 </script>
 

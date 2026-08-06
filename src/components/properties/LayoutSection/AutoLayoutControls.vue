@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import type { LayoutMode } from '@open-pencil/core/scene-graph'
-import { vTestId, useI18n, useLayoutControlsContext } from '@open-pencil/vue'
+import type { LayoutMode } from "@open-pencil/core/scene-graph";
+import { vTestId, useI18n, useLayoutControlsContext } from "@open-pencil/vue";
 
-import Tip from '@/components/ui/Tip.vue'
+import Tip from "@/components/ui/Tip.vue";
 
-const ctx = useLayoutControlsContext()
+const ctx = useLayoutControlsContext();
 
-const { panels } = useI18n()
+const { panels } = useI18n();
 
 const layoutModes: { mode: LayoutMode; test: string }[] = [
-  { mode: 'HORIZONTAL', test: 'horizontal' },
-  { mode: 'VERTICAL', test: 'vertical' },
-  { mode: 'GRID', test: 'grid' }
-]
+  { mode: "HORIZONTAL", test: "horizontal" },
+  { mode: "VERTICAL", test: "vertical" },
+  { mode: "GRID", test: "grid" },
+];
 </script>
 
 <template>

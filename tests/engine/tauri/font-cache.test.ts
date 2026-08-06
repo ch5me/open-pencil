@@ -1,20 +1,19 @@
-import { afterEach, describe, expect, test } from 'bun:test'
+import { afterEach, describe, expect, test } from "bun:test";
 
-import { clearDownloadedFontCache, downloadedFontCacheSummary } from '@/app/editor/fonts/cache'
+import { clearTauriMocks, mockTauriIPC } from "#tests/helpers/tauri/mocks";
+import { clearDownloadedFontCache, downloadedFontCacheSummary } from "@/app/editor/fonts/cache";
 
-import { clearTauriMocks, mockTauriIPC } from '#tests/helpers/tauri/mocks'
-
-const encoder = new TextEncoder()
+const encoder = new TextEncoder();
 
 afterEach(async () => {
-  await clearTauriMocks()
-})
+  await clearTauriMocks();
+});
 
-describe('Tauri downloaded font cache helpers', () => {
-  test('summarizes manifest entries through mocked plugin-fs IPC', async () => {
+describe("Tauri downloaded font cache helpers", () => {
+  test("summarizes manifest entries through mocked plugin-fs IPC", async () => {
     await mockTauriIPC((cmd, args) => {
-      expect(cmd).toBe('plugin:fs|read_file')
-      expect(args).toMatchObject({ path: 'cache/v1/font-cache/v1/manifest' })
+      expect(cmd).toBe("plugin:fs|read_file");
+      expect(args).toMatchObject({ path: "cache/v1/font-cache/v1/manifest" });
       return [
         ...encoder.encode(
           JSON.stringify({
@@ -23,66 +22,66 @@ describe('Tauri downloaded font cache helpers', () => {
               version: 1,
               entries: {
                 one: {
-                  family: 'Noto Sans SC',
-                  style: 'Regular',
-                  file: 'one.ttf',
+                  family: "Noto Sans SC",
+                  style: "Regular",
+                  file: "one.ttf",
                   byteLength: 10,
-                  sha256: 'a',
-                  updatedAt: 100
+                  sha256: "a",
+                  updatedAt: 100,
                 },
                 two: {
-                  family: 'Noto Naskh Arabic',
-                  style: 'Regular',
-                  file: 'two.ttf',
+                  family: "Noto Naskh Arabic",
+                  style: "Regular",
+                  file: "two.ttf",
                   byteLength: 25,
-                  sha256: 'b',
-                  updatedAt: 250
-                }
-              }
-            }
-          })
-        )
-      ]
-    })
+                  sha256: "b",
+                  updatedAt: 250,
+                },
+              },
+            },
+          }),
+        ),
+      ];
+    });
 
     await expect(downloadedFontCacheSummary()).resolves.toEqual({
       count: 2,
       byteLength: 35,
-      updatedAt: 250
-    })
-  })
+      updatedAt: 250,
+    });
+  });
 
-  test('returns an empty summary when manifest is missing', async () => {
+  test("returns an empty summary when manifest is missing", async () => {
     await mockTauriIPC((cmd) => {
-      expect(cmd).toBe('plugin:fs|read_file')
-      throw new Error('missing')
-    })
+      expect(cmd).toBe("plugin:fs|read_file");
+      throw new Error("missing");
+    });
 
     await expect(downloadedFontCacheSummary()).resolves.toEqual({
       count: 0,
       byteLength: 0,
-      updatedAt: null
-    })
-  })
+      updatedAt: null,
+    });
+  });
 
-  test('clears the cache directory through mocked plugin-fs IPC', async () => {
-    const calls: Array<{ cmd: string; args: unknown }> = []
+  test("clears the cache directory through mocked plugin-fs IPC", async () => {
+    const calls: Array<{ cmd: string; args: unknown }> = [];
     await mockTauriIPC((cmd, args) => {
-      calls.push({ cmd, args })
-      return null
-    })
+      calls.push({ cmd, args });
+      return null;
+    });
 
-    await clearDownloadedFontCache()
+    await clearDownloadedFontCache();
 
-    const { BaseDirectory } = await import('@tauri-apps/plugin-fs')
+    const { BaseDirectory } = await import("@tauri-apps/plugin-fs");
     expect(calls).toEqual([
       {
-        cmd: 'plugin:fs|remove',
+        cmd: "plugin:fs|remove",
         args: {
-          path: 'cache/v1/font-cache/v1',
-          options: { baseDir: BaseDirectory.AppLocalData, recursive: true }
-        }
-      }
-    ])
-  })
-})
+          path: "cache/v1/font-cache/v1",
+          options: { baseDir: BaseDirectory.AppLocalData, recursive: true },
+        },
+      },
+    ]);
+  });
+});

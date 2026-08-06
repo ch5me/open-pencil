@@ -1,26 +1,25 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { useI18n, useSceneComputed } from "@open-pencil/vue";
+import { computed } from "vue";
 
-import { useI18n, useSceneComputed } from '@open-pencil/vue'
+import { useEditorStore } from "@/app/editor/active-store";
+import { useSectionUI } from "@/components/ui/section";
+import Tip from "@/components/ui/Tip.vue";
 
-import { useEditorStore } from '@/app/editor/active-store'
-import { useSectionUI } from '@/components/ui/section'
-import Tip from '@/components/ui/Tip.vue'
+const emit = defineEmits<{ openDialog: [] }>();
 
-const emit = defineEmits<{ openDialog: [] }>()
-
-const editor = useEditorStore()
+const editor = useEditorStore();
 const collectionCount = useSceneComputed(() => {
-  void editor.state.sceneVersion
-  return editor.getCollectionCount()
-})
+  void editor.state.sceneVersion;
+  return editor.getCollectionCount();
+});
 const variableCount = useSceneComputed(() => {
-  void editor.state.sceneVersion
-  return editor.getVariableCount()
-})
-const hasVariables = computed(() => variableCount.value > 0)
-const sectionCls = useSectionUI()
-const { panels } = useI18n()
+  void editor.state.sceneVersion;
+  return editor.getVariableCount();
+});
+const hasVariables = computed(() => variableCount.value > 0);
+const sectionCls = useSectionUI();
+const { panels } = useI18n();
 </script>
 
 <template>

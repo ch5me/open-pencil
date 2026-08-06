@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { templateRef } from '@vueuse/core'
-import { watchEffect } from 'vue'
+import { templateRef } from "@vueuse/core";
+import { watchEffect } from "vue";
 
-import { useScrubInput } from '#vue/primitives/ScrubInput/context'
+import { useScrubInput } from "#vue/primitives/ScrubInput/context";
 
-const ctx = useScrubInput()
-const inputEl = templateRef<HTMLInputElement>('inputEl')
+const ctx = useScrubInput();
+const inputEl = templateRef<HTMLInputElement>("inputEl");
 
 watchEffect(() => {
-  ctx.inputRef.value = inputEl.value
-})
+  ctx.inputRef.value = inputEl.value;
+});
 </script>
 
 <template>
@@ -26,5 +26,5 @@ watchEffect(() => {
 </template>
 
 <script lang="ts">
-export default { inheritAttrs: false }
+export default { inheritAttrs: false };
 </script>

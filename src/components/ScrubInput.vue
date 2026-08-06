@@ -1,35 +1,34 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue'
+import { ScrubInputRoot, ScrubInputField, ScrubInputDisplay, testId } from "@open-pencil/vue";
+import { computed, useAttrs } from "vue";
 
-import { ScrubInputRoot, ScrubInputField, ScrubInputDisplay, testId } from '@open-pencil/vue'
+import { useEditorStore } from "@/app/editor/active-store";
 
-import { useEditorStore } from '@/app/editor/active-store'
+const attrs = useAttrs();
 
-const attrs = useAttrs()
+const store = useEditorStore();
 
-const store = useEditorStore()
-
-const rootTestId = computed(() => (attrs['data-test-id'] as string | undefined) ?? 'scrub-input')
+const rootTestId = computed(() => (attrs["data-test-id"] as string | undefined) ?? "scrub-input");
 
 const { modelValue, min, max, step, icon, label, suffix, sensitivity, placeholder } = defineProps<{
-  modelValue: number | symbol
-  min?: number
-  max?: number
-  step?: number
-  icon?: string
-  label?: string
-  suffix?: string
-  sensitivity?: number
-  placeholder?: string
-}>()
+  modelValue: number | symbol;
+  min?: number;
+  max?: number;
+  step?: number;
+  icon?: string;
+  label?: string;
+  suffix?: string;
+  sensitivity?: number;
+  placeholder?: string;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number]
-  'editing-change': [editing: boolean]
-  commit: [value: number, previous: number]
-}>()
+  "update:modelValue": [value: number];
+  "editing-change": [editing: boolean];
+  commit: [value: number, previous: number];
+}>();
 
-defineOptions({ inheritAttrs: false })
+defineOptions({ inheritAttrs: false });
 </script>
 
 <template>
@@ -45,8 +44,8 @@ defineOptions({ inheritAttrs: false })
     @commit="(val: number, prev: number) => emit('commit', val, prev)"
     @editing-change="
       (editing: boolean) => {
-        store.state.scrubInputFocused = editing
-        emit('editing-change', editing)
+        store.state.scrubInputFocused = editing;
+        emit('editing-change', editing);
       }
     "
   >
@@ -55,7 +54,7 @@ defineOptions({ inheritAttrs: false })
       :tabindex="editing ? undefined : 0"
       :class="[
         attrs.class,
-        'group flex h-[26px] min-w-0 flex-1 items-center rounded border border-border bg-input focus-within:border-accent focus:border-accent'
+        'group flex h-[26px] min-w-0 flex-1 items-center rounded border border-border bg-input focus-within:border-accent focus:border-accent',
       ]"
       :style="{ cursor: editing ? 'auto' : 'ew-resize' }"
       @pointerdown="

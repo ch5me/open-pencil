@@ -1,7 +1,7 @@
-import type { OverrideContext } from '#core/kiwi/fig/instance-overrides/types'
+import type { OverrideContext } from "#core/kiwi/fig/instance-overrides/types";
 
-import { applyInstanceDirectAssignments, applyOverrideAssignments } from './assignments'
-import { collectAssignmentsMap, collectPropRefsMap } from './maps'
+import { applyInstanceDirectAssignments, applyOverrideAssignments } from "./assignments";
+import { collectAssignmentsMap, collectPropRefsMap } from "./maps";
 
 /**
  * Apply all component property assignments (visibility toggles, instance swaps).
@@ -10,12 +10,12 @@ import { collectAssignmentsMap, collectPropRefsMap } from './maps'
  * transitive sync to propagate the changes to deeper clones.
  */
 export function applyComponentProperties(ctx: OverrideContext): Set<string> {
-  const modified = new Set<string>()
-  const propRefsMap = collectPropRefsMap(ctx)
-  if (propRefsMap.size === 0) return modified
+  const modified = new Set<string>();
+  const propRefsMap = collectPropRefsMap(ctx);
+  if (propRefsMap.size === 0) return modified;
 
-  applyInstanceDirectAssignments(ctx, collectAssignmentsMap(ctx), propRefsMap, modified)
-  applyOverrideAssignments(ctx, propRefsMap, modified)
+  applyInstanceDirectAssignments(ctx, collectAssignmentsMap(ctx), propRefsMap, modified);
+  applyOverrideAssignments(ctx, propRefsMap, modified);
 
-  return modified
+  return modified;
 }

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { colorToCSS } from '@open-pencil/core/color'
-import { fromPercent, toPercent } from '@open-pencil/vue'
+import { colorToCSS } from "@open-pencil/core/color";
+import { fromPercent, toPercent } from "@open-pencil/vue";
 
-import { useColorPickerPanelContext } from '@/components/ColorPickerPanel/context'
-import PickerSlider from '@/components/PickerSlider.vue'
+import { useColorPickerPanelContext } from "@/components/ColorPickerPanel/context";
+import PickerSlider from "@/components/PickerSlider.vue";
 
-const ctx = useColorPickerPanelContext()
+const ctx = useColorPickerPanelContext();
 </script>
 
 <template>
@@ -34,7 +34,7 @@ const ctx = useColorPickerPanelContext()
         min: 0,
         max: 40,
         step: 1,
-        parse: fromPercent
+        parse: fromPercent,
       }"
       :gradient-style="ctx.okhclSliderGradient?.okhclChroma ?? undefined"
       :thumb-fill="colorToCSS(ctx.okhclSliderPreview?.okhclChroma ?? ctx.color)"
@@ -53,7 +53,7 @@ const ctx = useColorPickerPanelContext()
         min: 0,
         max: 100,
         step: 1,
-        parse: fromPercent
+        parse: fromPercent,
       }"
       :gradient-style="ctx.okhclSliderGradient?.okhclLightness ?? undefined"
       :thumb-fill="colorToCSS(ctx.okhclSliderPreview?.okhclLightness ?? ctx.color)"
@@ -72,7 +72,7 @@ const ctx = useColorPickerPanelContext()
         min: 0,
         max: 100,
         step: 1,
-        parse: fromPercent
+        parse: fromPercent,
       }"
       checkerboard
       :gradient-style="`background: linear-gradient(to right, transparent, ${colorToCSS(ctx.color)})`"
@@ -91,7 +91,7 @@ const ctx = useColorPickerPanelContext()
       </span>
     </div>
     <p v-if="ctx.okhcl.clipped" class="text-[10px] leading-4 text-[var(--color-warning-text)]">
-      {{ ctx.panels.colorPreviewClipped({ space: ctx.okhcl.previewColorSpace ?? 'display-p3' }) }}
+      {{ ctx.panels.colorPreviewClipped({ space: ctx.okhcl.previewColorSpace ?? "display-p3" }) }}
     </p>
   </div>
 </template>

@@ -1,21 +1,21 @@
-import { TRANSPARENT } from '@open-pencil/core/constants'
-import type { Color, Effect } from '@open-pencil/core/scene-graph'
+import { TRANSPARENT } from "@open-pencil/core/constants";
+import type { Color, Effect } from "@open-pencil/core/scene-graph";
 
 export function dropShadow(
   ox = 0,
   oy = 4,
   radius = 8,
   spread = 0,
-  color: Color = { r: 0, g: 0, b: 0, a: 0.25 }
+  color: Color = { r: 0, g: 0, b: 0, a: 0.25 },
 ): Effect {
   return {
-    type: 'DROP_SHADOW',
+    type: "DROP_SHADOW",
     color,
     offset: { x: ox, y: oy },
     radius,
     spread,
-    visible: true
-  }
+    visible: true,
+  };
 }
 
 export function innerShadow(
@@ -23,25 +23,25 @@ export function innerShadow(
   oy = 2,
   radius = 4,
   spread = 0,
-  color: Color = { r: 0, g: 0, b: 0, a: 0.2 }
+  color: Color = { r: 0, g: 0, b: 0, a: 0.2 },
 ): Effect {
   return {
-    type: 'INNER_SHADOW',
+    type: "INNER_SHADOW",
     color,
     offset: { x: ox, y: oy },
     radius,
     spread,
-    visible: true
-  }
+    visible: true,
+  };
 }
 
-export function blurEffect(type: Effect['type'], radius: number): Effect {
+export function blurEffect(type: Effect["type"], radius: number): Effect {
   return {
     type,
     color: TRANSPARENT,
     offset: { x: 0, y: 0 },
     radius,
     spread: 0,
-    visible: true
-  }
+    visible: true,
+  };
 }

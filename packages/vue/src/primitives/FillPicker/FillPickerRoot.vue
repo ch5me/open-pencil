@@ -1,27 +1,26 @@
 <script setup lang="ts">
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { computed } from 'vue'
+import type { Fill } from "@open-pencil/core/scene-graph";
+import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
+import { computed } from "vue";
 
-import type { Fill } from '@open-pencil/core/scene-graph'
-
-import { useFillPicker } from '#vue/primitives/FillPicker/useFillPicker'
+import { useFillPicker } from "#vue/primitives/FillPicker/useFillPicker";
 
 export interface FillPickerUi {
-  content?: string
-  swatch?: string
+  content?: string;
+  swatch?: string;
 }
 
 const { fill, ui } = defineProps<{
-  fill: Fill
-  ui?: FillPickerUi
-}>()
+  fill: Fill;
+  ui?: FillPickerUi;
+}>();
 
-const emit = defineEmits<{ update: [fill: Fill] }>()
+const emit = defineEmits<{ update: [fill: Fill] }>();
 
 const { category, swatchBg, toSolid, toGradient, toImage } = useFillPicker(
   computed(() => fill),
-  (updated) => emit('update', updated)
-)
+  (updated) => emit("update", updated),
+);
 </script>
 
 <template>

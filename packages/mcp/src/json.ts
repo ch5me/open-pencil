@@ -1,1 +1,1 @@
-export type RpcJsonObject = { [key: string]: unknown }
+export type RpcJsonObject = { [key: string]: unknown };

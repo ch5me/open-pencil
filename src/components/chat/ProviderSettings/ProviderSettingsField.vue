@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type { TestIdProps } from '@open-pencil/vue'
+import type { TestIdProps } from "@open-pencil/vue";
 
-import AppTextButton from '@/components/ui/AppTextButton.vue'
+import AppTextButton from "@/components/ui/AppTextButton.vue";
 
 interface ProviderSettingsFieldProps extends TestIdProps {
-  label: string
-  clearLabel?: string
+  label: string;
+  clearLabel?: string;
 }
 
-const { label, clearLabel, testId } = defineProps<ProviderSettingsFieldProps>()
+const { label, clearLabel, testId } = defineProps<ProviderSettingsFieldProps>();
 
-const emit = defineEmits<{ clear: [] }>()
+const emit = defineEmits<{ clear: [] }>();
 </script>
 
 <template>

@@ -1,22 +1,22 @@
-import type { NodeChange } from '@open-pencil/kiwi/fig/codec'
+import type { NodeChange } from "@open-pencil/kiwi/fig/codec";
 
-import type { SceneNode } from '#core/scene-graph'
+import type { SceneNode } from "#core/scene-graph";
 
 interface DerivedTextDataOptions {
-  node: SceneNode
-  glyphs: NonNullable<NodeChange['derivedTextData']>['glyphs']
-  fontMetaData: NonNullable<NodeChange['derivedTextData']>['fontMetaData']
-  baseline: number
-  width: number
-  lineHeight: number
-  lineAscent: number
-  baselines?: NonNullable<NodeChange['derivedTextData']>['baselines']
-  logicalIndexToCharacterOffsetMap: number[]
+  node: SceneNode;
+  glyphs: NonNullable<NodeChange["derivedTextData"]>["glyphs"];
+  fontMetaData: NonNullable<NodeChange["derivedTextData"]>["fontMetaData"];
+  baseline: number;
+  width: number;
+  lineHeight: number;
+  lineAscent: number;
+  baselines?: NonNullable<NodeChange["derivedTextData"]>["baselines"];
+  logicalIndexToCharacterOffsetMap: number[];
 }
 
 export function buildDerivedTextData(
-  options: DerivedTextDataOptions
-): NodeChange['derivedTextData'] {
+  options: DerivedTextDataOptions,
+): NodeChange["derivedTextData"] {
   return {
     layoutSize: { x: options.node.width, y: options.node.height },
     baselines: options.baselines ?? [
@@ -26,14 +26,14 @@ export function buildDerivedTextData(
         position: { x: 0, y: options.baseline },
         width: options.width,
         lineHeight: options.lineHeight,
-        lineAscent: options.lineAscent
-      }
+        lineAscent: options.lineAscent,
+      },
     ],
     glyphs: options.glyphs,
     fontMetaData: options.fontMetaData,
     logicalIndexToCharacterOffsetMap: options.logicalIndexToCharacterOffsetMap,
-    derivedLines: [{ directionality: 'LTR' }],
+    derivedLines: [{ directionality: "LTR" }],
     truncationStartIndex: -1,
-    truncatedHeight: -1
-  }
+    truncatedHeight: -1,
+  };
 }

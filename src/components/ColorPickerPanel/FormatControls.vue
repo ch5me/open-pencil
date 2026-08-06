@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useColorPickerPanelContext } from '@/components/ColorPickerPanel/context'
-import HsbFields from '@/components/ColorPickerPanel/HsbFields.vue'
-import HslFields from '@/components/ColorPickerPanel/HslFields.vue'
-import OkhclFields from '@/components/ColorPickerPanel/OkhclFields.vue'
-import RgbFields from '@/components/ColorPickerPanel/RgbFields.vue'
-import AppSelect from '@/components/ui/AppSelect.vue'
+import { useColorPickerPanelContext } from "@/components/ColorPickerPanel/context";
+import HsbFields from "@/components/ColorPickerPanel/HsbFields.vue";
+import HslFields from "@/components/ColorPickerPanel/HslFields.vue";
+import OkhclFields from "@/components/ColorPickerPanel/OkhclFields.vue";
+import RgbFields from "@/components/ColorPickerPanel/RgbFields.vue";
+import AppSelect from "@/components/ui/AppSelect.vue";
 
-const ctx = useColorPickerPanelContext()
+const ctx = useColorPickerPanelContext();
 </script>
 
 <template>

@@ -1,42 +1,42 @@
 <script setup lang="ts">
-import { isTextUIPart, isToolUIPart, getToolName } from 'ai'
-import type { UIDataTypes, UIMessage, UIMessagePart, UITools } from 'ai'
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui'
-import { Markdown } from 'vue-stream-markdown'
+import { vTestId } from "@open-pencil/vue";
+import { isTextUIPart, isToolUIPart, getToolName } from "ai";
+import type { UIDataTypes, UIMessage, UIMessagePart, UITools } from "ai";
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from "reka-ui";
 
-import 'vue-stream-markdown/index.css'
+import "vue-stream-markdown/index.css";
 
-import { vTestId } from '@open-pencil/vue'
+import { Markdown } from "vue-stream-markdown";
 
-const { message } = defineProps<{ message: UIMessage }>()
+const { message } = defineProps<{ message: UIMessage }>();
 
-type ToolPart = Extract<UIMessagePart<UIDataTypes, UITools>, { toolCallId: string }>
+type ToolPart = Extract<UIMessagePart<UIDataTypes, UITools>, { toolCallId: string }>;
 
 function toolDisplayName(part: ToolPart): string {
   return getToolName(part)
-    .replace(/^mcp__[^_]+__/, '')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .replace(/^mcp__[^_]+__/, "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function hasErrorOutput(part: ToolPart): boolean {
   return (
-    part.state === 'output-available' &&
-    typeof part.output === 'object' &&
+    part.state === "output-available" &&
+    typeof part.output === "object" &&
     part.output !== null &&
-    'error' in part.output
-  )
+    "error" in part.output
+  );
 }
 
-function toolState(part: ToolPart): 'pending' | 'done' | 'error' {
-  if (part.state === 'output-error' || hasErrorOutput(part)) return 'error'
-  if (part.state === 'output-available') return 'done'
-  return 'pending'
+function toolState(part: ToolPart): "pending" | "done" | "error" {
+  if (part.state === "output-error" || hasErrorOutput(part)) return "error";
+  if (part.state === "output-available") return "done";
+  return "pending";
 }
 
 function partKey(part: UIMessagePart<UIDataTypes, UITools>, index: number): string {
-  if ('toolCallId' in part) return part.toolCallId
-  return `part-${index}`
+  if ("toolCallId" in part) return part.toolCallId;
+  return `part-${index}`;
 }
 </script>
 
@@ -59,7 +59,7 @@ function partKey(part: UIMessagePart<UIDataTypes, UITools>, index: number): stri
                   :class="{
                     'bg-accent/20 text-accent': toolState(part) === 'pending',
                     'bg-green-500/20 text-green-400': toolState(part) === 'done',
-                    'bg-red-500/20 text-red-400': toolState(part) === 'error'
+                    'bg-red-500/20 text-red-400': toolState(part) === 'error',
                   }"
                 >
                   <icon-lucide-loader-circle
@@ -74,11 +74,11 @@ function partKey(part: UIMessagePart<UIDataTypes, UITools>, index: number): stri
                 </span>
                 <span class="text-[10px] text-muted">
                   {{
-                    toolState(part) === 'pending'
-                      ? 'Running…'
-                      : toolState(part) === 'done'
-                        ? 'Done'
-                        : 'Error'
+                    toolState(part) === "pending"
+                      ? "Running…"
+                      : toolState(part) === "done"
+                        ? "Done"
+                        : "Error"
                   }}
                 </span>
                 <icon-lucide-chevron-down
@@ -91,7 +91,7 @@ function partKey(part: UIMessagePart<UIDataTypes, UITools>, index: number): stri
                 class="data-[state=closed]:collapsible-up data-[state=open]:collapsible-down overflow-hidden text-[10px]"
               >
                 <pre class="mt-1 overflow-x-auto rounded bg-input p-2 text-muted">{{
-                  part.state === 'output-error' && part.errorText
+                  part.state === "output-error" && part.errorText
                     ? part.errorText
                     : hasErrorOutput(part)
                       ? (part.output as { error: string }).error
@@ -122,7 +122,7 @@ function partKey(part: UIMessagePart<UIDataTypes, UITools>, index: number): stri
           message.parts
             .filter(isTextUIPart)
             .map((p) => p.text)
-            .join('')
+            .join("")
         }}
       </div>
     </div>

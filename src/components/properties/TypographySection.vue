@@ -1,20 +1,19 @@
 <script setup lang="ts">
-import { ToggleGroupItem, ToggleGroupRoot } from 'reka-ui'
+import { TypographyControlsRoot, useI18n } from "@open-pencil/vue";
+import { ToggleGroupItem, ToggleGroupRoot } from "reka-ui";
 
-import { TypographyControlsRoot, useI18n } from '@open-pencil/vue'
+import { loadFont } from "@/app/editor/fonts";
+import { appMenuShortcutLabel } from "@/app/shell/menu/shortcut";
+import FontPicker from "@/components/FontPicker.vue";
+import FontSettingsPopover from "@/components/FontSettings/FontSettingsPopover.vue";
+import VariableScrubInput from "@/components/properties/VariableScrubInput.vue";
+import AppSelect from "@/components/ui/AppSelect.vue";
+import { useSectionUI } from "@/components/ui/section";
+import Tip from "@/components/ui/Tip.vue";
 
-import { loadFont } from '@/app/editor/fonts'
-import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
-import FontPicker from '@/components/FontPicker.vue'
-import FontSettingsPopover from '@/components/FontSettings/FontSettingsPopover.vue'
-import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
-import AppSelect from '@/components/ui/AppSelect.vue'
-import { useSectionUI } from '@/components/ui/section'
-import Tip from '@/components/ui/Tip.vue'
-
-const { panels, menu } = useI18n()
-const sectionCls = useSectionUI()
-const fontLoader = { load: loadFont }
+const { panels, menu } = useI18n();
+const sectionCls = useSectionUI();
+const fontLoader = { load: loadFont };
 </script>
 
 <template>
@@ -101,7 +100,7 @@ const fontLoader = { load: loadFont }
           :options="[
             { value: 'AUTO', label: panels.auto },
             { value: 'LTR', label: 'LTR' },
-            { value: 'RTL', label: 'RTL' }
+            { value: 'RTL', label: 'RTL' },
           ]"
           @update:model-value="ctx.actions.setDirection($event as 'AUTO' | 'LTR' | 'RTL')"
         />

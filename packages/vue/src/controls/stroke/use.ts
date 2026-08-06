@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref } from "vue";
 
 import {
   BORDER_SIDES,
@@ -7,10 +7,10 @@ import {
   createStrokeSideActions,
   currentAlign,
   currentSides,
-  updateAlign
-} from '#vue/controls/stroke/helpers'
-import { useEditor } from '#vue/editor/context'
-import { useI18n } from '#vue/i18n'
+  updateAlign,
+} from "#vue/controls/stroke/helpers";
+import { useEditor } from "#vue/editor/context";
+import { useI18n } from "#vue/i18n";
 
 /**
  * Returns stroke-related helpers for property panels.
@@ -19,15 +19,15 @@ import { useI18n } from '#vue/i18n'
  * and helpers for per-side border weight editing.
  */
 export function useStrokeControls() {
-  const store = useEditor()
-  const { panels } = useI18n()
-  const sideMenuOpen = ref(false)
+  const store = useEditor();
+  const { panels } = useI18n();
+  const sideMenuOpen = ref(false);
   const alignOptions = [
-    { value: 'INSIDE' as const, label: panels.value.strokeAlignInside },
-    { value: 'CENTER' as const, label: panels.value.strokeAlignCenter },
-    { value: 'OUTSIDE' as const, label: panels.value.strokeAlignOutside }
-  ]
-  const { selectSide, updateBorderWeight } = createStrokeSideActions(store, sideMenuOpen)
+    { value: "INSIDE" as const, label: panels.value.strokeAlignInside },
+    { value: "CENTER" as const, label: panels.value.strokeAlignCenter },
+    { value: "OUTSIDE" as const, label: panels.value.strokeAlignOutside },
+  ];
+  const { selectSide, updateBorderWeight } = createStrokeSideActions(store, sideMenuOpen);
 
   return {
     alignOptions,
@@ -39,6 +39,6 @@ export function useStrokeControls() {
     currentAlign,
     currentSides,
     selectSide,
-    updateBorderWeight
-  }
+    updateBorderWeight,
+  };
 }

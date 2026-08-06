@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { vTestId, type TestIdProps } from '@open-pencil/vue'
+import { vTestId, type TestIdProps } from "@open-pencil/vue";
 
-import Tip from '@/components/ui/Tip.vue'
+import Tip from "@/components/ui/Tip.vue";
 
 interface BoundVariableButtonProps extends TestIdProps {
-  label: string
+  label: string;
 }
 
-const { label, testId } = defineProps<BoundVariableButtonProps>()
+const { label, testId } = defineProps<BoundVariableButtonProps>();
 
 const emit = defineEmits<{
-  detach: []
-}>()
+  detach: [];
+}>();
 </script>
 
 <template>

@@ -1,7 +1,7 @@
-import type { SceneGraph } from '@open-pencil/core'
+import type { SceneGraph } from "@open-pencil/core";
 
 export function pageId(graph: SceneGraph) {
-  return graph.getPages()[0].id
+  return graph.getPages()[0].id;
 }
 
 export function rect(
@@ -11,9 +11,9 @@ export function rect(
   x = 0,
   y = 0,
   w = 50,
-  h = 50
+  h = 50,
 ) {
-  return graph.createNode('RECTANGLE', parentId, { name, x, y, width: w, height: h })
+  return graph.createNode("RECTANGLE", parentId, { name, x, y, width: w, height: h });
 }
 
 export function frame(
@@ -24,16 +24,16 @@ export function frame(
   y = 0,
   w = 100,
   h = 100,
-  clipsContent = false
+  clipsContent = false,
 ) {
-  return graph.createNode('FRAME', parentId, {
+  return graph.createNode("FRAME", parentId, {
     name,
     x,
     y,
     width: w,
     height: h,
-    clipsContent
-  })
+    clipsContent,
+  });
 }
 
 export function text(
@@ -43,15 +43,15 @@ export function text(
   x = 0,
   y = 0,
   w = 100,
-  h = 20
+  h = 20,
 ) {
-  return graph.createNode('TEXT', parentId, {
+  return graph.createNode("TEXT", parentId, {
     name,
     x,
     y,
     width: w,
     height: h,
     text: name,
-    fontSize: 14
-  })
+    fontSize: 14,
+  });
 }

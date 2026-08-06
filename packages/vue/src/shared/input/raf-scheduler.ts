@@ -1,19 +1,19 @@
 export function createRafScheduler(flush: () => void) {
-  let rafId = 0
+  let rafId = 0;
 
   function schedule() {
-    if (rafId) return
+    if (rafId) return;
     rafId = requestAnimationFrame(() => {
-      rafId = 0
-      flush()
-    })
+      rafId = 0;
+      flush();
+    });
   }
 
   function cancel() {
-    if (!rafId) return
-    cancelAnimationFrame(rafId)
-    rafId = 0
+    if (!rafId) return;
+    cancelAnimationFrame(rafId);
+    rafId = 0;
   }
 
-  return { schedule, cancel }
+  return { schedule, cancel };
 }

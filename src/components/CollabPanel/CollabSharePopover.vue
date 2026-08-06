@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
+import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
 
-import ConnectedRoom from '@/components/CollabPanel/ConnectedRoom.vue'
-import { useCollabPanelContext } from '@/components/CollabPanel/context'
-import JoinRoomPrompt from '@/components/CollabPanel/JoinRoomPrompt.vue'
-import ShareOrJoinRoom from '@/components/CollabPanel/ShareOrJoinRoom.vue'
-import { usePopoverUI } from '@/components/ui/popover'
+import ConnectedRoom from "@/components/CollabPanel/ConnectedRoom.vue";
+import { useCollabPanelContext } from "@/components/CollabPanel/context";
+import JoinRoomPrompt from "@/components/CollabPanel/JoinRoomPrompt.vue";
+import ShareOrJoinRoom from "@/components/CollabPanel/ShareOrJoinRoom.vue";
+import { usePopoverUI } from "@/components/ui/popover";
 
-const collab = useCollabPanelContext()
-const cls = usePopoverUI({ content: 'z-50 w-72 p-3' })
+const collab = useCollabPanelContext();
+const cls = usePopoverUI({ content: "z-50 w-72 p-3" });
 </script>
 
 <template>

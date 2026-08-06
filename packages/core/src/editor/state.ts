@@ -1,9 +1,9 @@
-import { CANVAS_BG_COLOR } from '#core/constants'
-import type { EditorState } from '#core/editor/types'
+import { CANVAS_BG_COLOR } from "#core/constants";
+import type { EditorState } from "#core/editor/types";
 
 export function createDefaultEditorState(pageId: string): EditorState {
   return {
-    activeTool: 'SELECT',
+    activeTool: "SELECT",
     currentPageId: pageId,
     selectedIds: new Set<string>(),
     marquee: null,
@@ -18,7 +18,7 @@ export function createDefaultEditorState(pageId: string): EditorState {
     penCursorY: null,
     remoteCursors: [],
     autoLayoutHover: null,
-    documentName: 'Untitled',
+    documentName: "Untitled",
     panX: 0,
     pageColor: { ...CANVAS_BG_COLOR },
     panY: 0,
@@ -26,6 +26,6 @@ export function createDefaultEditorState(pageId: string): EditorState {
     renderVersion: 0,
     sceneVersion: 0,
     loading: false,
-    enteredContainerId: null
-  }
+    enteredContainerId: null,
+  };
 }

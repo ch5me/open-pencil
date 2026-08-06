@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import type { GridTrackSizing } from '@open-pencil/core/scene-graph'
-import { useI18n, useLayoutControlsContext } from '@open-pencil/vue'
+import type { GridTrackSizing } from "@open-pencil/core/scene-graph";
+import { useI18n, useLayoutControlsContext } from "@open-pencil/vue";
 
-import type { GridTrackProp } from '@/components/properties/LayoutSection/types'
-import ScrubInput from '@/components/ScrubInput.vue'
-import AppSelect from '@/components/ui/AppSelect.vue'
+import type { GridTrackProp } from "@/components/properties/LayoutSection/types";
+import ScrubInput from "@/components/ScrubInput.vue";
+import AppSelect from "@/components/ui/AppSelect.vue";
 
-const ctx = useLayoutControlsContext()
+const ctx = useLayoutControlsContext();
 
-const { panels } = useI18n()
-const trackProps: GridTrackProp[] = ['gridTemplateColumns', 'gridTemplateRows']
+const { panels } = useI18n();
+const trackProps: GridTrackProp[] = ["gridTemplateColumns", "gridTemplateRows"];
 
 function defaultTrackValue(sizing: GridTrackSizing): number {
-  if (sizing === 'FR') return 1
-  if (sizing === 'FIXED') return 100
-  return 0
+  if (sizing === "FR") return 1;
+  if (sizing === "FIXED") return 100;
+  return 0;
 }
 </script>
 
@@ -23,7 +23,7 @@ function defaultTrackValue(sizing: GridTrackSizing): number {
     <div class="mt-2">
       <div class="mb-1 flex items-center justify-between">
         <label class="text-[11px] text-muted">
-          {{ trackProp === 'gridTemplateColumns' ? panels.columns : panels.rows }}
+          {{ trackProp === "gridTemplateColumns" ? panels.columns : panels.rows }}
         </label>
         <button
           class="cursor-pointer rounded border-none bg-transparent px-1 text-xs leading-none text-muted hover:bg-hover hover:text-surface"
@@ -50,7 +50,7 @@ function defaultTrackValue(sizing: GridTrackSizing): number {
             @update:model-value="
               ctx.updateGridTrack(trackProp, i, {
                 sizing: $event as GridTrackSizing,
-                value: defaultTrackValue($event as GridTrackSizing)
+                value: defaultTrackValue($event as GridTrackSizing),
               })
             "
           />

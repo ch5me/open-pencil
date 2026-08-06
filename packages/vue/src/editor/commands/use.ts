@@ -1,21 +1,21 @@
-import { useStore } from '@nanostores/vue'
-import { computed } from 'vue'
+import { useStore } from "@nanostores/vue";
+import { computed } from "vue";
 
-import { createEditorCommandActions } from '#vue/editor/commands/actions'
-import { createEditorCommandMap } from '#vue/editor/commands/definitions'
-import { useEditor } from '#vue/editor/context'
-import { useSelectionCapabilities } from '#vue/editor/selection-capabilities/use'
-import { useSelectionState } from '#vue/editor/selection-state/use'
-import { commandMessages } from '#vue/i18n'
-import { usePageList } from '#vue/primitives/PageList/usePageList'
+import { createEditorCommandActions } from "#vue/editor/commands/actions";
+import { createEditorCommandMap } from "#vue/editor/commands/definitions";
+import { useEditor } from "#vue/editor/context";
+import { useSelectionCapabilities } from "#vue/editor/selection-capabilities/use";
+import { useSelectionState } from "#vue/editor/selection-state/use";
+import { commandMessages } from "#vue/i18n";
+import { usePageList } from "#vue/primitives/PageList/usePageList";
 
 export type {
   EditorCommand,
   EditorCommandId,
   EditorCommandMenuEntry,
   EditorCommandMenuItem,
-  EditorCommandMenuSeparator
-} from './types'
+  EditorCommandMenuSeparator,
+} from "./types";
 
 /**
  * Builds a command-oriented interface on top of the current editor.
@@ -25,20 +25,20 @@ export type {
  * method calls.
  */
 export function useEditorCommands() {
-  const editor = useEditor()
-  const selection = useSelectionState()
-  const capabilities = useSelectionCapabilities()
-  const { pages } = usePageList()
+  const editor = useEditor();
+  const selection = useSelectionState();
+  const capabilities = useSelectionCapabilities();
+  const { pages } = usePageList();
 
-  const t = useStore(commandMessages)
+  const t = useStore(commandMessages);
 
   const otherPages = computed(() =>
-    pages.value.filter((page) => page.id !== editor.state.currentPageId)
-  )
+    pages.value.filter((page) => page.id !== editor.state.currentPageId),
+  );
 
   function moveSelectionToPage(pageId: string) {
-    if (!capabilities.canMoveToPage.value) return
-    editor.moveToPage(pageId)
+    if (!capabilities.canMoveToPage.value) return;
+    editor.moveToPage(pageId);
   }
 
   const commands = createEditorCommandMap({
@@ -47,13 +47,13 @@ export function useEditorCommands() {
     capabilities,
     messages: t,
     otherPages,
-    moveSelectionToPage
-  })
+    moveSelectionToPage,
+  });
 
   return {
     commands,
     otherPages,
     moveSelectionToPage,
-    ...createEditorCommandActions(commands)
-  }
+    ...createEditorCommandActions(commands),
+  };
 }

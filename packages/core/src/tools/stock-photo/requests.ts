@@ -1,14 +1,14 @@
-import type { PhotoRequest } from './apply'
+import type { PhotoRequest } from "./apply";
 
 export function parsePhotoRequests(value: unknown): PhotoRequest[] | { error: string } {
-  let parsed: unknown
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(String(value))
+    parsed = JSON.parse(String(value));
   } catch {
-    return { error: 'Invalid JSON in requests' }
+    return { error: "Invalid JSON in requests" };
   }
 
-  const requests = Array.isArray(parsed) ? parsed : [parsed]
-  if (requests.length === 0) return { error: 'Empty requests array' }
-  return requests as PhotoRequest[]
+  const requests = Array.isArray(parsed) ? parsed : [parsed];
+  if (requests.length === 0) return { error: "Empty requests array" };
+  return requests as PhotoRequest[];
 }

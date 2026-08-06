@@ -1,38 +1,37 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { EDITOR_TOOLS } from "@open-pencil/core/editor";
+import type { EditorToolDef, Tool } from "@open-pencil/core/editor";
+import { ref, computed } from "vue";
 
-import { EDITOR_TOOLS } from '@open-pencil/core/editor'
-import type { EditorToolDef, Tool } from '@open-pencil/core/editor'
-
-import { useEditor } from '#vue/editor/context'
-import { provideToolbar } from '#vue/primitives/Toolbar/context'
+import { useEditor } from "#vue/editor/context";
+import { provideToolbar } from "#vue/primitives/Toolbar/context";
 
 const { tools = EDITOR_TOOLS } = defineProps<{
-  tools?: EditorToolDef[]
-}>()
+  tools?: EditorToolDef[];
+}>();
 
-const editor = useEditor()
-const activeTool = computed(() => editor.state.activeTool)
-const expandedFlyout = ref<Tool | null>(null)
+const editor = useEditor();
+const activeTool = computed(() => editor.state.activeTool);
+const expandedFlyout = ref<Tool | null>(null);
 
 function setTool(tool: Tool) {
-  editor.setTool(tool)
-  expandedFlyout.value = null
+  editor.setTool(tool);
+  expandedFlyout.value = null;
 }
 
 function toggleFlyout(tool: Tool) {
-  expandedFlyout.value = expandedFlyout.value === tool ? null : tool
+  expandedFlyout.value = expandedFlyout.value === tool ? null : tool;
 }
 
 function closeFlyout() {
-  expandedFlyout.value = null
+  expandedFlyout.value = null;
 }
 
 const actions = {
   setTool,
   toggleFlyout,
-  closeFlyout
-}
+  closeFlyout,
+};
 
 provideToolbar({
   editor,
@@ -41,8 +40,8 @@ provideToolbar({
   expandedFlyout,
   setTool,
   toggleFlyout,
-  closeFlyout
-})
+  closeFlyout,
+});
 </script>
 
 <template>

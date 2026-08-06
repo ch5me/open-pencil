@@ -1,57 +1,56 @@
 <script setup lang="ts">
-import { TooltipProvider } from 'reka-ui'
-import { computed, ref } from 'vue'
+import { ACP_AGENTS } from "@open-pencil/core/constants";
+import { useI18n } from "@open-pencil/vue";
+import { TooltipProvider } from "reka-ui";
+import { computed, ref } from "vue";
 
-import { ACP_AGENTS } from '@open-pencil/core/constants'
-import { useI18n } from '@open-pencil/vue'
+import { useAIChat } from "@/app/ai/chat/use";
+import ProviderModelSelect from "@/components/chat/ProviderModelSelect.vue";
+import ProviderSettings from "@/components/chat/ProviderSettings/ProviderSettings.vue";
+import AppInput from "@/components/ui/AppInput.vue";
+import { useButtonUI } from "@/components/ui/button";
+import Tip from "@/components/ui/Tip.vue";
 
-import { useAIChat } from '@/app/ai/chat/use'
-import ProviderModelSelect from '@/components/chat/ProviderModelSelect.vue'
-import ProviderSettings from '@/components/chat/ProviderSettings/ProviderSettings.vue'
-import AppInput from '@/components/ui/AppInput.vue'
-import { useButtonUI } from '@/components/ui/button'
-import Tip from '@/components/ui/Tip.vue'
-
-const { providerID, providerDef, modelID, customModelID } = useAIChat()
-const { dialogs } = useI18n()
+const { providerID, providerDef, modelID, customModelID } = useAIChat();
+const { dialogs } = useI18n();
 
 const { status } = defineProps<{
-  status: 'ready' | 'submitted' | 'streaming' | 'error'
-}>()
+  status: "ready" | "submitted" | "streaming" | "error";
+}>();
 
 const emit = defineEmits<{
-  submit: [text: string]
-  stop: []
-}>()
+  submit: [text: string];
+  stop: [];
+}>();
 
-const input = ref('')
+const input = ref("");
 
-const isStreaming = computed(() => status === 'streaming' || status === 'submitted')
-const isACPProvider = computed(() => providerID.value.startsWith('acp:'))
+const isStreaming = computed(() => status === "streaming" || status === "submitted");
+const isACPProvider = computed(() => providerID.value.startsWith("acp:"));
 const acpAgentName = computed(() => {
-  const agentId = providerID.value.replace('acp:', '')
-  return ACP_AGENTS.find((a) => a.id === agentId)?.name ?? agentId
-})
+  const agentId = providerID.value.replace("acp:", "");
+  return ACP_AGENTS.find((a) => a.id === agentId)?.name ?? agentId;
+});
 const isCustomProvider = computed(
-  () => providerID.value === 'openai-compatible' || providerID.value === 'anthropic-compatible'
-)
-const customModelName = computed(() => customModelID.value.trim())
+  () => providerID.value === "openai-compatible" || providerID.value === "anthropic-compatible",
+);
+const customModelName = computed(() => customModelID.value.trim());
 const usesCustomModel = computed(
-  () => !!providerDef.value.supportsCustomModel && !!customModelName.value
-)
+  () => !!providerDef.value.supportsCustomModel && !!customModelName.value,
+);
 
 const selectedModelName = computed(() => {
-  if (usesCustomModel.value) return customModelName.value
-  if (isCustomProvider.value) return 'No model'
-  return providerDef.value.models.find((m) => m.id === modelID.value)?.name ?? modelID.value
-})
+  if (usesCustomModel.value) return customModelName.value;
+  if (isCustomProvider.value) return "No model";
+  return providerDef.value.models.find((m) => m.id === modelID.value)?.name ?? modelID.value;
+});
 
 function handleSubmit(e: Event) {
-  e.preventDefault()
-  const text = input.value.trim()
-  if (!text) return
-  emit('submit', text)
-  input.value = ''
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  emit("submit", text);
+  input.value = "";
 }
 </script>
 
@@ -105,7 +104,7 @@ function handleSubmit(e: Event) {
                 tone: 'ghost',
                 shape: 'rounded',
                 size: 'sm',
-                ui: { base: 'shrink-0 border border-border px-2 py-1.5' }
+                ui: { base: 'shrink-0 border border-border px-2 py-1.5' },
               }).base
             "
             @click="emit('stop')"
@@ -122,7 +121,7 @@ function handleSubmit(e: Event) {
                 tone: 'accent',
                 shape: 'rounded',
                 size: 'sm',
-                ui: { base: 'shrink-0 px-2.5 py-1.5 font-medium' }
+                ui: { base: 'shrink-0 px-2.5 py-1.5 font-medium' },
               }).base
             "
             :disabled="!input.trim()"

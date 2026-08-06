@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ColorAreaArea, ColorAreaRoot, ColorAreaThumb } from 'reka-ui'
+import { ColorAreaArea, ColorAreaRoot, ColorAreaThumb } from "reka-ui";
 
-import { useColorPickerPanelContext } from '@/components/ColorPickerPanel/context'
+import { useColorPickerPanelContext } from "@/components/ColorPickerPanel/context";
 
-const ctx = useColorPickerPanelContext()
+const ctx = useColorPickerPanelContext();
 </script>
 
 <template>

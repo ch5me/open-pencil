@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="T extends string | number">
+import { vTestId, type TestIdProps } from "@open-pencil/vue";
 import {
   SelectContent,
   SelectGroup,
@@ -9,51 +10,49 @@ import {
   SelectRoot,
   SelectSeparator,
   SelectTrigger,
-  SelectViewport
-} from 'reka-ui'
+  SelectViewport,
+} from "reka-ui";
 
-import { vTestId, type TestIdProps } from '@open-pencil/vue'
-
-import { useSelectUI } from '@/components/ui/select'
+import { useSelectUI } from "@/components/ui/select";
 
 interface SelectOption<TValue extends string | number> {
-  value: TValue
-  label: string
+  value: TValue;
+  label: string;
 }
 
 interface SelectGroupDef<TValue extends string | number> {
-  label?: string
-  items: SelectOption<TValue>[]
+  label?: string;
+  items: SelectOption<TValue>[];
 }
 
 interface GroupedSelectUi {
-  trigger?: string
-  content?: string
-  item?: string
-  label?: string
-  separator?: string
+  trigger?: string;
+  content?: string;
+  item?: string;
+  label?: string;
+  separator?: string;
 }
 
 interface AppGroupedSelectProps<TValue extends string | number> extends TestIdProps {
-  groups: SelectGroupDef<TValue>[]
-  displayValue: string
-  ui?: GroupedSelectUi
+  groups: SelectGroupDef<TValue>[];
+  displayValue: string;
+  ui?: GroupedSelectUi;
 }
 
-const { groups, displayValue, ui, testId } = defineProps<AppGroupedSelectProps<T>>()
+const { groups, displayValue, ui, testId } = defineProps<AppGroupedSelectProps<T>>();
 
-const modelValue = defineModel<T>({ required: true })
+const modelValue = defineModel<T>({ required: true });
 
 const select = useSelectUI({
   trigger:
     ui?.trigger ??
-    'w-full justify-between rounded border border-border bg-input px-2 py-1 text-[11px] text-surface',
-  content: ui?.content ?? 'isolate z-[52]',
-  contentVariants: { radius: 'lg', padding: 'md' },
-  item: ui?.item ?? 'rounded px-2 py-1 text-[11px]'
-})
-const label = ui?.label ?? 'px-2 py-1 text-[10px] text-muted'
-const separator = ui?.separator ?? 'mx-1 my-1 h-px bg-border'
+    "w-full justify-between rounded border border-border bg-input px-2 py-1 text-[11px] text-surface",
+  content: ui?.content ?? "isolate z-[52]",
+  contentVariants: { radius: "lg", padding: "md" },
+  item: ui?.item ?? "rounded px-2 py-1 text-[11px]",
+});
+const label = ui?.label ?? "px-2 py-1 text-[10px] text-muted";
+const separator = ui?.separator ?? "mx-1 my-1 h-px bg-border";
 </script>
 
 <template>

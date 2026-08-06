@@ -1,31 +1,31 @@
-import type { Canvas } from 'canvaskit-wasm'
+import type { Canvas } from "canvaskit-wasm";
 
-import { drawPageGuides } from '#core/canvas/page-guides'
-import type { RenderOverlays, SkiaRenderer } from '#core/canvas/renderer'
-import type { EditorState } from '#core/editor/types'
-import { computeDescendantVisualBounds } from '#core/geometry'
-import type { SceneGraph } from '#core/scene-graph'
+import { drawPageGuides } from "#core/canvas/page-guides";
+import type { RenderOverlays, SkiaRenderer } from "#core/canvas/renderer";
+import type { EditorState } from "#core/editor/types";
+import { computeDescendantVisualBounds } from "#core/geometry";
+import type { SceneGraph } from "#core/scene-graph";
 
-import { renderSceneBacking, updateSceneBackingPreviewState } from './retained-backing'
+import { renderSceneBacking, updateSceneBackingPreviewState } from "./retained-backing";
 
 export function renderSceneToCanvas(
   r: SkiaRenderer,
   canvas: Canvas,
   graph: SceneGraph,
-  pageId: string
+  pageId: string,
 ): void {
-  const prevViewport = r.worldViewport
-  r.worldViewport = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 }
-  const pageNode = graph.getNode(pageId)
+  const prevViewport = r.worldViewport;
+  r.worldViewport = { x: -1e9, y: -1e9, w: 2e9, h: 2e9 };
+  const pageNode = graph.getNode(pageId);
   if (pageNode) {
     for (const childId of pageNode.childIds) {
-      r.renderNode(canvas, graph, childId, {})
+      r.renderNode(canvas, graph, childId, {});
     }
   }
-  r.worldViewport = prevViewport
+  r.worldViewport = prevViewport;
 }
 
-export type RenderLayer = 'full' | 'scene' | 'overlays'
+export type RenderLayer = "full" | "scene" | "overlays";
 
 export function renderFromEditorState(
   r: SkiaRenderer,
@@ -36,18 +36,18 @@ export function renderFromEditorState(
   viewportHeight: number,
   showRulers = true,
   dpr = 1,
-  layer: RenderLayer = 'full'
+  layer: RenderLayer = "full",
 ): void {
-  r.dpr = dpr
-  r.panX = state.panX
-  r.panY = state.panY
-  r.zoom = state.zoom
-  r.viewportWidth = viewportWidth
-  r.viewportHeight = viewportHeight
-  r.showRulers = showRulers
-  r.pageColor = state.pageColor
-  r.rulerTheme = state.rulerTheme ?? null
-  r.pageId = state.currentPageId
+  r.dpr = dpr;
+  r.panX = state.panX;
+  r.panY = state.panY;
+  r.zoom = state.zoom;
+  r.viewportWidth = viewportWidth;
+  r.viewportHeight = viewportHeight;
+  r.showRulers = showRulers;
+  r.pageColor = state.pageColor;
+  r.rulerTheme = state.rulerTheme ?? null;
+  r.pageId = state.currentPageId;
   render(
     r,
     graph,
@@ -56,7 +56,7 @@ export function renderFromEditorState(
       hoveredNodeId: state.hoveredNodeId,
       enteredContainerId: state.enteredContainerId,
       editingTextId: state.editingTextId,
-      textEditor: textEditor as RenderOverlays['textEditor'],
+      textEditor: textEditor as RenderOverlays["textEditor"],
       marquee: state.marquee,
       snapGuides: state.snapGuides,
       rotationPreview: state.rotationPreview,
@@ -66,16 +66,16 @@ export function renderFromEditorState(
         ? ({
             ...state.penState,
             cursorX: state.penCursorX ?? undefined,
-            cursorY: state.penCursorY ?? undefined
-          } as RenderOverlays['penState'])
+            cursorY: state.penCursorY ?? undefined,
+          } as RenderOverlays["penState"])
         : null,
       nodeEditState: state.nodeEditState ?? null,
       remoteCursors: state.remoteCursors,
-      autoLayoutHover: state.autoLayoutHover
+      autoLayoutHover: state.autoLayoutHover,
     },
     state.sceneVersion,
-    layer
-  )
+    layer,
+  );
 }
 
 function hasVolatileOverlay(overlays: RenderOverlays): boolean {
@@ -84,7 +84,7 @@ function hasVolatileOverlay(overlays: RenderOverlays): boolean {
     overlays.rotationPreview != null ||
     overlays.editingTextId != null ||
     overlays.nodeEditState != null
-  )
+  );
 }
 
 function scenePictureMissReason(
@@ -92,23 +92,23 @@ function scenePictureMissReason(
   graph: SceneGraph,
   overlays: RenderOverlays,
   sceneVersion: number,
-  hasPositionPreview: boolean
+  hasPositionPreview: boolean,
 ): string {
-  if (hasPositionPreview) return 'position-preview'
-  if (hasVolatileOverlay(overlays)) return 'volatile-overlay'
-  if (!r.scenePicture) return 'missing-picture'
+  if (hasPositionPreview) return "position-preview";
+  if (hasVolatileOverlay(overlays)) return "volatile-overlay";
+  if (!r.scenePicture) return "missing-picture";
   if (graph.positionPreviewVersion !== r.scenePicturePositionPreviewVersion)
-    return 'position-preview-version'
-  if (sceneVersion !== r.scenePictureVersion) return 'scene-version'
-  if (r.pageId !== r.scenePicturePageId) return 'page'
-  return 'unknown'
+    return "position-preview-version";
+  if (sceneVersion !== r.scenePictureVersion) return "scene-version";
+  if (r.pageId !== r.scenePicturePageId) return "page";
+  return "unknown";
 }
 
 function canUseScenePicture(
   r: SkiaRenderer,
   graph: SceneGraph,
   sceneVersion: number,
-  hasVolatileOverlays: boolean
+  hasVolatileOverlays: boolean,
 ): boolean {
   return (
     !hasVolatileOverlays &&
@@ -116,15 +116,15 @@ function canUseScenePicture(
     graph.positionPreviewVersion === r.scenePicturePositionPreviewVersion &&
     sceneVersion === r.scenePictureVersion &&
     r.pageId === r.scenePicturePageId
-  )
+  );
 }
 
-const now = typeof performance !== 'undefined' ? () => performance.now() : () => 0
+const now = typeof performance !== "undefined" ? () => performance.now() : () => 0;
 
 function measure<T>(fn: () => T): { value: T; duration: number } {
-  const start = now()
-  const value = fn()
-  return { value, duration: now() - start }
+  const start = now();
+  const value = fn();
+  return { value, duration: now() - start };
 }
 
 export function render(
@@ -133,59 +133,59 @@ export function render(
   selectedIds: Set<string>,
   overlays: RenderOverlays = {},
   sceneVersion = -1,
-  layer: RenderLayer = 'full'
+  layer: RenderLayer = "full",
 ): void {
-  const p = r.profiler
-  p.beginFrame()
-  p.setScenePictureDrawTime(0)
-  p.setScenePictureRecordTime(0)
-  p.setFlushTime(0)
+  const p = r.profiler;
+  p.beginFrame();
+  p.setScenePictureDrawTime(0);
+  p.setScenePictureRecordTime(0);
+  p.setFlushTime(0);
 
-  graph.clearAbsPosCache()
+  graph.clearAbsPosCache();
 
-  const canvas = r.surface.getCanvas()
-  if (layer === 'overlays') {
-    canvas.clear(r.ck.Color4f(0, 0, 0, 0))
+  const canvas = r.surface.getCanvas();
+  if (layer === "overlays") {
+    canvas.clear(r.ck.Color4f(0, 0, 0, 0));
   } else {
-    canvas.clear(r.ck.Color4f(r.pageColor.r, r.pageColor.g, r.pageColor.b, 1))
+    canvas.clear(r.ck.Color4f(r.pageColor.r, r.pageColor.g, r.pageColor.b, 1));
   }
 
   r.worldViewport = {
     x: -r.panX / r.zoom,
     y: -r.panY / r.zoom,
     w: r.viewportWidth / r.zoom,
-    h: r.viewportHeight / r.zoom
-  }
-  updateSceneBackingPreviewState(r, layer)
+    h: r.viewportHeight / r.zoom,
+  };
+  updateSceneBackingPreviewState(r, layer);
 
   const hasPositionPreview =
     graph.positionPreviewVersion !== r.scenePicturePositionPreviewVersion &&
-    sceneVersion === r.scenePictureVersion
-  const hasVolatileOverlays = hasPositionPreview || hasVolatileOverlay(overlays)
+    sceneVersion === r.scenePictureVersion;
+  const hasVolatileOverlays = hasPositionPreview || hasVolatileOverlay(overlays);
 
-  const canUsePicture = canUseScenePicture(r, graph, sceneVersion, hasVolatileOverlays)
+  const canUsePicture = canUseScenePicture(r, graph, sceneVersion, hasVolatileOverlays);
   const cacheMissReason = scenePictureMissReason(
     r,
     graph,
     overlays,
     sceneVersion,
-    hasPositionPreview
-  )
+    hasPositionPreview,
+  );
 
-  if (layer !== 'overlays') {
-    canvas.save()
-    canvas.scale(r.dpr, r.dpr)
+  if (layer !== "overlays") {
+    canvas.save();
+    canvas.scale(r.dpr, r.dpr);
 
-    p.beginPhase('render:scene')
+    p.beginPhase("render:scene");
     if (
-      layer === 'scene' &&
+      layer === "scene" &&
       !hasVolatileOverlays &&
       renderSceneBacking(r, canvas, graph, sceneVersion)
     ) {
-      p.setScenePictureMode('hit', 'backing')
+      p.setScenePictureMode("hit", "backing");
     } else {
-      canvas.translate(r.panX, r.panY)
-      canvas.scale(r.zoom, r.zoom)
+      canvas.translate(r.panX, r.panY);
+      canvas.scale(r.zoom, r.zoom);
       renderSceneContent(
         r,
         canvas,
@@ -194,63 +194,63 @@ export function render(
         sceneVersion,
         canUsePicture,
         cacheMissReason,
-        hasVolatileOverlays
-      )
+        hasVolatileOverlays,
+      );
     }
-    p.endPhase('render:scene')
+    p.endPhase("render:scene");
 
-    canvas.restore()
+    canvas.restore();
   }
 
-  if (layer !== 'scene') {
-    canvas.save()
-    canvas.scale(r.dpr, r.dpr)
-    r.labelCache.update(graph, r.pageId, sceneVersion, graph.positionPreviewVersion)
-    p.beginPhase('render:sectionTitles')
-    r.drawSectionTitles(canvas, graph)
-    p.endPhase('render:sectionTitles')
-    p.beginPhase('render:componentLabels')
-    r.drawComponentLabels(canvas, graph)
-    p.endPhase('render:componentLabels')
-    canvas.restore()
+  if (layer !== "scene") {
+    canvas.save();
+    canvas.scale(r.dpr, r.dpr);
+    r.labelCache.update(graph, r.pageId, sceneVersion, graph.positionPreviewVersion);
+    p.beginPhase("render:sectionTitles");
+    r.drawSectionTitles(canvas, graph);
+    p.endPhase("render:sectionTitles");
+    p.beginPhase("render:componentLabels");
+    r.drawComponentLabels(canvas, graph);
+    p.endPhase("render:componentLabels");
+    canvas.restore();
 
-    canvas.save()
-    canvas.scale(r.dpr, r.dpr)
+    canvas.save();
+    canvas.scale(r.dpr, r.dpr);
 
     r.drawHoverHighlight(
       canvas,
       graph,
-      overlays.hoveredNodeId === overlays.nodeEditState?.nodeId ? null : overlays.hoveredNodeId
-    )
-    r.drawEnteredContainer(canvas, graph, overlays.enteredContainerId)
-    p.beginPhase('render:selection')
-    r.drawSelection(canvas, graph, selectedIds, overlays)
-    p.endPhase('render:selection')
-    r.drawFlashes(canvas, graph)
-    drawPageGuides(r, canvas, graph)
-    r.drawSnapGuides(canvas, overlays.snapGuides)
-    r.drawMarquee(canvas, overlays.marquee)
-    r.drawLayoutInsertIndicator(canvas, overlays.layoutInsertIndicator)
-    r.drawAutoLayoutHover(canvas, graph, overlays.autoLayoutHover)
-    r.drawNodeEditOverlay(canvas, graph, overlays.nodeEditState)
-    r.drawPenOverlay(canvas, overlays.penState)
-    r.drawRemoteCursors(canvas, graph, overlays.remoteCursors)
-    p.beginPhase('render:rulers')
-    if (r.showRulers) r.drawRulers(canvas, graph, selectedIds)
-    p.endPhase('render:rulers')
+      overlays.hoveredNodeId === overlays.nodeEditState?.nodeId ? null : overlays.hoveredNodeId,
+    );
+    r.drawEnteredContainer(canvas, graph, overlays.enteredContainerId);
+    p.beginPhase("render:selection");
+    r.drawSelection(canvas, graph, selectedIds, overlays);
+    p.endPhase("render:selection");
+    r.drawFlashes(canvas, graph);
+    drawPageGuides(r, canvas, graph);
+    r.drawSnapGuides(canvas, overlays.snapGuides);
+    r.drawMarquee(canvas, overlays.marquee);
+    r.drawLayoutInsertIndicator(canvas, overlays.layoutInsertIndicator);
+    r.drawAutoLayoutHover(canvas, graph, overlays.autoLayoutHover);
+    r.drawNodeEditOverlay(canvas, graph, overlays.nodeEditState);
+    r.drawPenOverlay(canvas, overlays.penState);
+    r.drawRemoteCursors(canvas, graph, overlays.remoteCursors);
+    p.beginPhase("render:rulers");
+    if (r.showRulers) r.drawRulers(canvas, graph, selectedIds);
+    p.endPhase("render:rulers");
 
-    p.drawHUD(canvas, r.showRulers)
+    p.drawHUD(canvas, r.showRulers);
 
-    canvas.restore()
+    canvas.restore();
   }
 
-  p.beginPhase('render:flush')
-  const { duration: flushDuration } = measure(() => r.surface.flush())
-  p.setFlushTime(flushDuration)
-  p.endPhase('render:flush')
+  p.beginPhase("render:flush");
+  const { duration: flushDuration } = measure(() => r.surface.flush());
+  p.setFlushTime(flushDuration);
+  p.endPhase("render:flush");
 
-  p.setNodeCounts(r._nodeCount, r._culledCount)
-  p.endFrame()
+  p.setNodeCounts(r._nodeCount, r._culledCount);
+  p.endFrame();
 }
 
 function renderSceneContent(
@@ -261,33 +261,33 @@ function renderSceneContent(
   sceneVersion: number,
   canUsePicture: boolean,
   cacheMissReason: string,
-  hasVolatileOverlays: boolean
+  hasVolatileOverlays: boolean,
 ): void {
-  const p = r.profiler
+  const p = r.profiler;
   if (canUsePicture) {
-    p.setScenePictureMode('hit')
-    p.beginPhase('render:drawPicture')
+    p.setScenePictureMode("hit");
+    p.beginPhase("render:drawPicture");
     if (r.scenePicture) {
-      const picture = r.scenePicture
-      const { duration } = measure(() => canvas.drawPicture(picture))
-      p.setScenePictureDrawTime(duration)
+      const picture = r.scenePicture;
+      const { duration } = measure(() => canvas.drawPicture(picture));
+      p.setScenePictureDrawTime(duration);
     }
-    p.endPhase('render:drawPicture')
+    p.endPhase("render:drawPicture");
   } else if (hasVolatileOverlays) {
-    p.setScenePictureMode('volatile', cacheMissReason)
-    r._nodeCount = 0
-    r._culledCount = 0
-    p.beginPhase('render:volatile')
-    renderPageChildren(r, canvas, graph, overlays)
-    p.endPhase('render:volatile')
+    p.setScenePictureMode("volatile", cacheMissReason);
+    r._nodeCount = 0;
+    r._culledCount = 0;
+    p.beginPhase("render:volatile");
+    renderPageChildren(r, canvas, graph, overlays);
+    p.endPhase("render:volatile");
   } else {
-    p.setScenePictureMode('record', cacheMissReason)
-    r._nodeCount = 0
-    r._culledCount = 0
-    p.beginPhase('render:recordPicture')
-    const { duration } = measure(() => recordScenePicture(r, canvas, graph, sceneVersion))
-    p.setScenePictureRecordTime(duration)
-    p.endPhase('render:recordPicture')
+    p.setScenePictureMode("record", cacheMissReason);
+    r._nodeCount = 0;
+    r._culledCount = 0;
+    p.beginPhase("render:recordPicture");
+    const { duration } = measure(() => recordScenePicture(r, canvas, graph, sceneVersion));
+    p.setScenePictureRecordTime(duration);
+    p.endPhase("render:recordPicture");
   }
 }
 
@@ -295,12 +295,12 @@ function renderPageChildren(
   r: SkiaRenderer,
   canvas: Canvas,
   graph: SceneGraph,
-  overlays: RenderOverlays
+  overlays: RenderOverlays,
 ): void {
-  const pageNode = graph.getNode(r.pageId ?? graph.rootId)
-  if (!pageNode) return
+  const pageNode = graph.getNode(r.pageId ?? graph.rootId);
+  if (!pageNode) return;
   for (const childId of pageNode.childIds) {
-    r.renderNode(canvas, graph, childId, overlays)
+    r.renderNode(canvas, graph, childId, overlays);
   }
 }
 
@@ -308,46 +308,46 @@ function recordScenePicture(
   r: SkiaRenderer,
   canvas: Canvas,
   graph: SceneGraph,
-  sceneVersion: number
+  sceneVersion: number,
 ): void {
-  r.scenePicture?.delete()
-  const prevViewport = r.worldViewport
-  r.worldViewport = { x: -1e6, y: -1e6, w: 2e6, h: 2e6 }
-  const recorder = new r.ck.PictureRecorder()
-  const pageNode = graph.getNode(r.pageId ?? graph.rootId)
+  r.scenePicture?.delete();
+  const prevViewport = r.worldViewport;
+  r.worldViewport = { x: -1e6, y: -1e6, w: 2e6, h: 2e6 };
+  const recorder = new r.ck.PictureRecorder();
+  const pageNode = graph.getNode(r.pageId ?? graph.rootId);
   const sceneContentBounds = pageNode
     ? computeDescendantVisualBounds(
         pageNode.childIds,
         (id) => graph.getNode(id),
-        (id) => graph.getAbsolutePosition(id)
+        (id) => graph.getAbsolutePosition(id),
       )
-    : null
+    : null;
   const sceneBounds = sceneContentBounds
     ? {
         x: sceneContentBounds.minX,
         y: sceneContentBounds.minY,
         width: sceneContentBounds.maxX - sceneContentBounds.minX,
-        height: sceneContentBounds.maxY - sceneContentBounds.minY
+        height: sceneContentBounds.maxY - sceneContentBounds.minY,
       }
-    : { x: 0, y: 0, width: 1, height: 1 }
-  const padding = 1024
+    : { x: 0, y: 0, width: 1, height: 1 };
+  const padding = 1024;
   const bounds = r.ck.LTRBRect(
     sceneBounds.x - padding,
     sceneBounds.y - padding,
     sceneBounds.x + sceneBounds.width + padding,
-    sceneBounds.y + sceneBounds.height + padding
-  )
-  const recCanvas = recorder.beginRecording(bounds)
+    sceneBounds.y + sceneBounds.height + padding,
+  );
+  const recCanvas = recorder.beginRecording(bounds);
   if (pageNode) {
     for (const childId of pageNode.childIds) {
-      r.renderNode(recCanvas, graph, childId, {})
+      r.renderNode(recCanvas, graph, childId, {});
     }
   }
-  r.scenePicture = recorder.finishRecordingAsPicture()
-  recorder.delete()
-  r.worldViewport = prevViewport
-  r.scenePictureVersion = sceneVersion
-  r.scenePicturePositionPreviewVersion = graph.positionPreviewVersion
-  r.scenePicturePageId = r.pageId
-  canvas.drawPicture(r.scenePicture)
+  r.scenePicture = recorder.finishRecordingAsPicture();
+  recorder.delete();
+  r.worldViewport = prevViewport;
+  r.scenePictureVersion = sceneVersion;
+  r.scenePicturePositionPreviewVersion = graph.positionPreviewVersion;
+  r.scenePicturePageId = r.pageId;
+  canvas.drawPicture(r.scenePicture);
 }

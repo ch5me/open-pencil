@@ -1,43 +1,42 @@
 <script setup lang="ts">
-import { templateRef } from '@vueuse/core'
-import { TreeItem, ContextMenuRoot, ContextMenuTrigger, ContextMenuPortal } from 'reka-ui'
-import { useAttrs, watch } from 'vue'
+import { LayerTreeRoot, LayerTreeItem, useI18n, useInlineRename } from "@open-pencil/vue";
+import { templateRef } from "@vueuse/core";
+import { TreeItem, ContextMenuRoot, ContextMenuTrigger, ContextMenuPortal } from "reka-ui";
+import { useAttrs, watch } from "vue";
 
-import { LayerTreeRoot, LayerTreeItem, useI18n, useInlineRename } from '@open-pencil/vue'
+import { useEditorStore } from "@/app/editor/active-store";
+import { nodeIcon, COMPONENT_TYPES } from "@/app/editor/icons";
 
-import { useEditorStore } from '@/app/editor/active-store'
-import { nodeIcon, COMPONENT_TYPES } from '@/app/editor/icons'
+import CanvasMenu from "./CanvasMenu.vue";
+import Tip from "./ui/Tip.vue";
 
-import CanvasMenu from './CanvasMenu.vue'
-import Tip from './ui/Tip.vue'
+defineOptions({ inheritAttrs: false });
 
-defineOptions({ inheritAttrs: false })
-
-const INDENT = 16
-const attrs = useAttrs()
-const store = useEditorStore()
-const renameInput = templateRef<HTMLInputElement>('renameInput')
-const rename = useInlineRename((id, name) => store.renameNode(id, name))
-const { menu: t } = useI18n()
+const INDENT = 16;
+const attrs = useAttrs();
+const store = useEditorStore();
+const renameInput = templateRef<HTMLInputElement>("renameInput");
+const rename = useInlineRename((id, name) => store.renameNode(id, name));
+const { menu: t } = useI18n();
 
 watch(renameInput, (input) => {
-  if (input) void rename.focusInput(input)
-})
+  if (input) void rename.focusInput(input);
+});
 
 function onLayerRightClick(e: MouseEvent) {
-  const row = (e.target as HTMLElement).closest<HTMLElement>('[data-node-id]')
-  if (!row?.dataset.nodeId) return
-  if (!store.state.selectedIds.has(row.dataset.nodeId)) store.select([row.dataset.nodeId])
+  const row = (e.target as HTMLElement).closest<HTMLElement>("[data-node-id]");
+  if (!row?.dataset.nodeId) return;
+  if (!store.state.selectedIds.has(row.dataset.nodeId)) store.select([row.dataset.nodeId]);
 }
 
 function isAdditiveSelect(e: CustomEvent): boolean {
-  const mouseEvent = e.detail?.originalEvent as MouseEvent | undefined
-  return !!(mouseEvent?.shiftKey || mouseEvent?.metaKey || mouseEvent?.ctrlKey)
+  const mouseEvent = e.detail?.originalEvent as MouseEvent | undefined;
+  return !!(mouseEvent?.shiftKey || mouseEvent?.metaKey || mouseEvent?.ctrlKey);
 }
 
 function onTreeSelect(e: CustomEvent, select: (additive: boolean) => void) {
-  e.preventDefault()
-  select(isAdditiveSelect(e))
+  e.preventDefault();
+  select(isAdditiveSelect(e));
 }
 </script>
 
@@ -67,7 +66,7 @@ function onTreeSelect(e: CustomEvent, select: (additive: boolean) => void) {
                   @select="(e: CustomEvent) => onTreeSelect(e, actions.select)"
                   @toggle="
                     (e: CustomEvent) => {
-                      if (e.detail.originalEvent?.type === 'click') e.preventDefault()
+                      if (e.detail.originalEvent?.type === 'click') e.preventDefault();
                     }
                   "
                 >
@@ -111,7 +110,7 @@ function onTreeSelect(e: CustomEvent, select: (additive: boolean) => void) {
                       instructionTargetId === node.id && instruction?.type === 'make-child'
                         ? 'bg-accent/15 text-surface outline-2 outline-accent outline-offset-[-2px]'
                         : '',
-                      !node.visible ? 'opacity-50' : ''
+                      !node.visible ? 'opacity-50' : '',
                     ]"
                     :style="{ paddingLeft: padLeft }"
                     @dblclick="rename.start(node.id, node.name)"
@@ -184,7 +183,7 @@ function onTreeSelect(e: CustomEvent, select: (additive: boolean) => void) {
                       class="pointer-events-none absolute inset-y-1 rounded border border-accent bg-accent/10"
                       :style="{
                         left: `${item.level * INDENT}px`,
-                        right: '4px'
+                        right: '4px',
                       }"
                     />
 
@@ -198,11 +197,11 @@ function onTreeSelect(e: CustomEvent, select: (additive: boolean) => void) {
                       class="pointer-events-none absolute h-0.5 bg-accent"
                       :class="{
                         'bottom-0': instruction.type === 'reorder-below',
-                        'top-0': instruction.type === 'reorder-above'
+                        'top-0': instruction.type === 'reorder-above',
                       }"
                       :style="{
                         left: `${(item.level - 1) * INDENT}px`,
-                        width: `calc(100% - ${(item.level - 1) * INDENT}px)`
+                        width: `calc(100% - ${(item.level - 1) * INDENT}px)`,
                       }"
                     />
                   </button>

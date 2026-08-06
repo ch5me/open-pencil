@@ -1,25 +1,25 @@
 <script setup lang="ts">
-import type { TestIdProps } from '@open-pencil/vue'
+import type { TestIdProps } from "@open-pencil/vue";
 
-import { useInputUI } from '@/components/ui/input'
+import { useInputUI } from "@/components/ui/input";
 
 interface AppInputProps extends TestIdProps {
-  type?: 'text' | 'password' | 'number' | 'search'
-  placeholder?: string
-  readonly?: boolean
-  disabled?: boolean
-  autofocus?: boolean
-  min?: number
-  max?: number
-  step?: number
+  type?: "text" | "password" | "number" | "search";
+  placeholder?: string;
+  readonly?: boolean;
+  disabled?: boolean;
+  autofocus?: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
   ui?: {
-    base?: string
-  }
-  size?: 'sm' | 'md'
+    base?: string;
+  };
+  size?: "sm" | "md";
 }
 
 const {
-  type = 'text',
+  type = "text",
   placeholder,
   readonly,
   disabled,
@@ -28,16 +28,16 @@ const {
   max,
   step,
   ui,
-  size = 'md',
-  testId
-} = defineProps<AppInputProps>()
+  size = "md",
+  testId,
+} = defineProps<AppInputProps>();
 
-const modelValue = defineModel<string | number>({ required: true })
+const modelValue = defineModel<string | number>({ required: true });
 const emit = defineEmits<{
-  change: []
-  enter: [event: KeyboardEvent]
-  focus: [event: FocusEvent]
-}>()
+  change: [];
+  enter: [event: KeyboardEvent];
+  focus: [event: FocusEvent];
+}>();
 </script>
 
 <template>

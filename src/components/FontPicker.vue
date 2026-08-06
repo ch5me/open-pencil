@@ -1,51 +1,51 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
-import { FontPickerRoot } from '@open-pencil/vue'
-import type { FontPickerUi } from '@open-pencil/vue'
+import { FontPickerRoot } from "@open-pencil/vue";
+import type { FontPickerUi } from "@open-pencil/vue";
+import { computed } from "vue";
 
 import {
   listFamilies,
   loadFont,
   localFontAccessState,
-  requestLocalFontAccess
-} from '@/app/editor/fonts'
-import { usePopoverUI } from '@/components/ui/popover'
-import { useSelectUI } from '@/components/ui/select'
+  requestLocalFontAccess,
+} from "@/app/editor/fonts";
+import { usePopoverUI } from "@/components/ui/popover";
+import { useSelectUI } from "@/components/ui/select";
 
-const modelValue = defineModel<string>({ required: true })
-const emit = defineEmits<{ select: [family: string] }>()
+const modelValue = defineModel<string>({ required: true });
+const emit = defineEmits<{ select: [family: string] }>();
 
 const cls = usePopoverUI({
-  content: 'w-[var(--reka-combobox-trigger-width)] min-w-56 overflow-hidden p-0'
-})
+  content: "w-[var(--reka-combobox-trigger-width)] min-w-56 overflow-hidden p-0",
+});
 const selectCls = useSelectUI({
-  trigger: 'w-full rounded px-2 py-1 text-xs',
-  item: 'w-full gap-2 px-3 py-2.5 text-sm leading-tight'
-})
+  trigger: "w-full rounded px-2 py-1 text-xs",
+  item: "w-full gap-2 px-3 py-2.5 text-sm leading-tight",
+});
 
 const ui = computed<FontPickerUi>(() => ({
   trigger: selectCls.trigger,
   content: cls.content,
   item: selectCls.item,
   search:
-    'w-full border-b border-border bg-transparent px-3 py-2 text-sm text-surface outline-none placeholder:text-muted',
-  empty: 'px-2 py-3 text-center text-xs text-muted',
-  emptyAction: 'mt-2 rounded bg-accent px-2 py-1 text-xs font-medium text-white disabled:opacity-50'
-}))
+    "w-full border-b border-border bg-transparent px-3 py-2 text-sm text-surface outline-none placeholder:text-muted",
+  empty: "px-2 py-3 text-center text-xs text-muted",
+  emptyAction:
+    "mt-2 rounded bg-accent px-2 py-1 text-xs font-medium text-white disabled:opacity-50",
+}));
 
-const previewFontLoads = new Set<string>()
+const previewFontLoads = new Set<string>();
 
 const localFontAccess = {
   state: localFontAccessState,
-  load: requestLocalFontAccess
-}
+  load: requestLocalFontAccess,
+};
 
 function loadPreviewFont(family: string, source: string) {
-  if (source !== 'google') return
-  if (previewFontLoads.has(family)) return
-  previewFontLoads.add(family)
-  void loadFont(family)
+  if (source !== "google") return;
+  if (previewFontLoads.has(family)) return;
+  previewFontLoads.add(family);
+  void loadFont(family);
 }
 </script>
 

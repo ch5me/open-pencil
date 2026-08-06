@@ -1,30 +1,30 @@
 <script setup lang="ts">
-import { inputNumberValue, vTestId, type TestIdProps } from '@open-pencil/vue'
+import { inputNumberValue, vTestId, type TestIdProps } from "@open-pencil/vue";
 
-import { usePickerSliderUI } from './ui/picker-slider'
+import { usePickerSliderUI } from "./ui/picker-slider";
 
 type PickerSliderDisplay = {
-  value?: number
-  min?: number
-  max?: number
-  step?: number
-  format?: (value: number) => string | number
-  parse?: (value: number) => number
-}
+  value?: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  format?: (value: number) => string | number;
+  parse?: (value: number) => number;
+};
 
 interface PickerSliderProps extends TestIdProps {
-  label: string
-  modelValue: number
-  min: number
-  max: number
-  step?: number
-  display?: PickerSliderDisplay
-  gradientStyle?: string
-  checkerboard?: boolean
-  thumbFill?: string
+  label: string;
+  modelValue: number;
+  min: number;
+  max: number;
+  step?: number;
+  display?: PickerSliderDisplay;
+  gradientStyle?: string;
+  checkerboard?: boolean;
+  thumbFill?: string;
   ui?: Partial<
-    Record<'root' | 'label' | 'track' | 'gradient' | 'range' | 'thumb' | 'input', string>
-  >
+    Record<"root" | "label" | "track" | "gradient" | "range" | "thumb" | "input", string>
+  >;
 }
 
 const {
@@ -36,31 +36,31 @@ const {
   display,
   gradientStyle,
   checkerboard = false,
-  thumbFill = '#fff',
+  thumbFill = "#fff",
   testId,
-  ui
-} = defineProps<PickerSliderProps>()
+  ui,
+} = defineProps<PickerSliderProps>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number]
-}>()
+  "update:modelValue": [value: number];
+}>();
 
-const cls = usePickerSliderUI({ checkerboard, ui })
+const cls = usePickerSliderUI({ checkerboard, ui });
 
 function numberValue(): string | number {
-  const value = display?.value ?? modelValue
-  return display?.format ? display.format(value) : value
+  const value = display?.value ?? modelValue;
+  return display?.format ? display.format(value) : value;
 }
 
 function handleNumberChange(value: number) {
-  emit('update:modelValue', display?.parse ? display.parse(value) : value)
+  emit("update:modelValue", display?.parse ? display.parse(value) : value);
 }
 
 function thumbLeft(): string {
-  const range = max - min
-  const ratio = range === 0 ? 0 : (modelValue - min) / range
-  const clampedRatio = Math.max(0, Math.min(1, ratio))
-  return `calc(${clampedRatio * 100}% - ${clampedRatio * 14}px)`
+  const range = max - min;
+  const ratio = range === 0 ? 0 : (modelValue - min) / range;
+  const clampedRatio = Math.max(0, Math.min(1, ratio));
+  return `calc(${clampedRatio * 100}% - ${clampedRatio * 14}px)`;
 }
 </script>
 

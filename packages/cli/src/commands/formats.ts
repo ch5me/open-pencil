@@ -1,26 +1,25 @@
-import { defineCommand } from 'citty'
+import { BUILTIN_IO_FORMATS, IORegistry } from "@open-pencil/core/io";
+import { defineCommand } from "citty";
 
-import { BUILTIN_IO_FORMATS, IORegistry } from '@open-pencil/core/io'
+import { bold, fmtList, kv } from "#cli/format";
 
-import { bold, fmtList, kv } from '#cli/format'
+const io = new IORegistry(BUILTIN_IO_FORMATS);
 
-const io = new IORegistry(BUILTIN_IO_FORMATS)
-
-function supportLabels(format: ReturnType<IORegistry['listFormats']>[number]): string[] {
-  const labels: string[] = []
-  if (format.support.readDocument) labels.push('read')
-  if (format.support.writeDocument) labels.push('write')
-  if (format.support.exportDocument) labels.push('export-document')
-  if (format.support.exportPage) labels.push('export-page')
-  if (format.support.exportSelection) labels.push('export-selection')
-  if (format.support.exportNode) labels.push('export-node')
-  return labels
+function supportLabels(format: ReturnType<IORegistry["listFormats"]>[number]): string[] {
+  const labels: string[] = [];
+  if (format.support.readDocument) labels.push("read");
+  if (format.support.writeDocument) labels.push("write");
+  if (format.support.exportDocument) labels.push("export-document");
+  if (format.support.exportPage) labels.push("export-page");
+  if (format.support.exportSelection) labels.push("export-selection");
+  if (format.support.exportNode) labels.push("export-node");
+  return labels;
 }
 
 export default defineCommand({
-  meta: { description: 'List supported document and export formats' },
+  meta: { description: "List supported document and export formats" },
   args: {
-    json: { type: 'boolean', description: 'Output as JSON' }
+    json: { type: "boolean", description: "Output as JSON" },
   },
   async run({ args }) {
     const formats = io.listFormats().map((format) => ({
@@ -30,17 +29,17 @@ export default defineCommand({
       category: format.category,
       extensions: format.extensions,
       mimeTypes: format.mimeTypes,
-      support: supportLabels(format)
-    }))
+      support: supportLabels(format),
+    }));
 
     if (args.json) {
-      console.log(JSON.stringify(formats, null, 2))
-      return
+      console.log(JSON.stringify(formats, null, 2));
+      return;
     }
 
-    console.log('')
-    console.log(bold(`  ${formats.length} format${formats.length !== 1 ? 's' : ''}`))
-    console.log('')
+    console.log("");
+    console.log(bold(`  ${formats.length} format${formats.length !== 1 ? "s" : ""}`));
+    console.log("");
     console.log(
       fmtList(
         formats.map((format) => ({
@@ -48,33 +47,33 @@ export default defineCommand({
           details: {
             role: format.role,
             category: format.category,
-            ext: format.extensions.map((ext) => `.${ext}`).join(', '),
-            support: format.support.join(', '),
-            mime: format.mimeTypes.join(', ')
-          }
+            ext: format.extensions.map((ext) => `.${ext}`).join(", "),
+            support: format.support.join(", "),
+            mime: format.mimeTypes.join(", "),
+          },
         })),
-        { compact: true }
-      )
-    )
-    console.log('')
+        { compact: true },
+      ),
+    );
+    console.log("");
     console.log(
       kv(
-        'Readable',
+        "Readable",
         io
           .listReadableFormats()
           .map((f) => f.id)
-          .join(', ') || 'none'
-      )
-    )
+          .join(", ") || "none",
+      ),
+    );
     console.log(
       kv(
-        'Writable',
+        "Writable",
         io
           .listWritableFormats()
           .map((f) => f.id)
-          .join(', ') || 'none'
-      )
-    )
-    console.log('')
-  }
-})
+          .join(", ") || "none",
+      ),
+    );
+    console.log("");
+  },
+});

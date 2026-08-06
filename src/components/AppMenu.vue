@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { templateRef } from '@vueuse/core'
+import { vTestId, useI18n } from "@open-pencil/vue";
+import { templateRef } from "@vueuse/core";
 import {
   MenubarCheckboxItem,
   MenubarContent,
@@ -12,16 +13,14 @@ import {
   MenubarSub,
   MenubarSubContent,
   MenubarSubTrigger,
-  MenubarTrigger
-} from 'reka-ui'
-import { watch } from 'vue'
-import IconChevronRight from '~icons/lucide/chevron-right'
+  MenubarTrigger,
+} from "reka-ui";
+import { watch } from "vue";
+import IconChevronRight from "~icons/lucide/chevron-right";
 
-import { vTestId, useI18n } from '@open-pencil/vue'
-
-import { useEditorStore } from '@/app/editor/active-store'
-import { useAppMenu } from '@/app/shell/menu/app-menu'
-import { useDocumentNameRename } from '@/app/shell/menu/document-name'
+import { useEditorStore } from "@/app/editor/active-store";
+import { useAppMenu } from "@/app/shell/menu/app-menu";
+import { useDocumentNameRename } from "@/app/shell/menu/document-name";
 import {
   hasMenuSubItems,
   isMenuCheckbox,
@@ -32,28 +31,28 @@ import {
   menuShortcut,
   menuSubItems,
   runMenuAction,
-  updateMenuChecked
-} from '@/app/shell/menu/entry'
-import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
-import AppShortcutText from '@/components/ui/AppShortcutText.vue'
-import { useMenuUI } from '@/components/ui/menu'
-import { IS_TAURI } from '@/constants'
+  updateMenuChecked,
+} from "@/app/shell/menu/entry";
+import { appMenuShortcutLabel } from "@/app/shell/menu/shortcut";
+import AppShortcutText from "@/components/ui/AppShortcutText.vue";
+import { useMenuUI } from "@/components/ui/menu";
+import { IS_TAURI } from "@/constants";
 
-const store = useEditorStore()
+const store = useEditorStore();
 
-const { rename, editingName, startRename, commitRename } = useDocumentNameRename(store)
-const nameInput = templateRef<HTMLInputElement>('nameInput')
+const { rename, editingName, startRename, commitRename } = useDocumentNameRename(store);
+const nameInput = templateRef<HTMLInputElement>("nameInput");
 
 watch(nameInput, (input) => {
-  if (input) void rename.focusInput(input)
-})
+  if (input) void rename.focusInput(input);
+});
 
-const { menu: t } = useI18n()
+const { menu: t } = useI18n();
 
-const { topMenus } = useAppMenu()
-const menuCls = useMenuUI()
-const mainMenuCls = useMenuUI({ content: 'min-w-52' })
-const subMenuCls = useMenuUI({ content: 'min-w-44' })
+const { topMenus } = useAppMenu();
+const menuCls = useMenuUI();
+const mainMenuCls = useMenuUI({ content: "min-w-52" });
+const subMenuCls = useMenuUI({ content: "min-w-44" });
 </script>
 
 <template>

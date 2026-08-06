@@ -7,22 +7,22 @@ export type {
   ComponentPropValue,
   DerivedSymbolOverride,
   SymbolData,
-  SymbolOverride
-} from './types'
+  SymbolOverride,
+} from "./types";
 
-import { guidToString } from '#core/kiwi/fig/node-change/convert'
-import type { SceneGraph, SceneNode } from '#core/scene-graph'
-import { copyFills, copyStyleRuns } from '#core/scene-graph/copy'
-import type { JsonObject } from '#core/types'
+import { guidToString } from "#core/kiwi/fig/node-change/convert";
+import type { SceneGraph, SceneNode } from "#core/scene-graph";
+import { copyFills, copyStyleRuns } from "#core/scene-graph/copy";
+import type { JsonObject } from "#core/types";
 
-import { applyComponentProperties } from './component-props'
-import { applyConstraintScaling } from './constraints'
-import { applyDerivedSymbolData } from './derived-symbol-data'
-import { populateInstances } from './populate'
-import { preComputeRoots } from './resolve'
-import { applySymbolOverrides } from './symbol/overrides'
-import { propagateOverridesTransitively } from './sync'
-import type { InstanceNodeChange, OverrideContext, ComponentPropValue } from './types'
+import { applyComponentProperties } from "./component-props";
+import { applyConstraintScaling } from "./constraints";
+import { applyDerivedSymbolData } from "./derived-symbol-data";
+import { populateInstances } from "./populate";
+import { preComputeRoots } from "./resolve";
+import { applySymbolOverrides } from "./symbol/overrides";
+import { propagateOverridesTransitively } from "./sync";
+import type { InstanceNodeChange, OverrideContext, ComponentPropValue } from "./types";
 
 /**
  * Identify nodes whose kiwi NC has explicit property values that DIFFER
@@ -30,104 +30,104 @@ import type { InstanceNodeChange, OverrideContext, ComponentPropValue } from './
  */
 function* changedNodeEntries(
   changeMap: Map<string, InstanceNodeChange>,
-  guidToNodeId: Map<string, string>
+  guidToNodeId: Map<string, string>,
 ): Generator<[string, InstanceNodeChange]> {
   for (const [figmaId, nodeId] of guidToNodeId) {
-    const nc = changeMap.get(figmaId)
-    if (nc) yield [nodeId, nc]
+    const nc = changeMap.get(figmaId);
+    if (nc) yield [nodeId, nc];
   }
 }
 
 function buildKiwiPropertyNodes(
   graph: SceneGraph,
   changeMap: Map<string, InstanceNodeChange>,
-  guidToNodeId: Map<string, string>
+  guidToNodeId: Map<string, string>,
 ): Set<string> {
-  const result = new Set<string>()
+  const result = new Set<string>();
   for (const [nodeId, change] of changedNodeEntries(changeMap, guidToNodeId)) {
-    const nc = change as JsonObject
-    const node = graph.getNode(nodeId)
-    if (!node?.componentId) continue
-    const comp = graph.getNode(node.componentId)
-    if (!comp) continue
+    const nc = change as JsonObject;
+    const node = graph.getNode(nodeId);
+    if (!node?.componentId) continue;
+    const comp = graph.getNode(node.componentId);
+    if (!comp) continue;
     const hasDiffRadius =
       (nc.cornerRadius !== undefined || nc.rectangleCornerRadiiIndependent !== undefined) &&
-      node.cornerRadius !== comp.cornerRadius
-    const hasDiffVisible = nc.visible === false && comp.visible
-    if (hasDiffRadius || hasDiffVisible) result.add(nodeId)
+      node.cornerRadius !== comp.cornerRadius;
+    const hasDiffVisible = nc.visible === false && comp.visible;
+    if (hasDiffRadius || hasDiffVisible) result.add(nodeId);
   }
-  return result
+  return result;
 }
 
 function buildKiwiGeometryNodes(
   changeMap: Map<string, InstanceNodeChange>,
-  guidToNodeId: Map<string, string>
+  guidToNodeId: Map<string, string>,
 ): Set<string> {
-  const result = new Set<string>()
+  const result = new Set<string>();
   for (const [nodeId, nc] of changedNodeEntries(changeMap, guidToNodeId)) {
-    if (nc.fillGeometry?.length || nc.strokeGeometry?.length) result.add(nodeId)
+    if (nc.fillGeometry?.length || nc.strokeGeometry?.length) result.add(nodeId);
   }
-  return result
+  return result;
 }
 
 function propagateResolvedFills(
   graph: SceneGraph,
   protectedNodes: Set<string>,
-  activeNodeIds?: Set<string>
+  activeNodeIds?: Set<string>,
 ): void {
   for (let pass = 0; pass < 10; pass++) {
-    let changed = false
+    let changed = false;
     for (const node of graph.getAllNodes()) {
-      if (activeNodeIds && !activeNodeIds.has(node.id)) continue
-      if (!node.componentId) continue
-      const source = graph.getNode(node.componentId)
-      if (!source || source.fills === node.fills) continue
-      if (protectedNodes.has(node.id) && !protectedNodes.has(source.id)) continue
-      graph.updateNode(node.id, { fills: copyFills(source.fills) })
-      changed = true
+      if (activeNodeIds && !activeNodeIds.has(node.id)) continue;
+      if (!node.componentId) continue;
+      const source = graph.getNode(node.componentId);
+      if (!source || source.fills === node.fills) continue;
+      if (protectedNodes.has(node.id) && !protectedNodes.has(source.id)) continue;
+      graph.updateNode(node.id, { fills: copyFills(source.fills) });
+      changed = true;
     }
-    if (!changed) return
+    if (!changed) return;
   }
 }
 
 function propagateResolvedChildPlacementClones(graph: SceneGraph): void {
   for (let pass = 0; pass < 10; pass++) {
-    let changed = false
+    let changed = false;
     for (const node of graph.getAllNodes()) {
-      if (node.type !== 'INSTANCE' || !node.componentId) continue
-      const source = graph.getNode(node.componentId)
-      if (!source || source.childIds.length !== node.childIds.length) continue
+      if (node.type !== "INSTANCE" || !node.componentId) continue;
+      const source = graph.getNode(node.componentId);
+      if (!source || source.childIds.length !== node.childIds.length) continue;
       for (let i = 0; i < node.childIds.length; i++) {
-        const sourceChild = graph.getNode(source.childIds[i])
-        const child = graph.getNode(node.childIds[i])
-        if (!sourceChild || !child) continue
+        const sourceChild = graph.getNode(source.childIds[i]);
+        const child = graph.getNode(node.childIds[i]);
+        if (!sourceChild || !child) continue;
         if (
           sourceChild.overrideKey &&
           child.overrideKey &&
           sourceChild.overrideKey !== child.overrideKey
         ) {
-          continue
+          continue;
         }
-        const updates: Partial<SceneNode> = {}
-        if (!sourceChild.visible && child.visible) updates.visible = false
-        if (sourceChild.x !== child.x) updates.x = sourceChild.x
-        if (sourceChild.y !== child.y) updates.y = sourceChild.y
-        if (Object.keys(updates).length === 0) continue
-        graph.updateNode(child.id, updates)
-        changed = true
+        const updates: Partial<SceneNode> = {};
+        if (!sourceChild.visible && child.visible) updates.visible = false;
+        if (sourceChild.x !== child.x) updates.x = sourceChild.x;
+        if (sourceChild.y !== child.y) updates.y = sourceChild.y;
+        if (Object.keys(updates).length === 0) continue;
+        graph.updateNode(child.id, updates);
+        changed = true;
       }
     }
-    if (!changed) return
+    if (!changed) return;
   }
 }
 
 function propagateResolvedTextClones(graph: SceneGraph): void {
   for (let pass = 0; pass < 10; pass++) {
-    let changed = false
+    let changed = false;
     for (const node of graph.getAllNodes()) {
-      if (node.type !== 'TEXT' || !node.componentId) continue
-      const source = graph.getNode(node.componentId)
-      if (source?.type !== 'TEXT' || source.text !== node.text) continue
+      if (node.type !== "TEXT" || !node.componentId) continue;
+      const source = graph.getNode(node.componentId);
+      if (source?.type !== "TEXT" || source.text !== node.text) continue;
       graph.updateNode(node.id, {
         width: source.width,
         height: source.height,
@@ -135,11 +135,11 @@ function propagateResolvedTextClones(graph: SceneGraph): void {
         styleRuns: copyStyleRuns(source.styleRuns),
         figmaDerivedTextGlyphs: source.figmaDerivedTextGlyphs
           ? structuredClone(source.figmaDerivedTextGlyphs)
-          : undefined
-      })
-      changed = true
+          : undefined,
+      });
+      changed = true;
     }
-    if (!changed) return
+    if (!changed) return;
   }
 }
 
@@ -148,32 +148,32 @@ function buildOverrideContext(
   changeMap: Map<string, InstanceNodeChange>,
   guidToNodeId: Map<string, string>,
   blobs: Uint8Array[],
-  activeNodeIds?: Set<string>
+  activeNodeIds?: Set<string>,
 ): OverrideContext {
-  const overrideKeyToGuid = new Map<string, string>()
+  const overrideKeyToGuid = new Map<string, string>();
   for (const [id, nc] of changeMap) {
-    if (nc.overrideKey) overrideKeyToGuid.set(guidToString(nc.overrideKey), id)
+    if (nc.overrideKey) overrideKeyToGuid.set(guidToString(nc.overrideKey), id);
   }
 
-  const propDefaults = new Map<string, ComponentPropValue>()
-  const propNames = new Map<string, string>()
+  const propDefaults = new Map<string, ComponentPropValue>();
+  const propNames = new Map<string, string>();
   for (const [, nc] of changeMap) {
-    if (!nc.componentPropDefs?.length) continue
+    if (!nc.componentPropDefs?.length) continue;
     for (const def of nc.componentPropDefs) {
-      if (!def.id) continue
-      const id = guidToString(def.id)
-      if (def.initialValue) propDefaults.set(id, def.initialValue)
-      if (def.name) propNames.set(id, def.name)
+      if (!def.id) continue;
+      const id = guidToString(def.id);
+      if (def.initialValue) propDefaults.set(id, def.initialValue);
+      if (def.name) propNames.set(id, def.name);
     }
   }
 
-  const nodeIdToGuid = new Map<string, string>()
+  const nodeIdToGuid = new Map<string, string>();
   for (const [figmaId, nodeId] of guidToNodeId) {
-    nodeIdToGuid.set(nodeId, figmaId)
+    nodeIdToGuid.set(nodeId, figmaId);
   }
 
-  const kiwiPropertyNodes = buildKiwiPropertyNodes(graph, changeMap, guidToNodeId)
-  const geometryOverrideNodes = buildKiwiGeometryNodes(changeMap, guidToNodeId)
+  const kiwiPropertyNodes = buildKiwiPropertyNodes(graph, changeMap, guidToNodeId);
+  const geometryOverrideNodes = buildKiwiGeometryNodes(changeMap, guidToNodeId);
 
   return {
     graph,
@@ -190,8 +190,8 @@ function buildOverrideContext(
     protectedFields: new Map(),
     kiwiPropertyNodes,
     geometryOverrideNodes,
-    activeNodeIds
-  }
+    activeNodeIds,
+  };
 }
 
 /**
@@ -215,19 +215,19 @@ export function populateAndApplyOverrides(
   changeMap: Map<string, InstanceNodeChange>,
   guidToNodeId: Map<string, string>,
   blobs: Uint8Array[] = [],
-  activeRootIds?: Iterable<string>
+  activeRootIds?: Iterable<string>,
 ): void {
-  const activeNodeIds = populateInstances(graph, activeRootIds)
+  const activeNodeIds = populateInstances(graph, activeRootIds);
 
-  const ctx = buildOverrideContext(graph, changeMap, guidToNodeId, blobs, activeNodeIds)
-  preComputeRoots(ctx)
+  const ctx = buildOverrideContext(graph, changeMap, guidToNodeId, blobs, activeNodeIds);
+  preComputeRoots(ctx);
 
-  const overriddenNodes = applySymbolOverrides(ctx)
+  const overriddenNodes = applySymbolOverrides(ctx);
 
   // Nodes with explicit kiwi NC properties are seeds (so their clones get
   // synced with the correct values) AND protected (so sync doesn't overwrite
   // them with component defaults).
-  for (const id of ctx.kiwiPropertyNodes) overriddenNodes.add(id)
+  for (const id of ctx.kiwiPropertyNodes) overriddenNodes.add(id);
   propagateOverridesTransitively(
     graph,
     overriddenNodes,
@@ -235,10 +235,10 @@ export function populateAndApplyOverrides(
     ctx.componentIdRoot,
     undefined,
     ctx.activeNodeIds,
-    ctx.protectedFields
-  )
+    ctx.protectedFields,
+  );
 
-  const propModified = applyComponentProperties(ctx)
+  const propModified = applyComponentProperties(ctx);
   if (propModified.size > 0) {
     propagateOverridesTransitively(
       graph,
@@ -247,15 +247,15 @@ export function populateAndApplyOverrides(
       ctx.componentIdRoot,
       overriddenNodes,
       ctx.activeNodeIds,
-      ctx.protectedFields
-    )
+      ctx.protectedFields,
+    );
   }
 
   if (activeRootIds) {
-    const populated = populateInstances(graph, activeRootIds)
-    if (populated) ctx.activeNodeIds = populated
-    const latePropModified = applyComponentProperties(ctx)
-    const lateSeeds = new Set([...overriddenNodes, ...propModified, ...latePropModified])
+    const populated = populateInstances(graph, activeRootIds);
+    if (populated) ctx.activeNodeIds = populated;
+    const latePropModified = applyComponentProperties(ctx);
+    const lateSeeds = new Set([...overriddenNodes, ...propModified, ...latePropModified]);
     if (lateSeeds.size > 0) {
       propagateOverridesTransitively(
         graph,
@@ -264,19 +264,19 @@ export function populateAndApplyOverrides(
         ctx.componentIdRoot,
         overriddenNodes,
         ctx.activeNodeIds,
-        ctx.protectedFields
-      )
+        ctx.protectedFields,
+      );
     }
-    propagateResolvedChildPlacementClones(graph)
+    propagateResolvedChildPlacementClones(graph);
   }
 
-  applyDerivedSymbolData(ctx)
+  applyDerivedSymbolData(ctx);
   propagateResolvedFills(
     graph,
     new Set([...ctx.kiwiPropertyNodes, ...overriddenNodes]),
-    ctx.activeNodeIds
-  )
-  propagateResolvedTextClones(graph)
-  applyConstraintScaling(ctx)
-  applyComponentProperties(ctx)
+    ctx.activeNodeIds,
+  );
+  propagateResolvedTextClones(graph);
+  applyConstraintScaling(ctx);
+  applyComponentProperties(ctx);
 }

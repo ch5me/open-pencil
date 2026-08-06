@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
-import { ref } from 'vue'
+import { useI18n } from "@open-pencil/vue";
+import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from "reka-ui";
+import { ref } from "vue";
 
-import { useI18n } from '@open-pencil/vue'
+import AppMenu from "./AppMenu.vue";
+import AssetsPanel from "./AssetsPanel.vue";
+import LayerTree from "./LayerTree.vue";
+import PagesPanel from "./PagesPanel.vue";
 
-import AppMenu from './AppMenu.vue'
-import AssetsPanel from './AssetsPanel.vue'
-import LayerTree from './LayerTree.vue'
-import PagesPanel from './PagesPanel.vue'
-
-const { menu, panels } = useI18n()
-const activePanel = ref<'file' | 'assets'>('file')
+const { menu, panels } = useI18n();
+const activePanel = ref<"file" | "assets">("file");
 </script>
 
 <template>

@@ -1,15 +1,14 @@
-import { ref } from 'vue'
-
-import type { Effect } from '@open-pencil/core/scene-graph'
+import type { Effect } from "@open-pencil/core/scene-graph";
+import { ref } from "vue";
 
 import {
   EFFECT_OPTIONS,
   createDefaultEffect,
   createEffectControlActions,
   createEffectEditActions,
-  isShadow
-} from '#vue/controls/effects/helpers'
-import { useEditor } from '#vue/editor/context'
+  isShadow,
+} from "#vue/controls/effects/helpers";
+import { useEditor } from "#vue/editor/context";
 
 /**
  * Returns effect-editing helpers for property panels.
@@ -18,12 +17,12 @@ import { useEditor } from '#vue/editor/context'
  * scrub-preview behavior, and effect type/color updates.
  */
 export function useEffectsControls() {
-  const editor = useEditor()
+  const editor = useEditor();
 
-  const expandedIndex = ref<number | null>(null)
-  const effectsBeforeScrub = ref<Effect[] | null>(null)
-  const editActions = createEffectEditActions(editor, effectsBeforeScrub)
-  const controlActions = createEffectControlActions(expandedIndex)
+  const expandedIndex = ref<number | null>(null);
+  const effectsBeforeScrub = ref<Effect[] | null>(null);
+  const editActions = createEffectEditActions(editor, effectsBeforeScrub);
+  const controlActions = createEffectControlActions(expandedIndex);
 
   return {
     expandedIndex,
@@ -31,6 +30,6 @@ export function useEffectsControls() {
     createDefaultEffect,
     isShadow,
     ...editActions,
-    ...controlActions
-  }
+    ...controlActions,
+  };
 }

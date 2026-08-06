@@ -1,20 +1,20 @@
-import type { NodeChange } from '@open-pencil/kiwi/fig/codec'
+import type { NodeChange } from "@open-pencil/kiwi/fig/codec";
 
-import type { FigmaDerivedTextGlyph } from '#core/scene-graph'
+import type { FigmaDerivedTextGlyph } from "#core/scene-graph";
 
 export function convertFigmaDerivedTextGlyphs(
-  derivedTextData: NodeChange['derivedTextData'],
-  blobs: Uint8Array[]
+  derivedTextData: NodeChange["derivedTextData"],
+  blobs: Uint8Array[],
 ): FigmaDerivedTextGlyph[] {
   return (derivedTextData?.glyphs ?? [])
     .map((glyph) => {
-      if (glyph.commandsBlob === undefined) return null
+      if (glyph.commandsBlob === undefined) return null;
       return {
         commandsBlob: blobs[glyph.commandsBlob],
         x: glyph.position.x,
         y: glyph.position.y,
-        fontSize: glyph.fontSize
-      }
+        fontSize: glyph.fontSize,
+      };
     })
-    .filter((glyph): glyph is NonNullable<typeof glyph> => !!glyph)
+    .filter((glyph): glyph is NonNullable<typeof glyph> => !!glyph);
 }

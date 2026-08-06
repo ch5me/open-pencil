@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
+import { colorToCSS } from "@open-pencil/core/color";
+import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
 
-import { colorToCSS } from '@open-pencil/core/color'
+import { initials } from "@/app/shell/ui";
+import { useMobileHudContext } from "@/components/MobileHud/context";
 
-import { initials } from '@/app/shell/ui'
-import { useMobileHudContext } from '@/components/MobileHud/context'
-
-const hud = useMobileHudContext()
+const hud = useMobileHudContext();
 </script>
 
 <template>
@@ -34,10 +33,10 @@ const hud = useMobileHudContext()
               class="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
               :style="{ background: colorToCSS(hud.collabState.localColor) }"
             >
-              {{ initials(hud.collabState.localName || 'You') }}
+              {{ initials(hud.collabState.localName || "You") }}
             </div>
             <span class="min-w-0 flex-1 truncate text-xs text-surface">
-              {{ hud.collabState.localName || 'You' }}
+              {{ hud.collabState.localName || "You" }}
             </span>
             <span class="text-[10px] text-muted">you</span>
           </div>

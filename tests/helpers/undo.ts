@@ -1,13 +1,13 @@
-import { UndoManager } from '@open-pencil/core'
+import { UndoManager } from "@open-pencil/core";
 
 export function noop() {
-  return undefined
+  return undefined;
 }
 
 export function createUndoManager(options?: ConstructorParameters<typeof UndoManager>[0]) {
-  return new UndoManager(options)
+  return new UndoManager(options);
 }
 
 export function undoEntry(label: string, forward = noop, inverse = noop) {
-  return { label, forward, inverse }
+  return { label, forward, inverse };
 }

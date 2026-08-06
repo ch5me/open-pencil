@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { useAppearance, useI18n } from "@open-pencil/vue";
+import { computed, ref } from "vue";
 
-import { useAppearance, useI18n } from '@open-pencil/vue'
+import VariableScrubInput from "@/components/properties/VariableScrubInput.vue";
+import ScrubInput from "@/components/ScrubInput.vue";
+import { useIconButtonUI } from "@/components/ui/icon-button";
+import { useSectionUI } from "@/components/ui/section";
+import Tip from "@/components/ui/Tip.vue";
 
-import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
-import ScrubInput from '@/components/ScrubInput.vue'
-import { useIconButtonUI } from '@/components/ui/icon-button'
-import { useSectionUI } from '@/components/ui/section'
-import Tip from '@/components/ui/Tip.vue'
-
-const { panels } = useI18n()
+const { panels } = useI18n();
 const {
   node,
   isMulti,
@@ -24,27 +23,27 @@ const {
   toggleVisibility,
   toggleIndependentCorners,
   updateCornerProp,
-  commitCornerProp
-} = useAppearance()
+  commitCornerProp,
+} = useAppearance();
 
-const sectionCls = useSectionUI()
-const manualExpanded = ref<boolean | null>(null)
+const sectionCls = useSectionUI();
+const manualExpanded = ref<boolean | null>(null);
 
 const showIndependentCorners = computed(() => {
-  if (manualExpanded.value !== null) return manualExpanded.value
-  if (independentCorners.value === true) return true
-  const n = node.value
-  if (!n) return false
+  if (manualExpanded.value !== null) return manualExpanded.value;
+  if (independentCorners.value === true) return true;
+  const n = node.value;
+  if (!n) return false;
   return !(
     n.topLeftRadius === n.topRightRadius &&
     n.topLeftRadius === n.bottomRightRadius &&
     n.topLeftRadius === n.bottomLeftRadius
-  )
-})
+  );
+});
 
 function onToggleCorners() {
-  manualExpanded.value = !showIndependentCorners.value
-  toggleIndependentCorners()
+  manualExpanded.value = !showIndependentCorners.value;
+  toggleIndependentCorners();
 }
 </script>
 
@@ -133,7 +132,7 @@ function onToggleCorners() {
             data-test-id="independent-corners-toggle"
             :class="[
               useIconButtonUI({ size: 'md', ui: { base: 'size-[26px] shrink-0' } }).base,
-              { '!border-accent !text-accent': showIndependentCorners }
+              { '!border-accent !text-accent': showIndependentCorners },
             ]"
             @click="onToggleCorners"
           >

@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { colorToCSS } from '@open-pencil/core/color'
-import { useI18n } from '@open-pencil/vue'
+import { colorToCSS } from "@open-pencil/core/color";
+import { useI18n } from "@open-pencil/vue";
 
-import { initials } from '@/app/shell/ui'
-import { useCollabPanelContext } from '@/components/CollabPanel/context'
-import Tip from '@/components/ui/Tip.vue'
+import { initials } from "@/app/shell/ui";
+import { useCollabPanelContext } from "@/components/CollabPanel/context";
+import Tip from "@/components/ui/Tip.vue";
 
-const collab = useCollabPanelContext()
-const { dialogs } = useI18n()
+const collab = useCollabPanelContext();
+const { dialogs } = useI18n();
 </script>
 
 <template>

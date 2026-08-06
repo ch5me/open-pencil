@@ -1,8 +1,8 @@
-import { useVueTable, getCoreRowModel } from '@tanstack/vue-table'
-import { computed, type Component } from 'vue'
+import { useVueTable, getCoreRowModel } from "@tanstack/vue-table";
+import { computed, type Component } from "vue";
 
-import { useVariablesDialogState } from '#vue/variables/dialog/use'
-import { useVariablesTable } from '#vue/variables/table/use'
+import { useVariablesDialogState } from "#vue/variables/dialog/use";
+import { useVariablesTable } from "#vue/variables/table/use";
 
 /**
  * Composes variables dialog state, table columns, and TanStack table wiring
@@ -10,15 +10,15 @@ import { useVariablesTable } from '#vue/variables/table/use'
  */
 export function useVariablesEditor(options: {
   /** Component used for color variable editing. */
-  colorInput: Component
+  colorInput: Component;
   /** Icon map keyed by variable resolved type. */
-  icons: Record<string, Component>
+  icons: Record<string, Component>;
   /** Fallback icon when no specific icon matches a variable type. */
-  fallbackIcon: Component
+  fallbackIcon: Component;
   /** Icon used for destructive remove actions. */
-  deleteIcon: Component
+  deleteIcon: Component;
 }) {
-  const ctx = useVariablesDialogState()
+  const ctx = useVariablesDialogState();
 
   const { columns } = useVariablesTable({
     activeModes: ctx.activeModes,
@@ -31,31 +31,31 @@ export function useVariablesEditor(options: {
     ColorInput: options.colorInput,
     icons: options.icons,
     fallbackIcon: options.fallbackIcon,
-    deleteIcon: options.deleteIcon
-  })
+    deleteIcon: options.deleteIcon,
+  });
 
   const table = useVueTable({
     get data() {
-      return ctx.variables.value
+      return ctx.variables.value;
     },
     get columns() {
-      return columns.value
+      return columns.value;
     },
-    columnResizeMode: 'onChange',
+    columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     defaultColumn: {
       minSize: 60,
-      maxSize: 800
+      maxSize: 800,
     },
-    getRowId: (row) => row.id
-  })
+    getRowId: (row) => row.id,
+  });
 
-  const hasCollections = computed(() => ctx.collections.value.length > 0)
+  const hasCollections = computed(() => ctx.collections.value.length > 0);
 
   return {
     ...ctx,
     columns,
     table,
-    hasCollections
-  }
+    hasCollections,
+  };
 }

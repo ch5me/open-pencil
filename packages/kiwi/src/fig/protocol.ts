@@ -37,8 +37,8 @@ export const MESSAGE_TYPES = {
   SCENE_GRAPH_QUERY: 11,
   SCENE_GRAPH_REPLY: 12,
   DIFF: 13,
-  CLIENT_BROADCAST: 14
-} as const
+  CLIENT_BROADCAST: 14,
+} as const;
 
 export const NODE_TYPES = {
   NONE: 0,
@@ -69,13 +69,13 @@ export const NODE_TYPES = {
   SECTION: 25,
   SECTION_OVERLAY: 26,
   WASHI_TAPE: 27,
-  VARIABLE: 28
-} as const
+  VARIABLE: 28,
+} as const;
 
 export const NODE_PHASES = {
   CREATED: 0,
-  REMOVED: 1
-} as const
+  REMOVED: 1,
+} as const;
 
 export const BLEND_MODES = {
   PASS_THROUGH: 0,
@@ -96,8 +96,8 @@ export const BLEND_MODES = {
   HUE: 15,
   SATURATION: 16,
   COLOR: 17,
-  LUMINOSITY: 18
-} as const
+  LUMINOSITY: 18,
+} as const;
 
 export const PAINT_TYPES = {
   SOLID: 0,
@@ -107,13 +107,13 @@ export const PAINT_TYPES = {
   GRADIENT_DIAMOND: 4,
   IMAGE: 5,
   EMOJI: 6,
-  VIDEO: 7
-} as const
+  VIDEO: 7,
+} as const;
 
 /**
  * Zstd magic bytes
  */
-export const ZSTD_MAGIC = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd])
+export const ZSTD_MAGIC = new Uint8Array([0x28, 0xb5, 0x2f, 0xfd]);
 
 // ============================================================================
 // Kiwi Binary Format Constants
@@ -137,58 +137,58 @@ export const KIWI = {
   VARINT_VALUE_MASK: 0x7f,
 
   /** Bits per varint byte */
-  VARINT_BITS_PER_BYTE: 7
-} as const
+  VARINT_BITS_PER_BYTE: 7,
+} as const;
 
 /**
  * Valid session ID range (based on observed Figma behavior)
  */
 export const SESSION_ID = {
   MIN: 10000,
-  MAX: 1000000
-} as const
+  MAX: 1000000,
+} as const;
 
 /**
  * Parse a varint from a Uint8Array at given position
  * Returns [value, newPosition]
  */
 export function parseVarint(data: Uint8Array, pos: number): [number, number] {
-  let value = 0
-  let shift = 0
+  let value = 0;
+  let shift = 0;
 
   while (pos < data.length) {
-    const byte = data[pos]
-    pos++
-    value |= (byte & KIWI.VARINT_VALUE_MASK) << shift
+    const byte = data[pos];
+    pos++;
+    value |= (byte & KIWI.VARINT_VALUE_MASK) << shift;
 
     if (!(byte & KIWI.VARINT_CONTINUE_BIT)) {
-      break
+      break;
     }
-    shift += KIWI.VARINT_BITS_PER_BYTE
+    shift += KIWI.VARINT_BITS_PER_BYTE;
   }
 
-  return [value, pos]
+  return [value, pos];
 }
 
 /**
  * Check if data is a valid Kiwi message
  */
 export function isKiwiMessage(data: Uint8Array): boolean {
-  return data.length >= 2 && data[0] === KIWI.MESSAGE_MARKER
+  return data.length >= 2 && data[0] === KIWI.MESSAGE_MARKER;
 }
 
 /**
  * Get message type from Kiwi message
  */
 export function getKiwiMessageType(data: Uint8Array): number | null {
-  if (!isKiwiMessage(data)) return null
-  return data[1] ?? null
+  if (!isKiwiMessage(data)) return null;
+  return data[1] ?? null;
 }
 
 /**
  * fig-wire header magic (first 8 bytes of some messages)
  */
-export const FIG_WIRE_MAGIC = 'fig-wire'
+export const FIG_WIRE_MAGIC = "fig-wire";
 
 /**
  * Check if data is Zstd-compressed
@@ -196,16 +196,16 @@ export const FIG_WIRE_MAGIC = 'fig-wire'
 export function isZstdCompressed(data: Uint8Array): boolean {
   return (
     data.length >= 4 && data[0] === 0x28 && data[1] === 0xb5 && data[2] === 0x2f && data[3] === 0xfd
-  )
+  );
 }
 
 /**
  * Check if data has fig-wire header
  */
 export function hasFigWireHeader(data: Uint8Array): boolean {
-  if (data.length < 8) return false
-  const header = new TextDecoder().decode(data.slice(0, 8))
-  return header === FIG_WIRE_MAGIC
+  if (data.length < 8) return false;
+  const header = new TextDecoder().decode(data.slice(0, 8));
+  return header === FIG_WIRE_MAGIC;
 }
 
 /**
@@ -213,25 +213,25 @@ export function hasFigWireHeader(data: Uint8Array): boolean {
  * Header format: "fig-wire" (8 bytes) + version (4 bytes LE) + zstd data
  */
 export function skipFigWireHeader(data: Uint8Array): Uint8Array {
-  if (!hasFigWireHeader(data)) return data
+  if (!hasFigWireHeader(data)) return data;
   // Skip 8 bytes header + 4 bytes version
-  return data.slice(12)
+  return data.slice(12);
 }
 
 /**
  * Current multiplayer protocol version
  */
-export const PROTOCOL_VERSION = 151
+export const PROTOCOL_VERSION = 151;
 
 /**
  * Build WebSocket URL for Figma multiplayer
  */
 export function buildMultiplayerUrl(fileKey: string, trackingId?: string): string {
   const params = new URLSearchParams({
-    role: 'editor',
+    role: "editor",
     version: String(PROTOCOL_VERSION),
-    recentReload: '0',
-    tracking_session_id: trackingId || `ws-${Date.now()}`
-  })
-  return `wss://www.figma.com/api/multiplayer/${fileKey}?${params}`
+    recentReload: "0",
+    tracking_session_id: trackingId || `ws-${Date.now()}`,
+  });
+  return `wss://www.figma.com/api/multiplayer/${fileKey}?${params}`;
 }

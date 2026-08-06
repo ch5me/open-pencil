@@ -1,105 +1,104 @@
 <script setup lang="ts">
 import {
-  ContextMenuPortal,
-  ContextMenuRoot,
-  ContextMenuTrigger,
-  PopoverContent,
-  PopoverPortal,
-  PopoverRoot
-} from 'reka-ui'
-import { computed, ref, type Component } from 'vue'
-import IconLucidePanelBottom from '~icons/lucide/panel-bottom'
-import IconLucidePanelLeft from '~icons/lucide/panel-left'
-import IconLucidePanelRight from '~icons/lucide/panel-right'
-import IconLucidePanelTop from '~icons/lucide/panel-top'
-
-import {
   AUTO_LAYOUT_PADDING_EDITOR_OFFSET_X,
-  AUTO_LAYOUT_PADDING_EDITOR_OFFSET_Y
-} from '@open-pencil/core/constants'
+  AUTO_LAYOUT_PADDING_EDITOR_OFFSET_Y,
+} from "@open-pencil/core/constants";
 import {
   toolCursor,
   useCanvas,
   useCanvasDrop,
   useCanvasInput,
   useCanvasVirtualReference,
-  useTextEdit
-} from '@open-pencil/vue'
+  useTextEdit,
+} from "@open-pencil/vue";
+import {
+  ContextMenuPortal,
+  ContextMenuRoot,
+  ContextMenuTrigger,
+  PopoverContent,
+  PopoverPortal,
+  PopoverRoot,
+} from "reka-ui";
+import { computed, ref, type Component } from "vue";
+import IconLucidePanelBottom from "~icons/lucide/panel-bottom";
+import IconLucidePanelLeft from "~icons/lucide/panel-left";
+import IconLucidePanelRight from "~icons/lucide/panel-right";
+import IconLucidePanelTop from "~icons/lucide/panel-top";
 
-import { useCollabInjected } from '@/app/collab/use'
-import { useEditorStore } from '@/app/editor/active-store'
-import { useCanvasCollaborationAwareness } from '@/app/editor/canvas/collaboration-awareness'
-import { createCanvasContextSelection } from '@/app/editor/canvas/context-selection'
-import { fadeOutGlobalLoader } from '@/app/editor/canvas/loader-overlay'
+import { useCollabInjected } from "@/app/collab/use";
+import { useEditorStore } from "@/app/editor/active-store";
+import { useCanvasCollaborationAwareness } from "@/app/editor/canvas/collaboration-awareness";
+import { createCanvasContextSelection } from "@/app/editor/canvas/context-selection";
+import { fadeOutGlobalLoader } from "@/app/editor/canvas/loader-overlay";
 
-import CanvasMenu from './CanvasMenu.vue'
-import ScrubInput from './ScrubInput.vue'
+import CanvasMenu from "./CanvasMenu.vue";
+import ScrubInput from "./ScrubInput.vue";
 
-const store = useEditorStore()
-const collab = useCollabInjected()
-const sceneCanvasRef = ref<HTMLCanvasElement | null>(null)
-const canvasRef = ref<HTMLCanvasElement | null>(null)
+const store = useEditorStore();
+const collab = useCollabInjected();
+const sceneCanvasRef = ref<HTMLCanvasElement | null>(null);
+const canvasRef = ref<HTMLCanvasElement | null>(null);
 
-const { updateCursor } = useCanvasCollaborationAwareness(store, collab)
-const { selectAtContextPoint } = createCanvasContextSelection(canvasRef, store)
+const { updateCursor } = useCanvasCollaborationAwareness(store, collab);
+const { selectAtContextPoint } = createCanvasContextSelection(canvasRef, store);
 
 useCanvas(sceneCanvasRef, store, {
-  layer: 'scene',
+  layer: "scene",
   showRulers: false,
-  onReady: fadeOutGlobalLoader
-})
+  onReady: fadeOutGlobalLoader,
+});
 const { hitTestSectionTitle, hitTestComponentLabel, hitTestFrameTitle } = useCanvas(
   canvasRef,
   store,
   {
-    layer: 'overlays'
-  }
-)
+    layer: "overlays",
+  },
+);
 const {
   cursorOverride,
   autoLayoutPaddingEdit,
   updateAutoLayoutPaddingEdit,
   commitAutoLayoutPaddingEdit,
-  cancelAutoLayoutPaddingEdit
+  cancelAutoLayoutPaddingEdit,
 } = useCanvasInput(
   canvasRef,
   store,
   hitTestSectionTitle,
   hitTestComponentLabel,
   hitTestFrameTitle,
-  updateCursor
-)
+  updateCursor,
+);
 
-useTextEdit(canvasRef, store)
-const { isDraggingOver } = useCanvasDrop(canvasRef, store)
+useTextEdit(canvasRef, store);
+const { isDraggingOver } = useCanvasDrop(canvasRef, store);
 
 const paddingSideIcons = {
   top: IconLucidePanelTop,
   right: IconLucidePanelRight,
   bottom: IconLucidePanelBottom,
-  left: IconLucidePanelLeft
-} satisfies Record<'top' | 'right' | 'bottom' | 'left', Component>
+  left: IconLucidePanelLeft,
+} satisfies Record<"top" | "right" | "bottom" | "left", Component>;
 
 const paddingEditorAnchor = computed(() => {
-  const edit = autoLayoutPaddingEdit.value
-  if (!edit) return null
-  const node = store.graph.getNode(edit.nodeId)
-  if (!node) return null
-  const abs = store.graph.getAbsolutePosition(node.id)
-  if (edit.side === 'top') return { x: abs.x + node.width / 2, y: abs.y + node.paddingTop / 2 }
-  if (edit.side === 'bottom') {
-    return { x: abs.x + node.width / 2, y: abs.y + node.height - node.paddingBottom / 2 }
+  const edit = autoLayoutPaddingEdit.value;
+  if (!edit) return null;
+  const node = store.graph.getNode(edit.nodeId);
+  if (!node) return null;
+  const abs = store.graph.getAbsolutePosition(node.id);
+  if (edit.side === "top") return { x: abs.x + node.width / 2, y: abs.y + node.paddingTop / 2 };
+  if (edit.side === "bottom") {
+    return { x: abs.x + node.width / 2, y: abs.y + node.height - node.paddingBottom / 2 };
   }
-  if (edit.side === 'left') return { x: abs.x + node.paddingLeft / 2, y: abs.y + node.height / 2 }
-  return { x: abs.x + node.width - node.paddingRight / 2, y: abs.y + node.height / 2 }
-})
-const paddingEditorReference = useCanvasVirtualReference(canvasRef, store, paddingEditorAnchor)
+  if (edit.side === "left") return { x: abs.x + node.paddingLeft / 2, y: abs.y + node.height / 2 };
+  return { x: abs.x + node.width - node.paddingRight / 2, y: abs.y + node.height / 2 };
+});
+const paddingEditorReference = useCanvasVirtualReference(canvasRef, store, paddingEditorAnchor);
 const paddingEditorIcon = computed(() => {
-  const edit = autoLayoutPaddingEdit.value
-  return edit ? paddingSideIcons[edit.side] : IconLucidePanelTop
-})
+  const edit = autoLayoutPaddingEdit.value;
+  return edit ? paddingSideIcons[edit.side] : IconLucidePanelTop;
+});
 
-const cursor = computed(() => toolCursor(store.state.activeTool, cursorOverride.value))
+const cursor = computed(() => toolCursor(store.state.activeTool, cursorOverride.value));
 </script>
 
 <template>

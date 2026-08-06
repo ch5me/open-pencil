@@ -1,1 +1,1 @@
-export { parseFigFile, readFigFile } from '#core/io/formats/fig/read'
+export { parseFigFile, readFigFile } from "#core/io/formats/fig/read";

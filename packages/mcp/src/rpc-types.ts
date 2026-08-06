@@ -1,5 +1,5 @@
 export type PendingRequest = {
-  resolve: (value: unknown) => void
-  reject: (error: Error) => void
-  timer: ReturnType<typeof setTimeout>
-}
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+};

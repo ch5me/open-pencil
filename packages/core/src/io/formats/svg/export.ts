@@ -1,5 +1,5 @@
-import { computeContentBounds } from '#core/io/formats/raster'
-import { resolveNodeTextDirection } from '#core/text/direction'
+import { computeContentBounds } from "#core/io/formats/raster";
+import { resolveNodeTextDirection } from "#core/text/direction";
 
 import {
   nextDefId,
@@ -8,8 +8,8 @@ import {
   resolveFill,
   SVG_STROKE_CAP,
   SVG_STROKE_JOIN,
-  SVG_BLEND_MODE
-} from './defs'
+  SVG_BLEND_MODE,
+} from "./defs";
 import {
   round,
   geometryBlobToSVGPath,
@@ -17,292 +17,299 @@ import {
   makePolygonPoints,
   hasRadius,
   roundedRectPath,
-  arcPath
-} from './paths'
+  arcPath,
+} from "./paths";
 
-export { geometryBlobToSVGPath, vectorNetworkToSVGPaths } from './paths'
+export { geometryBlobToSVGPath, vectorNetworkToSVGPaths } from "./paths";
 
-import type { SceneGraph, SceneNode, Fill, Stroke, CharacterStyleOverride } from '#core/scene-graph'
+import type {
+  SceneGraph,
+  SceneNode,
+  Fill,
+  Stroke,
+  CharacterStyleOverride,
+} from "#core/scene-graph";
 
-import type { SVGExportContext } from './defs'
-import { svg, renderSVGNode } from './node'
-import type { SVGNode } from './node'
+import type { SVGExportContext } from "./defs";
+import { svg, renderSVGNode } from "./node";
+import type { SVGNode } from "./node";
 
 // --- Node rendering ---
 
 function vectorShapeElements(
   node: SceneNode,
   common: Record<string, string | number | undefined>,
-  strokeAttrs: Record<string, string | number | undefined>
+  strokeAttrs: Record<string, string | number | undefined>,
 ): SVGNode[] {
-  const elements: SVGNode[] = []
+  const elements: SVGNode[] = [];
   if (node.fillGeometry.length > 0) {
     for (const geo of node.fillGeometry) {
-      const d = geometryBlobToSVGPath(geo.commandsBlob)
+      const d = geometryBlobToSVGPath(geo.commandsBlob);
       if (d) {
         elements.push(
-          svg('path', {
+          svg("path", {
             d,
-            'fill-rule': geo.windingRule === 'EVENODD' ? 'evenodd' : undefined,
-            ...common
-          })
-        )
+            "fill-rule": geo.windingRule === "EVENODD" ? "evenodd" : undefined,
+            ...common,
+          }),
+        );
       }
     }
   } else if (node.vectorNetwork) {
-    const paths = vectorNetworkToSVGPaths(node.vectorNetwork)
+    const paths = vectorNetworkToSVGPaths(node.vectorNetwork);
     for (const d of paths) {
-      elements.push(svg('path', { d, ...common }))
+      elements.push(svg("path", { d, ...common }));
     }
   }
-  if (node.strokeGeometry.length > 0 && strokeAttrs.stroke && strokeAttrs.stroke !== 'none') {
+  if (node.strokeGeometry.length > 0 && strokeAttrs.stroke && strokeAttrs.stroke !== "none") {
     for (const geo of node.strokeGeometry) {
-      const d = geometryBlobToSVGPath(geo.commandsBlob)
+      const d = geometryBlobToSVGPath(geo.commandsBlob);
       if (d) {
         elements.push(
-          svg('path', {
+          svg("path", {
             d,
             fill: strokeAttrs.stroke as string,
-            'fill-opacity': strokeAttrs['stroke-opacity'],
-            stroke: 'none'
-          })
-        )
+            "fill-opacity": strokeAttrs["stroke-opacity"],
+            stroke: "none",
+          }),
+        );
       }
     }
   }
   return elements.length > 0
     ? elements
-    : [svg('rect', { width: round(node.width), height: round(node.height), ...common })]
+    : [svg("rect", { width: round(node.width), height: round(node.height), ...common })];
 }
 
 function nodeShapeElements(
   node: SceneNode,
   fillAttr: string | null,
-  strokeAttrs: Record<string, string | number | undefined>
+  strokeAttrs: Record<string, string | number | undefined>,
 ): SVGNode[] {
   const common: Record<string, string | number | undefined> = {
-    fill: fillAttr ?? 'none',
-    ...strokeAttrs
-  }
+    fill: fillAttr ?? "none",
+    ...strokeAttrs,
+  };
 
   switch (node.type) {
-    case 'ELLIPSE': {
+    case "ELLIPSE": {
       if (node.arcData) {
-        return [svg('path', { d: arcPath(node), ...common })]
+        return [svg("path", { d: arcPath(node), ...common })];
       }
       return [
-        svg('ellipse', {
+        svg("ellipse", {
           cx: round(node.width / 2),
           cy: round(node.height / 2),
           rx: round(node.width / 2),
           ry: round(node.height / 2),
-          ...common
-        })
-      ]
+          ...common,
+        }),
+      ];
     }
 
-    case 'LINE':
+    case "LINE":
       return [
-        svg('line', {
+        svg("line", {
           x1: 0,
           y1: 0,
           x2: round(node.width),
           y2: round(node.height),
-          fill: 'none',
-          ...strokeAttrs
-        })
-      ]
+          fill: "none",
+          ...strokeAttrs,
+        }),
+      ];
 
-    case 'STAR':
-    case 'POLYGON':
-      return [svg('polygon', { points: makePolygonPoints(node), ...common })]
+    case "STAR":
+    case "POLYGON":
+      return [svg("polygon", { points: makePolygonPoints(node), ...common })];
 
-    case 'VECTOR':
-      return vectorShapeElements(node, common, strokeAttrs)
+    case "VECTOR":
+      return vectorShapeElements(node, common, strokeAttrs);
 
     default: {
       if (hasRadius(node)) {
         if (node.independentCorners) {
-          return [svg('path', { d: roundedRectPath(node), ...common })]
+          return [svg("path", { d: roundedRectPath(node), ...common })];
         }
         return [
-          svg('rect', {
+          svg("rect", {
             width: round(node.width),
             height: round(node.height),
             rx: round(node.cornerRadius),
             ry: round(node.cornerRadius),
-            ...common
-          })
-        ]
+            ...common,
+          }),
+        ];
       }
-      return [svg('rect', { width: round(node.width), height: round(node.height), ...common })]
+      return [svg("rect", { width: round(node.width), height: round(node.height), ...common })];
     }
   }
 }
 
 function styleOverrideToTspanAttrs(
   style: CharacterStyleOverride,
-  colorSpace: 'srgb' | 'display-p3'
+  colorSpace: "srgb" | "display-p3",
 ): Record<string, string | number | undefined> {
-  const attrs: Record<string, string | number | undefined> = {}
-  if (style.fontFamily) attrs['font-family'] = style.fontFamily
-  if (style.fontSize) attrs['font-size'] = style.fontSize
-  if (style.fontWeight) attrs['font-weight'] = style.fontWeight
-  if (style.italic) attrs['font-style'] = 'italic'
-  if (style.letterSpacing) attrs['letter-spacing'] = round(style.letterSpacing)
-  if (style.textDecoration === 'UNDERLINE') attrs['text-decoration'] = 'underline'
-  if (style.textDecoration === 'STRIKETHROUGH') attrs['text-decoration'] = 'line-through'
+  const attrs: Record<string, string | number | undefined> = {};
+  if (style.fontFamily) attrs["font-family"] = style.fontFamily;
+  if (style.fontSize) attrs["font-size"] = style.fontSize;
+  if (style.fontWeight) attrs["font-weight"] = style.fontWeight;
+  if (style.italic) attrs["font-style"] = "italic";
+  if (style.letterSpacing) attrs["letter-spacing"] = round(style.letterSpacing);
+  if (style.textDecoration === "UNDERLINE") attrs["text-decoration"] = "underline";
+  if (style.textDecoration === "STRIKETHROUGH") attrs["text-decoration"] = "line-through";
   if (style.fills) {
-    const visibleFill = style.fills.find((f) => f.visible && f.type === 'SOLID')
+    const visibleFill = style.fills.find((f) => f.visible && f.type === "SOLID");
     if (visibleFill) {
-      attrs.fill = formatColor(visibleFill.color, visibleFill.opacity, colorSpace)
+      attrs.fill = formatColor(visibleFill.color, visibleFill.opacity, colorSpace);
     }
   }
-  return attrs
+  return attrs;
 }
 
-function isLogicalTextEnd(node: SceneNode, direction: 'LTR' | 'RTL'): boolean {
+function isLogicalTextEnd(node: SceneNode, direction: "LTR" | "RTL"): boolean {
   return (
-    (direction === 'LTR' && node.textAlignHorizontal === 'RIGHT') ||
-    (direction === 'RTL' && node.textAlignHorizontal === 'LEFT')
-  )
+    (direction === "LTR" && node.textAlignHorizontal === "RIGHT") ||
+    (direction === "RTL" && node.textAlignHorizontal === "LEFT")
+  );
 }
 
 function textAnchorForNode(
   node: SceneNode,
-  direction: 'LTR' | 'RTL'
-): 'middle' | 'end' | undefined {
-  if (node.textAlignHorizontal === 'CENTER') return 'middle'
-  if (isLogicalTextEnd(node, direction)) return 'end'
-  return undefined
+  direction: "LTR" | "RTL",
+): "middle" | "end" | undefined {
+  if (node.textAlignHorizontal === "CENTER") return "middle";
+  if (isLogicalTextEnd(node, direction)) return "end";
+  return undefined;
 }
 
-function textXForNode(node: SceneNode, direction: 'LTR' | 'RTL'): number {
-  if (node.textAlignHorizontal === 'CENTER') return round(node.width / 2)
-  if (isLogicalTextEnd(node, direction)) return round(node.width)
-  return 0
+function textXForNode(node: SceneNode, direction: "LTR" | "RTL"): number {
+  if (node.textAlignHorizontal === "CENTER") return round(node.width / 2);
+  if (isLogicalTextEnd(node, direction)) return round(node.width);
+  return 0;
 }
 
 function renderTextNode(
   node: SceneNode,
   fillAttr: string | null,
-  colorSpace: 'srgb' | 'display-p3'
+  colorSpace: "srgb" | "display-p3",
 ): SVGNode {
-  const direction = resolveNodeTextDirection(node)
-  const textAnchor = textAnchorForNode(node, direction)
+  const direction = resolveNodeTextDirection(node);
+  const textAnchor = textAnchorForNode(node, direction);
 
-  let textDecoration: 'underline' | 'line-through' | undefined
-  if (node.textDecoration === 'UNDERLINE') textDecoration = 'underline'
-  else if (node.textDecoration === 'STRIKETHROUGH') textDecoration = 'line-through'
+  let textDecoration: "underline" | "line-through" | undefined;
+  if (node.textDecoration === "UNDERLINE") textDecoration = "underline";
+  else if (node.textDecoration === "STRIKETHROUGH") textDecoration = "line-through";
 
   const attrs: Record<string, string | number | undefined> = {
-    'font-family': node.fontFamily || undefined,
-    'font-size': node.fontSize || undefined,
-    'font-weight': node.fontWeight !== 400 ? node.fontWeight : undefined,
-    'font-style': node.italic ? 'italic' : undefined,
+    "font-family": node.fontFamily || undefined,
+    "font-size": node.fontSize || undefined,
+    "font-weight": node.fontWeight !== 400 ? node.fontWeight : undefined,
+    "font-style": node.italic ? "italic" : undefined,
     fill: fillAttr ?? undefined,
-    direction: direction === 'RTL' ? 'rtl' : undefined,
-    'text-anchor': textAnchor,
-    'text-decoration': textDecoration,
-    'letter-spacing': node.letterSpacing ? round(node.letterSpacing) : undefined
-  }
+    direction: direction === "RTL" ? "rtl" : undefined,
+    "text-anchor": textAnchor,
+    "text-decoration": textDecoration,
+    "letter-spacing": node.letterSpacing ? round(node.letterSpacing) : undefined,
+  };
 
-  const x = textXForNode(node, direction)
-  const y = node.fontSize || 14
+  const x = textXForNode(node, direction);
+  const y = node.fontSize || 14;
 
   if (node.styleRuns.length > 0) {
-    const spans: SVGNode[] = []
-    let pos = 0
+    const spans: SVGNode[] = [];
+    let pos = 0;
     for (const run of node.styleRuns) {
-      const text = node.text.slice(pos, pos + run.length)
-      pos += run.length
-      spans.push(svg('tspan', styleOverrideToTspanAttrs(run.style, colorSpace), text))
+      const text = node.text.slice(pos, pos + run.length);
+      pos += run.length;
+      spans.push(svg("tspan", styleOverrideToTspanAttrs(run.style, colorSpace), text));
     }
 
-    return svg('text', { x, y, ...attrs }, ...spans)
+    return svg("text", { x, y, ...attrs }, ...spans);
   }
 
-  return svg('text', { x, y, ...attrs }, node.text)
+  return svg("text", { x, y, ...attrs }, node.text);
 }
 
 // --- Main recursive renderer ---
 
 function buildTransformAttr(node: SceneNode): string | undefined {
-  const transforms: string[] = []
-  if (node.x !== 0 || node.y !== 0) transforms.push(`translate(${round(node.x)}, ${round(node.y)})`)
+  const transforms: string[] = [];
+  if (node.x !== 0 || node.y !== 0)
+    transforms.push(`translate(${round(node.x)}, ${round(node.y)})`);
   if (node.rotation !== 0) {
     transforms.push(
-      `rotate(${round(node.rotation)}, ${round(node.width / 2)}, ${round(node.height / 2)})`
-    )
+      `rotate(${round(node.rotation)}, ${round(node.width / 2)}, ${round(node.height / 2)})`,
+    );
   }
   if (node.flipX || node.flipY) {
-    const tx = node.flipX ? node.width : 0
-    const ty = node.flipY ? node.height : 0
-    const sx = node.flipX ? -1 : 1
-    const sy = node.flipY ? -1 : 1
-    transforms.push(`translate(${round(tx)}, ${round(ty)}) scale(${sx}, ${sy})`)
+    const tx = node.flipX ? node.width : 0;
+    const ty = node.flipY ? node.height : 0;
+    const sx = node.flipX ? -1 : 1;
+    const sy = node.flipY ? -1 : 1;
+    transforms.push(`translate(${round(tx)}, ${round(ty)}) scale(${sx}, ${sy})`);
   }
-  return transforms.length > 0 ? transforms.join(' ') : undefined
+  return transforms.length > 0 ? transforms.join(" ") : undefined;
 }
 
 function buildGroupAttrs(
   node: SceneNode,
-  ctx: SVGExportContext
+  ctx: SVGExportContext,
 ): { attrs: Record<string, string | number | undefined>; clipId?: string } {
-  const attrs: Record<string, string | number | undefined> = {}
+  const attrs: Record<string, string | number | undefined> = {};
 
-  const transform = buildTransformAttr(node)
-  if (transform) attrs.transform = transform
+  const transform = buildTransformAttr(node);
+  if (transform) attrs.transform = transform;
 
-  if (node.opacity < 1) attrs.opacity = round(node.opacity)
+  if (node.opacity < 1) attrs.opacity = round(node.opacity);
 
-  const blend = SVG_BLEND_MODE[node.blendMode]
-  if (blend && blend !== 'normal' && node.blendMode !== 'PASS_THROUGH') {
-    attrs.style = `mix-blend-mode: ${blend}`
+  const blend = SVG_BLEND_MODE[node.blendMode];
+  if (blend && blend !== "normal" && node.blendMode !== "PASS_THROUGH") {
+    attrs.style = `mix-blend-mode: ${blend}`;
   }
 
-  const filterDef = createFilterDef(node.effects, ctx)
+  const filterDef = createFilterDef(node.effects, ctx);
   if (filterDef) {
-    ctx.defs.push(filterDef.node)
-    attrs.filter = `url(#${filterDef.id})`
+    ctx.defs.push(filterDef.node);
+    attrs.filter = `url(#${filterDef.id})`;
   }
 
-  let clipId: string | undefined
+  let clipId: string | undefined;
   if (node.clipsContent && node.childIds.length > 0) {
-    clipId = nextDefId(ctx, 'clip')
+    clipId = nextDefId(ctx, "clip");
     ctx.defs.push(
       svg(
-        'clipPath',
+        "clipPath",
         { id: clipId },
-        svg('rect', { width: round(node.width), height: round(node.height) })
-      )
-    )
+        svg("rect", { width: round(node.width), height: round(node.height) }),
+      ),
+    );
   }
 
-  return { attrs, clipId }
+  return { attrs, clipId };
 }
 
 function buildSVGStrokeAttrs(
   visibleStrokes: Stroke[],
-  colorSpace: 'srgb' | 'display-p3'
+  colorSpace: "srgb" | "display-p3",
 ): Record<string, string | number | undefined> {
-  if (visibleStrokes.length === 0) return {}
-  const stroke = visibleStrokes[0]
+  if (visibleStrokes.length === 0) return {};
+  const stroke = visibleStrokes[0];
   const attrs: Record<string, string | number | undefined> = {
     stroke: formatColor(stroke.color, 1, colorSpace),
-    'stroke-width': round(stroke.weight)
+    "stroke-width": round(stroke.weight),
+  };
+  if (stroke.opacity < 1) attrs["stroke-opacity"] = round(stroke.opacity);
+  if (stroke.cap && stroke.cap !== "NONE") {
+    attrs["stroke-linecap"] = SVG_STROKE_CAP[stroke.cap] ?? "butt";
   }
-  if (stroke.opacity < 1) attrs['stroke-opacity'] = round(stroke.opacity)
-  if (stroke.cap && stroke.cap !== 'NONE') {
-    attrs['stroke-linecap'] = SVG_STROKE_CAP[stroke.cap] ?? 'butt'
-  }
-  if (stroke.join && stroke.join !== 'MITER') {
-    attrs['stroke-linejoin'] = SVG_STROKE_JOIN[stroke.join] ?? 'miter'
+  if (stroke.join && stroke.join !== "MITER") {
+    attrs["stroke-linejoin"] = SVG_STROKE_JOIN[stroke.join] ?? "miter";
   }
   if (stroke.dashPattern && stroke.dashPattern.length > 0) {
-    attrs['stroke-dasharray'] = stroke.dashPattern.map((n) => round(n)).join(' ')
+    attrs["stroke-dasharray"] = stroke.dashPattern.map((n) => round(n)).join(" ");
   }
-  return attrs
+  return attrs;
 }
 
 function buildShapeChildren(
@@ -311,49 +318,49 @@ function buildShapeChildren(
   fillAttr: string | null,
   strokeAttrs: Record<string, string | number | undefined>,
   visibleStrokeCount: number,
-  ctx: SVGExportContext
+  ctx: SVGExportContext,
 ): SVGNode[] {
   if (visibleFills.length > 1) {
-    const elements: SVGNode[] = []
+    const elements: SVGNode[] = [];
     for (const fill of visibleFills) {
-      const ref = resolveFill(fill, node, ctx)
+      const ref = resolveFill(fill, node, ctx);
       if (ref) {
         elements.push(
           ...nodeShapeElements(
             node,
             ref,
-            fill === visibleFills[visibleFills.length - 1] ? strokeAttrs : {}
-          )
-        )
+            fill === visibleFills[visibleFills.length - 1] ? strokeAttrs : {},
+          ),
+        );
       }
     }
-    return elements
+    return elements;
   }
 
-  const hasFillOrStroke = fillAttr || visibleStrokeCount > 0
+  const hasFillOrStroke = fillAttr || visibleStrokeCount > 0;
   if (hasFillOrStroke && !isGroupLike(node)) {
-    return nodeShapeElements(node, fillAttr, strokeAttrs)
+    return nodeShapeElements(node, fillAttr, strokeAttrs);
   }
 
-  return []
+  return [];
 }
 
 function renderNode(node: SceneNode, ctx: SVGExportContext): SVGNode | null {
-  if (!node.visible) return null
+  if (!node.visible) return null;
 
-  const { attrs: groupAttrs, clipId } = buildGroupAttrs(node, ctx)
+  const { attrs: groupAttrs, clipId } = buildGroupAttrs(node, ctx);
 
-  if (node.type === 'TEXT') {
-    const firstFill = node.fills.find((f) => f.visible)
-    const fillAttr = firstFill ? resolveFill(firstFill, node, ctx) : null
-    const textEl = renderTextNode(node, fillAttr, ctx.colorSpace)
-    return svg('g', groupAttrs, textEl)
+  if (node.type === "TEXT") {
+    const firstFill = node.fills.find((f) => f.visible);
+    const fillAttr = firstFill ? resolveFill(firstFill, node, ctx) : null;
+    const textEl = renderTextNode(node, fillAttr, ctx.colorSpace);
+    return svg("g", groupAttrs, textEl);
   }
 
-  const visibleFills = node.fills.filter((f) => f.visible)
-  const visibleStrokes = node.strokes.filter((s) => s.visible)
-  const fillAttr = visibleFills.length > 0 ? resolveFill(visibleFills[0], node, ctx) : null
-  const strokeAttrs = buildSVGStrokeAttrs(visibleStrokes, ctx.colorSpace)
+  const visibleFills = node.fills.filter((f) => f.visible);
+  const visibleStrokes = node.strokes.filter((s) => s.visible);
+  const fillAttr = visibleFills.length > 0 ? resolveFill(visibleFills[0], node, ctx) : null;
+  const strokeAttrs = buildSVGStrokeAttrs(visibleStrokes, ctx.colorSpace);
 
   const children: (SVGNode | null)[] = buildShapeChildren(
     node,
@@ -361,106 +368,107 @@ function renderNode(node: SceneNode, ctx: SVGExportContext): SVGNode | null {
     fillAttr,
     strokeAttrs,
     visibleStrokes.length,
-    ctx
-  )
+    ctx,
+  );
 
-  const childNodes = ctx.graph.getChildren(node.id)
-  const childContent: SVGNode[] = []
+  const childNodes = ctx.graph.getChildren(node.id);
+  const childContent: SVGNode[] = [];
   for (const child of childNodes) {
-    const rendered = renderNode(child, ctx)
-    if (rendered) childContent.push(rendered)
+    const rendered = renderNode(child, ctx);
+    if (rendered) childContent.push(rendered);
   }
 
   if (clipId && childContent.length > 0) {
-    children.push(svg('g', { 'clip-path': `url(#${clipId})` }, ...childContent))
+    children.push(svg("g", { "clip-path": `url(#${clipId})` }, ...childContent));
   } else {
-    children.push(...childContent)
+    children.push(...childContent);
   }
 
-  const validChildren = children.filter((c): c is SVGNode => c !== null)
+  const validChildren = children.filter((c): c is SVGNode => c !== null);
 
   if (validChildren.length === 0 && Object.keys(groupAttrs).length === 0) {
-    return null
+    return null;
   }
 
   if (validChildren.length === 1 && Object.keys(groupAttrs).length === 0) {
-    return validChildren[0]
+    return validChildren[0];
   }
 
-  return svg('g', groupAttrs, ...validChildren)
+  return svg("g", groupAttrs, ...validChildren);
 }
 
 function isGroupLike(node: SceneNode): boolean {
-  return node.type === 'GROUP'
+  return node.type === "GROUP";
 }
 
 // --- Public API ---
 
 export interface SVGExportOptions {
   /** Include XML declaration (default: true) */
-  xmlDeclaration?: boolean
+  xmlDeclaration?: boolean;
   /** Target export color space (default: srgb) */
-  colorSpace?: 'srgb' | 'display-p3'
+  colorSpace?: "srgb" | "display-p3";
 }
 
 export function renderNodesToSVG(
   graph: SceneGraph,
   _pageId: string,
   nodeIds: string[],
-  options: SVGExportOptions = {}
+  options: SVGExportOptions = {},
 ): string | null {
-  const bounds = computeContentBounds(graph, nodeIds)
-  if (!bounds) return null
+  const bounds = computeContentBounds(graph, nodeIds);
+  if (!bounds) return null;
 
-  const { minX, minY, maxX, maxY } = bounds
-  const width = round(maxX - minX)
-  const height = round(maxY - minY)
+  const { minX, minY, maxX, maxY } = bounds;
+  const width = round(maxX - minX);
+  const height = round(maxY - minY);
 
   const ctx: SVGExportContext = {
     defs: [],
     defIdCounter: 0,
     graph,
-    colorSpace: options.colorSpace ?? 'srgb'
-  }
+    colorSpace: options.colorSpace ?? "srgb",
+  };
 
-  const contentNodes: SVGNode[] = []
+  const contentNodes: SVGNode[] = [];
 
   for (const id of nodeIds) {
-    const node = graph.getNode(id)
-    if (!node?.visible) continue
+    const node = graph.getNode(id);
+    if (!node?.visible) continue;
 
-    const abs = graph.getAbsolutePosition(id)
-    const offsetX = abs.x - minX
-    const offsetY = abs.y - minY
+    const abs = graph.getAbsolutePosition(id);
+    const offsetX = abs.x - minX;
+    const offsetY = abs.y - minY;
 
-    const needsOffset = offsetX !== node.x || offsetY !== node.y
-    const clone = needsOffset ? { ...node, x: round(offsetX), y: round(offsetY) } : node
+    const needsOffset = offsetX !== node.x || offsetY !== node.y;
+    const clone = needsOffset ? { ...node, x: round(offsetX), y: round(offsetY) } : node;
 
-    const rendered = renderNode(clone, ctx)
-    if (rendered) contentNodes.push(rendered)
+    const rendered = renderNode(clone, ctx);
+    if (rendered) contentNodes.push(rendered);
   }
 
-  if (contentNodes.length === 0) return null
+  if (contentNodes.length === 0) return null;
 
-  const rootChildren: (SVGNode | string)[] = []
+  const rootChildren: (SVGNode | string)[] = [];
   if (ctx.defs.length > 0) {
-    rootChildren.push(svg('defs', {}, ...ctx.defs))
+    rootChildren.push(svg("defs", {}, ...ctx.defs));
   }
-  rootChildren.push(...contentNodes)
+  rootChildren.push(...contentNodes);
 
   const root = svg(
-    'svg',
+    "svg",
     {
-      xmlns: 'http://www.w3.org/2000/svg',
-      'xmlns:xlink': 'http://www.w3.org/1999/xlink',
+      xmlns: "http://www.w3.org/2000/svg",
+      "xmlns:xlink": "http://www.w3.org/1999/xlink",
       width,
       height,
-      viewBox: `0 0 ${width} ${height}`
+      viewBox: `0 0 ${width} ${height}`,
     },
-    ...(rootChildren as SVGNode[])
-  )
+    ...(rootChildren as SVGNode[]),
+  );
 
-  const svgStr = renderSVGNode(root)
-  const xmlDecl = options.xmlDeclaration !== false ? '<?xml version="1.0" encoding="UTF-8"?>\n' : ''
-  return xmlDecl + svgStr
+  const svgStr = renderSVGNode(root);
+  const xmlDecl =
+    options.xmlDeclaration !== false ? '<?xml version="1.0" encoding="UTF-8"?>\n' : "";
+  return xmlDecl + svgStr;
 }

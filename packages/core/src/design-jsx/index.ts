@@ -15,8 +15,8 @@ export {
   View,
   Rect,
   Page,
-  INTRINSIC_ELEMENTS
-} from './components'
+  INTRINSIC_ELEMENTS,
+} from "./components";
 
 export {
   type TreeNode,
@@ -26,10 +26,10 @@ export {
   type PaintProp,
   isTreeNode,
   node,
-  resolveToTree
-} from './tree'
+  resolveToTree,
+} from "./tree";
 
-export { renderTree, type RenderResult } from './renderer'
+export { renderTree, type RenderResult } from "./renderer";
 
 export {
   backgroundBlur,
@@ -39,8 +39,8 @@ export {
   layerBlur,
   type BlurEffectOptions,
   type EffectColor,
-  type ShadowEffectOptions
-} from './effects'
+  type ShadowEffectOptions,
+} from "./effects";
 
 export {
   angularGradient,
@@ -52,14 +52,14 @@ export {
   type GradientPaintOptions,
   type PaintColor,
   type PaintStop,
-  type SolidPaintOptions
-} from './paints'
+  type SolidPaintOptions,
+} from "./paints";
 
-export { defineVars, designVar, isVariable, type DesignVariable, type VarDef } from './vars'
+export { defineVars, designVar, isVariable, type DesignVariable, type VarDef } from "./vars";
 
-export { createElement } from './mini-react'
+export { createElement } from "./mini-react";
 
-export { renderJSX, renderTreeNode, buildComponent } from './render'
+export { renderJSX, renderTreeNode, buildComponent } from "./render";
 
-export { sceneNodeToJSX, selectionToJSX, type JSXFormat } from '#core/io/formats/jsx'
-export { default as JSX_REFERENCE } from '#core/tools/prompts/jsx-reference.md'
+export { sceneNodeToJSX, selectionToJSX, type JSXFormat } from "#core/io/formats/jsx";
+export { default as JSX_REFERENCE } from "#core/tools/prompts/jsx-reference.md";

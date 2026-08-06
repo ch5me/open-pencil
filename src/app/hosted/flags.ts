@@ -15,28 +15,28 @@
 // ---------------------------------------------------------------------------
 
 /** Runtime environment labels. Must match .ch5/environments.yaml ids. */
-export type HostedEnv = 'local' | 'preview' | 'staging' | 'production'
+export type HostedEnv = "local" | "preview" | "staging" | "production";
 
 /** Individual hosted capabilities, each independently switchable. */
 export interface HostedFeatureFlags {
   /** ELF-hosted auth (cookie-first web session). */
-  hostedAuth: boolean
+  hostedAuth: boolean;
   /** Hosted document storage (D1 + R2 via Worker API). */
-  hostedDocs: boolean
+  hostedDocs: boolean;
   /** Hosted real-time collaboration (Durable Object rooms). */
-  hostedCollab: boolean
+  hostedCollab: boolean;
 }
 
 /** Full environment contract: feature flags plus topology URLs. */
 export interface HostedEnvironmentConfig {
-  env: HostedEnv
-  flags: HostedFeatureFlags
+  env: HostedEnv;
+  flags: HostedFeatureFlags;
   /** Base URL for the OpenPencil API Worker. Empty string in local-only mode. */
-  apiOrigin: string
+  apiOrigin: string;
   /** OAuth callback URL for ELF auth. Empty string when hostedAuth is off. */
-  authCallbackUrl: string
+  authCallbackUrl: string;
   /** Public app URL for this environment. */
-  appUrl: string
+  appUrl: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,46 +46,46 @@ export interface HostedEnvironmentConfig {
 // via Vite env vars (see resolveHostedConfig).
 // ---------------------------------------------------------------------------
 
-const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
+const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, "env">> = {
   local: {
     flags: { hostedAuth: false, hostedDocs: false, hostedCollab: false },
-    apiOrigin: '',
-    authCallbackUrl: '',
-    appUrl: 'http://localhost:1420'
+    apiOrigin: "",
+    authCallbackUrl: "",
+    appUrl: "http://localhost:1420",
   },
   preview: {
     flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
-    apiOrigin: 'https://staging-openpencil-api.elf.dance',
-    authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
-    appUrl: '' // resolved at deploy time by Pages
+    apiOrigin: "https://staging-openpencil-api.elf.dance",
+    authCallbackUrl: "https://design.elf.dance/api/auth/callback",
+    appUrl: "", // resolved at deploy time by Pages
   },
   staging: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-    apiOrigin: 'https://staging-openpencil-api.elf.dance',
-    authCallbackUrl: 'https://staging.design.elf.dance/api/auth/callback',
-    appUrl: 'https://staging.design.elf.dance'
+    apiOrigin: "https://staging-openpencil-api.elf.dance",
+    authCallbackUrl: "https://staging.design.elf.dance/api/auth/callback",
+    appUrl: "https://staging.design.elf.dance",
   },
   production: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
-    apiOrigin: 'https://openpencil-api.elf.dance',
-    authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
-    appUrl: 'https://design.elf.dance'
-  }
-}
+    apiOrigin: "https://openpencil-api.elf.dance",
+    authCallbackUrl: "https://design.elf.dance/api/auth/callback",
+    appUrl: "https://design.elf.dance",
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Env var names (Vite-import.meta.env)
 // ---------------------------------------------------------------------------
 
 const ENV_VAR_NAMES = {
-  ENV: 'OPENPENCIL_HOSTED_ENV' as const,
-  AUTH_ENABLED: 'VITE_HOSTED_AUTH_ENABLED' as const,
-  DOCS_ENABLED: 'VITE_HOSTED_DOCS_ENABLED' as const,
-  COLLAB_ENABLED: 'VITE_HOSTED_COLLAB_ENABLED' as const,
-  API_ORIGIN: 'VITE_API_ORIGIN' as const,
-  AUTH_CALLBACK: 'VITE_AUTH_CALLBACK_URL' as const,
-  APP_URL: 'VITE_APP_URL' as const
-} as const
+  ENV: "OPENPENCIL_HOSTED_ENV" as const,
+  AUTH_ENABLED: "VITE_HOSTED_AUTH_ENABLED" as const,
+  DOCS_ENABLED: "VITE_HOSTED_DOCS_ENABLED" as const,
+  COLLAB_ENABLED: "VITE_HOSTED_COLLAB_ENABLED" as const,
+  API_ORIGIN: "VITE_API_ORIGIN" as const,
+  AUTH_CALLBACK: "VITE_AUTH_CALLBACK_URL" as const,
+  APP_URL: "VITE_APP_URL" as const,
+} as const;
 
 // ---------------------------------------------------------------------------
 // Resolution
@@ -93,42 +93,42 @@ const ENV_VAR_NAMES = {
 
 /** Read the declared environment from env vars; falls back to 'local'. */
 function resolveEnv(): HostedEnv {
-  const forced = window.openPencil?.test?.forceHostedCollab
-  if (forced) return 'staging'
-  const raw = (import.meta.env[ENV_VAR_NAMES.ENV] as string | undefined) ?? ''
-  const normalized = raw.toLowerCase().trim()
-  if (normalized === 'preview') return 'preview'
-  if (normalized === 'staging') return 'staging'
-  if (normalized === 'production') return 'production'
-  return 'local'
+  const forced = window.openPencil?.test?.forceHostedCollab;
+  if (forced) return "staging";
+  const raw = (import.meta.env[ENV_VAR_NAMES.ENV] as string | undefined) ?? "";
+  const normalized = raw.toLowerCase().trim();
+  if (normalized === "preview") return "preview";
+  if (normalized === "staging") return "staging";
+  if (normalized === "production") return "production";
+  return "local";
 }
 
 /** Resolve a single boolean flag: env var override > environment default. */
 function resolveFlag(env: HostedEnv, flagKey: keyof HostedFeatureFlags, envVar: string): boolean {
-  const forced = window.openPencil?.test?.forceHostedCollab
+  const forced = window.openPencil?.test?.forceHostedCollab;
   if (forced) {
-    return true
+    return true;
   }
-  const raw = import.meta.env[envVar] as string | undefined
-  if (raw !== undefined && raw !== '') {
-    return raw === 'true' || raw === '1'
+  const raw = import.meta.env[envVar] as string | undefined;
+  if (raw !== undefined && raw !== "") {
+    return raw === "true" || raw === "1";
   }
-  return ENV_DEFAULTS[env].flags[flagKey]
+  return ENV_DEFAULTS[env].flags[flagKey];
 }
 
 /** Resolve a string config value: env var override > environment default. */
 function resolveString(
   env: HostedEnv,
-  key: Extract<keyof HostedEnvironmentConfig, 'apiOrigin' | 'authCallbackUrl' | 'appUrl'>,
-  envVar: string
+  key: Extract<keyof HostedEnvironmentConfig, "apiOrigin" | "authCallbackUrl" | "appUrl">,
+  envVar: string,
 ): string {
-  const forced = window.openPencil?.test?.forceHostedCollab
-  if (forced && key === 'apiOrigin') {
-    return window.openPencil?.test?.hostedApiOrigin ?? 'http://127.0.0.1:8787'
+  const forced = window.openPencil?.test?.forceHostedCollab;
+  if (forced && key === "apiOrigin") {
+    return window.openPencil?.test?.hostedApiOrigin ?? "http://127.0.0.1:8787";
   }
-  const raw = import.meta.env[envVar] as string | undefined
-  if (raw !== undefined && raw !== '') return raw
-  return ENV_DEFAULTS[env][key]
+  const raw = import.meta.env[envVar] as string | undefined;
+  if (raw !== undefined && raw !== "") return raw;
+  return ENV_DEFAULTS[env][key];
 }
 
 /**
@@ -138,67 +138,67 @@ function resolveString(
  * features off — preserving local-only behavior without requiring explicit config.
  */
 export function resolveHostedConfig(): HostedEnvironmentConfig {
-  const env = resolveEnv()
+  const env = resolveEnv();
   return {
     env,
     flags: {
-      hostedAuth: resolveFlag(env, 'hostedAuth', ENV_VAR_NAMES.AUTH_ENABLED),
-      hostedDocs: resolveFlag(env, 'hostedDocs', ENV_VAR_NAMES.DOCS_ENABLED),
-      hostedCollab: resolveFlag(env, 'hostedCollab', ENV_VAR_NAMES.COLLAB_ENABLED)
+      hostedAuth: resolveFlag(env, "hostedAuth", ENV_VAR_NAMES.AUTH_ENABLED),
+      hostedDocs: resolveFlag(env, "hostedDocs", ENV_VAR_NAMES.DOCS_ENABLED),
+      hostedCollab: resolveFlag(env, "hostedCollab", ENV_VAR_NAMES.COLLAB_ENABLED),
     },
-    apiOrigin: resolveString(env, 'apiOrigin', ENV_VAR_NAMES.API_ORIGIN),
-    authCallbackUrl: resolveString(env, 'authCallbackUrl', ENV_VAR_NAMES.AUTH_CALLBACK),
-    appUrl: resolveString(env, 'appUrl', ENV_VAR_NAMES.APP_URL)
-  }
+    apiOrigin: resolveString(env, "apiOrigin", ENV_VAR_NAMES.API_ORIGIN),
+    authCallbackUrl: resolveString(env, "authCallbackUrl", ENV_VAR_NAMES.AUTH_CALLBACK),
+    appUrl: resolveString(env, "appUrl", ENV_VAR_NAMES.APP_URL),
+  };
 }
 
 // ---------------------------------------------------------------------------
 // Convenience accessors
 // ---------------------------------------------------------------------------
 
-let _cached: HostedEnvironmentConfig | undefined
+let _cached: HostedEnvironmentConfig | undefined;
 
 /** Cached hosted config. Safe to call repeatedly; resolves once per module load. */
 export function getHostedConfig(): HostedEnvironmentConfig {
   if (window.openPencil?.test?.forceHostedCollab) {
-    return resolveHostedConfig()
+    return resolveHostedConfig();
   }
   if (!_cached) {
-    _cached = resolveHostedConfig()
+    _cached = resolveHostedConfig();
   }
-  return _cached
+  return _cached;
 }
 
 /** True when hosted auth is enabled for this runtime. */
 export function isHostedAuthEnabled(): boolean {
-  return getHostedConfig().flags.hostedAuth
+  return getHostedConfig().flags.hostedAuth;
 }
 
 /** True when hosted document storage is enabled for this runtime. */
 export function isHostedDocsEnabled(): boolean {
-  return getHostedConfig().flags.hostedDocs
+  return getHostedConfig().flags.hostedDocs;
 }
 
 /** True when hosted collaboration is enabled for this runtime. */
 export function isHostedCollabEnabled(): boolean {
-  return getHostedConfig().flags.hostedCollab
+  return getHostedConfig().flags.hostedCollab;
 }
 
 /** True when any hosted feature is enabled. */
 export function isHostedMode(): boolean {
-  const f = getHostedConfig().flags
-  return f.hostedAuth || f.hostedDocs || f.hostedCollab
+  const f = getHostedConfig().flags;
+  return f.hostedAuth || f.hostedDocs || f.hostedCollab;
 }
 
 /** Operating mode label derived from flag combinations. */
 export function getOperatingMode():
-  | 'local-only'
-  | 'hosted-auth-local-docs'
-  | 'hosted-docs-single-user'
-  | 'hosted-collab' {
-  const f = getHostedConfig().flags
-  if (f.hostedCollab) return 'hosted-collab'
-  if (f.hostedDocs) return 'hosted-docs-single-user'
-  if (f.hostedAuth) return 'hosted-auth-local-docs'
-  return 'local-only'
+  | "local-only"
+  | "hosted-auth-local-docs"
+  | "hosted-docs-single-user"
+  | "hosted-collab" {
+  const f = getHostedConfig().flags;
+  if (f.hostedCollab) return "hosted-collab";
+  if (f.hostedDocs) return "hosted-docs-single-user";
+  if (f.hostedAuth) return "hosted-auth-local-docs";
+  return "local-only";
 }

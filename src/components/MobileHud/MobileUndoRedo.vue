@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useI18n } from '@open-pencil/vue'
+import { useI18n } from "@open-pencil/vue";
 
-import { useMobileHudContext } from '@/components/MobileHud/context'
-import Tip from '@/components/ui/Tip.vue'
+import { useMobileHudContext } from "@/components/MobileHud/context";
+import Tip from "@/components/ui/Tip.vue";
 
-const { commands } = useI18n()
+const { commands } = useI18n();
 
-const hud = useMobileHudContext()
+const hud = useMobileHudContext();
 </script>
 
 <template>

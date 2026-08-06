@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { openExternalLink } from '@/app/shell/ui'
-import AppTextButton from '@/components/ui/AppTextButton.vue'
+import { openExternalLink } from "@/app/shell/ui";
+import AppTextButton from "@/components/ui/AppTextButton.vue";
 
-const { href } = defineProps<{ href: string }>()
+const { href } = defineProps<{ href: string }>();
 </script>
 
 <template>

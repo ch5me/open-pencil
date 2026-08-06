@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from "vue";
 
-import { provideCanvas } from '#vue/canvas/context'
-import { useCanvas, type UseCanvasOptions } from '#vue/canvas/surface/use'
-import { useEditor } from '#vue/editor/context'
+import { provideCanvas } from "#vue/canvas/context";
+import { useCanvas, type UseCanvasOptions } from "#vue/canvas/surface/use";
+import { useEditor } from "#vue/editor/context";
 
-const { showRulers, preserveDrawingBuffer } = defineProps<UseCanvasOptions>()
+const { showRulers, preserveDrawingBuffer } = defineProps<UseCanvasOptions>();
 
-const editor = useEditor()
-const canvasRef = ref<HTMLCanvasElement | null>(null)
-const ready = ref(false)
+const editor = useEditor();
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+const ready = ref(false);
 
 const { renderNow, hitTestSectionTitle, hitTestComponentLabel, hitTestFrameTitle } = useCanvas(
   canvasRef,
@@ -18,10 +18,10 @@ const { renderNow, hitTestSectionTitle, hitTestComponentLabel, hitTestFrameTitle
     showRulers,
     preserveDrawingBuffer,
     onReady: () => {
-      ready.value = true
-    }
-  }
-)
+      ready.value = true;
+    },
+  },
+);
 
 provideCanvas({
   canvasRef,
@@ -29,8 +29,8 @@ provideCanvas({
   renderNow,
   hitTestSectionTitle,
   hitTestComponentLabel,
-  hitTestFrameTitle
-})
+  hitTestFrameTitle,
+});
 </script>
 
 <template>

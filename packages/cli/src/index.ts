@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { prepareImplementationProvenance } from './implementation-provenance'
+import { prepareImplementationProvenance } from "./implementation-provenance";
 
-await prepareImplementationProvenance(process.argv)
-await import('./main')
+await prepareImplementationProvenance(process.argv);
+await import("./main");

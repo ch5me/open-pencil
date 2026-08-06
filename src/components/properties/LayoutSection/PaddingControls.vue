@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { useLayoutControlsContext } from '@open-pencil/vue'
+import { useLayoutControlsContext } from "@open-pencil/vue";
 
-import type { PaddingProp } from '@/components/properties/LayoutSection/types'
-import VariableScrubInput from '@/components/properties/VariableScrubInput.vue'
+import type { PaddingProp } from "@/components/properties/LayoutSection/types";
+import VariableScrubInput from "@/components/properties/VariableScrubInput.vue";
 
-const ctx = useLayoutControlsContext()
+const ctx = useLayoutControlsContext();
 
 const paddingSides: Array<{ prop: PaddingProp; icon: string }> = [
-  { prop: 'paddingTop', icon: 'top' },
-  { prop: 'paddingRight', icon: 'right' },
-  { prop: 'paddingBottom', icon: 'bottom' },
-  { prop: 'paddingLeft', icon: 'left' }
-]
+  { prop: "paddingTop", icon: "top" },
+  { prop: "paddingRight", icon: "right" },
+  { prop: "paddingBottom", icon: "bottom" },
+  { prop: "paddingLeft", icon: "left" },
+];
 </script>
 
 <template>

@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { Color } from '@open-pencil/core/types'
-import { ColorPickerRoot } from '@open-pencil/vue'
-import type { OkHCLControls } from '@open-pencil/vue'
+import type { Color } from "@open-pencil/core/types";
+import { ColorPickerRoot } from "@open-pencil/vue";
+import type { OkHCLControls } from "@open-pencil/vue";
 
-import ColorPickerPanel from '@/components/ColorPickerPanel/ColorPickerPanel.vue'
-import { usePopoverUI } from '@/components/ui/popover'
+import ColorPickerPanel from "@/components/ColorPickerPanel/ColorPickerPanel.vue";
+import { usePopoverUI } from "@/components/ui/popover";
 
-const { color, okhcl = null } = defineProps<{ color: Color; okhcl?: OkHCLControls | null }>()
-const emit = defineEmits<{ update: [color: Color] }>()
-const cls = usePopoverUI({ content: 'w-56 p-2' })
+const { color, okhcl = null } = defineProps<{ color: Color; okhcl?: OkHCLControls | null }>();
+const emit = defineEmits<{ update: [color: Color] }>();
+const cls = usePopoverUI({ content: "w-56 p-2" });
 </script>
 
 <template>
@@ -16,7 +16,7 @@ const cls = usePopoverUI({ content: 'w-56 p-2' })
     :color="color"
     :ui="{
       content: cls.content,
-      swatch: 'size-5 shrink-0 cursor-pointer rounded border border-border p-0'
+      swatch: 'size-5 shrink-0 cursor-pointer rounded border border-border p-0',
     }"
     @update="emit('update', $event)"
   >

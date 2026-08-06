@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { useI18n } from '@open-pencil/vue'
+import { useI18n } from "@open-pencil/vue";
 
-import { useProviderSettingsContext } from '@/components/chat/ProviderSettings/context'
-import ProviderSettingsKeyField from '@/components/chat/ProviderSettings/ProviderSettingsKeyField.vue'
+import { useProviderSettingsContext } from "@/components/chat/ProviderSettings/context";
+import ProviderSettingsKeyField from "@/components/chat/ProviderSettings/ProviderSettingsKeyField.vue";
 
-const ctx = useProviderSettingsContext()
-const { dialogs } = useI18n()
+const ctx = useProviderSettingsContext();
+const { dialogs } = useI18n();
 </script>
 
 <template>

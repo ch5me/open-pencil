@@ -1,29 +1,29 @@
-import type { createComponentActions } from '#core/editor/components'
-import type { createPageActions } from '#core/editor/pages'
-import type { createSelectionActions } from '#core/editor/selection'
-import type { createStructureActions } from '#core/editor/structure'
+import type { createComponentActions } from "#core/editor/components";
+import type { createPageActions } from "#core/editor/pages";
+import type { createSelectionActions } from "#core/editor/selection";
+import type { createStructureActions } from "#core/editor/structure";
 
-type ComponentActions = ReturnType<typeof createComponentActions>
-type PageActions = ReturnType<typeof createPageActions>
-type SelectionActions = ReturnType<typeof createSelectionActions>
-type StructureActions = ReturnType<typeof createStructureActions>
+type ComponentActions = ReturnType<typeof createComponentActions>;
+type PageActions = ReturnType<typeof createPageActions>;
+type SelectionActions = ReturnType<typeof createSelectionActions>;
+type StructureActions = ReturnType<typeof createStructureActions>;
 
 export function createComponentBridge(
   components: ComponentActions,
   selection: SelectionActions,
   structure: StructureActions,
-  pages: PageActions
+  pages: PageActions,
 ) {
   return {
     createComponentFromSelection: () =>
       components.createComponentFromSelection(
         selection.getSelectedNodes(),
-        structure.wrapSelectionInContainer
+        structure.wrapSelectionInContainer,
       ),
     createComponentSetFromComponents: () =>
       components.createComponentSetFromComponents(
         selection.getSelectedNodes(),
-        structure.wrapSelectionInContainer
+        structure.wrapSelectionInContainer,
       ),
     createInstanceFromComponent: components.createInstanceFromComponent,
     detachInstance: () => components.detachInstance(selection.getSelectedNode()),
@@ -37,6 +37,6 @@ export function createComponentBridge(
     findVariantByValues: components.findVariantByValues,
     getDefaultVariantForComponentSet: components.getDefaultVariantForComponentSet,
     getComponentSetVariantConflicts: components.getComponentSetVariantConflicts,
-    switchInstanceVariant: components.switchInstanceVariant
-  }
+    switchInstanceVariant: components.switchInstanceVariant,
+  };
 }

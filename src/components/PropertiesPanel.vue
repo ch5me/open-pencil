@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
+import { useI18n } from "@open-pencil/vue";
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from "reka-ui";
 
-import { useI18n } from '@open-pencil/vue'
+import { useAIChat } from "@/app/ai/chat/use";
 
-import { useAIChat } from '@/app/ai/chat/use'
+import ChatPanel from "./ChatPanel.vue";
+import CodePanel from "./CodePanel.vue";
+import DesignPanel from "./DesignPanel.vue";
+import ZoomDropdown from "./ZoomDropdown.vue";
 
-import ChatPanel from './ChatPanel.vue'
-import CodePanel from './CodePanel.vue'
-import DesignPanel from './DesignPanel.vue'
-import ZoomDropdown from './ZoomDropdown.vue'
-
-const { activeTab } = useAIChat()
-const { panels } = useI18n()
+const { activeTab } = useAIChat();
+const { panels } = useI18n();
 </script>
 
 <template>

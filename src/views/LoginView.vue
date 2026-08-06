@@ -1,45 +1,45 @@
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useHead } from "@unhead/vue";
+import { onMounted } from "vue";
+import { useRouter } from "vue-router";
 
-import { getHostedConfig, isHostedAuthEnabled } from '@/app/hosted/flags'
-import { isAuthenticated, refreshSession } from '@/app/hosted/session'
+import { getHostedConfig, isHostedAuthEnabled } from "@/app/hosted/flags";
+import { isAuthenticated, refreshSession } from "@/app/hosted/session";
 
-useHead({ title: 'Sign In — OpenPencil' })
+useHead({ title: "Sign In — OpenPencil" });
 
-const router = useRouter()
+const router = useRouter();
 
 onMounted(async () => {
   // If auth is not enabled, redirect to home
   if (!isHostedAuthEnabled()) {
-    router.replace('/')
-    return
+    router.replace("/");
+    return;
   }
 
   // Check if already authenticated
-  await refreshSession()
+  await refreshSession();
   if (isAuthenticated()) {
-    router.replace('/')
+    router.replace("/");
   }
-})
+});
 
 function signInWithElf() {
-  const config = getHostedConfig()
-  const apiOrigin = config.apiOrigin
-  const callbackUrl = config.authCallbackUrl
+  const config = getHostedConfig();
+  const apiOrigin = config.apiOrigin;
+  const callbackUrl = config.authCallbackUrl;
 
   if (!apiOrigin || !callbackUrl) {
-    console.error('[Auth] Missing API origin or callback URL')
-    return
+    console.error("[Auth] Missing API origin or callback URL");
+    return;
   }
 
   // Redirect to ELF auth provider
   // The API handles the OAuth flow and redirects back to the callback URL
-  const authUrl = new URL('/api/elf-auth/authorize', apiOrigin)
-  authUrl.searchParams.set('redirect_uri', callbackUrl)
-  authUrl.searchParams.set('response_type', 'code')
-  window.location.href = authUrl.toString()
+  const authUrl = new URL("/api/elf-auth/authorize", apiOrigin);
+  authUrl.searchParams.set("redirect_uri", callbackUrl);
+  authUrl.searchParams.set("response_type", "code");
+  window.location.href = authUrl.toString();
 }
 </script>
 
@@ -48,7 +48,9 @@ function signInWithElf() {
     <div class="w-full max-w-md space-y-8 rounded-xl border border-border bg-panel p-8 shadow-lg">
       <!-- Logo and title -->
       <div class="text-center">
-        <div class="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+        <div
+          class="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10"
+        >
           <img src="/favicon-128.png" alt="OpenPencil" class="size-10" />
         </div>
         <h1 class="text-2xl font-bold text-surface">Welcome to OpenPencil</h1>
@@ -68,15 +70,20 @@ function signInWithElf() {
       <!-- Info text -->
       <div class="rounded-lg bg-muted/50 p-4">
         <p class="text-xs text-muted">
-          OpenPencil uses ELF authentication to sync your designs across devices. 
-          Your files are stored securely and accessible only to you.
+          OpenPencil uses ELF authentication to sync your designs across devices. Your files are
+          stored securely and accessible only to you.
         </p>
       </div>
 
       <!-- Footer -->
       <div class="text-center">
         <p class="text-xs text-muted">
-          <a href="https://openpencil.dev" target="_blank" rel="noopener" class="underline hover:text-surface">
+          <a
+            href="https://openpencil.dev"
+            target="_blank"
+            rel="noopener"
+            class="underline hover:text-surface"
+          >
             Learn more about OpenPencil
           </a>
         </p>

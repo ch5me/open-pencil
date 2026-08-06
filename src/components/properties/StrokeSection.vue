@@ -1,83 +1,82 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-
-import type { Color, SceneNode, Stroke } from '@open-pencil/core/scene-graph'
+import type { Color, SceneNode, Stroke } from "@open-pencil/core/scene-graph";
 import {
   applySolidStrokeColor,
   PropertyListRoot,
   useColorVariableBinding,
   useStrokeControls,
   useOkHCL,
-  useI18n
-} from '@open-pencil/vue'
+  useI18n,
+} from "@open-pencil/vue";
+import { ref } from "vue";
 
-import ColorInput from '@/components/ColorPicker/ColorInput.vue'
-import { boundVariableColor } from '@/components/properties/color-style-row'
-import ColorStyleRow from '@/components/properties/ColorStyleRow.vue'
-import ScrubInput from '@/components/ScrubInput.vue'
-import AppSelect from '@/components/ui/AppSelect.vue'
-import { useIconButtonUI } from '@/components/ui/icon-button'
-import { useSectionUI } from '@/components/ui/section'
-import Tip from '@/components/ui/Tip.vue'
+import ColorInput from "@/components/ColorPicker/ColorInput.vue";
+import { boundVariableColor } from "@/components/properties/color-style-row";
+import ColorStyleRow from "@/components/properties/ColorStyleRow.vue";
+import ScrubInput from "@/components/ScrubInput.vue";
+import AppSelect from "@/components/ui/AppSelect.vue";
+import { useIconButtonUI } from "@/components/ui/icon-button";
+import { useSectionUI } from "@/components/ui/section";
+import Tip from "@/components/ui/Tip.vue";
 
-const strokeCtx = useStrokeControls()
-const strokeVarCtx = useColorVariableBinding('strokes')
-const okhcl = useOkHCL()
-const { panels } = useI18n()
-const sectionCls = useSectionUI()
+const strokeCtx = useStrokeControls();
+const strokeVarCtx = useColorVariableBinding("strokes");
+const okhcl = useOkHCL();
+const { panels } = useI18n();
+const sectionCls = useSectionUI();
 
-const expandedSides = ref(false)
+const expandedSides = ref(false);
 
 function updateStrokeColor(
   activeNode: SceneNode | null | undefined,
   index: number,
   color: Color,
-  patch: (index: number, changes: Record<string, unknown>) => void
+  patch: (index: number, changes: Record<string, unknown>) => void,
 ) {
   if (activeNode && strokeVarCtx.getBoundVariable(activeNode.id, index)) {
-    strokeVarCtx.unbindVariable(activeNode.id, index)
+    strokeVarCtx.unbindVariable(activeNode.id, index);
   }
-  patch(index, applySolidStrokeColor(color))
+  patch(index, applySolidStrokeColor(color));
 }
 
 function onToggleSides(activeNode: SceneNode) {
-  const next = !expandedSides.value
-  expandedSides.value = next
+  const next = !expandedSides.value;
+  expandedSides.value = next;
   if (next && !activeNode.independentStrokeWeights) {
-    const weight = activeNode.strokes[0]?.weight ?? 1
-    strokeCtx.selectSide('CUSTOM', {
+    const weight = activeNode.strokes[0]?.weight ?? 1;
+    strokeCtx.selectSide("CUSTOM", {
       ...activeNode,
       borderTopWeight: weight,
       borderRightWeight: weight,
       borderBottomWeight: weight,
-      borderLeftWeight: weight
-    } as SceneNode)
+      borderLeftWeight: weight,
+    } as SceneNode);
   } else if (!next && activeNode.independentStrokeWeights) {
-    strokeCtx.selectSide('ALL', activeNode)
+    strokeCtx.selectSide("ALL", activeNode);
   }
 }
 
-type StrokePatch = (i: number, partial: Partial<Stroke>) => void
+type StrokePatch = (i: number, partial: Partial<Stroke>) => void;
 
 function dashState(stroke: Stroke | undefined): { dash: number; gap: number; on: boolean } {
-  const p = stroke?.dashPattern
-  if (!p || p.length === 0) return { dash: 6, gap: 6, on: false }
-  return { dash: p[0] ?? 6, gap: p[1] ?? p[0] ?? 6, on: true }
+  const p = stroke?.dashPattern;
+  if (!p || p.length === 0) return { dash: 6, gap: 6, on: false };
+  return { dash: p[0] ?? 6, gap: p[1] ?? p[0] ?? 6, on: true };
 }
 
 function toggleDash(stroke: Stroke | undefined, patch: StrokePatch) {
-  const { dash, gap, on } = dashState(stroke)
-  patch(0, { dashPattern: on ? [] : [Math.max(dash, 1), Math.max(gap, 1)] })
+  const { dash, gap, on } = dashState(stroke);
+  patch(0, { dashPattern: on ? [] : [Math.max(dash, 1), Math.max(gap, 1)] });
 }
 
 function setDash(stroke: Stroke | undefined, patch: StrokePatch, value: number) {
-  const { gap } = dashState(stroke)
-  patch(0, { dashPattern: [Math.max(1, value), gap] })
+  const { gap } = dashState(stroke);
+  patch(0, { dashPattern: [Math.max(1, value), gap] });
 }
 
 function setGap(stroke: Stroke | undefined, patch: StrokePatch, value: number) {
-  const { dash } = dashState(stroke)
-  patch(0, { dashPattern: [dash, Math.max(1, value)] })
+  const { dash } = dashState(stroke);
+  patch(0, { dashPattern: [dash, Math.max(1, value)] });
 }
 </script>
 
@@ -136,7 +135,7 @@ function setGap(stroke: Stroke | undefined, patch: StrokePatch, value: number) {
                   okhcl: okhcl.getStrokeOkHCLColor(activeNode, i),
                   ...okhcl.getStrokePreviewInfo(activeNode, i),
                   setFieldFormat: ($event) => okhcl.setStrokeFieldFormat(activeNode, i, $event),
-                  updateOkHCL: ($event) => okhcl.updateStrokeOkHCL(activeNode, i, $event)
+                  updateOkHCL: ($event) => okhcl.updateStrokeOkHCL(activeNode, i, $event),
                 }
               : null
           "
@@ -184,7 +183,7 @@ function setGap(stroke: Stroke | undefined, patch: StrokePatch, value: number) {
             data-test-id="stroke-sides-toggle"
             :class="[
               useIconButtonUI({ size: 'md', ui: { base: 'size-[26px] shrink-0' } }).base,
-              { '!border-accent !text-accent': expandedSides }
+              { '!border-accent !text-accent': expandedSides },
             ]"
             @click="onToggleSides(activeNode!)"
           >

@@ -1,6 +1,5 @@
-import { computed, ref } from 'vue'
-
-import type { FontFamilyOption, LocalFontAccessState } from '@open-pencil/core/text'
+import type { FontFamilyOption, LocalFontAccessState } from "@open-pencil/core/text";
+import { computed, ref } from "vue";
 
 import {
   clearDownloadedFontCache,
@@ -8,22 +7,22 @@ import {
   googleFontsEnabled,
   localFontAccessState,
   predownloadFallbackFonts,
-  requestLocalFontAccess
-} from '@/app/editor/fonts'
-import type { DownloadedFontCacheSummary } from '@/app/editor/fonts/cache'
+  requestLocalFontAccess,
+} from "@/app/editor/fonts";
+import type { DownloadedFontCacheSummary } from "@/app/editor/fonts/cache";
 
-type FontCacheSummary = DownloadedFontCacheSummary
+type FontCacheSummary = DownloadedFontCacheSummary;
 
 export interface FontSettingsActions {
-  clearDownloadedFontCache: () => Promise<void>
-  downloadedFontCacheSummary: () => Promise<FontCacheSummary>
-  localFontAccessState: () => LocalFontAccessState
-  predownloadFallbackFonts: () => Promise<unknown>
-  requestLocalFontAccess: () => Promise<string[] | FontFamilyOption[]>
-  googleFontsEnabled: { value: boolean }
+  clearDownloadedFontCache: () => Promise<void>;
+  downloadedFontCacheSummary: () => Promise<FontCacheSummary>;
+  localFontAccessState: () => LocalFontAccessState;
+  predownloadFallbackFonts: () => Promise<unknown>;
+  requestLocalFontAccess: () => Promise<string[] | FontFamilyOption[]>;
+  googleFontsEnabled: { value: boolean };
 }
 
-export type FontSettingsBusyAction = 'access' | 'download' | 'clear' | 'refresh'
+export type FontSettingsBusyAction = "access" | "download" | "clear" | "refresh";
 
 const defaultActions: FontSettingsActions = {
   clearDownloadedFontCache,
@@ -31,97 +30,97 @@ const defaultActions: FontSettingsActions = {
   localFontAccessState,
   predownloadFallbackFonts,
   requestLocalFontAccess,
-  googleFontsEnabled
-}
+  googleFontsEnabled,
+};
 
 export function useFontSettings(actions: FontSettingsActions = defaultActions) {
-  const cacheCount = ref(0)
-  const cacheByteLength = ref(0)
-  const cacheUpdatedAt = ref<number | null>(null)
-  const accessState = ref(actions.localFontAccessState())
-  const busyAction = ref<FontSettingsBusyAction | null>(null)
-  const status = ref('')
-  const googleFontsEnabled = actions.googleFontsEnabled
+  const cacheCount = ref(0);
+  const cacheByteLength = ref(0);
+  const cacheUpdatedAt = ref<number | null>(null);
+  const accessState = ref(actions.localFontAccessState());
+  const busyAction = ref<FontSettingsBusyAction | null>(null);
+  const status = ref("");
+  const googleFontsEnabled = actions.googleFontsEnabled;
 
   const accessStateLabel = computed(() => {
-    if (accessState.value === 'granted') return 'Enabled'
-    if (accessState.value === 'denied') return 'Denied'
-    if (accessState.value === 'unsupported') return 'Unavailable'
-    return 'Not requested'
-  })
+    if (accessState.value === "granted") return "Enabled";
+    if (accessState.value === "denied") return "Denied";
+    if (accessState.value === "unsupported") return "Unavailable";
+    return "Not requested";
+  });
 
   const cacheSize = computed(() => {
-    if (cacheByteLength.value === 0) return '0 MB'
-    return `${(cacheByteLength.value / 1024 / 1024).toFixed(1)} MB`
-  })
+    if (cacheByteLength.value === 0) return "0 MB";
+    return `${(cacheByteLength.value / 1024 / 1024).toFixed(1)} MB`;
+  });
 
   const cacheUpdatedLabel = computed(() => {
-    if (cacheUpdatedAt.value === null) return 'Never'
-    return new Date(cacheUpdatedAt.value).toLocaleDateString()
-  })
+    if (cacheUpdatedAt.value === null) return "Never";
+    return new Date(cacheUpdatedAt.value).toLocaleDateString();
+  });
 
   const canRequestLocalFonts = computed(
-    () => accessState.value === 'prompt' || accessState.value === 'denied'
-  )
+    () => accessState.value === "prompt" || accessState.value === "denied",
+  );
 
   async function refreshSummary() {
-    busyAction.value = busyAction.value ?? 'refresh'
+    busyAction.value = busyAction.value ?? "refresh";
     try {
-      const summary = await actions.downloadedFontCacheSummary()
-      cacheCount.value = summary.count
-      cacheByteLength.value = summary.byteLength
-      cacheUpdatedAt.value = summary.updatedAt
-      accessState.value = actions.localFontAccessState()
+      const summary = await actions.downloadedFontCacheSummary();
+      cacheCount.value = summary.count;
+      cacheByteLength.value = summary.byteLength;
+      cacheUpdatedAt.value = summary.updatedAt;
+      accessState.value = actions.localFontAccessState();
     } finally {
-      if (busyAction.value === 'refresh') busyAction.value = null
+      if (busyAction.value === "refresh") busyAction.value = null;
     }
   }
 
   async function requestAccess() {
-    busyAction.value = 'access'
-    status.value = ''
+    busyAction.value = "access";
+    status.value = "";
     try {
-      await actions.requestLocalFontAccess()
-      accessState.value = actions.localFontAccessState()
-      status.value = 'Local font access enabled.'
+      await actions.requestLocalFontAccess();
+      accessState.value = actions.localFontAccessState();
+      status.value = "Local font access enabled.";
     } catch {
-      accessState.value = actions.localFontAccessState()
-      status.value = 'Local font access was not granted.'
+      accessState.value = actions.localFontAccessState();
+      status.value = "Local font access was not granted.";
     } finally {
-      busyAction.value = null
+      busyAction.value = null;
     }
   }
 
   function setGoogleFontsEnabled(enabled: boolean) {
-    googleFontsEnabled.value = enabled
-    status.value = enabled ? 'Google Fonts enabled.' : 'Google Fonts disabled.'
+    googleFontsEnabled.value = enabled;
+    status.value = enabled ? "Google Fonts enabled." : "Google Fonts disabled.";
   }
 
   async function downloadFallbacks() {
-    busyAction.value = 'download'
-    status.value = ''
+    busyAction.value = "download";
+    status.value = "";
     try {
-      await actions.predownloadFallbackFonts()
-      await refreshSummary()
-      status.value = 'Fallback fonts downloaded.'
+      await actions.predownloadFallbackFonts();
+      await refreshSummary();
+      status.value = "Fallback fonts downloaded.";
     } catch {
-      status.value = 'Could not download fallback fonts.'
+      status.value = "Could not download fallback fonts.";
     } finally {
-      busyAction.value = null
+      busyAction.value = null;
     }
   }
 
   async function clearCache() {
-    busyAction.value = 'clear'
-    status.value = ''
+    busyAction.value = "clear";
+    status.value = "";
     try {
-      await actions.clearDownloadedFontCache()
-      await refreshSummary()
-      status.value = 'Downloaded font cache cleared.'
+      await actions.clearDownloadedFontCache();
+      await refreshSummary();
+      status.value = "Downloaded font cache cleared.";
     } catch {
-      status.value = 'Could not clear downloaded font cache.'
+      status.value = "Could not clear downloaded font cache.";
     } finally {
-      busyAction.value = null
+      busyAction.value = null;
     }
   }
 
@@ -139,6 +138,6 @@ export function useFontSettings(actions: FontSettingsActions = defaultActions) {
     downloadFallbacks,
     refreshSummary,
     requestAccess,
-    setGoogleFontsEnabled
-  }
+    setGoogleFontsEnabled,
+  };
 }

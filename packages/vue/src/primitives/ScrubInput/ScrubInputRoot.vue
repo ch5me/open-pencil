@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core'
-import { ref, computed, toRef, watch } from 'vue'
+import { useEventListener } from "@vueuse/core";
+import { ref, computed, toRef, watch } from "vue";
 
-import { provideScrubInput } from '#vue/primitives/ScrubInput/context'
-import { inputNumberValue } from '#vue/shared/dom-events'
+import { provideScrubInput } from "#vue/primitives/ScrubInput/context";
+import { inputNumberValue } from "#vue/shared/dom-events";
 
 const {
   modelValue,
@@ -11,105 +11,105 @@ const {
   max = Infinity,
   step = 1,
   sensitivity = 1,
-  placeholder = 'Mixed'
+  placeholder = "Mixed",
 } = defineProps<{
-  modelValue: number | symbol
-  min?: number
-  max?: number
-  step?: number
-  sensitivity?: number
-  placeholder?: string
-}>()
+  modelValue: number | symbol;
+  min?: number;
+  max?: number;
+  step?: number;
+  sensitivity?: number;
+  placeholder?: string;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number]
-  commit: [value: number, previous: number]
-  'editing-change': [editing: boolean]
-}>()
+  "update:modelValue": [value: number];
+  commit: [value: number, previous: number];
+  "editing-change": [editing: boolean];
+}>();
 
-const editing = ref(false)
-const scrubbing = ref(false)
-const inputRef = ref<HTMLInputElement | null>(null)
+const editing = ref(false);
+const scrubbing = ref(false);
+const inputRef = ref<HTMLInputElement | null>(null);
 
-const isMixed = computed(() => typeof modelValue === 'symbol')
-const numericValue = computed(() => (isMixed.value ? 0 : (modelValue as number)))
-const displayValue = computed(() => (isMixed.value ? '' : String(Math.round(numericValue.value))))
+const isMixed = computed(() => typeof modelValue === "symbol");
+const numericValue = computed(() => (isMixed.value ? 0 : (modelValue as number)));
+const displayValue = computed(() => (isMixed.value ? "" : String(Math.round(numericValue.value))));
 
-let stopMove: (() => void) | undefined
-let stopUp: (() => void) | undefined
+let stopMove: (() => void) | undefined;
+let stopUp: (() => void) | undefined;
 
 function startScrub(e: PointerEvent) {
-  e.preventDefault()
-  const startX = e.clientX
-  let lastX = startX
-  let accumulated = numericValue.value
-  const valueBeforeScrub = numericValue.value
-  let hasMoved = false
+  e.preventDefault();
+  const startX = e.clientX;
+  let lastX = startX;
+  let accumulated = numericValue.value;
+  const valueBeforeScrub = numericValue.value;
+  let hasMoved = false;
 
-  stopMove = useEventListener(document, 'pointermove', (ev: PointerEvent) => {
-    const dx = ev.clientX - lastX
-    lastX = ev.clientX
+  stopMove = useEventListener(document, "pointermove", (ev: PointerEvent) => {
+    const dx = ev.clientX - lastX;
+    lastX = ev.clientX;
     if (!hasMoved && Math.abs(ev.clientX - startX) > 2) {
-      hasMoved = true
-      scrubbing.value = true
-      document.body.style.cursor = 'ew-resize'
+      hasMoved = true;
+      scrubbing.value = true;
+      document.body.style.cursor = "ew-resize";
     }
     if (hasMoved) {
-      accumulated += dx * step * sensitivity
-      const clamped = Math.round(Math.min(max, Math.max(min, accumulated)))
-      if (clamped !== modelValue) emit('update:modelValue', clamped)
+      accumulated += dx * step * sensitivity;
+      const clamped = Math.round(Math.min(max, Math.max(min, accumulated)));
+      if (clamped !== modelValue) emit("update:modelValue", clamped);
     }
-  })
+  });
 
-  stopUp = useEventListener(document, 'pointerup', () => {
-    scrubbing.value = false
-    document.body.style.cursor = ''
-    stopMove?.()
-    stopUp?.()
+  stopUp = useEventListener(document, "pointerup", () => {
+    scrubbing.value = false;
+    document.body.style.cursor = "";
+    stopMove?.();
+    stopUp?.();
     if (hasMoved) {
-      if (typeof modelValue === 'number' && modelValue !== valueBeforeScrub) {
-        emit('commit', modelValue, valueBeforeScrub)
+      if (typeof modelValue === "number" && modelValue !== valueBeforeScrub) {
+        emit("commit", modelValue, valueBeforeScrub);
       }
     } else {
-      startEdit()
+      startEdit();
     }
-  })
+  });
 }
 
 function startEdit() {
-  editing.value = true
+  editing.value = true;
   requestAnimationFrame(() => {
-    const input = inputRef.value
+    const input = inputRef.value;
     if (input) {
-      input.focus()
-      input.select()
+      input.focus();
+      input.select();
     }
-  })
+  });
 }
 
 function commitEdit(e: Event) {
-  if (!editing.value) return
-  const val = inputNumberValue(e)
-  const previous = numericValue.value
-  editing.value = false
+  if (!editing.value) return;
+  const val = inputNumberValue(e);
+  const previous = numericValue.value;
+  editing.value = false;
   if (!Number.isNaN(val)) {
-    const clamped = Math.min(max, Math.max(min, val))
-    emit('update:modelValue', clamped)
-    if (clamped !== previous) emit('commit', clamped, previous)
+    const clamped = Math.min(max, Math.max(min, val));
+    emit("update:modelValue", clamped);
+    if (clamped !== previous) emit("commit", clamped, previous);
   }
 }
 
 function liveUpdate(e: Event) {
-  const val = inputNumberValue(e)
+  const val = inputNumberValue(e);
   if (!Number.isNaN(val)) {
-    const clamped = Math.min(max, Math.max(min, val))
-    emit('update:modelValue', clamped)
+    const clamped = Math.min(max, Math.max(min, val));
+    emit("update:modelValue", clamped);
   }
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.code === 'Enter') commitEdit(e)
-  else if (e.code === 'Escape') editing.value = false
+  if (e.code === "Enter") commitEdit(e);
+  else if (e.code === "Escape") editing.value = false;
 }
 
 const ctx = {
@@ -123,19 +123,19 @@ const ctx = {
   startEdit,
   liveUpdate,
   commitEdit,
-  onKeydown
-}
+  onKeydown,
+};
 
 const actions = {
   startScrub,
   startEdit,
   commitEdit,
-  keydown: onKeydown
-}
+  keydown: onKeydown,
+};
 
-provideScrubInput(ctx)
+provideScrubInput(ctx);
 
-watch(editing, (v) => emit('editing-change', v))
+watch(editing, (v) => emit("editing-change", v));
 </script>
 
 <template>

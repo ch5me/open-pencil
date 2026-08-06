@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { useClipboard } from '@vueuse/core'
-import { ToastProvider, ToastRoot, ToastDescription, ToastViewport, ToastClose } from 'reka-ui'
+import { useI18n } from "@open-pencil/vue";
+import { useClipboard } from "@vueuse/core";
+import { ToastProvider, ToastRoot, ToastDescription, ToastViewport, ToastClose } from "reka-ui";
 
-import { useI18n } from '@open-pencil/vue'
+import { toast } from "@/app/shell/ui";
+import Tip from "@/components/ui/Tip.vue";
+import { useToastUI } from "@/components/ui/toast";
 
-import { toast } from '@/app/shell/ui'
-import Tip from '@/components/ui/Tip.vue'
-import { useToastUI } from '@/components/ui/toast'
-
-const { copy, copied } = useClipboard({ copiedDuring: 1500 })
-const { dialogs } = useI18n()
+const { copy, copied } = useClipboard({ copiedDuring: 1500 });
+const { dialogs } = useI18n();
 </script>
 
 <template>
@@ -22,7 +21,7 @@ const { dialogs } = useI18n()
       :class="useToastUI({ tone: t.variant }).base"
       @update:open="
         (open) => {
-          if (!open) toast.remove(t.id)
+          if (!open) toast.remove(t.id);
         }
       "
     >

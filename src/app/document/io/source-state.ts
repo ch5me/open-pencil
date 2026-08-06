@@ -1,30 +1,30 @@
 export function createDocumentSourceState() {
-  let fileHandle: FileSystemFileHandle | null = null
-  let filePath: string | null = null
-  let downloadName: string | null = null
-  let savedVersion = 0
-  let lastWriteTime = 0
+  let fileHandle: FileSystemFileHandle | null = null;
+  let filePath: string | null = null;
+  let downloadName: string | null = null;
+  let savedVersion = 0;
+  let lastWriteTime = 0;
 
   return {
     getFileHandle: () => fileHandle,
     setFileHandle: (handle: FileSystemFileHandle | null) => {
-      fileHandle = handle
+      fileHandle = handle;
     },
     getFilePath: () => filePath,
     setFilePath: (path: string | null) => {
-      filePath = path
+      filePath = path;
     },
     getDownloadName: () => downloadName,
     setDownloadName: (name: string | null) => {
-      downloadName = name
+      downloadName = name;
     },
     getSavedVersion: () => savedVersion,
     setSavedVersion: (version: number) => {
-      savedVersion = version
+      savedVersion = version;
     },
     getLastWriteTime: () => lastWriteTime,
     setLastWriteTime: (time: number) => {
-      lastWriteTime = time
-    }
-  }
+      lastWriteTime = time;
+    },
+  };
 }

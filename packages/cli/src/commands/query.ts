@@ -1,56 +1,55 @@
-import { defineCommand } from 'citty'
+import type { QueryNodeResult } from "@open-pencil/core/rpc";
+import { defineCommand } from "citty";
 
-import type { QueryNodeResult } from '@open-pencil/core/rpc'
-
-import { appTargetOptions } from '#cli/app-target'
-import { printNodeResults, printError } from '#cli/format'
-import { loadRpcData } from '#cli/rpc-data'
+import { appTargetOptions } from "#cli/app-target";
+import { printNodeResults, printError } from "#cli/format";
+import { loadRpcData } from "#cli/rpc-data";
 
 export default defineCommand({
   meta: {
-    description: 'Query nodes using XPath selectors'
+    description: "Query nodes using XPath selectors",
   },
   args: {
     file: {
-      type: 'positional',
-      description: 'Document file path (omit to connect to running app)',
-      required: false
+      type: "positional",
+      description: "Document file path (omit to connect to running app)",
+      required: false,
     },
     selector: {
-      type: 'positional',
+      type: "positional",
       description: 'XPath selector (e.g., //FRAME[@width < 300], //TEXT[contains(@name, "Label")])',
-      required: true
+      required: true,
     },
-    page: { type: 'string', description: 'Page name (default: all pages)' },
-    limit: { type: 'string', description: 'Max results (default: 1000)', default: '1000' },
+    page: { type: "string", description: "Page name (default: all pages)" },
+    limit: { type: "string", description: "Max results (default: 1000)", default: "1000" },
     ...appTargetOptions,
-    json: { type: 'boolean', description: 'Output as JSON' }
+    json: { type: "boolean", description: "Output as JSON" },
   },
   async run({ args }) {
     const results = await loadRpcData<QueryNodeResult[] | { error: string }>(
       args.file,
-      'query',
+      "query",
       {
         selector: args.selector,
         page: args.page,
-        limit: args.limit ? Number(args.limit) : undefined
+        limit: args.limit ? Number(args.limit) : undefined,
       },
-      args
-    )
+      args,
+    );
 
-    if ('error' in results) {
-      printError(results.error)
-      process.exit(1)
+    if ("error" in results) {
+      printError(results.error);
+      process.exit(1);
     }
 
     if (args.json) {
-      console.log(JSON.stringify(results, null, 2))
-      return
+      console.log(JSON.stringify(results, null, 2));
+      return;
     }
 
     printNodeResults(results, (n) => {
-      const q = n as { width?: number; height?: number; name: string }
-      return `${q.name}  ${q.width}×${q.height}`
-    })
-  }
-})
+      const q = n as { width?: number; height?: number; name: string };
+      return `${q.name}  ${q.width}×${q.height}`;
+    });
+  },
+});

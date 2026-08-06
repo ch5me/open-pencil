@@ -1,7 +1,7 @@
-export { Linter, createLinter } from './linter'
-export { defineRule } from './rule'
-export { allRules } from './rules'
-export { presets, recommended, strict, accessibility } from './presets'
+export { Linter, createLinter } from "./linter";
+export { defineRule } from "./rule";
+export { allRules } from "./rules";
+export { presets, recommended, strict, accessibility } from "./presets";
 export type {
   Rule,
   RuleMeta,
@@ -11,5 +11,5 @@ export type {
   LintResult,
   LintConfig,
   Severity,
-  Category
-} from './types'
+  Category,
+} from "./types";

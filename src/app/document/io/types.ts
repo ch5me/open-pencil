@@ -1,1 +1,1 @@
-export type ViewportSize = { width: number; height: number }
+export type ViewportSize = { width: number; height: number };

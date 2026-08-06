@@ -1,28 +1,28 @@
-import { describe, expect, test } from 'bun:test'
+import { describe, expect, test } from "bun:test";
 
-import { computeAllLayouts, SceneGraph } from '@open-pencil/core'
+import { computeAllLayouts, SceneGraph } from "@open-pencil/core";
 
-describe('imported auto-layout bounds', () => {
-  test('preserves visible hug container bounds when hidden children would collapse layout', () => {
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    const frame = graph.createNode('FRAME', page.id, {
+describe("imported auto-layout bounds", () => {
+  test("preserves visible hug container bounds when hidden children would collapse layout", () => {
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    const frame = graph.createNode("FRAME", page.id, {
       width: 280,
       height: 44,
-      layoutMode: 'VERTICAL',
-      primaryAxisSizing: 'HUG',
-      counterAxisSizing: 'HUG',
+      layoutMode: "VERTICAL",
+      primaryAxisSizing: "HUG",
+      counterAxisSizing: "HUG",
       paddingTop: 2,
       paddingRight: 2,
       paddingBottom: 2,
       paddingLeft: 2,
       fills: [
         {
-          type: 'SOLID',
+          type: "SOLID",
           color: { r: 1, g: 1, b: 1, a: 1 },
           opacity: 1,
-          visible: true
-        }
+          visible: true,
+        },
       ],
       strokes: [
         {
@@ -30,38 +30,38 @@ describe('imported auto-layout bounds', () => {
           weight: 2,
           opacity: 1,
           visible: true,
-          align: 'OUTSIDE'
-        }
+          align: "OUTSIDE",
+        },
       ],
-      figmaDerivedLayout: { x: 0, y: 0, width: 280, height: 44 }
-    })
-    const wrapper = graph.createNode('FRAME', frame.id, {
+      figmaDerivedLayout: { x: 0, y: 0, width: 280, height: 44 },
+    });
+    const wrapper = graph.createNode("FRAME", frame.id, {
       x: 2,
       y: 2,
       width: 276,
       height: 40,
-      layoutMode: 'VERTICAL',
-      primaryAxisSizing: 'FIXED',
-      counterAxisSizing: 'FIXED'
-    })
-    const field = graph.createNode('FRAME', wrapper.id, {
+      layoutMode: "VERTICAL",
+      primaryAxisSizing: "FIXED",
+      counterAxisSizing: "FIXED",
+    });
+    const field = graph.createNode("FRAME", wrapper.id, {
       width: 276,
       height: 40,
-      layoutMode: 'HORIZONTAL',
-      primaryAxisSizing: 'FIXED',
-      counterAxisSizing: 'HUG',
-      layoutAlignSelf: 'STRETCH',
+      layoutMode: "HORIZONTAL",
+      primaryAxisSizing: "FIXED",
+      counterAxisSizing: "HUG",
+      layoutAlignSelf: "STRETCH",
       paddingTop: 8,
       paddingRight: 56,
       paddingBottom: 8,
       paddingLeft: 12,
       fills: [
         {
-          type: 'SOLID',
+          type: "SOLID",
           color: { r: 1, g: 1, b: 1, a: 1 },
           opacity: 1,
-          visible: true
-        }
+          visible: true,
+        },
       ],
       strokes: [
         {
@@ -69,20 +69,20 @@ describe('imported auto-layout bounds', () => {
           weight: 1,
           opacity: 1,
           visible: true,
-          align: 'OUTSIDE'
-        }
+          align: "OUTSIDE",
+        },
       ],
-      figmaDerivedLayout: { x: 0, y: 0, width: 276, height: 40 }
-    })
-    graph.createNode('TEXT', field.id, {
+      figmaDerivedLayout: { x: 0, y: 0, width: 276, height: 40 },
+    });
+    graph.createNode("TEXT", field.id, {
       x: 12,
       y: 8,
       width: 132,
       height: 24,
-      text: 'typing something',
-      visible: false
-    })
-    graph.createNode('LINE', field.id, {
+      text: "typing something",
+      visible: false,
+    });
+    graph.createNode("LINE", field.id, {
       x: 12,
       y: 8,
       width: 24,
@@ -94,38 +94,38 @@ describe('imported auto-layout bounds', () => {
           weight: 1,
           opacity: 1,
           visible: true,
-          align: 'CENTER'
-        }
-      ]
-    })
+          align: "CENTER",
+        },
+      ],
+    });
 
-    computeAllLayouts(graph)
+    computeAllLayouts(graph);
 
-    expect(graph.getNode(field.id)).toMatchObject({ x: 0, y: 0, width: 276, height: 40 })
-  })
+    expect(graph.getNode(field.id)).toMatchObject({ x: 0, y: 0, width: 276, height: 40 });
+  });
 
-  test('uses Yoga positions for imported instances while preserving imported size', () => {
-    const graph = new SceneGraph()
-    const page = graph.getPages()[0]
-    const row = graph.createNode('FRAME', page.id, {
+  test("uses Yoga positions for imported instances while preserving imported size", () => {
+    const graph = new SceneGraph();
+    const page = graph.getPages()[0];
+    const row = graph.createNode("FRAME", page.id, {
       width: 200,
       height: 40,
-      layoutMode: 'HORIZONTAL',
-      primaryAxisSizing: 'FIXED',
-      counterAxisSizing: 'FIXED',
-      primaryAxisAlign: 'MAX',
-      counterAxisAlign: 'CENTER'
-    })
-    const instance = graph.createNode('INSTANCE', row.id, {
+      layoutMode: "HORIZONTAL",
+      primaryAxisSizing: "FIXED",
+      counterAxisSizing: "FIXED",
+      primaryAxisAlign: "MAX",
+      counterAxisAlign: "CENTER",
+    });
+    const instance = graph.createNode("INSTANCE", row.id, {
       x: 0,
       y: 0,
       width: 40,
       height: 20,
-      figmaDerivedLayout: { x: 0, y: 0, width: 40, height: 20 }
-    })
+      figmaDerivedLayout: { x: 0, y: 0, width: 40, height: 20 },
+    });
 
-    computeAllLayouts(graph)
+    computeAllLayouts(graph);
 
-    expect(graph.getNode(instance.id)).toMatchObject({ x: 160, y: 10, width: 40, height: 20 })
-  })
-})
+    expect(graph.getNode(instance.id)).toMatchObject({ x: 160, y: 10, width: 40, height: 20 });
+  });
+});

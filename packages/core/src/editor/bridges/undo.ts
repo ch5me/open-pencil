@@ -1,8 +1,8 @@
-import type { createSelectionActions } from '#core/editor/selection'
-import type { createUndoActions } from '#core/editor/undo'
+import type { createSelectionActions } from "#core/editor/selection";
+import type { createUndoActions } from "#core/editor/undo";
 
-type SelectionActions = ReturnType<typeof createSelectionActions>
-type UndoActions = ReturnType<typeof createUndoActions>
+type SelectionActions = ReturnType<typeof createSelectionActions>;
+type UndoActions = ReturnType<typeof createUndoActions>;
 
 export function createUndoBridge(undoActions: UndoActions, selection: SelectionActions) {
   return {
@@ -17,6 +17,6 @@ export function createUndoBridge(undoActions: UndoActions, selection: SelectionA
     redoAction: () => undoActions.redoAction(selection.validateEnteredContainer),
     snapshotPage: undoActions.snapshotPage,
     restorePageFromSnapshot: undoActions.restorePageFromSnapshot,
-    pushUndoEntry: undoActions.pushUndoEntry
-  }
+    pushUndoEntry: undoActions.pushUndoEntry,
+  };
 }

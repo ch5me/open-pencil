@@ -1,29 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
 import {
   ToolbarRoot,
   useEditorCommands,
   useI18n,
   useToolbarState,
-  useViewportKind
-} from '@open-pencil/vue'
-import type { Tool } from '@open-pencil/vue'
+  useViewportKind,
+} from "@open-pencil/vue";
+import type { Tool } from "@open-pencil/vue";
+import { computed } from "vue";
 
-import { useEditorStore } from '@/app/editor/active-store'
-import { toolIcons } from '@/app/editor/icons'
-import { useActionToast } from '@/app/shell/toast/action'
-import { useToolbarActions } from '@/components/Toolbar/actions'
-import DesktopToolbar from '@/components/Toolbar/DesktopToolbar.vue'
-import MobileToolbar from '@/components/Toolbar/MobileToolbar.vue'
-import type { ToolbarActionItem } from '@/components/Toolbar/types'
-import { useMenuUI } from '@/components/ui/menu'
+import { useEditorStore } from "@/app/editor/active-store";
+import { toolIcons } from "@/app/editor/icons";
+import { useActionToast } from "@/app/shell/toast/action";
+import { useToolbarActions } from "@/components/Toolbar/actions";
+import DesktopToolbar from "@/components/Toolbar/DesktopToolbar.vue";
+import MobileToolbar from "@/components/Toolbar/MobileToolbar.vue";
+import type { ToolbarActionItem } from "@/components/Toolbar/types";
+import { useMenuUI } from "@/components/ui/menu";
 
-const store = useEditorStore()
-const { isMobile } = useViewportKind()
-const { getCommand } = useEditorCommands()
-const { showActionToast } = useActionToast()
-const { menu, tools: toolTexts } = useI18n()
+const store = useEditorStore();
+const { isMobile } = useViewportKind();
+const { getCommand } = useEditorCommands();
+const { showActionToast } = useActionToast();
+const { menu, tools: toolTexts } = useI18n();
 
 const toolLabels = computed<Record<Tool, string>>(() => ({
   SELECT: toolTexts.value.move,
@@ -36,32 +35,32 @@ const toolLabels = computed<Record<Tool, string>>(() => ({
   STAR: toolTexts.value.star,
   PEN: toolTexts.value.pen,
   TEXT: toolTexts.value.text,
-  HAND: toolTexts.value.hand
-}))
+  HAND: toolTexts.value.hand,
+}));
 
 const toolShortcuts: Record<Tool, string> = {
-  SELECT: 'V',
-  FRAME: 'F',
-  SECTION: 'S',
-  RECTANGLE: 'R',
-  ELLIPSE: 'O',
-  LINE: 'L',
-  POLYGON: '',
-  STAR: '',
-  PEN: 'P',
-  TEXT: 'T',
-  HAND: 'H'
-}
+  SELECT: "V",
+  FRAME: "F",
+  SECTION: "S",
+  RECTANGLE: "R",
+  ELLIPSE: "O",
+  LINE: "L",
+  POLYGON: "",
+  STAR: "",
+  PEN: "P",
+  TEXT: "T",
+  HAND: "H",
+};
 
-const flyoutMenuCls = useMenuUI({ content: 'min-w-32' })
-const toolbarUi = { flyoutContent: flyoutMenuCls.content }
-const { editActions, arrangeActions } = useToolbarActions({ store, getCommand, menu })
+const flyoutMenuCls = useMenuUI({ content: "min-w-32" });
+const toolbarUi = { flyoutContent: flyoutMenuCls.content };
+const { editActions, arrangeActions } = useToolbarActions({ store, getCommand, menu });
 
-const { mobileCategory, slideDirection, hasPrev, hasNext, goPrev, goNext } = useToolbarState()
+const { mobileCategory, slideDirection, hasPrev, hasNext, goPrev, goNext } = useToolbarState();
 
 function onActionTap(item: ToolbarActionItem) {
-  item.action()
-  showActionToast(item.label)
+  item.action();
+  showActionToast(item.label);
 }
 </script>
 

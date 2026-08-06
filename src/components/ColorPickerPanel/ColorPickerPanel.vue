@@ -1,32 +1,32 @@
 <script setup lang="ts">
-import type { Color } from '@open-pencil/core/types'
-import type { OkHCLControls } from '@open-pencil/vue'
+import type { Color } from "@open-pencil/core/types";
+import type { OkHCLControls } from "@open-pencil/vue";
 
-import ColorAreaControl from '@/components/ColorPickerPanel/ColorAreaControl.vue'
-import { provideColorPickerPanel } from '@/components/ColorPickerPanel/context'
-import FormatControls from '@/components/ColorPickerPanel/FormatControls.vue'
-import HueAlphaSliders from '@/components/ColorPickerPanel/HueAlphaSliders.vue'
+import ColorAreaControl from "@/components/ColorPickerPanel/ColorAreaControl.vue";
+import { provideColorPickerPanel } from "@/components/ColorPickerPanel/context";
+import FormatControls from "@/components/ColorPickerPanel/FormatControls.vue";
+import HueAlphaSliders from "@/components/ColorPickerPanel/HueAlphaSliders.vue";
 
 const { color, okhcl = null } = defineProps<{
-  color: Color
-  okhcl?: OkHCLControls | null
-}>()
+  color: Color;
+  okhcl?: OkHCLControls | null;
+}>();
 
 const emit = defineEmits<{
-  update: [color: Color]
-}>()
+  update: [color: Color];
+}>();
 
 provideColorPickerPanel(
   {
     get color() {
-      return color
+      return color;
     },
     get okhcl() {
-      return okhcl
-    }
+      return okhcl;
+    },
   },
-  emit
-)
+  emit,
+);
 </script>
 
 <template>

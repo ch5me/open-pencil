@@ -1,31 +1,30 @@
 <script setup lang="ts">
-import { PopoverClose, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
-import { ref } from 'vue'
+import { useI18n } from "@open-pencil/vue";
+import { PopoverClose, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
+import { ref } from "vue";
 
-import { useI18n } from '@open-pencil/vue'
+import ProviderSelectField from "@/components/chat/ProviderSelect/ProviderSelectField.vue";
+import ApiKeySection from "@/components/chat/ProviderSettings/ApiKeySection.vue";
+import ApiTypeSection from "@/components/chat/ProviderSettings/ApiTypeSection.vue";
+import { provideProviderSettings } from "@/components/chat/ProviderSettings/context";
+import CustomEndpointSection from "@/components/chat/ProviderSettings/CustomEndpointSection.vue";
+import MaxTokensSection from "@/components/chat/ProviderSettings/MaxTokensSection.vue";
+import StockPhotoKeysSection from "@/components/chat/ProviderSettings/StockPhotoKeysSection.vue";
+import { usePopoverUI } from "@/components/ui/popover";
+import Tip from "@/components/ui/Tip.vue";
 
-import ProviderSelectField from '@/components/chat/ProviderSelect/ProviderSelectField.vue'
-import ApiKeySection from '@/components/chat/ProviderSettings/ApiKeySection.vue'
-import ApiTypeSection from '@/components/chat/ProviderSettings/ApiTypeSection.vue'
-import { provideProviderSettings } from '@/components/chat/ProviderSettings/context'
-import CustomEndpointSection from '@/components/chat/ProviderSettings/CustomEndpointSection.vue'
-import MaxTokensSection from '@/components/chat/ProviderSettings/MaxTokensSection.vue'
-import StockPhotoKeysSection from '@/components/chat/ProviderSettings/StockPhotoKeysSection.vue'
-import { usePopoverUI } from '@/components/ui/popover'
-import Tip from '@/components/ui/Tip.vue'
-
-const { dialogs } = useI18n()
-const cls = usePopoverUI({ content: 'isolate z-[51] w-64 p-3' })
-const popoverOpen = ref(false)
-const providerSettings = provideProviderSettings()
+const { dialogs } = useI18n();
+const cls = usePopoverUI({ content: "isolate z-[51] w-64 p-3" });
+const popoverOpen = ref(false);
+const providerSettings = provideProviderSettings();
 
 function onInteractOutside(e: Event) {
-  const target = e.target as HTMLElement | null
-  if (target?.closest('[role=listbox], [data-reka-popper-content-wrapper]')) {
-    e.preventDefault()
-    return
+  const target = e.target as HTMLElement | null;
+  if (target?.closest("[role=listbox], [data-reka-popper-content-wrapper]")) {
+    e.preventDefault();
+    return;
   }
-  providerSettings.save()
+  providerSettings.save();
 }
 </script>
 

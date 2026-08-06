@@ -1,22 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { useI18n } from "@open-pencil/vue";
+import { computed, ref } from "vue";
 
-import { useI18n } from '@open-pencil/vue'
+import { listProviderModels } from "@/app/ai/chat/provider-models";
+import { useProviderSettingsContext } from "@/components/chat/ProviderSettings/context";
+import ProviderSettingsField from "@/components/chat/ProviderSettings/ProviderSettingsField.vue";
+import ProviderSettingsInput from "@/components/chat/ProviderSettings/ProviderSettingsInput.vue";
+import AppComboboxInput from "@/components/ui/AppComboboxInput.vue";
 
-import { listProviderModels } from '@/app/ai/chat/provider-models'
-import { useProviderSettingsContext } from '@/components/chat/ProviderSettings/context'
-import ProviderSettingsField from '@/components/chat/ProviderSettings/ProviderSettingsField.vue'
-import ProviderSettingsInput from '@/components/chat/ProviderSettings/ProviderSettingsInput.vue'
-import AppComboboxInput from '@/components/ui/AppComboboxInput.vue'
-
-const ctx = useProviderSettingsContext()
-const { dialogs } = useI18n()
-const suggestedModels = ref<Array<{ id: string; name: string }>>([])
-const showModelSuggestions = computed(() => ctx.providerID === 'openrouter')
+const ctx = useProviderSettingsContext();
+const { dialogs } = useI18n();
+const suggestedModels = ref<Array<{ id: string; name: string }>>([]);
+const showModelSuggestions = computed(() => ctx.providerID === "openrouter");
 
 async function loadModelSuggestions() {
-  if (!showModelSuggestions.value || suggestedModels.value.length) return
-  suggestedModels.value = await listProviderModels(ctx.providerID)
+  if (!showModelSuggestions.value || suggestedModels.value.length) return;
+  suggestedModels.value = await listProviderModels(ctx.providerID);
 }
 </script>
 

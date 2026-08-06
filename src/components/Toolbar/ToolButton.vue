@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
-
-import { vTestId, type RequiredTestIdProps } from '@open-pencil/vue'
+import { vTestId, type RequiredTestIdProps } from "@open-pencil/vue";
+import type { Component } from "vue";
 
 interface ToolButtonProps extends RequiredTestIdProps {
-  icon: Component
-  active?: boolean
-  mobile?: boolean
+  icon: Component;
+  active?: boolean;
+  mobile?: boolean;
 }
 
-const { icon, active = false, mobile = false, testId } = defineProps<ToolButtonProps>()
+const { icon, active = false, mobile = false, testId } = defineProps<ToolButtonProps>();
 
 const emit = defineEmits<{
-  click: []
-}>()
+  click: [];
+}>();
 </script>
 
 <template>
@@ -26,7 +25,7 @@ const emit = defineEmits<{
         ? 'bg-accent text-white'
         : mobile
           ? 'bg-transparent text-muted active:bg-hover'
-          : 'bg-transparent text-muted hover:bg-hover hover:text-surface'
+          : 'bg-transparent text-muted hover:bg-hover hover:text-surface',
     ]"
     @click="emit('click')"
   >

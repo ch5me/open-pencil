@@ -1,6 +1,6 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 @import "@ch5me/firefly-design/tailwind.css";
-@import 'tw-animate-css';
+@import "tw-animate-css";
 
 @utility scrollbar-none {
   -ms-overflow-style: none;
@@ -66,7 +66,7 @@
   --color-ruler-label: rgb(255, 255, 255);
 }
 
-html[data-theme='light'] {
+html[data-theme="light"] {
   --color-panel: #ffffff;
   --color-canvas: #f3f4f6;
   --color-border: #d8dce3;
@@ -143,12 +143,12 @@ body {
   color: var(--color-code-attribute);
 }
 
-input[type='number'] {
+input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
 }
 
-input[type='number']::-webkit-inner-spin-button,
-input[type='number']::-webkit-outer-spin-button {
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
   display: none;
 }

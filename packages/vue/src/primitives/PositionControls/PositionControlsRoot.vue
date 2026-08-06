@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from "vue";
 
-import { MIXED, useNodeProps } from '#vue/controls/node-props/use'
+import { MIXED, useNodeProps } from "#vue/controls/node-props/use";
 
 const {
   updateProp,
@@ -11,32 +11,32 @@ const {
   isMulti,
   active,
   prop: multiProp,
-  store
-} = useNodeProps()
+  store,
+} = useNodeProps();
 
 const xValue = computed(() =>
-  isMulti.value ? multiProp('x').value : Math.round(node.value?.x ?? 0)
-)
+  isMulti.value ? multiProp("x").value : Math.round(node.value?.x ?? 0),
+);
 const yValue = computed(() =>
-  isMulti.value ? multiProp('y').value : Math.round(node.value?.y ?? 0)
-)
-const wValue = multiProp('width')
-const hValue = multiProp('height')
+  isMulti.value ? multiProp("y").value : Math.round(node.value?.y ?? 0),
+);
+const wValue = multiProp("width");
+const hValue = multiProp("height");
 const rotationValue = computed(() =>
-  isMulti.value ? multiProp('rotation').value : Math.round(node.value?.rotation ?? 0)
-)
-const ids = computed(() => nodes.value.map((n) => n.id))
+  isMulti.value ? multiProp("rotation").value : Math.round(node.value?.rotation ?? 0),
+);
+const ids = computed(() => nodes.value.map((n) => n.id));
 
-function align(axis: 'horizontal' | 'vertical', pos: 'min' | 'center' | 'max') {
-  store.alignNodes(ids.value, axis, pos)
+function align(axis: "horizontal" | "vertical", pos: "min" | "center" | "max") {
+  store.alignNodes(ids.value, axis, pos);
 }
 
-function flip(axis: 'horizontal' | 'vertical') {
-  store.flipNodes(ids.value, axis)
+function flip(axis: "horizontal" | "vertical") {
+  store.flipNodes(ids.value, axis);
 }
 
 function rotate(degrees: number) {
-  store.rotateNodes(ids.value, degrees)
+  store.rotateNodes(ids.value, degrees);
 }
 
 const actions = {
@@ -44,8 +44,8 @@ const actions = {
   commitProp,
   align,
   flip,
-  rotate
-}
+  rotate,
+};
 </script>
 
 <template>

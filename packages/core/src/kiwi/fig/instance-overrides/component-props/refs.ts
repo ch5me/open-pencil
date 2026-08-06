@@ -1,54 +1,54 @@
 import type {
   ComponentPropRef,
   ComponentPropValue,
-  OverrideContext
-} from '#core/kiwi/fig/instance-overrides/types'
-import { guidToString } from '#core/kiwi/fig/node-change/convert'
+  OverrideContext,
+} from "#core/kiwi/fig/instance-overrides/types";
+import { guidToString } from "#core/kiwi/fig/node-change/convert";
 
-import { normalizePropName, stringToGuidParts } from './values'
+import { normalizePropName, stringToGuidParts } from "./values";
 
 export function findPropRefs(
   ctx: OverrideContext,
   nodeId: string,
-  propRefsMap: Map<string, ComponentPropRef[]>
+  propRefsMap: Map<string, ComponentPropRef[]>,
 ): ComponentPropRef[] | undefined {
-  let sourceId: string | undefined = nodeId
+  let sourceId: string | undefined = nodeId;
   for (let depth = 0; sourceId && depth < 10; depth++) {
-    const node = ctx.graph.getNode(sourceId)
+    const node = ctx.graph.getNode(sourceId);
     const overrideKey = node?.overrideKey
       ? (ctx.overrideKeyToGuid.get(node.overrideKey) ?? node.overrideKey)
-      : undefined
-    const figmaId = ctx.nodeIdToGuid.get(sourceId) ?? overrideKey
+      : undefined;
+    const figmaId = ctx.nodeIdToGuid.get(sourceId) ?? overrideKey;
     if (figmaId) {
-      const refs = propRefsMap.get(figmaId)
-      if (refs) return refs
+      const refs = propRefsMap.get(figmaId);
+      if (refs) return refs;
     }
-    const nextId = node?.componentId ?? undefined
-    if (nextId === sourceId) break
-    sourceId = nextId
+    const nextId = node?.componentId ?? undefined;
+    if (nextId === sourceId) break;
+    sourceId = nextId;
   }
-  return undefined
+  return undefined;
 }
 
 export function fallbackRefsForChild(
   ctx: OverrideContext,
   childName: string,
-  valueByDef: Map<string, ComponentPropValue>
+  valueByDef: Map<string, ComponentPropValue>,
 ): ComponentPropRef[] | undefined {
-  const normalizedChildName = normalizePropName(childName)
-  const refs: ComponentPropRef[] = []
+  const normalizedChildName = normalizePropName(childName);
+  const refs: ComponentPropRef[] = [];
   for (const defId of valueByDef.keys()) {
-    const propName = ctx.propNames.get(defId)
+    const propName = ctx.propNames.get(defId);
     if (propName && normalizePropName(propName) === normalizedChildName) {
-      refs.push({ defID: stringToGuidParts(defId), componentPropNodeField: 'VISIBLE' })
+      refs.push({ defID: stringToGuidParts(defId), componentPropNodeField: "VISIBLE" });
     }
   }
-  return refs.length > 0 ? refs : undefined
+  return refs.length > 0 ? refs : undefined;
 }
 
 export function valueForRef(
   ref: ComponentPropRef,
-  valueByDef: Map<string, ComponentPropValue>
+  valueByDef: Map<string, ComponentPropValue>,
 ): ComponentPropValue | undefined {
-  return ref.defID ? valueByDef.get(guidToString(ref.defID)) : undefined
+  return ref.defID ? valueByDef.get(guidToString(ref.defID)) : undefined;
 }

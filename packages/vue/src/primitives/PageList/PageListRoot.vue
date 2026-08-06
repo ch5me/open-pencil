@@ -1,53 +1,53 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from "vue";
 
-import { usePageList } from '#vue/primitives/PageList/usePageList'
+import { usePageList } from "#vue/primitives/PageList/usePageList";
 
 const { dividerPattern: customDividerPattern } = defineProps<{
-  dividerPattern?: RegExp
-}>()
+  dividerPattern?: RegExp;
+}>();
 
 const emit = defineEmits<{
-  add: []
-  switch: [pageId: string]
-  rename: [pageId: string, name: string]
-  delete: [pageId: string]
-}>()
+  add: [];
+  switch: [pageId: string];
+  rename: [pageId: string, name: string];
+  delete: [pageId: string];
+}>();
 
-const { pages, currentPageId, switchPage, addPage, renamePage, deletePage } = usePageList()
+const { pages, currentPageId, switchPage, addPage, renamePage, deletePage } = usePageList();
 
-const dividerPattern = computed(() => customDividerPattern ?? /^[-–—*\s]+$/)
+const dividerPattern = computed(() => customDividerPattern ?? /^[-–—*\s]+$/);
 
 function isDivider(page: { name: string; childIds: string[] }) {
-  return page.childIds.length === 0 && dividerPattern.value.test(page.name)
+  return page.childIds.length === 0 && dividerPattern.value.test(page.name);
 }
 
 function handleAdd() {
-  addPage()
-  emit('add')
+  addPage();
+  emit("add");
 }
 
 function handleSwitch(pageId: string) {
-  switchPage(pageId)
-  emit('switch', pageId)
+  switchPage(pageId);
+  emit("switch", pageId);
 }
 
 function handleRename(pageId: string, name: string) {
-  renamePage(pageId, name)
-  emit('rename', pageId, name)
+  renamePage(pageId, name);
+  emit("rename", pageId, name);
 }
 
 function handleDelete(pageId: string) {
-  deletePage(pageId)
-  emit('delete', pageId)
+  deletePage(pageId);
+  emit("delete", pageId);
 }
 
 const actions = {
   add: handleAdd,
   switch: handleSwitch,
   rename: handleRename,
-  delete: handleDelete
-}
+  delete: handleDelete,
+};
 </script>
 
 <template>

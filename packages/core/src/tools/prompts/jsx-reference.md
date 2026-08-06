@@ -126,19 +126,19 @@ Aliases: View = Frame, Rect = Rectangle
 {
   /* Card with title and description */
 }
-;<Frame name="Card" w={320} flex="col" gap={16} p={24} bg="#FFFFFF" rounded={16}>
+<Frame name="Card" w={320} flex="col" gap={16} p={24} bg="#FFFFFF" rounded={16}>
   <Text size={18} weight="bold" color="#111">
     Card Title
   </Text>
   <Text size={14} color="#6B7280">
     Description text here
   </Text>
-</Frame>
+</Frame>;
 
 {
   /* Badge in corner of a card */
 }
-;<Frame name="Card" w={320} h={200} flex="col" p={24} bg="#FFFFFF" rounded={16}>
+<Frame name="Card" w={320} h={200} flex="col" p={24} bg="#FFFFFF" rounded={16}>
   <Frame position="absolute" top={8} left={280} w={24} h={24} bg="#EF4444" rounded={12}>
     <Text size={10} weight="bold" color="#FFF">
       3
@@ -147,29 +147,29 @@ Aliases: View = Frame, Rect = Rectangle
   <Text size={18} weight="bold" color="#111">
     Card Title
   </Text>
-</Frame>
+</Frame>;
 
 {
   /* Horizontal button row */
 }
-;<Frame flex="row" gap={8} items="center">
+<Frame flex="row" gap={8} items="center">
   <Rectangle w={40} h={40} bg="#3B82F6" rounded={8} />
   <Text size={14} weight="medium" color="#000">
     Click me
   </Text>
-</Frame>
+</Frame>;
 
 {
   /* Grid layout */
 }
-;<Frame grid columns="1fr 1fr 1fr" gap={16} p={16} w={400}>
+<Frame grid columns="1fr 1fr 1fr" gap={16} p={16} w={400}>
   <Rectangle w={100} h={100} bg="#EF4444" rounded={8} />
   <Rectangle w={100} h={100} bg="#22C55E" rounded={8} />
   <Rectangle w={100} h={100} bg="#3B82F6" rounded={8} />
-</Frame>
+</Frame>;
 
 {
   /* Star shape */
 }
-;<Star w={48} h={48} points={5} innerRadius={0.38} bg="#EAB308" />
+<Star w={48} h={48} points={5} innerRadius={0.38} bg="#EAB308" />;
 ```

@@ -1,39 +1,38 @@
 <script setup lang="ts">
-import { twMerge } from 'tailwind-merge'
+import type { Fill } from "@open-pencil/core/scene-graph";
+import { applySolidFillColor, FillPickerRoot, useI18n } from "@open-pencil/vue";
+import type { OkHCLControls } from "@open-pencil/vue";
+import { twMerge } from "tailwind-merge";
 
-import type { Fill } from '@open-pencil/core/scene-graph'
-import { applySolidFillColor, FillPickerRoot, useI18n } from '@open-pencil/vue'
-import type { OkHCLControls } from '@open-pencil/vue'
+import ColorPickerPanel from "@/components/ColorPickerPanel/ColorPickerPanel.vue";
 
-import ColorPickerPanel from '@/components/ColorPickerPanel/ColorPickerPanel.vue'
-
-import GradientEditor from './GradientEditor.vue'
-import ImageFillPicker from './ImageFillPicker.vue'
-import { usePopoverUI } from './ui/popover'
-import Tip from './ui/Tip.vue'
+import GradientEditor from "./GradientEditor.vue";
+import ImageFillPicker from "./ImageFillPicker.vue";
+import { usePopoverUI } from "./ui/popover";
+import Tip from "./ui/Tip.vue";
 
 const TAB_BASE =
-  'flex size-6 cursor-pointer items-center justify-center rounded border-none p-0 transition-colors'
+  "flex size-6 cursor-pointer items-center justify-center rounded border-none p-0 transition-colors";
 
 function tabClass(active: boolean) {
   return twMerge(
     TAB_BASE,
-    active ? 'bg-hover text-surface' : 'text-muted hover:bg-hover hover:text-surface'
-  )
+    active ? "bg-hover text-surface" : "text-muted hover:bg-hover hover:text-surface",
+  );
 }
 
 const {
   fill,
   okhcl = null,
-  swatchBackground
+  swatchBackground,
 } = defineProps<{
-  fill: Fill
-  okhcl?: OkHCLControls | null
-  swatchBackground?: string
-}>()
-const emit = defineEmits<{ update: [fill: Fill] }>()
-const cls = usePopoverUI({ content: 'w-60 p-2' })
-const { panels } = useI18n()
+  fill: Fill;
+  okhcl?: OkHCLControls | null;
+  swatchBackground?: string;
+}>();
+const emit = defineEmits<{ update: [fill: Fill] }>();
+const cls = usePopoverUI({ content: "w-60 p-2" });
+const { panels } = useI18n();
 </script>
 
 <template>
@@ -41,7 +40,7 @@ const { panels } = useI18n()
     :fill="fill"
     :ui="{
       content: cls.content,
-      swatch: 'size-5 shrink-0 cursor-pointer rounded border border-border p-0'
+      swatch: 'size-5 shrink-0 cursor-pointer rounded border border-border p-0',
     }"
     @update="emit('update', $event)"
   >

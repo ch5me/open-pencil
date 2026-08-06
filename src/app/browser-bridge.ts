@@ -1,78 +1,78 @@
-import type { ChatTransport, UIMessage } from 'ai'
+import type { ChatTransport, UIMessage } from "ai";
 
-import type { EditorStore } from '@/app/editor/session/create'
+import type { EditorStore } from "@/app/editor/session/create";
 
 export interface OpenPencilTestHooks {
-  writeCount?: () => number
-  mockHandle?: FileSystemFileHandle
-  hostedAuthToken?: string
-  hostedApiOrigin?: string
-  forceHostedCollab?: boolean
+  writeCount?: () => number;
+  mockHandle?: FileSystemFileHandle;
+  hostedAuthToken?: string;
+  hostedApiOrigin?: string;
+  forceHostedCollab?: boolean;
   getCollabSnapshot?: () => {
-    connected: boolean
-    reconnecting: boolean
-    mode: string | null
-    roomId: string | null
-    documentId: string | null
-    peerCount: number
-    remoteCursorCount: number
-    sharePath: string | null
-    degraded: boolean
-    missingAssetIds: string[]
-    lastError: string | null
-  }
-  setCollabProofValue?: (value: string) => void
-  getCollabProofValue?: () => string | null
-  setCollabYjsProofValue?: (value: string) => void
-  getCollabYjsProofValue?: () => string | null
-  getHostedWireStats?: () => Record<string, number>
-  seedHostedSession?: () => void
-  savedOpen?: Window['open']
+    connected: boolean;
+    reconnecting: boolean;
+    mode: string | null;
+    roomId: string | null;
+    documentId: string | null;
+    peerCount: number;
+    remoteCursorCount: number;
+    sharePath: string | null;
+    degraded: boolean;
+    missingAssetIds: string[];
+    lastError: string | null;
+  };
+  setCollabProofValue?: (value: string) => void;
+  getCollabProofValue?: () => string | null;
+  setCollabYjsProofValue?: (value: string) => void;
+  getCollabYjsProofValue?: () => string | null;
+  getHostedWireStats?: () => Record<string, number>;
+  seedHostedSession?: () => void;
+  savedOpen?: Window["open"];
   hostedCollabTest?: {
-    clientLabel: string
-  }
+    clientLabel: string;
+  };
 }
 
 export interface OpenPencilWindowAPI {
-  getStore?: () => EditorStore
-  setChatTransport?: (factory: () => ChatTransport<UIMessage>) => void
-  openFile?: (path: string) => Promise<void>
-  test?: OpenPencilTestHooks
+  getStore?: () => EditorStore;
+  setChatTransport?: (factory: () => ChatTransport<UIMessage>) => void;
+  openFile?: (path: string) => Promise<void>;
+  test?: OpenPencilTestHooks;
 }
 
 declare global {
   interface Window {
-    openPencil?: OpenPencilWindowAPI
+    openPencil?: OpenPencilWindowAPI;
   }
 }
 
-let activeStore: EditorStore | null = null
+let activeStore: EditorStore | null = null;
 
 function windowApi(): OpenPencilWindowAPI {
-  window.openPencil ??= {}
+  window.openPencil ??= {};
   window.openPencil.getStore ??= () => {
-    if (!activeStore) throw new Error('OpenPencil store not initialized')
-    return activeStore
-  }
-  return window.openPencil
+    if (!activeStore) throw new Error("OpenPencil store not initialized");
+    return activeStore;
+  };
+  return window.openPencil;
 }
 
 export function setOpenPencilStore(store: EditorStore) {
-  activeStore = store
-  windowApi()
+  activeStore = store;
+  windowApi();
 }
 
 export function setOpenPencilTestHooks(test: Partial<OpenPencilTestHooks>) {
-  const api = windowApi()
-  api.test = { ...api.test, ...test }
+  const api = windowApi();
+  api.test = { ...api.test, ...test };
 }
 
 export function exposeChatTransportOverride(
-  setChatTransport: (factory: () => ChatTransport<UIMessage>) => void
+  setChatTransport: (factory: () => ChatTransport<UIMessage>) => void,
 ) {
-  windowApi().setChatTransport = setChatTransport
+  windowApi().setChatTransport = setChatTransport;
 }
 
 export function setOpenPencilOpenFileHandler(openFile: (path: string) => Promise<void>) {
-  windowApi().openFile = openFile
+  windowApi().openFile = openFile;
 }

@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref } from "vue";
 
 import {
   OKHCL_FIELD_OPTIONS,
@@ -6,23 +6,23 @@ import {
   createOkHCLFieldFormats,
   createOkHCLPreviewHelpers,
   getFillOkHCLColor,
-  getStrokeOkHCLColor
-} from '#vue/controls/okhcl/helpers'
-import { useEditor } from '#vue/editor/context'
-import type { ColorFieldFormat } from '#vue/primitives/ColorPicker/types'
+  getStrokeOkHCLColor,
+} from "#vue/controls/okhcl/helpers";
+import { useEditor } from "#vue/editor/context";
+import type { ColorFieldFormat } from "#vue/primitives/ColorPicker/types";
 
 export function useOkHCL() {
-  const editor = useEditor()
-  const fieldFormats = ref(new Map<string, ColorFieldFormat>())
+  const editor = useEditor();
+  const fieldFormats = ref(new Map<string, ColorFieldFormat>());
 
   const { ensureFillOkHCL, ensureStrokeOkHCL, updateFillOkHCL, updateStrokeOkHCL } =
-    createOkHCLActions(editor)
-  const { getFillPreviewInfo, getStrokePreviewInfo } = createOkHCLPreviewHelpers(editor)
+    createOkHCLActions(editor);
+  const { getFillPreviewInfo, getStrokePreviewInfo } = createOkHCLPreviewHelpers(editor);
   const { getFieldFormat, setFillFieldFormat, setStrokeFieldFormat } = createOkHCLFieldFormats(
     fieldFormats,
     ensureFillOkHCL,
-    ensureStrokeOkHCL
-  )
+    ensureStrokeOkHCL,
+  );
 
   return {
     getFillOkHCLColor,
@@ -34,6 +34,6 @@ export function useOkHCL() {
     setStrokeFieldFormat,
     updateFillOkHCL,
     updateStrokeOkHCL,
-    fieldOptions: OKHCL_FIELD_OPTIONS
-  }
+    fieldOptions: OKHCL_FIELD_OPTIONS,
+  };
 }

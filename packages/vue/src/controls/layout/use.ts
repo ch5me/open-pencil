@@ -4,10 +4,10 @@ import {
   createLayoutSelectionState,
   createPaddingActions,
   createTrackSizingOptions,
-  trackLabel
-} from '#vue/controls/layout/helpers'
-import { useEditor } from '#vue/editor/context'
-import { useI18n } from '#vue/i18n'
+  trackLabel,
+} from "#vue/controls/layout/helpers";
+import { useEditor } from "#vue/editor/context";
+import { useI18n } from "#vue/i18n";
 
 /**
  * Returns layout-related state and actions for the current selection.
@@ -16,8 +16,8 @@ import { useI18n } from '#vue/i18n'
  * padding, alignment, and track editing behavior.
  */
 export function useLayout() {
-  const editor = useEditor()
-  const { panels } = useI18n()
+  const editor = useEditor();
+  const { panels } = useI18n();
 
   const {
     node,
@@ -30,8 +30,8 @@ export function useLayout() {
     widthSizing,
     heightSizing,
     widthSizingOptions,
-    heightSizingOptions
-  } = createLayoutSelectionState(editor, panels)
+    heightSizingOptions,
+  } = createLayoutSelectionState(editor, panels);
 
   const {
     showIndividualPadding,
@@ -41,12 +41,12 @@ export function useLayout() {
     commitHorizontalPadding,
     setVerticalPadding,
     commitVerticalPadding,
-    toggleIndividualPadding
-  } = createPaddingActions(editor, node)
+    toggleIndividualPadding,
+  } = createPaddingActions(editor, node);
 
-  const layoutActions = createLayoutActions({ editor, node, isFlex, isInAutoLayout })
+  const layoutActions = createLayoutActions({ editor, node, isFlex, isInAutoLayout });
 
-  const { updateGridTrack, addTrack, removeTrack } = createGridTrackActions(editor, node)
+  const { updateGridTrack, addTrack, removeTrack } = createGridTrackActions(editor, node);
 
   return {
     editor,
@@ -85,6 +85,6 @@ export function useLayout() {
     addTrack,
     removeTrack,
     trackLabel,
-    toggleIndividualPadding
-  }
+    toggleIndividualPadding,
+  };
 }

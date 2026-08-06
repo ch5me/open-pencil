@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useI18n, useNumberVariableBinding } from '@open-pencil/vue'
-import type { NumberBindingPath } from '@open-pencil/vue'
+import { useI18n, useNumberVariableBinding } from "@open-pencil/vue";
+import type { NumberBindingPath } from "@open-pencil/vue";
 
-import BoundVariableButton from '@/components/properties/BoundVariableButton.vue'
-import VariablePickerPopover from '@/components/properties/VariablePickerPopover.vue'
-import ScrubInput from '@/components/ScrubInput.vue'
+import BoundVariableButton from "@/components/properties/BoundVariableButton.vue";
+import VariablePickerPopover from "@/components/properties/VariablePickerPopover.vue";
+import ScrubInput from "@/components/ScrubInput.vue";
 
 const {
   modelValue,
@@ -17,53 +17,53 @@ const {
   sensitivity,
   placeholder,
   nodeId,
-  bindingPath
+  bindingPath,
 } = defineProps<{
-  modelValue: number | symbol
-  min?: number
-  max?: number
-  step?: number
-  icon?: string
-  label?: string
-  suffix?: string
-  sensitivity?: number
-  placeholder?: string
-  nodeId: string
-  bindingPath: NumberBindingPath
-}>()
+  modelValue: number | symbol;
+  min?: number;
+  max?: number;
+  step?: number;
+  icon?: string;
+  label?: string;
+  suffix?: string;
+  sensitivity?: number;
+  placeholder?: string;
+  nodeId: string;
+  bindingPath: NumberBindingPath;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: number]
-  commit: [value: number, previous: number]
-}>()
+  "update:modelValue": [value: number];
+  commit: [value: number, previous: number];
+}>();
 
-const { panels, dialogs } = useI18n()
-const binding = useNumberVariableBinding(bindingPath)
+const { panels, dialogs } = useI18n();
+const binding = useNumberVariableBinding(bindingPath);
 
 function resolvedValue(): number | symbol {
-  const variable = binding.getBoundVariable(nodeId)
-  if (!variable) return modelValue
-  const resolved = binding.store.resolveNumberVariable(variable.id)
-  return resolved ?? modelValue
+  const variable = binding.getBoundVariable(nodeId);
+  if (!variable) return modelValue;
+  const resolved = binding.store.resolveNumberVariable(variable.id);
+  return resolved ?? modelValue;
 }
 
 function onUpdate(value: number) {
-  if (binding.getBoundVariable(nodeId)) binding.unbindVariable(nodeId)
-  emit('update:modelValue', value)
+  if (binding.getBoundVariable(nodeId)) binding.unbindVariable(nodeId);
+  emit("update:modelValue", value);
 }
 
 function onBind(variableId: string) {
-  binding.bindVariable(nodeId, variableId)
-  const resolved = binding.store.resolveNumberVariable(variableId)
-  if (resolved != null) emit('update:modelValue', resolved)
+  binding.bindVariable(nodeId, variableId);
+  const resolved = binding.store.resolveNumberVariable(variableId);
+  if (resolved != null) emit("update:modelValue", resolved);
 }
 
 function onCreate(name: string) {
-  const value = typeof modelValue === 'number' ? modelValue : 0
-  binding.createAndBindVariable(nodeId, value, name)
+  const value = typeof modelValue === "number" ? modelValue : 0;
+  binding.createAndBindVariable(nodeId, value, name);
 }
 
-defineOptions({ inheritAttrs: true })
+defineOptions({ inheritAttrs: true });
 </script>
 
 <template>
@@ -100,7 +100,7 @@ defineOptions({ inheritAttrs: true })
           :empty-label="panels.noVariablesFound"
           :create-label="
             panels.createNumberVariable({
-              value: typeof modelValue === 'number' ? Math.round(modelValue) : 0
+              value: typeof modelValue === 'number' ? Math.round(modelValue) : 0,
             })
           "
           :create-name-placeholder="panels.variableName"

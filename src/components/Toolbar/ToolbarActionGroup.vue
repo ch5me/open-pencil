@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { vTestId } from '@open-pencil/vue'
+import { vTestId } from "@open-pencil/vue";
 
-import type { ToolbarActionItem } from '@/components/Toolbar/types'
+import type { ToolbarActionItem } from "@/components/Toolbar/types";
 
 const { actions, testPrefix } = defineProps<{
-  actions: ToolbarActionItem[]
-  testPrefix: string
-}>()
+  actions: ToolbarActionItem[];
+  testPrefix: string;
+}>();
 
 const emit = defineEmits<{
-  action: [item: ToolbarActionItem]
-}>()
+  action: [item: ToolbarActionItem];
+}>();
 </script>
 
 <template>

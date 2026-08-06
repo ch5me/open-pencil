@@ -1,31 +1,30 @@
 <script setup lang="ts">
-import { TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
-import { computed } from 'vue'
+import { useI18n } from "@open-pencil/vue";
+import { TabsList, TabsRoot, TabsTrigger } from "reka-ui";
+import { computed } from "vue";
 
-import { useI18n } from '@open-pencil/vue'
+import { useTabsStore, createTab } from "@/app/tabs";
+import Tip from "@/components/ui/Tip.vue";
 
-import { useTabsStore, createTab } from '@/app/tabs'
-import Tip from '@/components/ui/Tip.vue'
+const { dialogs } = useI18n();
 
-const { dialogs } = useI18n()
-
-const { tabs, activeTabId, switchTab, closeTab } = useTabsStore()
+const { tabs, activeTabId, switchTab, closeTab } = useTabsStore();
 
 const modelValue = computed({
   get: () => activeTabId.value,
-  set: (id: string) => switchTab(id)
-})
+  set: (id: string) => switchTab(id),
+});
 
 function onMiddleClick(e: MouseEvent, tabId: string) {
   if (e.button === 1) {
-    e.preventDefault()
-    closeTab(tabId)
+    e.preventDefault();
+    closeTab(tabId);
   }
 }
 
 function onClose(e: MouseEvent, tabId: string) {
-  e.stopPropagation()
-  closeTab(tabId)
+  e.stopPropagation();
+  closeTab(tabId);
 }
 </script>
 

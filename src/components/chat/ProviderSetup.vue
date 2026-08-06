@@ -1,40 +1,39 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ACP_AGENTS } from "@open-pencil/core/constants";
+import { useI18n } from "@open-pencil/vue";
+import { computed, ref } from "vue";
 
-import { ACP_AGENTS } from '@open-pencil/core/constants'
-import { useI18n } from '@open-pencil/vue'
+import { useAIChat } from "@/app/ai/chat/use";
+import { openExternalLink } from "@/app/shell/ui";
+import ProviderSelectField from "@/components/chat/ProviderSelect/ProviderSelectField.vue";
+import AppInput from "@/components/ui/AppInput.vue";
+import AppTextButton from "@/components/ui/AppTextButton.vue";
 
-import { useAIChat } from '@/app/ai/chat/use'
-import { openExternalLink } from '@/app/shell/ui'
-import ProviderSelectField from '@/components/chat/ProviderSelect/ProviderSelectField.vue'
-import AppInput from '@/components/ui/AppInput.vue'
-import AppTextButton from '@/components/ui/AppTextButton.vue'
+const { providerID, providerDef, setAPIKey, customBaseURL, customModelID } = useAIChat();
+const { dialogs } = useI18n();
 
-const { providerID, providerDef, setAPIKey, customBaseURL, customModelID } = useAIChat()
-const { dialogs } = useI18n()
-
-const isACP = computed(() => providerID.value.startsWith('acp:'))
+const isACP = computed(() => providerID.value.startsWith("acp:"));
 const acpAgent = computed(() => {
-  if (!isACP.value) return null
-  const id = providerID.value.replace('acp:', '')
-  return ACP_AGENTS.find((a) => a.id === id) ?? null
-})
+  if (!isACP.value) return null;
+  const id = providerID.value.replace("acp:", "");
+  return ACP_AGENTS.find((a) => a.id === id) ?? null;
+});
 
-const keyInput = ref('')
-const baseURLInput = ref(customBaseURL.value)
-const customModelInput = ref(customModelID.value)
+const keyInput = ref("");
+const baseURLInput = ref(customBaseURL.value);
+const customModelInput = ref(customModelID.value);
 
 function save() {
-  const key = keyInput.value.trim()
-  if (!key) return
+  const key = keyInput.value.trim();
+  if (!key) return;
   if (providerDef.value.supportsCustomBaseURL) {
-    customBaseURL.value = baseURLInput.value.trim()
+    customBaseURL.value = baseURLInput.value.trim();
   }
   if (providerDef.value.supportsCustomModel) {
-    customModelID.value = customModelInput.value.trim()
+    customModelID.value = customModelInput.value.trim();
   }
-  setAPIKey(key)
-  keyInput.value = ''
+  setAPIKey(key);
+  keyInput.value = "";
 }
 </script>
 

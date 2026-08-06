@@ -1,1 +1,1 @@
-export { createFlashActions } from './create'
+export { createFlashActions } from "./create";

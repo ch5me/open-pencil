@@ -1,35 +1,35 @@
 <script setup lang="ts">
-import type { Fill, SceneNode } from '@open-pencil/core/scene-graph'
-import { PropertyListRoot, useFillControls, useOkHCL, useI18n, inputValue } from '@open-pencil/vue'
-import { colorToHexRaw, parseColor } from '@open-pencil/core/color'
+import { colorToHexRaw, parseColor } from "@open-pencil/core/color";
+import type { Fill, SceneNode } from "@open-pencil/core/scene-graph";
+import { PropertyListRoot, useFillControls, useOkHCL, useI18n, inputValue } from "@open-pencil/vue";
 
-import FillPicker from '@/components/FillPicker.vue'
+import FillPicker from "@/components/FillPicker.vue";
 import {
   boundVariableSwatchBackground,
-  displayFillWithBoundVariable
-} from '@/components/properties/color-style-row'
-import ColorStyleRow from '@/components/properties/ColorStyleRow.vue'
-import { fillLabel } from '@/components/properties/fill-label'
-import { createFillOkhclAdapter } from '@/components/properties/fill-okhcl'
-import { useIconButtonUI } from '@/components/ui/icon-button'
-import { useSectionUI } from '@/components/ui/section'
-import Tip from '@/components/ui/Tip.vue'
+  displayFillWithBoundVariable,
+} from "@/components/properties/color-style-row";
+import ColorStyleRow from "@/components/properties/ColorStyleRow.vue";
+import { fillLabel } from "@/components/properties/fill-label";
+import { createFillOkhclAdapter } from "@/components/properties/fill-okhcl";
+import { useIconButtonUI } from "@/components/ui/icon-button";
+import { useSectionUI } from "@/components/ui/section";
+import Tip from "@/components/ui/Tip.vue";
 
-const fillCtx = useFillControls()
-const okhcl = useOkHCL()
-const { panels } = useI18n()
-const sectionCls = useSectionUI()
+const fillCtx = useFillControls();
+const okhcl = useOkHCL();
+const { panels } = useI18n();
+const sectionCls = useSectionUI();
 
 function updateFill(
   activeNode: SceneNode | null | undefined,
   index: number,
   fill: Fill,
-  update: (index: number, fill: Fill) => void
+  update: (index: number, fill: Fill) => void,
 ) {
   if (activeNode && fillCtx.getBoundVariable(activeNode.id, index)) {
-    fillCtx.unbindVariable(activeNode.id, index)
+    fillCtx.unbindVariable(activeNode.id, index);
   }
-  update(index, fill)
+  update(index, fill);
 }
 
 function updateFillHex(
@@ -37,12 +37,12 @@ function updateFillHex(
   index: number,
   fill: Fill,
   hex: string,
-  update: (index: number, fill: Fill) => void
+  update: (index: number, fill: Fill) => void,
 ) {
-  if (fill.type !== 'SOLID') return
-  const parsed = parseColor(hex.startsWith('#') ? hex : `#${hex}`)
-  if (!parsed) return
-  updateFill(activeNode, index, { ...fill, color: { ...parsed, a: fill.color.a } }, update)
+  if (fill.type !== "SOLID") return;
+  const parsed = parseColor(hex.startsWith("#") ? hex : `#${hex}`);
+  if (!parsed) return;
+  updateFill(activeNode, index, { ...fill, color: { ...parsed, a: fill.color.a } }, update);
 }
 </script>
 
