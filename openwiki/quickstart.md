@@ -49,6 +49,7 @@ OpenPencil is a Vue 3 + CanvasKit design editor that opens `.fig` and `.pen` fil
 | Change SDK public API | [Vue SDK](packages/vue.md) | `packages/vue/src/index.ts`, composables/primitives | Vue engine tests, package smoke | `bun run check:vue` |
 | Change dev/runtime topology | [Configuration](operations/configuration.md) | `vite.config.ts`, `pitchfork.toml`, flags, Tauri config | flag, alias, automation tests | `bun run proof:flags` |
 | Change release/deployment | [Quality and release](operations/quality-and-release.md) | `.forgejo/workflows`, `scripts/promote.mjs`, `build-candidate.mjs` | CI-equivalent checks and hosted proof | `bun run check` |
+| Change lint/format policy | [Quality and release](operations/quality-and-release.md), [Sharp edges](operations/sharp-edges.md) | `.oxfmtrc.json`, `oxlint.json`, `package.json` scripts | formatter drift and lint configuration checks | `bun run format:check` |
 
 ## Commands
 
@@ -56,6 +57,7 @@ OpenPencil is a Vue 3 + CanvasKit design editor that opens `.fig` and `.pen` fil
 bun install --frozen-lockfile
 bun run svc:ensure       # managed app + docs services
 bun run check            # broad static/architecture/package gates
+bun run format:check     # format, then fail if the worktree changed
 bun run test:unit        # engine tests
 bun run test             # Playwright E2E
 bun run build            # packages + lint + Vite build

@@ -7,12 +7,13 @@ tags: [operations, quality, ci, release]
 
 # Quality, CI, Build, and Release Workflow
 
-Install with `bun install --frozen-lockfile`. The main commands are. Root script composition is authoritative in `package.json`: `build` runs `build:packages`, `lint`, then Vite; `check` adds package builds, oxlint, tsgo, Vue type checks, locale/package/architecture checks, type shapes, and jscpd; `test` invokes Playwright's `openpencil` project; `test:unit` is `bun test ./tests/engine`; `test:figma` selects the Figma project; `proof:all` combines hosted flag and hosted API proofs.
+Install with `bun install --frozen-lockfile`. Root script composition is authoritative in `package.json`: `build` runs `build:packages`, `lint`, then Vite; `check` adds package builds, Oxlint, tsgo, Vue type checks, locale/package/architecture checks, type shapes, and jscpd; `test` invokes Playwright's `openpencil` project; `test:unit` is `bun test ./tests/engine`; `test:figma` selects the Figma project; `proof:all` combines hosted flag and hosted API proofs. The hygiene standard is checked in via `.oxfmtrc.json` and `oxlint.json`: Oxfmt is pinned to `0.60.0`, Oxlint to `1.75.0`, and Oxlint extends the shared `@ch5me/oxlint-config/react.json` preset.
 
 - `bun run dev` — Vite app on the configured local app port.
 - `bun run build` — package builds, lint, then Vite production build.
 - `bun run check` — package builds, lint/type checks, Vue checks, locale/package/architecture checks, type-shape and duplicate-code checks.
-- `bun run format:check` — format and fail if the worktree changes.
+- `bun run format:check` — run the checked-in Oxfmt configuration and fail if formatting changes the worktree; because the script invokes Oxfmt with `--write`, inspect or reset the resulting changes when using it as a check.
+- `bun run lint:fix` — apply Oxlint fixes; `bun run fix` runs that command followed by `npm run format`, so review the resulting worktree rather than treating it as a read-only check.
 - `bun run test:unit` — `bun test ./tests/engine`.
 - `bun run test` — Playwright `openpencil` E2E; it starts `bun run dev` on port 1420 when needed. `playwright.config.ts` uses one worker, 15s timeout, 1280x800 at device scale 2, dark color scheme, Chromium-style default, a selected WebKit project, and a separate Figma project.
 - `bun run test:packages` — metadata and packed-distribution smoke checks.

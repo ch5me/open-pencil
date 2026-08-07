@@ -18,4 +18,6 @@ tags: [operations, invariants, risks]
 - Do not use development auth stubs in staging/production. Named Wrangler environments must repeat their own bindings.
 - Production deployment and rollback depend on manifests/history; inspect current scripts before assuming artifact promotion semantics.
 
-Focused checks: `bun run test:unit`, `bun run test`, `bun run check`, `bun run proof:all`, and the targeted tests linked from each architecture page.
+Formatting and lint configuration are repository contracts: use `.oxfmtrc.json` and `oxlint.json` as the source of truth, not editor defaults. The pinned Oxlint config extends the shared `@ch5me/oxlint-config/react.json` preset; a formatter-only diff across many files is not evidence of a runtime behavior change. `bun run format:check` invokes Oxfmt with `--write` before checking the worktree, so review the resulting changes rather than treating it as read-only; also review `bun run lint:fix`/`bun run fix` output before committing.
+
+Focused checks: `bun run format:check`, `bun run test:unit`, `bun run test`, `bun run check`, `bun run proof:all`, and the targeted tests linked from each architecture page.
