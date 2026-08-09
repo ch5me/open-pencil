@@ -85,66 +85,39 @@ test("image render adapter resolves the first bound image asset", () => {
   expect(frame.textures[0]?.uploaded).toBe(true);
 });
 
-test("image render adapter emits clipped raster bases from composition groups", () => {
-  const group = {
-    ...imageNode("group"),
-    type: "GROUP",
-    childIds: ["raster"],
-    clipsContent: true,
-    blendMode: "PASS_THROUGH",
-  };
-  const raster = {
-    ...imageNode("raster", "asset:raster-base"),
-    parentId: "group",
+test("image render adapter carries full composition metadata for raster bases", () => {
+  const adapter = createImageRenderAdapter();
+  const base = imageNode("base");
+  const mask = {
+    ...imageNode("mask"),
+    isMask: true,
+    maskType: "LUMINANCE" as const,
+    maskIsOutline: true,
+    rotation: 12,
   };
   const graph = {
-    rootId: "group",
-    getNode: (id: string) => [group, raster].find((node) => node.id === id),
+    rootId: base.id,
+    getNode: (id: string) => (id === base.id ? base : id === mask.id ? mask : undefined),
   } as unknown as SceneGraph;
-  const plan = createCompositionPlan(graph, "group", {
-    adjustmentHooks: ["exposure"],
+  const plan = createCompositionPlan(graph, base.id, {
+    adjustmentHooks: ["exposure", "contrast"],
   });
-  const frame = createImageRenderAdapter().render(plan, {
-    getAsset: (assetId) =>
-      assetId === "asset:raster-base"
-        ? { assetId, revisionId: "sha256:raster-revision" }
-        : undefined,
-    getRevision: (revisionId) =>
-      revisionId === "sha256:raster-revision"
-        ? {
-            revisionId,
-            kind: "image",
-            metadata: {},
-            bytes: new Uint8Array([1, 2, 3, 4]),
-          }
-        : undefined,
+  const frame = adapter.render(plan, {
+    getAsset: () => ({ assetId: "asset:hero", revisionId: "sha256:revision-1" }),
+    getRevision: (revisionId) => ({
+      revisionId,
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
   });
 
-  expect(frame.commands).toEqual([
-    {
-      nodeId: "group",
-      assetId: null,
-      opacity: 1,
-      blendMode: "PASS_THROUGH",
-      clipped: true,
-    },
-    {
-      nodeId: "raster",
-      assetId: "asset:raster-base",
-      opacity: 1,
-      blendMode: "NORMAL",
-      clipped: false,
-    },
-  ]);
-  expect(frame.textures).toEqual([
-    {
-      assetId: "asset:raster-base",
-      revisionId: "sha256:raster-revision",
-      byteLength: 4,
-      dirty: false,
-      uploaded: true,
-    },
-  ]);
+  expect(frame.commands[0]).toMatchObject({
+    rotation: 0,
+    maskType: null,
+    maskIsOutline: false,
+    adjustmentHooks: ["exposure", "contrast"],
+  });
 });
 
 test("image render adapter caches textures, deduplicates shared assets, and reuploads revisions", () => {

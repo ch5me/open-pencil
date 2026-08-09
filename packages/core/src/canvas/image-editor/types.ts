@@ -80,6 +80,10 @@ export interface ImageRenderCommand {
   readonly opacity: number;
   readonly blendMode: string;
   readonly clipped: boolean;
+  readonly rotation: number;
+  readonly maskType: string | null;
+  readonly maskIsOutline: boolean;
+  readonly adjustmentHooks: readonly string[];
 }
 
 export interface ImageRenderFrame {

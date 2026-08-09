@@ -37,6 +37,10 @@ export function createImageRenderAdapter(
           opacity: entry.inheritedOpacity,
           blendMode: entry.blendMode,
           clipped: entry.clipsContent,
+          rotation: entry.rotation,
+          maskType: entry.maskType,
+          maskIsOutline: entry.maskIsOutline,
+          adjustmentHooks: entry.adjustmentHooks,
         });
         if (assetId) {
           const binding = resolve.getAsset(assetId);

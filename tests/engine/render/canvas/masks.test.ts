@@ -64,6 +64,39 @@ function createRenderer() {
 }
 
 describe("canvas masks", () => {
+  test("clips raster-backed children inside composition groups", () => {
+    const graph = new SceneGraph();
+    const group = graph.createNode("GROUP", pageId(graph), {
+      width: 120,
+      height: 100,
+      clipsContent: true,
+    });
+    const image = graph.createNode("RECTANGLE", group.id, {
+      width: 240,
+      height: 200,
+      fills: [
+        {
+          type: "IMAGE",
+          imageHash: "asset:raster",
+          color: { r: 1, g: 1, b: 1, a: 1 },
+          opacity: 1,
+          visible: true,
+        },
+      ],
+    });
+    const { renderer, rendered } = createRenderer();
+    const canvas = createCanvas();
+
+    renderNode(renderer, canvas as Canvas, graph, group.id, {});
+
+    expect(rendered).toEqual([group.id, image.id]);
+    expect(canvas.clipRect).toHaveBeenCalledWith(
+      expect.any(Float32Array),
+      "Intersect",
+      true,
+    );
+  });
+
   test("uses a visible mask node to clip following siblings", () => {
     const graph = new SceneGraph();
     const frame = graph.createNode("FRAME", pageId(graph), { width: 200, height: 200 });
