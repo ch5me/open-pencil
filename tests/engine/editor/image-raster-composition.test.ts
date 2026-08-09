@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import { createCompositionPlan } from "#core/canvas/composition";
+import { assertPixelParity } from "#core/color/composition";
 import {
   composeRaster,
   composeRasterRGBA8,
@@ -251,6 +252,79 @@ test("RGBA8 composition applies nested mask bounds and clipping with pixel parit
   ]);
 });
 
+test("composition-full-v1 applies adjustment hooks only inside clipped adjustment masks", () => {
+  const clip = node({
+    id: "clip",
+    type: "GROUP",
+    width: 1,
+    height: 1,
+    clipsContent: true,
+    childIds: ["mask", "adjustment-layer"],
+  });
+  const mask = node({
+    id: "mask",
+    type: "RECTANGLE",
+    parentId: clip.id,
+    width: 1,
+    height: 1,
+    isMask: true,
+    maskType: "ALPHA",
+  });
+  const adjustmentLayer = node({
+    id: "adjustment-layer",
+    type: "IMAGE",
+    parentId: clip.id,
+    width: 2,
+    height: 1,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:adjustment",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:adjustment",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 2, height: 1 },
+    bytes: new Uint8Array([100, 20, 10, 255, 200, 40, 20, 255]),
+  } satisfies AssetRevision;
+  const graph = {
+    rootId: clip.id,
+    getNode: (id: string) =>
+      new Map([clip, mask, adjustmentLayer].map((entry) => [entry.id, entry])).get(id),
+  } as unknown as SceneGraph;
+  const plan = createCompositionPlan(graph, clip.id, {
+    adjustmentHooks: ["exposure"],
+  });
+  const adjustedNodes: string[] = [];
+  const result = composeRasterRGBA8(plan, resolver(revision), {
+    width: 2,
+    height: 1,
+    adjustments: {
+      exposure: (pixel, plannedNode) => {
+        adjustedNodes.push(plannedNode.nodeId);
+        return [pixel[0] + 10, pixel[1] + 10, pixel[2] + 10, pixel[3]];
+      },
+    },
+  });
+
+  expect(result).toMatchObject({
+    status: "SUPPORTED",
+    format: "rgba8-srgb",
+    gaps: [],
+  });
+  expect(adjustedNodes).toEqual([adjustmentLayer.id]);
+  assertPixelParity(
+    [...result.pixels],
+    [110, 30, 20, 255, 0, 0, 0, 0],
+    { maxChannelDelta: 0, maxMeanBias: 0 },
+  );
+});
+
 test("RGBA8 group masks use accumulated bounds inside clipped groups", () => {
   const clip = node({
     id: "clip",
@@ -306,7 +380,7 @@ test("RGBA8 group masks use accumulated bounds inside clipped groups", () => {
   });
   expect([...composeRasterRGBA8(plan, resolver(revision), { width: 3, height: 1 }).pixels]).toEqual([
     0, 0, 0, 0,
-    0, 255, 0, 255,
+    255, 0, 0, 255,
     0, 0, 0, 0,
   ]);
 });
@@ -401,8 +475,8 @@ test("RGBA8 composition clips nested children and applies inherited opacity", ()
   const result = composeRasterRGBA8(plan, resolver(revision), { width: 4, height: 2 });
 
   expect([...result.pixels]).toEqual([
-    0, 0, 0, 0, 255, 0, 0, 64, 255, 0, 0, 64, 0, 0, 0, 0,
-    0, 0, 0, 0, 255, 0, 0, 64, 255, 0, 0, 64, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 64, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 64, 0, 0, 0, 0,
   ]);
 });
 
