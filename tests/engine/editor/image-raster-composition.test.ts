@@ -463,6 +463,38 @@ test("Canvas 2D fallback exposes non-equivalence and explicit RGBA8 parity thres
   expect(result.capability.equivalence).not.toBe("PARITY_PROVEN");
 });
 
+test("public raster composition preserves RGBA8 CPU pixels", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:rgba8-public",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:rgba8-public",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([12, 34, 56, 255]),
+  } satisfies AssetRevision;
+
+  const result = composeRaster(planFor([image], image.id), resolver(revision), {
+    width: 1,
+    height: 1,
+  });
+
+  expect(result.status).toBe("SUPPORTED");
+  if (result.status !== "SUPPORTED") return;
+  expect(result.backend).toBe("canvas2d");
+  expect([...result.pixels]).toEqual([12, 34, 56, 255]);
+});
+
 test("Unavailable GPU backends expose typed gaps instead of fallback parity claims", () => {
   const plan = planFor([node({ id: "image", type: "IMAGE" })], "image");
   const resolve: RasterCompositionAssetResolver = {
