@@ -163,6 +163,8 @@ describe("transactional IO and worker contracts", () => {
       maxTaskMs: 50,
       taskCount: 2,
       overBudgetCount: 1,
+      totalTaskMs: 101,
+      maxObservedTaskMs: 51,
     });
   });
 
