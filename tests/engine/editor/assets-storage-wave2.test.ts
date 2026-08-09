@@ -121,6 +121,75 @@ test("committing content releases staged chunks after publishing the new head", 
   expect(store.getHead("doc")).toEqual(journal.nextContentVersion);
 });
 
+test("committed snapshots retain raster hashes through undo, redo, and release checks", () => {
+  const store = new ImageEditorStore();
+  const root = "a".repeat(64);
+  const nextRoot = "b".repeat(64);
+  const maskHash = `sha256:${"c".repeat(64)}` as const;
+  store.setInitialHead("doc:history", { sequence: 0, contentRootHash: root });
+  const allocator = createJournalIdAllocator(0, (() => {
+    let id = 0;
+    return () => `history-${id++}`;
+  })());
+  const baseSnapshot = createContentSnapshot(root);
+  const nextSnapshot = createContentSnapshot(nextRoot, [{ maskId: "mask:one", byteHash: maskHash }]);
+  const journal = createContentJournal(allocator, {
+    journalSequence: 1,
+    baseContentVersion: { sequence: 0, contentRootHash: root },
+    nextContentVersion: { sequence: 1, contentRootHash: nextRoot },
+    baseContentSnapshot: baseSnapshot,
+    nextContentSnapshot: nextSnapshot,
+    contractHash: "contract",
+    authorityMatrixHash: "d".repeat(64),
+    stagedContentRevisions: [{
+      revisionId: maskHash,
+      kind: "mask",
+      metadata: {},
+      byteLength: 1,
+      sha256: maskHash.slice("sha256:".length),
+      temporary: false,
+    }],
+  });
+  store.stageChunk({
+    transactionId: journal.transactionId,
+    chunkIndex: 0,
+    offset: 0,
+    byteLength: 1,
+    sha256: maskHash.slice("sha256:".length),
+    final: true,
+    bytes: new Uint8Array([1]),
+  });
+  store.commitContent({
+    documentId: "doc:history",
+    journal,
+    nextHead: journal.nextContentVersion,
+    revisions: [maskHash],
+  });
+  expect(store.getContentSnapshot("doc:history")).toEqual(nextSnapshot);
+  expect(store.transitionContentSnapshot("doc:history", { base: baseSnapshot, next: nextSnapshot }, "undo"))
+    .toEqual(baseSnapshot);
+  expect(store.transitionContentSnapshot("doc:history", { base: baseSnapshot, next: nextSnapshot }, "redo"))
+    .toEqual(nextSnapshot);
+
+  const release = createContentJournal(allocator, {
+    journalSequence: 2,
+    baseContentVersion: journal.nextContentVersion,
+    nextContentVersion: { sequence: 2, contentRootHash: "e".repeat(64) },
+    baseContentSnapshot: nextSnapshot,
+    contractHash: "contract",
+    authorityMatrixHash: "d".repeat(64),
+    releasedContentRevisions: [maskHash],
+  });
+  expect(() =>
+    store.commitContent({
+      documentId: "doc:history",
+      journal: release,
+      nextHead: release.nextContentVersion,
+      revisions: [],
+    }),
+  ).toThrow("retained by content history");
+});
+
 test("staged chunks validate offsets and content digests", () => {
   const store = new ImageEditorStore();
   const base = {

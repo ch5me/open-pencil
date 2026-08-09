@@ -232,6 +232,20 @@ export class ImageEditorStore {
         }
       }
     }
+    for (const snapshot of [journal.baseContentSnapshot, journal.nextContentSnapshot]) {
+      for (const mask of snapshot.maskHashes) {
+        if (!staged.has(mask.byteHash) && !known.has(mask.byteHash)) {
+          throw new ContentCommitMismatch(
+            `content snapshot references missing revision: ${mask.byteHash}`,
+          );
+        }
+        if (released.has(mask.byteHash) || journal.releasedContentRevisions.includes(mask.byteHash)) {
+          throw new ContentCommitMismatch(
+            `content snapshot references released revision: ${mask.byteHash}`,
+          );
+        }
+      }
+    }
     const referenced = this.referencedRevisionIds(documentId);
     for (const revisionId of journal.releasedContentRevisions) {
       if (referenced.has(revisionId)) {
