@@ -3,7 +3,9 @@ export {
   ContentCommitMismatch,
   ContentVersionConflict,
   ImageEditorStore,
+  StagedChunkMemoryPressure,
   StagedChunkMismatch,
+  type ImageEditorStoreOptions,
 } from "./store";
 export type { ContentCommit, StagedChunk } from "./types";
 export {

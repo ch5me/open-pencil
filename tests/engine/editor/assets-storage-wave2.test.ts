@@ -6,7 +6,7 @@ import {
   createContentSnapshot,
   type ContentSnapshot,
 } from "#core/editor/history/journal";
-import { ImageEditorStore } from "#core/editor/storage";
+import { ImageEditorStore, StagedChunkMemoryPressure } from "#core/editor/storage";
 
 const revision = (index: number) => `sha256:${index.toString(16).padStart(64, "0")}` as const;
 
@@ -93,6 +93,33 @@ test("staged chunks validate offsets and content digests", () => {
     "staged chunk sha256 must be a lowercase SHA-256 hex digest",
   );
   expect(() => store.stageChunk(base)).not.toThrow();
+});
+
+test("staged upload enforces a byte admission without double-counting retries", () => {
+  const store = new ImageEditorStore({ maxStagedBytes: 3 });
+  const base = {
+    transactionId: "tx:pressure",
+    chunkIndex: 0,
+    offset: 0,
+    byteLength: 2,
+    sha256: "b".repeat(64),
+    final: false,
+    bytes: new Uint8Array([1, 2]),
+  };
+  store.stageChunk(base);
+  store.stageChunk({ ...base, bytes: new Uint8Array([3, 4]) });
+  expect(store.stagedChunkCount("tx:pressure")).toBe(1);
+  expect(() =>
+    store.stageChunk({
+      ...base,
+      chunkIndex: 1,
+      offset: 2,
+      byteLength: 2,
+      bytes: new Uint8Array([5, 6]),
+    }),
+  ).toThrow(StagedChunkMemoryPressure);
+  store.discardStaged("tx:pressure");
+  expect(store.stagedChunkCount("tx:pressure")).toBe(0);
 });
 
 test("asset revisions reject same-size content mutation and allocator collisions", () => {

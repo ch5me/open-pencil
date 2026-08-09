@@ -10,14 +10,32 @@ export class StagedChunkMismatch extends Error {
   readonly code = "staged-chunk-mismatch";
 }
 
+export class StagedChunkMemoryPressure extends Error {
+  readonly code = "staged-chunk-memory-pressure";
+}
+
 export class ContentCommitMismatch extends Error {
   readonly code = "content-commit-mismatch";
+}
+
+export interface ImageEditorStoreOptions {
+  readonly maxStagedBytes?: number;
 }
 
 export class ImageEditorStore {
   private readonly chunks = new Map<string, StagedChunk>();
   private readonly journals = new Map<string, ContentJournalEntry>();
   private readonly heads = new Map<string, ContentVersion>();
+  private readonly stagedBytes = new Map<string, number>();
+
+  constructor(private readonly options: ImageEditorStoreOptions = {}) {
+    if (
+      this.options.maxStagedBytes !== undefined &&
+      (!Number.isSafeInteger(this.options.maxStagedBytes) || this.options.maxStagedBytes < 0)
+    ) {
+      throw new RangeError("maxStagedBytes must be a non-negative safe integer");
+    }
+  }
 
   stageChunk(chunk: StagedChunk): void {
     if (chunk.chunkIndex < 0 || !Number.isSafeInteger(chunk.chunkIndex)) {
@@ -31,10 +49,25 @@ export class ImageEditorStore {
     if (!/^[0-9a-f]{64}$/u.test(chunk.sha256)) {
       throw new StagedChunkMismatch("staged chunk sha256 must be a lowercase SHA-256 hex digest");
     }
-    this.chunks.set(`${chunk.transactionId}/${chunk.chunkIndex}`, {
+    const key = `${chunk.transactionId}/${chunk.chunkIndex}`;
+    const previous = this.chunks.get(key);
+    const residentBytes =
+      (this.stagedBytes.get(chunk.transactionId) ?? 0) -
+      (previous?.byteLength ?? 0) +
+      chunk.byteLength;
+    if (
+      !Number.isSafeInteger(residentBytes) ||
+      (this.options.maxStagedBytes !== undefined && residentBytes > this.options.maxStagedBytes)
+    ) {
+      throw new StagedChunkMemoryPressure(
+        `staged bytes exceed ${this.options.maxStagedBytes ?? "safe integer"} admission`,
+      );
+    }
+    this.chunks.set(key, {
       ...chunk,
       bytes: new Uint8Array(chunk.bytes),
     });
+    this.stagedBytes.set(chunk.transactionId, residentBytes);
   }
 
   readStagedChunk(transactionId: string, chunkIndex: number): StagedChunk | undefined {
@@ -46,6 +79,7 @@ export class ImageEditorStore {
     for (const key of this.chunks.keys()) {
       if (key.startsWith(`${transactionId}/`)) this.chunks.delete(key);
     }
+    this.stagedBytes.delete(transactionId);
   }
 
   stagedChunkCount(transactionId: string): number {
