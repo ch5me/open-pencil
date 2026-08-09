@@ -269,6 +269,13 @@ function effectOffset(value: unknown): Vector {
   return { ...offset };
 }
 
+function effectVisible(value: unknown): boolean {
+  if (typeof value !== "boolean") {
+    throw new LayerModelValidationError(`invalid effect visibility: ${String(value)}`);
+  }
+  return value;
+}
+
 function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect {
   if (effect.kind === "shadow") {
     const shadow = effect as LayerModelShadowEffect;
@@ -278,7 +285,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       offset: effectOffset(shadow.offset),
       blur: finiteEffectNumber(shadow.blur, "shadow blur"),
       spread: finiteEffectNumber(shadow.spread, "shadow spread"),
-      visible: shadow.visible,
+      visible: effectVisible(shadow.visible),
       inset: shadow.inset,
     };
   }
@@ -289,7 +296,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       color: effectColor(glow.color, "glow color"),
       radius: finiteEffectNumber(glow.radius, "glow radius"),
       intensity: finiteEffectNumber(glow.intensity, "glow intensity", 0, 1),
-      visible: glow.visible,
+      visible: effectVisible(glow.visible),
     };
   }
   if (effect.kind === "stroke") {
@@ -306,7 +313,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       color: effectColor(stroke.color, "stroke color"),
       width: finiteEffectNumber(stroke.width, "stroke width"),
       position: stroke.position,
-      visible: stroke.visible,
+      visible: effectVisible(stroke.visible),
     };
   }
   if (effect.kind === "overlay") {
@@ -316,7 +323,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       color: effectColor(overlay.color, "overlay color"),
       opacity: finiteEffectNumber(overlay.opacity, "overlay opacity", 0, 1),
       blendMode: resolveBlendMode(overlay.blendMode),
-      visible: overlay.visible,
+      visible: effectVisible(overlay.visible),
     };
   }
   if (effect.kind === "bevel") {
@@ -327,7 +334,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       shadowColor: effectColor(bevel.shadowColor, "bevel shadow color"),
       depth: finiteEffectNumber(bevel.depth, "bevel depth"),
       angle: finiteEffectNumber(bevel.angle, "bevel angle", -360, 360),
-      visible: bevel.visible,
+      visible: effectVisible(bevel.visible),
     };
   }
   if (effect.kind === "pattern") {
@@ -341,7 +348,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       opacity: finiteEffectNumber(pattern.opacity, "pattern opacity", 0, 1),
       scale: finiteEffectNumber(pattern.scale, "pattern scale"),
       rotation: finiteEffectNumber(pattern.rotation, "pattern rotation", -360, 360),
-      visible: pattern.visible,
+      visible: effectVisible(pattern.visible),
     };
   }
   return {
