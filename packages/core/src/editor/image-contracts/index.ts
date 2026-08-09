@@ -1,8 +1,8 @@
 export const IMAGE_EDITOR_CONTRACT_SCHEMA = "ch5.open-pencil.image-editor.contract.v1";
 export const AUTHORITY_MATRIX_HASH =
-  "c9fa1e9e0167e69a73c0bc1534e7e4d089237b2063f1d9a0701510fe54477ae7";
+  "7df61fa8d9fd23438bebbfa86aa053641c48e5f4e041449bb3baf9423d235e3e";
 export const PATH_ALLOCATION_HASH =
-  "40e2dcedf8e530630d881594ea92e68fcc9b0d7fc09fe66dacaa3cf6ff1b3625";
+  "771c12edc26bda2cdac372b4f2494540c969e0b155abaa6cc976005ab36d014f";
 
 export type ContentVersion = `content:${number}`;
 export type ViewVersion = `view:${number}`;

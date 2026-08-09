@@ -14,10 +14,10 @@ import {
 describe("image editor contracts", () => {
   test("matches the accepted current-authority artifacts", () => {
     expect(AUTHORITY_MATRIX_HASH).toBe(
-      "c9fa1e9e0167e69a73c0bc1534e7e4d089237b2063f1d9a0701510fe54477ae7",
+      "7df61fa8d9fd23438bebbfa86aa053641c48e5f4e041449bb3baf9423d235e3e",
     );
     expect(PATH_ALLOCATION_HASH).toBe(
-      "40e2dcedf8e530630d881594ea92e68fcc9b0d7fc09fe66dacaa3cf6ff1b3625",
+      "771c12edc26bda2cdac372b4f2494540c969e0b155abaa6cc976005ab36d014f",
     );
   });
 
@@ -37,6 +37,7 @@ describe("image editor contracts", () => {
         pathAllocationHash: PATH_ALLOCATION_HASH,
       }),
     ).toThrow("stale authorityMatrixHash");
+
     expect(() =>
       assertWaveOneDependency({
         authorityMatrixHash: AUTHORITY_MATRIX_HASH,
@@ -45,13 +46,20 @@ describe("image editor contracts", () => {
     ).toThrow("stale pathAllocationHash");
   });
 
-  test("rejects malformed dependency digest", () => {
+  test("rejects malformed dependency digest shapes before authority checks", () => {
     expect(() =>
       assertWaveOneDependency({
-        authorityMatrixHash: "not-a-digest",
+        authorityMatrixHash: "A".repeat(64),
         pathAllocationHash: PATH_ALLOCATION_HASH,
       }),
-    ).toThrow("must be a lowercase SHA-256 hex digest");
+    ).toThrow("authorityMatrixHash must be a lowercase SHA-256 hex digest");
+
+    expect(() =>
+      assertWaveOneDependency({
+        authorityMatrixHash: AUTHORITY_MATRIX_HASH,
+        pathAllocationHash: "f".repeat(63),
+      }),
+    ).toThrow("pathAllocationHash must be a lowercase SHA-256 hex digest");
   });
 
   test("validates the complete transaction and capability contract", () => {
@@ -118,5 +126,34 @@ describe("image editor contracts", () => {
     expect(await computeContractHash(cleanTreeFixture)).toBe(
       await computeContractHash(cleanTreeFixtureReordered),
     );
+
+    const reversedCapabilities = {
+      vectorMasks: true,
+      independentMasks: true,
+      linkedMasks: true,
+      adjustmentMasks: true,
+      groupMasks: true,
+      declaredBlendModes: true,
+      passThroughGroups: true,
+    };
+    const nestedKeysReordered = {
+      ...IMAGE_EDITOR_CONTRACT,
+      layerModel: {
+        ...IMAGE_EDITOR_CONTRACT.layerModel,
+        capabilities: reversedCapabilities,
+      },
+    };
+    expect(canonicalContractJson()).toBe(canonicalContractJson(nestedKeysReordered));
+    expect(await computeContractHash()).toBe(await computeContractHash(nestedKeysReordered));
+
+    const arrayOrderChanged = {
+      ...IMAGE_EDITOR_CONTRACT,
+      transaction: {
+        ...IMAGE_EDITOR_CONTRACT.transaction,
+        contentFields: [...IMAGE_EDITOR_CONTRACT.transaction.contentFields].reverse(),
+      },
+    };
+    expect(canonicalContractJson()).not.toBe(canonicalContractJson(arrayOrderChanged));
+    expect(await computeContractHash()).not.toBe(await computeContractHash(arrayOrderChanged));
   });
 });
