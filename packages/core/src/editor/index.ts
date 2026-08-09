@@ -8,17 +8,22 @@ export {
   LAYER_MODEL_BLEND_MODES,
   LayerModelTransaction,
   LayerModelTransactionConflict,
+  LayerModelMaskValidationError,
   LayerModelValidationError,
   isUnsupportedLayerBlendMode,
+  isUnsupportedLayerMaskKind,
   migrateLayerModel,
 } from "./layer-model";
 export type {
   LayerModel,
   LayerModelBlendMode,
+  LayerModelMaskKind,
   LayerModelMigration,
   LayerModelNode,
   LayerModelNodeInput,
   LayerModelResolvedBlendMode,
+  LayerModelResolvedMaskKind,
+  UnsupportedLayerMaskKind,
   UnsupportedLayerBlendMode,
 } from "./layer-model";
 export type {

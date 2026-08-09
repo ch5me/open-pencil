@@ -32,6 +32,16 @@ export interface UnsupportedLayerBlendMode {
 
 export type LayerModelResolvedBlendMode = LayerModelBlendMode | UnsupportedLayerBlendMode;
 
+export type LayerModelMaskKind = "group" | "adjustment-layer";
+
+export interface UnsupportedLayerMaskKind {
+  readonly kind: "unsupported";
+  readonly code: "layer-model-unsupported-mask-kind";
+  readonly value: string;
+}
+
+export type LayerModelResolvedMaskKind = LayerModelMaskKind | UnsupportedLayerMaskKind;
+
 export type LayerModelNodeInput = Omit<
   Pick<SceneNode, "id" | "parentId" | "childIds" | "blendMode">,
   "blendMode"
@@ -39,6 +49,7 @@ export type LayerModelNodeInput = Omit<
   readonly blendMode: BlendMode | string;
   readonly type?: NodeType | string;
   readonly maskId?: string | null;
+  readonly maskKind?: LayerModelMaskKind | string | null;
 };
 
 export interface LayerModelNode {
@@ -48,6 +59,9 @@ export interface LayerModelNode {
   readonly blendMode: LayerModelResolvedBlendMode;
   readonly type: NodeType | string;
   readonly maskId: string | null;
+  readonly maskKind: LayerModelResolvedMaskKind | null;
+  readonly groupMask: boolean;
+  readonly adjustmentLayerMask: boolean;
   readonly passThrough: boolean;
 }
 
@@ -68,6 +82,10 @@ export class LayerModelValidationError extends Error {
   readonly code = "layer-model-validation-error";
 }
 
+export class LayerModelMaskValidationError extends LayerModelValidationError {
+  readonly code = "layer-model-invalid-mask";
+}
+
 export class LayerModelTransactionConflict extends Error {
   readonly code = "layer-model-transaction-conflict";
 }
@@ -75,6 +93,7 @@ export class LayerModelTransactionConflict extends Error {
 function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
   const type = node.type ?? "GROUP";
   const blendMode = resolveBlendMode(node.blendMode);
+  const maskKind = resolveMaskKind(node.maskKind);
   const passThrough = blendMode === "PASS_THROUGH" && type === "GROUP";
   return {
     id: node.id,
@@ -83,6 +102,9 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     blendMode,
     type,
     maskId: node.maskId ?? null,
+    maskKind,
+    groupMask: maskKind === "group",
+    adjustmentLayerMask: maskKind === "adjustment-layer",
     passThrough,
   };
 }
@@ -104,6 +126,24 @@ export function isUnsupportedLayerBlendMode(
   return typeof mode === "object" && mode.kind === "unsupported";
 }
 
+function resolveMaskKind(
+  kind: LayerModelNodeInput["maskKind"],
+): LayerModelResolvedMaskKind | null {
+  if (kind === null || kind === undefined) return null;
+  if (kind === "group" || kind === "adjustment-layer") return kind;
+  return {
+    kind: "unsupported",
+    code: "layer-model-unsupported-mask-kind",
+    value: kind,
+  };
+}
+
+export function isUnsupportedLayerMaskKind(
+  kind: LayerModelResolvedMaskKind,
+): kind is UnsupportedLayerMaskKind {
+  return typeof kind === "object" && kind.kind === "unsupported";
+}
+
 function canonicalJson(nodes: readonly LayerModelNode[]): string {
   return JSON.stringify(
     nodes
@@ -116,6 +156,9 @@ function canonicalJson(nodes: readonly LayerModelNode[]): string {
         blendMode: node.blendMode,
         type: node.type,
         maskId: node.maskId,
+        maskKind: node.maskKind,
+        groupMask: node.groupMask,
+        adjustmentLayerMask: node.adjustmentLayerMask,
         passThrough: node.passThrough,
       })),
   );
@@ -165,6 +208,14 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
     }
     if (node.maskId !== null && !byId.has(node.maskId)) {
       throw new LayerModelValidationError(`dangling mask reference: ${node.id} -> ${node.maskId}`);
+    }
+    if (node.maskKind !== null && node.maskId === null) {
+      throw new LayerModelMaskValidationError(
+        `mask kind requires mask reference: ${node.id} -> ${String(node.maskKind)}`,
+      );
+    }
+    if (node.maskId === node.id) {
+      throw new LayerModelMaskValidationError(`self-referencing mask: ${node.id}`);
     }
   }
 

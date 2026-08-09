@@ -4,7 +4,9 @@ import {
   LAYER_MODEL_BLEND_MODES,
   LayerModelTransaction,
   LayerModelTransactionConflict,
+  LayerModelMaskValidationError,
   LayerModelValidationError,
+  isUnsupportedLayerMaskKind,
   isUnsupportedLayerBlendMode,
   migrateLayerModel,
 } from "#core/editor/layer-model";
@@ -14,7 +16,12 @@ const node = (
   id: string,
   parentId: string | null,
   childIds: string[] = [],
-  overrides: Partial<{ type: string; blendMode: BlendMode | string; maskId: string | null }> = {},
+  overrides: Partial<{
+    type: string;
+    blendMode: BlendMode | string;
+    maskId: string | null;
+    maskKind: "group" | "adjustment-layer" | string | null;
+  }> = {},
 ) => ({
   id,
   parentId,
@@ -22,6 +29,7 @@ const node = (
   type: overrides.type ?? "RECTANGLE",
   blendMode: overrides.blendMode ?? "NORMAL",
   maskId: overrides.maskId ?? null,
+  maskKind: overrides.maskKind ?? null,
 });
 
 describe("layer-model-v1", () => {
@@ -72,6 +80,35 @@ describe("layer-model-v1", () => {
     expect(migrated.model.nodes.get("shape")?.passThrough).toBe(false);
   });
 
+  test("models group and adjustment-layer masks with typed unsupported kinds", async () => {
+    const migrated = await migrateLayerModel([
+      node("group-mask", null, [], { maskId: "content", maskKind: "group" }),
+      node("adjustment-mask", null, [], { maskId: "content", maskKind: "adjustment-layer" }),
+      node("content", null),
+      node("future-mask", null, [], { maskId: "content", maskKind: "luminosity" }),
+    ]);
+
+    expect(migrated.model.nodes.get("group-mask")).toMatchObject({
+      maskKind: "group",
+      groupMask: true,
+      adjustmentLayerMask: false,
+    });
+    expect(migrated.model.nodes.get("adjustment-mask")).toMatchObject({
+      maskKind: "adjustment-layer",
+      groupMask: false,
+      adjustmentLayerMask: true,
+    });
+    const unsupported = migrated.model.nodes.get("future-mask")?.maskKind;
+    expect(unsupported).toEqual({
+      kind: "unsupported",
+      code: "layer-model-unsupported-mask-kind",
+      value: "luminosity",
+    });
+    expect(unsupported).toBeDefined();
+    if (unsupported === null || unsupported === undefined) throw new Error("missing mask kind");
+    expect(isUnsupportedLayerMaskKind(unsupported)).toBe(true);
+  });
+
   test("rejects cycles and dangling parent, child, and mask references", async () => {
     await expect(migrateLayerModel([node("a", "b", ["b"]), node("b", "a", ["a"])])).rejects.toThrow(
       LayerModelValidationError,
@@ -82,13 +119,22 @@ describe("layer-model-v1", () => {
     await expect(migrateLayerModel([node("a", null, [], { maskId: "missing" })])).rejects.toThrow(
       "dangling mask reference",
     );
+    await expect(
+      migrateLayerModel([node("a", null, [], { maskKind: "group" })]),
+    ).rejects.toThrow(LayerModelMaskValidationError);
+    await expect(
+      migrateLayerModel([node("a", null, [], { maskId: "a", maskKind: "group" })]),
+    ).rejects.toThrow("self-referencing mask");
   });
 
   test("isolates invalidation to changed layers and commits old-or-new atomically", async () => {
-    const initial = await migrateLayerModel([node("a", null), node("b", null)]);
+    const initial = await migrateLayerModel([
+      node("a", null, [], { maskId: "b", maskKind: "group" }),
+      node("b", null),
+    ]);
     const transaction = new LayerModelTransaction(initial.model);
     const committed = await transaction.commit(initial.model.migrationHash, [
-      node("a", null, [], { blendMode: "MULTIPLY" }),
+      node("a", null, [], { blendMode: "MULTIPLY", maskId: "b", maskKind: "adjustment-layer" }),
       node("b", null),
     ]);
     expect(committed.invalidatedNodeIds).toEqual(["a"]);
