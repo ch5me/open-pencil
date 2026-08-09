@@ -5,13 +5,14 @@ import {
   LayerModelTransactionConflict,
   LayerModelValidationError,
   migrateLayerModel,
-} from "#core/editor";
+} from "#core/editor/layer-model";
+import type { BlendMode } from "#core/scene-graph";
 
 const node = (
   id: string,
   parentId: string | null,
   childIds: string[] = [],
-  overrides: Partial<{ type: string; blendMode: string; maskId: string | null }> = {},
+  overrides: Partial<{ type: string; blendMode: BlendMode; maskId: string | null }> = {},
 ) => ({
   id,
   parentId,
@@ -39,13 +40,15 @@ describe("layer-model-v1", () => {
   });
 
   test("rejects cycles and dangling parent, child, and mask references", async () => {
-    await expect(
-      migrateLayerModel([node("a", "b", ["b"]), node("b", "a", ["a"])]),
-    ).rejects.toThrow(LayerModelValidationError);
-    await expect(migrateLayerModel([node("a", null, ["missing"])]))
-      .rejects.toThrow("dangling child reference");
-    await expect(migrateLayerModel([node("a", null, [], { maskId: "missing" })]))
-      .rejects.toThrow("dangling mask reference");
+    await expect(migrateLayerModel([node("a", "b", ["b"]), node("b", "a", ["a"])])).rejects.toThrow(
+      LayerModelValidationError,
+    );
+    await expect(migrateLayerModel([node("a", null, ["missing"])])).rejects.toThrow(
+      "dangling child reference",
+    );
+    await expect(migrateLayerModel([node("a", null, [], { maskId: "missing" })])).rejects.toThrow(
+      "dangling mask reference",
+    );
   });
 
   test("isolates invalidation to changed layers and commits old-or-new atomically", async () => {
@@ -58,11 +61,12 @@ describe("layer-model-v1", () => {
     expect(committed.invalidatedNodeIds).toEqual(["a"]);
 
     const committedHash = transaction.model.migrationHash;
-    await expect(
-      transaction.commit(initial.model.migrationHash, [node("a", null, ["missing"])]),
-    ).rejects.toThrow(LayerModelValidationError);
+    await expect(transaction.commit(committedHash, [node("a", null, ["missing"])])).rejects.toThrow(
+      LayerModelValidationError,
+    );
     expect(transaction.model.migrationHash).toBe(committedHash);
-    await expect(transaction.commit(initial.model.migrationHash, [node("a", null)]))
-      .rejects.toThrow(LayerModelTransactionConflict);
+    await expect(
+      transaction.commit(initial.model.migrationHash, [node("a", null)]),
+    ).rejects.toThrow(LayerModelTransactionConflict);
   });
 });

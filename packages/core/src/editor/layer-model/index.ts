@@ -78,9 +78,7 @@ async function sha256(value: string): Promise<string> {
 function nodeList(
   input: readonly LayerModelNodeInput[] | ReadonlyMap<string, LayerModelNodeInput>,
 ): LayerModelNode[] {
-  return Array.isArray(input)
-    ? input.map(canonicalNode)
-    : [...input.values()].map(canonicalNode);
+  return Array.isArray(input) ? input.map(canonicalNode) : [...input.values()].map(canonicalNode);
 }
 
 function validateNodes(nodes: readonly LayerModelNode[]): void {
@@ -94,7 +92,9 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
 
   for (const node of nodes) {
     if (node.parentId !== null && !byId.has(node.parentId)) {
-      throw new LayerModelValidationError(`dangling parent reference: ${node.id} -> ${node.parentId}`);
+      throw new LayerModelValidationError(
+        `dangling parent reference: ${node.id} -> ${node.parentId}`,
+      );
     }
     const children = new Set<string>();
     for (const childId of node.childIds) {
@@ -103,9 +103,12 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
       }
       children.add(childId);
       const child = byId.get(childId);
-      if (!child) throw new LayerModelValidationError(`dangling child reference: ${node.id} -> ${childId}`);
+      if (!child)
+        throw new LayerModelValidationError(`dangling child reference: ${node.id} -> ${childId}`);
       if (child.parentId !== node.id) {
-        throw new LayerModelValidationError(`parent mismatch: ${childId} -> ${child.parentId ?? "null"}`);
+        throw new LayerModelValidationError(
+          `parent mismatch: ${childId} -> ${child.parentId ?? "null"}`,
+        );
       }
     }
     if (node.maskId !== null && !byId.has(node.maskId)) {
