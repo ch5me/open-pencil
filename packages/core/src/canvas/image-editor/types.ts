@@ -2,6 +2,65 @@ import type { CompositionPlan } from "#core/canvas/composition";
 import type { AssetId, AssetRevision } from "#core/editor/assets";
 
 export type ImageRenderBackend = "skia";
+export type RendererResilienceState = "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
+
+export interface RendererResilienceContract {
+  readonly version: "renderer-resilience-v1";
+  readonly contextRestoration: RendererResilienceState;
+  readonly resourceRecreation: RendererResilienceState;
+  readonly lowMemoryProgressiveOpen: RendererResilienceState;
+  readonly resolutionDowngrade: RendererResilienceState;
+  readonly readbackTimeout: RendererResilienceState;
+  readonly cancellation: RendererResilienceState;
+  readonly corruptedImageIsolation: RendererResilienceState;
+  readonly longSessionLeakGuard: RendererResilienceState;
+}
+
+export class RendererResilienceContractError extends Error {
+  readonly code = "E_RENDERER_RESILIENCE_CONTRACT";
+}
+
+export function createRendererResilienceContract(
+  overrides: Partial<Omit<RendererResilienceContract, "version">> = {},
+): RendererResilienceContract {
+  return {
+    version: "renderer-resilience-v1",
+    contextRestoration: "UNKNOWN",
+    resourceRecreation: "UNKNOWN",
+    lowMemoryProgressiveOpen: "UNKNOWN",
+    resolutionDowngrade: "UNKNOWN",
+    readbackTimeout: "UNKNOWN",
+    cancellation: "UNKNOWN",
+    corruptedImageIsolation: "UNKNOWN",
+    longSessionLeakGuard: "UNKNOWN",
+    ...overrides,
+  };
+}
+
+export function validateRendererResilienceContract(
+  contract: RendererResilienceContract,
+): void {
+  if (contract.version !== "renderer-resilience-v1") {
+    throw new RendererResilienceContractError("invalid renderer resilience version");
+  }
+  const states = [
+    contract.contextRestoration,
+    contract.resourceRecreation,
+    contract.lowMemoryProgressiveOpen,
+    contract.resolutionDowngrade,
+    contract.readbackTimeout,
+    contract.cancellation,
+    contract.corruptedImageIsolation,
+    contract.longSessionLeakGuard,
+  ];
+  if (
+    states.some(
+      (state) => state !== "SUPPORTED" && state !== "UNKNOWN" && state !== "UNSUPPORTED",
+    )
+  ) {
+    throw new RendererResilienceContractError("invalid renderer resilience state");
+  }
+}
 
 export class UnsupportedImageBackendError extends Error {
   readonly code = "unsupported-image-backend";

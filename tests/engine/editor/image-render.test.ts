@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
 
 import { createCompositionPlan } from "#core/canvas/composition";
-import { createImageRenderAdapter, UnsupportedImageBackendError } from "#core/canvas/image-editor";
+import {
+  createImageRenderAdapter,
+  createRendererResilienceContract,
+  RendererResilienceContractError,
+  UnsupportedImageBackendError,
+  validateRendererResilienceContract,
+} from "#core/canvas/image-editor";
 import type { SceneGraph, SceneNode } from "#core/scene-graph";
 
 function imagePlan(): ReturnType<typeof createCompositionPlan> {
@@ -62,4 +68,21 @@ test("image render adapter resolves the first bound image asset", () => {
   expect(frame.commands[0]?.assetId).toBe("asset:hero");
   expect(frame.textures[0]?.revisionId).toBe("content:revision-1");
   expect(frame.textures[0]?.uploaded).toBe(true);
+});
+
+test("renderer-resilience-v1 records unsupported runtime paths as UNKNOWN", () => {
+  const contract = createRendererResilienceContract({
+    contextRestoration: "SUPPORTED",
+    resourceRecreation: "SUPPORTED",
+    cancellation: "UNSUPPORTED",
+  });
+  expect(() => validateRendererResilienceContract(contract)).not.toThrow();
+  expect(contract.lowMemoryProgressiveOpen).toBe("UNKNOWN");
+  expect(contract.readbackTimeout).toBe("UNKNOWN");
+  expect(() =>
+    validateRendererResilienceContract({
+      ...contract,
+      version: "wrong",
+    }),
+  ).toThrow(RendererResilienceContractError);
 });
