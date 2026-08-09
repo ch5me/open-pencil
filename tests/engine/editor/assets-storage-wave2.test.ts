@@ -187,7 +187,7 @@ test("committed snapshots retain raster hashes through undo, redo, and release c
       nextHead: release.nextContentVersion,
       revisions: [],
     }),
-  ).toThrow("retained by content history");
+  ).toThrow("content snapshot references released revision");
 });
 
 test("staged chunks validate offsets and content digests", () => {
