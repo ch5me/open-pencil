@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 
-import { IOInputLimitError, IORegistry, readFigFile, readPenFile } from "#core/io";
+import { IOInputLimitError, IORegistry } from "#core/io/registry";
+import { readFigFile } from "#core/io/formats/fig/read";
+import { readPenFile } from "#core/io/formats/pen/read";
 
 const oversizedFile = (size: number) => {
   let reads = 0;
