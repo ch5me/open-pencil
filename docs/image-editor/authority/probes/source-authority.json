@@ -1,1 +1,27 @@
-{"authorityMatrixHash":"7e010c91f4b345359113c7d0a3b97dd50a627ac80721636943c38d8bcff6f46c","base":"3f97c97bbda052af0d94077deb6e035165ef249e","pathAllocationHash":"9b2b0a9116b8059ebed32299a3016bbac83226a9acc6fd1a4c3faf44830c7144","probes":[{"evidence":"current OpenPencil source files listed in matrix.sourceReferences exist at fetched producer tip","id":"AR-O-SOURCE-001","kind":"read-only","result":"PASS"},{"evidence":"existing SceneGraph, UndoManager, masks, color management, Skia, IORegistry, FIG workers, digest/provenance, package smoke, and FIG worker tests observed","id":"AR-O-SOURCE-002","kind":"read-only","result":"PASS"},{"evidence":"OpenPencil is current CH5 editor/Skia owner per frozen plan; Mahjong remains consumer/legacy path","id":"AR-O-SOURCE-003","kind":"read-only","result":"PASS"}],"producer":"open-pencil","schema":"ch5.image-editor.probe.source-authority.v1"}
+{
+  "authorityMatrixHash": "d25a3ebfa80b601be215b078c93a9407bf43b64c55acf1d4d83336055a7e892e",
+  "base": "3f97c97bbda052af0d94077deb6e035165ef249e",
+  "pathAllocationHash": "268bd02b8ad7fbee73e7138997c385d5e6f9294ba2c1f116e64415b8c2682f41",
+  "probes": [
+    {
+      "evidence": "current OpenPencil source files listed in matrix.sourceReferences exist at fetched producer tip",
+      "id": "AR-O-SOURCE-001",
+      "kind": "read-only",
+      "result": "PASS"
+    },
+    {
+      "evidence": "existing SceneGraph, UndoManager, masks, color management, Skia, IORegistry, FIG workers, digest/provenance, package smoke, and FIG worker tests observed",
+      "id": "AR-O-SOURCE-002",
+      "kind": "read-only",
+      "result": "PASS"
+    },
+    {
+      "evidence": "OpenPencil is current CH5 editor/Skia owner per frozen plan; Mahjong remains consumer/legacy path",
+      "id": "AR-O-SOURCE-003",
+      "kind": "read-only",
+      "result": "PASS"
+    }
+  ],
+  "producer": "open-pencil",
+  "schema": "ch5.image-editor.probe.source-authority.v1"
+}

@@ -1,7 +1,7 @@
 {
   "schema": "ch5.image-editor.authority-behavioral-probes.v1",
   "authorityMatrixHash": "d25a3ebfa80b601be215b078c93a9407bf43b64c55acf1d4d83336055a7e892e",
-  "pathAllocationHash": "d2290fb0debd6647afe9b7e14f2a6351239fdc0b02896614b24536c2c4cdcc1a",
+  "pathAllocationHash": "268bd02b8ad7fbee73e7138997c385d5e6f9294ba2c1f116e64415b8c2682f41",
   "status": "partial",
   "probes": [
     {
@@ -169,5 +169,5 @@
       "observed": "Directional transfer ownership and cancellation not proved."
     }
   ],
-  "probeHash": "30ca79645723735eaef41de10184fa7504d6a7d0417fc3f1545b6b2dd3416a3f"
+  "probeHash": "b2172d4c91445cab4c186c8150ef9d194b4f4f8c0b0935aa72ceb994e1247c03"
 }
