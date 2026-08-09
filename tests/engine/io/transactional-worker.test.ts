@@ -252,6 +252,21 @@ describe("transactional IO and worker contracts", () => {
     ).toThrow("exceeds maxInputBytes");
   });
 
+  test("host applies named profile input admission before staging", () => {
+    const tx = new HostTransaction();
+    expect(() =>
+      tx.begin({
+        operation: "decode-raster",
+        memoryProfile: "D1",
+        protocolCapabilities: [],
+        inputManifestHash: digest,
+        expectedInputBytes: 128 * 1024 * 1024 + 1,
+        expectedOutputClass: "raster",
+        replayable: true,
+      }),
+    ).toThrow("exceeds maxInputBytes");
+  });
+
   test("named D1/M1 profiles account render resources before allocation", () => {
     const d1 = new WorkerStateMachine(createWorkerAdmissionOptions("D1"));
     expect(() => d1.admitRenderBuffer(8192, 8192)).toThrow(WorkerMemoryPressureError);

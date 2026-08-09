@@ -6,6 +6,7 @@ import {
   type HostState,
   assertResourceLimit,
   assertMemoryProfile,
+  memoryProfileLimits,
   MAX_LONG_TASK_BUDGET_MS,
 } from "./protocol";
 
@@ -50,26 +51,24 @@ export class HostTransaction {
     this.advance("allocated");
     this.advance("validating-request");
     assertMemoryProfile(request.memoryProfile);
+    const profileLimits = memoryProfileLimits(request.memoryProfile);
     if (request.expectedInputBytes < 0 || !Number.isSafeInteger(request.expectedInputBytes)) {
       throw new TransactionProtocolError("expectedInputBytes must be a non-negative safe integer");
     }
-    if (request.maxInputBytes !== undefined) {
-      assertResourceLimit(request.maxInputBytes, "maxInputBytes");
-      if (request.expectedInputBytes > request.maxInputBytes) {
-        throw new TransactionProtocolError("expectedInputBytes exceeds maxInputBytes");
-      }
+    const maxInputBytes = request.maxInputBytes ?? profileLimits.maxInputBytes;
+    assertResourceLimit(maxInputBytes, "maxInputBytes");
+    if (request.expectedInputBytes > maxInputBytes) {
+      throw new TransactionProtocolError("expectedInputBytes exceeds maxInputBytes");
     }
-    if (request.maxResidentBytes !== undefined) {
-      assertResourceLimit(request.maxResidentBytes, "maxResidentBytes");
-    }
+    const maxResidentBytes = request.maxResidentBytes ?? profileLimits.maxResidentBytes;
+    assertResourceLimit(maxResidentBytes, "maxResidentBytes");
     if (request.maxRenderBufferBytes !== undefined) {
       assertResourceLimit(request.maxRenderBufferBytes, "maxRenderBufferBytes");
-      if (
-        request.maxResidentBytes !== undefined &&
-        request.maxRenderBufferBytes > request.maxResidentBytes
-      ) {
+      if (request.maxRenderBufferBytes > maxResidentBytes) {
         throw new TransactionProtocolError("maxRenderBufferBytes exceeds maxResidentBytes");
       }
+    } else {
+      assertResourceLimit(profileLimits.maxRenderBufferBytes, "maxRenderBufferBytes");
     }
     if (request.maxTaskMs !== undefined) {
       assertResourceLimit(request.maxTaskMs, "maxTaskMs");
