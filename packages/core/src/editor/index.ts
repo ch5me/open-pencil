@@ -6,6 +6,7 @@ export type { EditorToolDef } from "./tool-registry";
 export {
   LAYER_MODEL_VERSION,
   LAYER_MODEL_BLEND_MODES,
+  LAYER_MODEL_COLOR_LABELS,
   LayerModelTransaction,
   LayerModelTransactionConflict,
   LayerModelMaskValidationError,
@@ -13,6 +14,7 @@ export {
   isUnsupportedLayerBlendMode,
   isUnsupportedLayerMaskKind,
   isUnsupportedLayerMaskType,
+  isUnsupportedLayerColorLabel,
   migrateLayerModel,
 } from "./layer-model";
 export type {
@@ -23,6 +25,9 @@ export type {
   LayerModelEdgeRefinement,
   LayerModelMaskTransform,
   LayerModelMaskTransformMode,
+  LayerModelColorLabel,
+  LayerModelResolvedColorLabel,
+  UnsupportedLayerColorLabel,
   LayerModelMigration,
   LayerModelNode,
   LayerModelNodeInput,
