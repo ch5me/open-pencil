@@ -133,6 +133,11 @@ export function validateContentJournal(entry: ContentJournalEntry): void {
     }
     releasedPinIds.add(pinId);
   });
+  for (const pinId of pinIds) {
+    if (releasedPinIds.has(pinId)) {
+      throw new Error(`history pin cannot be added and released in one journal: ${pinId}`);
+    }
+  }
   if (!Number.isFinite(entry.createdAt) || !Number.isFinite(entry.updatedAt)) {
     throw new Error("journal timestamps must be finite");
   }
