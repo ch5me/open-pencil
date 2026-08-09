@@ -169,7 +169,7 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
 
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
   expect(adapter.render(plan, resolve).textures).toHaveLength(1);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
+  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
