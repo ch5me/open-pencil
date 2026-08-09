@@ -448,6 +448,7 @@ export {
 export { default as TransformMatrix } from "./canvas/matrix";
 
 export * from "./editor/image-brush";
+export * from "./editor/image-accessibility";
 export * from "./editor/image-capabilities";
 export * from "./editor/image-geometry";
 export * from "./editor/image-observability";
