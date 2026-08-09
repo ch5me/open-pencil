@@ -1,6 +1,8 @@
 import type { BlendMode, NodeType, SceneNode } from "#core/scene-graph";
 
 export const LAYER_MODEL_VERSION = "layer-model-v1";
+export type LayerModelMaskTransform = readonly [number, number, number, number, number, number];
+export type LayerModelMaskTransformMode = "linked" | "independent";
 
 export const LAYER_MODEL_BLEND_MODES = [
   "NORMAL",
@@ -50,6 +52,8 @@ export type LayerModelNodeInput = Omit<
   readonly type?: NodeType | string;
   readonly maskId?: string | null;
   readonly maskKind?: LayerModelMaskKind | string | null;
+  readonly maskTransform?: LayerModelMaskTransform | null;
+  readonly maskTransformMode?: LayerModelMaskTransformMode | string | null;
 };
 
 export interface LayerModelNode {
@@ -60,6 +64,8 @@ export interface LayerModelNode {
   readonly type: NodeType | string;
   readonly maskId: string | null;
   readonly maskKind: LayerModelResolvedMaskKind | null;
+  readonly maskTransform: LayerModelMaskTransform | null;
+  readonly maskTransformMode: LayerModelMaskTransformMode;
   readonly groupMask: boolean;
   readonly adjustmentLayerMask: boolean;
   readonly passThrough: boolean;
@@ -94,6 +100,8 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
   const type = node.type ?? "GROUP";
   const blendMode = resolveBlendMode(node.blendMode);
   const maskKind = resolveMaskKind(node.maskKind);
+  const maskTransform = node.maskTransform ? [...node.maskTransform] as LayerModelMaskTransform : null;
+  const maskTransformMode = node.maskTransformMode ?? (maskTransform ? "independent" : "linked");
   const passThrough = blendMode === "PASS_THROUGH" && type === "GROUP";
   return {
     id: node.id,
@@ -103,10 +111,21 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     type,
     maskId: node.maskId ?? null,
     maskKind,
+    maskTransform,
+    maskTransformMode: resolveMaskTransformMode(maskTransformMode),
     groupMask: maskKind === "group",
     adjustmentLayerMask: maskKind === "adjustment-layer",
     passThrough,
   };
+}
+
+function resolveMaskTransformMode(
+  mode: LayerModelNodeInput["maskTransformMode"],
+): LayerModelMaskTransformMode {
+  if (mode === undefined || mode === null || mode === "linked" || mode === "independent") {
+    return mode ?? "linked";
+  }
+  throw new LayerModelMaskValidationError(`unsupported mask transform mode: ${mode}`);
 }
 
 function resolveBlendMode(mode: BlendMode | string): LayerModelResolvedBlendMode {
@@ -157,6 +176,8 @@ function canonicalJson(nodes: readonly LayerModelNode[]): string {
         type: node.type,
         maskId: node.maskId,
         maskKind: node.maskKind,
+        maskTransform: node.maskTransform,
+        maskTransformMode: node.maskTransformMode,
         groupMask: node.groupMask,
         adjustmentLayerMask: node.adjustmentLayerMask,
         passThrough: node.passThrough,
@@ -214,6 +235,22 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
         `mask kind requires mask reference: ${node.id} -> ${String(node.maskKind)}`,
       );
     }
+    if (node.maskTransformMode === "independent" && node.maskTransform === null) {
+      throw new LayerModelMaskValidationError(
+        `independent mask transform requires transform: ${node.id}`,
+      );
+    }
+    if ((node.maskTransformMode === "independent" || node.maskTransform !== null) && node.maskId === null) {
+      throw new LayerModelMaskValidationError(
+        `mask transform requires mask reference: ${node.id}`,
+      );
+    }
+    if (node.maskTransform !== null && node.maskTransform.some((value) => !Number.isFinite(value))) {
+      throw new LayerModelMaskValidationError(`invalid mask transform: ${node.id}`);
+    }
+    if (node.maskTransform !== null && node.maskTransform.length !== 6) {
+      throw new LayerModelMaskValidationError(`invalid mask transform: ${node.id}`);
+    }
     if (node.maskId === node.id) {
       throw new LayerModelMaskValidationError(`self-referencing mask: ${node.id}`);
     }
@@ -230,6 +267,19 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
     visited.add(id);
   };
   for (const node of nodes) visit(node.id);
+
+  const maskVisiting = new Set<string>();
+  const maskVisited = new Set<string>();
+  const visitMask = (id: string): void => {
+    if (maskVisiting.has(id)) throw new LayerModelMaskValidationError(`cyclic mask reference: ${id}`);
+    if (maskVisited.has(id)) return;
+    maskVisiting.add(id);
+    const maskId = byId.get(id)?.maskId;
+    if (maskId !== null && maskId !== undefined) visitMask(maskId);
+    maskVisiting.delete(id);
+    maskVisited.add(id);
+  };
+  for (const node of nodes) visitMask(node.id);
 }
 
 export async function migrateLayerModel(
