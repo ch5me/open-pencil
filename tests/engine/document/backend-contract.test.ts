@@ -31,7 +31,9 @@ describe("DocumentBackend contract", () => {
     expect(backend.can("autosave")).toBe(true);
     expect(backend.hasCapability("localFileOpen")).toBe(true);
     expect(backend.hasCapability("localFileSave")).toBe(true);
+    expect(backend.capabilities.localFileOpen.state).toBe("SUPPORTED");
     expect(backend.hasCapability("hostedSave")).toBe(false);
+    expect(backend.capabilities.hostedSave.state).toBe("UNSUPPORTED");
     expect(await backend.loadMetadata()).toEqual({
       mode: "local-only",
       displayName: "Example",
@@ -53,6 +55,7 @@ describe("DocumentBackend contract", () => {
     expect(backend.mode).toBe("hosted-docs single-user");
     expect(backend.hasCapability("hostedSave")).toBe(true);
     expect(backend.hasCapability("localFileOpen")).toBe(false);
+    expect(backend.capabilities.localFileOpen.state).toBe("UNSUPPORTED");
     await expect(backend.open({ kind: "file", file })).rejects.toThrow(
       "Hosted backend cannot open local files",
     );

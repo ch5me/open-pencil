@@ -105,6 +105,15 @@ describe("transactional IO and worker contracts", () => {
         estimatedResidentBytes: 65,
       }),
     ).toThrow("D1 admission");
+    expect(worker.memoryStatus()).toMatchObject({
+      version: "worker-memory-status-v1",
+      state: "PRESSURE",
+      profile: "D1",
+      limits: {
+        maxResidentBytes: 64,
+        maxRenderBufferBytes: 64,
+      },
+    });
     worker.admitProgress({
       stage: "decode",
       consumedBytes: 1,
@@ -113,6 +122,7 @@ describe("transactional IO and worker contracts", () => {
       totalItems: null,
       estimatedResidentBytes: 64,
     });
+    expect(worker.memoryStatus().state).toBe("PRESSURE");
     worker.recordLongTask(50);
     worker.recordLongTask(51);
     expect(worker.longTaskBudget()).toEqual({
