@@ -13,5 +13,14 @@
     "openPencil": "3f97c97bbda052af0d94077deb6e035165ef249e"
   },
   "schema": "ch5.image-editor.probe.producer-tips.v1",
-  "status": "fresh_tips_clean"
+  "status": "fresh_tips_clean",
+  "executionProvenance": {
+    "commit": "0583d630963f4532840ba731996e7d7c11edf17c",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
+    "team": "repair-wave-0-g0a-o-a-c0d9d17e",
+    "worker": "worker-1",
+    "role": "executor",
+    "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
+    "observedAt": "2026-08-09T01:45:00Z"
+  }
 }
