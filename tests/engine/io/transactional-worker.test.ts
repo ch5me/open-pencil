@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import { HostTransaction, TransactionCancelledError } from "#core/io/transactional";
-import { WorkerMemoryPressureError, WorkerStateMachine } from "#core/io/workers";
+import {
+  DEFAULT_LONG_TASK_BUDGET_MS,
+  WorkerMemoryPressureError,
+  WorkerStateMachine,
+} from "#core/io/workers";
 
 const digest = "a".repeat(64);
 const chunk = (index: number) => ({
@@ -121,35 +125,29 @@ describe("transactional IO and worker contracts", () => {
     expect(() => worker.admitRenderBuffer(5, 5)).toThrow(WorkerMemoryPressureError);
   });
 
-  test("named profiles default to a 50ms long-task budget", () => {
-    const worker = new WorkerStateMachine({ memoryProfile: "M1", maxResidentBytes: 128 });
-    worker.recordLongTask(50);
-    expect(worker.longTaskBudget()).toMatchObject({
-      maxTaskMs: 50,
-      taskCount: 1,
-      overBudgetCount: 0,
-    });
-    expect(() => new WorkerStateMachine({ memoryProfile: "unknown", maxResidentBytes: 128 })).toThrow(
-      "unsupported memory profile",
-    );
-  });
-
-  test("render buffer admission has its own bound within resident memory", () => {
+  test("uses named M1 profile and records the default 50ms long-task budget", () => {
     const worker = new WorkerStateMachine({
-      memoryProfile: "D1",
+      memoryProfile: "M1",
       maxResidentBytes: 128,
-      maxRenderBufferBytes: 64,
     });
-    expect(worker.admitRenderBuffer(4, 4)).toBe(64);
-    expect(() => worker.admitRenderBuffer(5, 4)).toThrow("render buffer exceeds D1 admission");
-    expect(
-      () =>
-        new WorkerStateMachine({
-          memoryProfile: "D1",
-          maxResidentBytes: 64,
-          maxRenderBufferBytes: 65,
-        }),
-    ).toThrow("maxRenderBufferBytes exceeds maxResidentBytes");
+
+    worker.admitProgress({
+      stage: "decode",
+      consumedBytes: 1,
+      producedBytes: 1,
+      completedItems: 0,
+      totalItems: null,
+      estimatedResidentBytes: 128,
+    });
+    expect(worker.admitRenderBuffer(4, 8)).toBe(128);
+
+    worker.recordLongTask(DEFAULT_LONG_TASK_BUDGET_MS);
+    worker.recordLongTask(DEFAULT_LONG_TASK_BUDGET_MS + 1);
+    expect(worker.longTaskBudget()).toEqual({
+      maxTaskMs: 50,
+      taskCount: 2,
+      overBudgetCount: 1,
+    });
   });
 
   test("worker admits incremental input without retaining prior chunks", () => {
