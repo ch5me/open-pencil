@@ -158,9 +158,13 @@ export const figFormat: IOFormatAdapter = {
   matchesFile(fileName) {
     return lowerExt(fileName) === "fig";
   },
-  async readDocument(input) {
+  async readDocument(input, context) {
     const data = input.data.slice().buffer;
-    const graph = await parseFigFile(data);
+    const graph = await parseFigFile(data, {
+      maxDecodedBytes: context?.maxDecodedBytes,
+      maxExpansionRatio: context?.maxExpansionRatio,
+      signal: context?.signal,
+    });
     return { graph, sourceFormat: "fig" };
   },
   async writeDocument(graph, options?: FigWriteOptions, context?: IOContext) {
@@ -209,9 +213,13 @@ export const penFormat: IOFormatAdapter = {
   matchesFile(fileName, mimeType) {
     return lowerExt(fileName) === "pen" || mimeType === "application/json";
   },
-  async readDocument(input) {
+  async readDocument(input, context) {
     const text = new TextDecoder().decode(input.data);
-    const graph = parsePenFile(text);
+    const graph = parsePenFile(text, {
+      maxDecodedBytes: context?.maxDecodedBytes,
+      maxExpansionRatio: context?.maxExpansionRatio,
+      signal: context?.signal,
+    });
     return { graph, sourceFormat: "pen" };
   },
 };

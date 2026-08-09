@@ -1,4 +1,9 @@
 import { parseSVGPath } from "#core/io/formats/svg/parse-path";
+import {
+  assertDecodedWithinLimits,
+  throwIfIOCancelled,
+  type IOInputLimits,
+} from "#core/io/limits";
 import { assertInputWithinLimit } from "#core/io/registry";
 import { SceneGraph } from "#core/scene-graph";
 import type { LayoutMode, LayoutSizing, SceneNode, VectorNetwork } from "#core/scene-graph";
@@ -491,7 +496,13 @@ function fixTextWidths(graph: SceneGraph): void {
   }
 }
 
-export function parsePenFile(json: string): SceneGraph {
+export function parsePenFile(
+  json: string,
+  options: IOInputLimits & { signal?: AbortSignal } = {},
+): SceneGraph {
+  throwIfIOCancelled(options.signal);
+  const encodedBytes = new TextEncoder().encode(json).byteLength;
+  assertDecodedWithinLimits(encodedBytes, encodedBytes, options);
   const doc: PenDocument = JSON.parse(json);
   const graph = new SceneGraph();
 
@@ -522,13 +533,17 @@ export function parsePenFile(json: string): SceneGraph {
     graph.addPage("Page 1");
   }
 
+  throwIfIOCancelled(options.signal);
   return graph;
 }
 
 export async function readPenFile(
   file: File,
-  options: { maxInputBytes?: number } = {},
+  options: IOInputLimits & { signal?: AbortSignal } = {},
 ): Promise<SceneGraph> {
+  throwIfIOCancelled(options.signal);
   assertInputWithinLimit(file.size, options.maxInputBytes);
-  return parsePenFile(await file.text());
+  const json = await file.text();
+  throwIfIOCancelled(options.signal);
+  return parsePenFile(json, options);
 }
