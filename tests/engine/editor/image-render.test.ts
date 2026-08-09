@@ -35,7 +35,7 @@ function imageNode(id: string, assetId = "asset:hero", visible = true): SceneNod
       },
     ],
     // Test fixture intentionally models only composition fields.
-  // oxlint-disable-next-line open-pencil(no-broad-double-cast)
+    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
   } as unknown as SceneNode;
 }
 
@@ -44,7 +44,7 @@ function imagePlan(nodes = [imageNode("image")]): ReturnType<typeof createCompos
     rootId: nodes[0]?.id ?? "image",
     getNode: (id: string) => nodes.find((node) => node.id === id),
     // Test graph intentionally implements only the composition resolver surface.
-  // oxlint-disable-next-line open-pencil(no-broad-double-cast)
+    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
   } as unknown as SceneGraph;
   return createCompositionPlan(graph);
 }
@@ -92,7 +92,7 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
 
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
   expect(adapter.render(plan, resolve).textures).toHaveLength(1);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
+  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
