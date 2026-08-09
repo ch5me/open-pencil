@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createCompositionPlan } from "#core/canvas/composition";
+import { createCompositionPlan, serializeCompositionPlan } from "#core/canvas/composition";
 import type { SceneGraph, SceneNode } from "#core/scene-graph";
 
 function graphOf(nodes: SceneNode[], rootId: string): SceneGraph {
@@ -25,6 +25,7 @@ function node(overrides: Partial<SceneNode> & Pick<SceneNode, "id" | "type">): S
     rotation: overrides.rotation ?? 0,
     isMask: overrides.isMask ?? false,
     maskType: overrides.maskType ?? "ALPHA",
+    fills: overrides.fills ?? [],
   } as SceneNode;
 }
 
@@ -49,6 +50,25 @@ describe("editor composition plan", () => {
     expect(plan.nodes.get(frame.id)?.clipsContent).toBe(true);
     expect(plan.nodes.get(frame.id)?.rotation).toBe(15);
     expect(entry?.inheritedOpacity).toBeCloseTo(0.2);
+  });
+
+  test("serializes plans deterministically and carries image asset bindings", () => {
+    const image = node({
+      id: "image",
+      type: "IMAGE",
+      fills: [
+        {
+          type: "IMAGE",
+          color: { r: 1, g: 1, b: 1, a: 1 },
+          opacity: 1,
+          visible: true,
+          imageHash: "asset:hero",
+        },
+      ],
+    });
+    const plan = createCompositionPlan(graphOf([image], image.id), image.id);
+    expect(plan.nodes.get(image.id)?.assetIds).toEqual(["asset:hero"]);
+    expect(serializeCompositionPlan(plan)).toBe(serializeCompositionPlan(plan));
   });
 
   test("hidden ancestors hide descendants without changing node semantics", () => {

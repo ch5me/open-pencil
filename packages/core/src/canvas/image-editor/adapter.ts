@@ -30,7 +30,7 @@ export function createImageRenderAdapter(
       const textures: ImageTexture[] = [];
       for (const entry of plan.nodes.values()) {
         if (!entry.visible) continue;
-        const assetId = null;
+        const assetId = entry.assetIds[0] ?? null;
         commands.push({
           nodeId: entry.nodeId,
           assetId,
