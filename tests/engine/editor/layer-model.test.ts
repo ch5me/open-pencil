@@ -21,6 +21,8 @@ const node = (
     blendMode: BlendMode | string;
     maskId: string | null;
     maskKind: "group" | "adjustment-layer" | string | null;
+    maskTransform: readonly [number, number, number, number, number, number] | null;
+    maskTransformMode: "linked" | "independent" | string | null;
   }> = {},
 ) => ({
   id,
@@ -30,6 +32,8 @@ const node = (
   blendMode: overrides.blendMode ?? "NORMAL",
   maskId: overrides.maskId ?? null,
   maskKind: overrides.maskKind ?? null,
+  maskTransform: overrides.maskTransform ?? null,
+  maskTransformMode: overrides.maskTransformMode ?? null,
 });
 
 describe("layer-model-v1", () => {
@@ -109,6 +113,33 @@ describe("layer-model-v1", () => {
     expect(isUnsupportedLayerMaskKind(unsupported)).toBe(true);
   });
 
+  test("supports linked masks and independently transformed masks", async () => {
+    const transform = [1, 0, 12, 0, 1, -8] as const;
+    const migrated = await migrateLayerModel([
+      node("linked-a", null, [], { maskId: "shared", maskKind: "group" }),
+      node("linked-b", null, [], { maskId: "shared", maskKind: "group" }),
+      node("independent", null, [], {
+        maskId: "shared",
+        maskKind: "adjustment-layer",
+        maskTransform: transform,
+        maskTransformMode: "independent",
+      }),
+      node("shared", null),
+    ]);
+
+    expect(migrated.model.nodes.get("linked-a")).toMatchObject({
+      maskId: "shared",
+      maskTransform: null,
+      maskTransformMode: "linked",
+    });
+    expect(migrated.model.nodes.get("linked-b")?.maskId).toBe("shared");
+    expect(migrated.model.nodes.get("independent")).toMatchObject({
+      maskTransform: transform,
+      maskTransformMode: "independent",
+    });
+    expect(migrated.model.nodes.get("independent")?.maskTransform).not.toBe(transform);
+  });
+
   test("rejects cycles and dangling parent, child, and mask references", async () => {
     await expect(migrateLayerModel([node("a", "b", ["b"]), node("b", "a", ["a"])])).rejects.toThrow(
       LayerModelValidationError,
@@ -125,6 +156,28 @@ describe("layer-model-v1", () => {
     await expect(
       migrateLayerModel([node("a", null, [], { maskId: "a", maskKind: "group" })]),
     ).rejects.toThrow("self-referencing mask");
+    await expect(
+      migrateLayerModel([
+        node("a", null, [], { maskId: "b", maskKind: "group" }),
+        node("b", null, [], { maskId: "a", maskKind: "group" }),
+      ]),
+    ).rejects.toThrow("cyclic mask reference");
+    await expect(
+      migrateLayerModel([
+        node("a", null, [], { maskId: "b", maskKind: "group", maskTransformMode: "independent" }),
+        node("b", null),
+      ]),
+    ).rejects.toThrow("requires transform");
+    await expect(
+      migrateLayerModel([
+        node("a", null, [], {
+          maskId: "b",
+          maskKind: "group",
+          maskTransform: [1, 0, Number.NaN, 0, 1, 0],
+        }),
+        node("b", null),
+      ]),
+    ).rejects.toThrow("invalid mask transform");
   });
 
   test("isolates invalidation to changed layers and commits old-or-new atomically", async () => {
