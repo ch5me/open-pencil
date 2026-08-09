@@ -83,6 +83,7 @@ export function createCompositionPlan(
   options: CompositionOptions = {},
 ): CompositionPlan {
   const nodes = new Map<string, CompositionNode>();
+  const visiting = new Set<string>();
   const visit = (
     nodeId: string,
     parentOpacity: number,
@@ -90,9 +91,13 @@ export function createCompositionPlan(
     parentClipDepth: number,
     parentMaskDepth: number,
   ): void => {
+    if (visiting.has(nodeId)) {
+      throw new Error(`cyclic composition parent link: ${nodeId}`);
+    }
     const node = graph.getNode(nodeId);
     if (!node) throw new Error(`missing composition node: ${nodeId}`);
     assertSupportedType(node.type);
+    visiting.add(nodeId);
     const visible = parentVisible && node.visible;
     const inheritedOpacity = parentOpacity * node.opacity;
     const clipDepth = parentClipDepth + (node.clipsContent ? 1 : 0);
@@ -124,6 +129,7 @@ export function createCompositionPlan(
     for (const childId of node.childIds) {
       visit(childId, inheritedOpacity, visible, clipDepth, maskDepth);
     }
+    visiting.delete(nodeId);
   };
   visit(rootId, 1, true, 0, 0);
   return { version: COMPOSITION_PLAN_VERSION, rootId, nodes };

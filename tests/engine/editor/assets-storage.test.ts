@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { AssetRegistry } from "#core/editor/assets";
 import { createContentJournal, createJournalIdAllocator } from "#core/editor/history/journal";
 import {
+  ContentCommitMismatch,
   ContentVersionConflict,
   ImageEditorStore,
   IMAGE_EDITOR_DATABASE,
@@ -77,5 +78,50 @@ describe("image editor assets and storage", () => {
         revisions: [],
       }),
     ).toThrow(ContentVersionConflict);
+  });
+
+  test("rejects a next-head mismatch before mutating content", () => {
+    const store = new ImageEditorStore();
+    store.setInitialHead("doc", { sequence: 1, contentRootHash: ROOT });
+    const allocator = createJournalIdAllocator(0, () => "tx");
+    const journal = createContentJournal(allocator, {
+      journalSequence: 1,
+      baseContentVersion: { sequence: 1, contentRootHash: ROOT },
+      nextContentVersion: { sequence: 2, contentRootHash: "c".repeat(64) },
+      contractHash: "contract",
+      authorityMatrixHash: "d".repeat(64),
+    });
+
+    expect(() =>
+      store.commitContent({
+        documentId: "doc",
+        journal,
+        nextHead: { sequence: 2, contentRootHash: "e".repeat(64) },
+        revisions: [],
+      }),
+    ).toThrow(ContentCommitMismatch);
+    expect(store.getHead("doc")).toEqual(journal.baseContentVersion);
+  });
+
+  test("requires committed revisions to be declared by the journal", () => {
+    const store = new ImageEditorStore();
+    store.setInitialHead("doc", { sequence: 1, contentRootHash: ROOT });
+    const allocator = createJournalIdAllocator(0, () => "tx");
+    const journal = createContentJournal(allocator, {
+      journalSequence: 1,
+      baseContentVersion: { sequence: 1, contentRootHash: ROOT },
+      nextContentVersion: { sequence: 2, contentRootHash: "c".repeat(64) },
+      contractHash: "contract",
+      authorityMatrixHash: "d".repeat(64),
+    });
+
+    expect(() =>
+      store.commitContent({
+        documentId: "doc",
+        journal,
+        nextHead: journal.nextContentVersion,
+        revisions: [`sha256:${"e".repeat(64)}`],
+      }),
+    ).toThrow("revision is not declared by journal");
   });
 });

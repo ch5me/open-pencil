@@ -10,6 +10,10 @@ export class StagedChunkMismatch extends Error {
   readonly code = "staged-chunk-mismatch";
 }
 
+export class ContentCommitMismatch extends Error {
+  readonly code = "content-commit-mismatch";
+}
+
 export class ImageEditorStore {
   private readonly chunks = new Map<string, StagedChunk>();
   private readonly journals = new Map<string, ContentJournalEntry>();
@@ -60,6 +64,20 @@ export class ImageEditorStore {
   }
 
   commitContent(commit: ContentCommit): void {
+    if (
+      commit.nextHead.sequence !== commit.journal.nextContentVersion.sequence ||
+      commit.nextHead.contentRootHash !== commit.journal.nextContentVersion.contentRootHash
+    ) {
+      throw new ContentCommitMismatch("next head must match journal next content version");
+    }
+    const stagedRevisionIds = new Set(
+      commit.journal.stagedContentRevisions.map((revision) => revision.revisionId),
+    );
+    for (const revisionId of commit.revisions) {
+      if (!stagedRevisionIds.has(revisionId)) {
+        throw new ContentCommitMismatch(`revision is not declared by journal: ${revisionId}`);
+      }
+    }
     const current = this.heads.get(commit.documentId);
     if (
       !current ||
@@ -73,8 +91,14 @@ export class ImageEditorStore {
         throw new StagedChunkMismatch(`missing staged revision: ${revisionId}`);
       }
     }
+    const journalKey = `${commit.documentId}/${commit.journal.journalSequence}`;
+    if (this.journals.has(journalKey)) {
+      throw new ContentCommitMismatch(
+        `content journal sequence already committed: ${commit.journal.journalSequence}`,
+      );
+    }
     this.journals.set(
-      `${commit.documentId}/${commit.journal.journalSequence}`,
+      journalKey,
       structuredClone(commit.journal),
     );
     this.heads.set(commit.documentId, structuredClone(commit.nextHead));

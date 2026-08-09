@@ -130,4 +130,13 @@ describe("editor composition plan", () => {
       "missing composition node: missing",
     );
   });
+
+  test("fails loudly on cyclic composition parent links", () => {
+    const first = node({ id: "first", type: "GROUP", childIds: ["second"] });
+    const second = node({ id: "second", type: "GROUP", childIds: ["first"] });
+
+    expect(() => createCompositionPlan(graphOf([first, second], first.id))).toThrow(
+      "cyclic composition parent link: first",
+    );
+  });
 });
