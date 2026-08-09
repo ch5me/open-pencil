@@ -1,7 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
-import { HostTransaction } from "#core/io/transactional";
-import { WorkerMemoryPressureError, WorkerStateMachine } from "#core/io/workers";
+import {
+  HostTransaction,
+  TransactionCancelledError,
+  TransactionProtocolError,
+} from "#core/io/transactional";
+import {
+  WorkerCancelledError,
+  WorkerMemoryPressureError,
+  WorkerStateMachine,
+} from "#core/io/workers";
 
 const digest = "a".repeat(64);
 const chunk = (index: number) => ({
@@ -44,7 +52,7 @@ describe("transactional IO and worker contracts", () => {
     tx.cancel();
     expect(tx.state).toBe("rolled-back");
     expect(tx.acceptsWorkerMessage()).toBe(false);
-    expect(() => tx.receiveOutput(chunk(0))).toThrow("expected receiving-output");
+    expect(() => tx.receiveOutput(chunk(0))).toThrow(TransactionCancelledError);
   });
 
   test("worker enforces sequence and directional lifecycle", () => {
@@ -171,5 +179,64 @@ describe("transactional IO and worker contracts", () => {
         maxInputBytes: 64,
       }),
     ).toThrow("exceeds maxInputBytes");
+    expect(tx.state).toBe("idle");
+  });
+
+  test("host rejects a non-contiguous input offset before staging the chunk", () => {
+    const tx = new HostTransaction();
+    tx.begin({
+      operation: "decode-raster",
+      memoryProfile: "D1",
+      protocolCapabilities: [],
+      inputManifestHash: digest,
+      expectedInputBytes: 2,
+      expectedOutputClass: "raster",
+      replayable: true,
+    });
+
+    expect(() =>
+      tx.stageInput({
+        ...chunk(0),
+        offset: 1,
+        byteLength: 1,
+        bytes: new Uint8Array([0]),
+      }),
+    ).toThrow("input offset gap");
+    expect(tx.inputChunks).toHaveLength(0);
+    expect(tx.state).toBe("staging-input");
+  });
+
+  test("host requires contiguous final input and output chunks", () => {
+    const tx = new HostTransaction();
+    tx.begin({
+      operation: "open-archive",
+      memoryProfile: "D1",
+      protocolCapabilities: [],
+      inputManifestHash: digest,
+      expectedInputBytes: 2,
+      expectedOutputClass: "archive",
+      replayable: true,
+    });
+    tx.stageInput({ ...chunk(0), final: false });
+    expect(() => tx.inputComplete()).toThrow("final chunk");
+    tx.stageInput({ ...chunk(1), offset: 1, final: true });
+    tx.inputComplete();
+    tx.workerDispatched();
+    tx.receiveOutput({ ...chunk(0), final: true });
+    tx.verifyOutput();
+    expect(() => tx.receiveOutput(chunk(1))).toThrow(TransactionProtocolError);
+  });
+
+  test("cancelled host rejects work as cancellation, not stale state", () => {
+    const tx = new HostTransaction();
+    tx.cancel();
+    expect(() => tx.receiveOutput(chunk(0))).toThrow(TransactionCancelledError);
+  });
+
+  test("worker cancellation is valid before readiness and blocks late work", () => {
+    const worker = new WorkerStateMachine();
+    worker.cancel();
+    expect(worker.state).toBe("cancelled");
+    expect(() => worker.transform()).toThrow(WorkerCancelledError);
   });
 });
