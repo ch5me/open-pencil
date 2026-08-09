@@ -1,5 +1,6 @@
 export {
   DEFAULT_PSD_LIMITS,
+  PsdCancelledError,
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdExportInput,

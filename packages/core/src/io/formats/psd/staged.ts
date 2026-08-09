@@ -1,5 +1,6 @@
 import {
   DEFAULT_PSD_LIMITS,
+  PsdCancelledError,
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdExportInput,
@@ -58,11 +59,17 @@ function assertDimension(value: number): void {
   }
 }
 
-export function parsePsdHeader(
+function throwIfCancelled(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw new PsdCancelledError("PSD import cancelled");
+}
+
+function parsePsdHeaderBytes(
   bytes: Uint8Array,
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
+  sourceByteLength = bytes.byteLength,
 ): PsdHeader {
-  if (bytes.byteLength > limits.maxBytes) throw new PsdHostileFileError("PSD exceeds byte limit");
+  if (sourceByteLength > limits.maxBytes)
+    throw new PsdHostileFileError("PSD exceeds byte limit");
   if (bytes.byteLength < 26) throw new PsdUnsupportedError("PSD header is truncated");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (
@@ -91,7 +98,7 @@ export function parsePsdHeader(
   if (!Number.isSafeInteger(decodedBytes) || decodedBytes > limits.maxDecodedBytes) {
     throw new PsdHostileFileError("PSD decoded payload exceeds limits");
   }
-  if (decodedBytes / Math.max(1, bytes.byteLength) > limits.maxExpansionRatio) {
+  if (decodedBytes / Math.max(1, sourceByteLength) > limits.maxExpansionRatio) {
     throw new PsdHostileFileError("PSD compressed expansion exceeds limits");
   }
   const renderBytes = header.width * header.height * 4;
@@ -99,6 +106,13 @@ export function parsePsdHeader(
     throw new PsdHostileFileError("PSD render buffer exceeds limits");
   }
   return header;
+}
+
+export function parsePsdHeader(
+  bytes: Uint8Array,
+  limits: PsdLimits = DEFAULT_PSD_LIMITS,
+): PsdHeader {
+  return parsePsdHeaderBytes(bytes, limits);
 }
 
 function headerWarnings(header: PsdHeader): PsdWarningCode[] {
@@ -126,9 +140,21 @@ export function stagePsdImport(
 export async function readPsdFile(
   file: File,
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
+  signal?: AbortSignal,
 ): Promise<PsdImportResult> {
+  throwIfCancelled(signal);
   if (file.size > limits.maxBytes) throw new PsdHostileFileError("PSD exceeds byte limit");
-  return stagePsdImport(new Uint8Array(await file.arrayBuffer()), limits);
+
+  // Read only the fixed header before allowing the full payload allocation.
+  const headerBytes = new Uint8Array(
+    await file.slice(0, 26).arrayBuffer(),
+  );
+  throwIfCancelled(signal);
+  parsePsdHeaderBytes(headerBytes, limits, file.size);
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  throwIfCancelled(signal);
+  return stagePsdImport(bytes, limits);
 }
 
 export function stagePsdExport(
