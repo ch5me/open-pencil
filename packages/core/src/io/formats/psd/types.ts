@@ -95,3 +95,7 @@ export class PsdUnsupportedError extends Error {
 export class PsdHostileFileError extends Error {
   readonly code = "hostile-psd-file";
 }
+
+export class PsdCancelledError extends Error {
+  readonly code = "psd-import-cancelled";
+}

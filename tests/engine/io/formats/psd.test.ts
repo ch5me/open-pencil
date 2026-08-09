@@ -3,6 +3,7 @@ import { expect, test } from "bun:test";
 import {
   DEFAULT_PSD_LIMITS,
   createPsdCorpusManifest,
+  PsdCancelledError,
   layerMetadata,
   PsdHostileFileError,
   PsdUnsupportedError,
@@ -130,4 +131,52 @@ test("rejects oversized PSD files before reading payload", async () => {
     "PSD exceeds byte limit",
   );
   expect(reads).toBe(0);
+});
+
+test("rejects decoded dimensions after header read but before payload allocation", async () => {
+  const header = stagePsdExport({ width: 10, height: 20, layers: [] });
+  let headerReads = 0;
+  let payloadReads = 0;
+  const file = {
+    size: header.byteLength,
+    slice: () => ({
+      arrayBuffer: async () => {
+        headerReads += 1;
+        return header.buffer;
+      },
+    }),
+    arrayBuffer: async () => {
+      payloadReads += 1;
+      return header.buffer;
+    },
+  } as unknown as File;
+
+  await expect(
+    readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxWidth: 9 }),
+  ).rejects.toThrow("PSD dimensions exceed limits");
+  expect(headerReads).toBe(1);
+  expect(payloadReads).toBe(0);
+});
+
+test("cancellation tombstone prevents a post-cancel PSD publish", async () => {
+  const bytes = stagePsdExport({ width: 10, height: 20, layers: [] });
+  const controller = new AbortController();
+  let resolvePayload: ((buffer: ArrayBuffer) => void) | undefined;
+  const file = {
+    size: bytes.byteLength,
+    slice: () => ({
+      arrayBuffer: async () => bytes.buffer,
+    }),
+    arrayBuffer: () =>
+      new Promise<ArrayBuffer>((resolve) => {
+        resolvePayload = resolve;
+      }),
+  } as unknown as File;
+
+  const importPromise = readPsdFile(file, DEFAULT_PSD_LIMITS, controller.signal);
+  await Promise.resolve();
+  controller.abort();
+  resolvePayload?.(bytes.buffer);
+
+  await expect(importPromise).rejects.toBeInstanceOf(PsdCancelledError);
 });
