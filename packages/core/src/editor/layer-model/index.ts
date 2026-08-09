@@ -100,7 +100,9 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
   const type = node.type ?? "GROUP";
   const blendMode = resolveBlendMode(node.blendMode);
   const maskKind = resolveMaskKind(node.maskKind);
-  const maskTransform = node.maskTransform ? [...node.maskTransform] as LayerModelMaskTransform : null;
+  const maskTransform = node.maskTransform
+    ? ([...node.maskTransform] as LayerModelMaskTransform)
+    : null;
   const maskTransformMode = node.maskTransformMode ?? (maskTransform ? "independent" : "linked");
   const passThrough = blendMode === "PASS_THROUGH" && type === "GROUP";
   return {
@@ -240,12 +242,18 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
         `independent mask transform requires transform: ${node.id}`,
       );
     }
-    if ((node.maskTransformMode === "independent" || node.maskTransform !== null) && node.maskId === null) {
+    if (
+      (node.maskTransformMode === "independent" || node.maskTransform !== null) &&
+      node.maskId === null
+    ) {
       throw new LayerModelMaskValidationError(
         `mask transform requires mask reference: ${node.id}`,
       );
     }
-    if (node.maskTransform !== null && node.maskTransform.some((value) => !Number.isFinite(value))) {
+    if (
+      node.maskTransform !== null &&
+      node.maskTransform.some((value) => !Number.isFinite(value))
+    ) {
       throw new LayerModelMaskValidationError(`invalid mask transform: ${node.id}`);
     }
     if (node.maskTransform !== null && node.maskTransform.length !== 6) {

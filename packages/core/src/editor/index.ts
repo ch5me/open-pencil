@@ -18,6 +18,8 @@ export type {
   LayerModel,
   LayerModelBlendMode,
   LayerModelMaskKind,
+  LayerModelMaskTransform,
+  LayerModelMaskTransformMode,
   LayerModelMigration,
   LayerModelNode,
   LayerModelNodeInput,
