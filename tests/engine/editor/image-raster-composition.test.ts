@@ -550,6 +550,8 @@ test("nested group composition blends RGBA8 colors in document-linear space", ()
     getRevision: (revisionId) => Object.values(revisions).find((revision) => revision.revisionId === revisionId),
   }, { width: 1, height: 1 });
 
+  // A direct sRGB blend would produce 94; linear-light composition must not.
+  expect([...result.pixels]).not.toEqual([94, 94, 94, 255]);
   expect([...result.pixels]).toEqual([137, 137, 137, 255]);
 });
 
