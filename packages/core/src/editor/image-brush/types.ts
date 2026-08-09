@@ -1,4 +1,4 @@
-import type { RasterMask } from "#core/editor/image-raster";
+import { validateRasterMask, type RasterMask } from "#core/editor/image-raster";
 
 export interface BrushConfig {
   readonly size: number;
@@ -29,6 +29,7 @@ export class BrushDeviceUnavailableError extends Error {
 }
 
 export function normalizeBrushConfig(config: BrushConfig): BrushConfig {
+  if (typeof config.pressure !== "boolean") throw new RangeError("invalid brush pressure");
   for (const [key, value] of Object.entries(config)) {
     if (
       typeof value === "number" &&
@@ -42,6 +43,21 @@ export function normalizeBrushConfig(config: BrushConfig): BrushConfig {
   return structuredClone(config);
 }
 
+function validatePointerSample(sample: PointerSample): PointerSample {
+  if (
+    !Number.isFinite(sample.x) ||
+    !Number.isFinite(sample.y) ||
+    !Number.isFinite(sample.pressure) ||
+    sample.pressure < 0 ||
+    sample.pressure > 1 ||
+    !Number.isFinite(sample.time) ||
+    sample.time < 0
+  ) {
+    throw new RangeError("invalid pointer sample");
+  }
+  return { ...sample };
+}
+
 export function createBrushStroke(
   mask: RasterMask,
   config: BrushConfig,
@@ -49,13 +65,14 @@ export function createBrushStroke(
   transactionId: `tx:${string}`,
   pressureAvailable = true,
 ): BrushStroke {
+  const validatedMask = validateRasterMask(mask);
   const normalized = normalizeBrushConfig(config);
   if (normalized.pressure && !pressureAvailable) {
     throw new BrushDeviceUnavailableError("pressure input unavailable");
   }
   return {
-    maskId: mask.maskId,
-    samples: samples.map((sample) => ({ ...sample })),
+    maskId: validatedMask.maskId,
+    samples: samples.map(validatePointerSample),
     config: normalized,
     transactionId,
   };

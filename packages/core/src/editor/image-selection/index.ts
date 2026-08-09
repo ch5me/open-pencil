@@ -19,15 +19,24 @@ export interface ImageSelection {
   readonly transactionId: `tx:${string}`;
 }
 
+function validatePoint(point: { x: number; y: number }): { x: number; y: number } {
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+    throw new RangeError("invalid image selection point");
+  }
+  return { x: point.x, y: point.y };
+}
+
 export function createImageSelection(
   mode: ImageSelectionMode,
   points: readonly { x: number; y: number }[],
   transactionId: `tx:${string}`,
 ): ImageSelection {
-  return { mode, points: points.map((point) => ({ ...point })), transactionId };
+  if (!/^tx:.+/u.test(transactionId)) throw new RangeError("invalid image selection transaction");
+  return { mode, points: points.map(validatePoint), transactionId };
 }
 
 export function selectMask(mask: RasterMask): MaskSelection {
+  if (!mask.maskId || !mask.thumbnailId) throw new RangeError("invalid image mask");
   return { selectedMaskId: mask.maskId, selectedThumbnailId: mask.thumbnailId };
 }
 
