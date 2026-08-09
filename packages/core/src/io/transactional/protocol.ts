@@ -1,6 +1,7 @@
 export const WORKER_PROTOCOL = "ch5.image-editor.worker";
 
 export type WorkerDirection = "host-to-worker" | "worker-to-host";
+export type MemoryProfile = "D1" | "M1";
 export type WorkerOperation =
   | "open-archive"
   | "save-archive"
@@ -64,7 +65,7 @@ export interface WorkerEnvelope<TType extends string = string, TPayload = unknow
 
 export interface BeginRequest {
   readonly operation: WorkerOperation;
-  readonly memoryProfile: string;
+  readonly memoryProfile: MemoryProfile;
   readonly protocolCapabilities: readonly string[];
   readonly inputManifestHash: string;
   readonly expectedInputBytes: number;
@@ -72,6 +73,8 @@ export interface BeginRequest {
   readonly replayable: boolean;
   readonly maxInputBytes?: number;
   readonly maxResidentBytes?: number;
+  readonly maxRenderBufferBytes?: number;
+  readonly maxTaskMs?: number;
 }
 
 export interface ProgressPayload {
@@ -87,6 +90,16 @@ export interface LongTaskBudget {
   readonly maxTaskMs: number;
   readonly taskCount: number;
   readonly overBudgetCount: number;
+  readonly totalTaskMs: number;
+  readonly maxObservedTaskMs: number;
+}
+
+export const DEFAULT_LONG_TASK_BUDGET_MS = 50;
+
+export function assertMemoryProfile(value: string): asserts value is MemoryProfile {
+  if (value !== "D1" && value !== "M1") {
+    throw new Error(`unsupported memory profile: ${value}`);
+  }
 }
 
 export function assertResourceLimit(value: number, label: string): void {

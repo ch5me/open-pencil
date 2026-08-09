@@ -87,7 +87,8 @@ describe("transactional IO and worker contracts", () => {
     const worker = new WorkerStateMachine({
       memoryProfile: "D1",
       maxResidentBytes: 64,
-      maxTaskMs: 8,
+      maxRenderBufferBytes: 64,
+      maxTaskMs: 50,
     });
     expect(() =>
       worker.admitProgress({
@@ -107,10 +108,48 @@ describe("transactional IO and worker contracts", () => {
       totalItems: null,
       estimatedResidentBytes: 64,
     });
-    worker.recordLongTask(9);
-    expect(worker.longTaskBudget()).toEqual({ maxTaskMs: 8, taskCount: 1, overBudgetCount: 1 });
+    worker.recordLongTask(50);
+    worker.recordLongTask(51);
+    expect(worker.longTaskBudget()).toEqual({
+      maxTaskMs: 50,
+      taskCount: 2,
+      overBudgetCount: 1,
+      totalTaskMs: 101,
+      maxObservedTaskMs: 51,
+    });
     expect(worker.admitRenderBuffer(4, 4)).toBe(64);
     expect(() => worker.admitRenderBuffer(5, 5)).toThrow(WorkerMemoryPressureError);
+  });
+
+  test("named profiles default to a 50ms long-task budget", () => {
+    const worker = new WorkerStateMachine({ memoryProfile: "M1", maxResidentBytes: 128 });
+    worker.recordLongTask(50);
+    expect(worker.longTaskBudget()).toMatchObject({
+      maxTaskMs: 50,
+      taskCount: 1,
+      overBudgetCount: 0,
+    });
+    expect(() => new WorkerStateMachine({ memoryProfile: "unknown", maxResidentBytes: 128 })).toThrow(
+      "unsupported memory profile",
+    );
+  });
+
+  test("render buffer admission has its own bound within resident memory", () => {
+    const worker = new WorkerStateMachine({
+      memoryProfile: "D1",
+      maxResidentBytes: 128,
+      maxRenderBufferBytes: 64,
+    });
+    expect(worker.admitRenderBuffer(4, 4)).toBe(64);
+    expect(() => worker.admitRenderBuffer(5, 4)).toThrow("render buffer exceeds D1 admission");
+    expect(
+      () =>
+        new WorkerStateMachine({
+          memoryProfile: "D1",
+          maxResidentBytes: 64,
+          maxRenderBufferBytes: 65,
+        }),
+    ).toThrow("maxRenderBufferBytes exceeds maxResidentBytes");
   });
 
   test("worker admits incremental input without retaining prior chunks", () => {
