@@ -1,6 +1,7 @@
 import {
   validateContentJournal,
   type ContentJournalEntry,
+  type ContentRevisionRef,
   type ContentVersion,
 } from "#core/editor/history/journal";
 
@@ -31,6 +32,9 @@ export class ImageEditorStore {
   private readonly journals = new Map<string, ContentJournalEntry>();
   private readonly heads = new Map<string, ContentVersion>();
   private readonly stagedBytes = new Map<string, number>();
+  private readonly knownRevisions = new Map<string, Map<string, ContentRevisionRef>>();
+  private readonly releasedRevisions = new Map<string, Set<string>>();
+  private readonly historyPins = new Map<string, Set<string>>();
 
   constructor(private readonly options: ImageEditorStoreOptions = {}) {
     if (
@@ -136,10 +140,12 @@ export class ImageEditorStore {
         `content journal sequence already committed: ${commit.journal.journalSequence}`,
       );
     }
+    this.validateArchiveReferences(commit.documentId, commit.journal);
     this.journals.set(
       journalKey,
       structuredClone(commit.journal),
     );
+    this.recordRevisionState(commit.documentId, commit.journal);
     this.heads.set(commit.documentId, structuredClone(commit.nextHead));
     this.discardStaged(commit.journal.transactionId);
   }
@@ -155,4 +161,67 @@ export class ImageEditorStore {
         chunk.transactionId === transactionId && chunk.sha256 === revisionId.replace("sha256:", ""),
     );
   }
+
+  private validateArchiveReferences(documentId: string, journal: ContentJournalEntry): void {
+    const known = this.knownRevisions.get(documentId) ?? new Map();
+    const released = this.releasedRevisions.get(documentId) ?? new Set();
+    const pins = this.historyPins.get(documentId) ?? new Set();
+    const staged = new Map(
+      journal.stagedContentRevisions.map((revision) => [revision.revisionId, revision]),
+    );
+
+    for (const revision of journal.stagedContentRevisions) {
+      if (released.has(revision.revisionId)) {
+        throw new ContentCommitMismatch(`revision was already released: ${revision.revisionId}`);
+      }
+      const previous = known.get(revision.revisionId);
+      if (previous && !sameRevisionRef(previous, revision)) {
+        throw new ContentCommitMismatch(`revision ID collision: ${revision.revisionId}`);
+      }
+    }
+
+    for (const pin of journal.historyPinsAdded) {
+      if (pins.has(pin.pinId)) {
+        throw new ContentCommitMismatch(`history pin ID collision: ${pin.pinId}`);
+      }
+      if (pin.kind !== "archive") continue;
+      for (const revisionId of pin.revisionIds) {
+        if (released.has(revisionId) || journal.releasedContentRevisions.includes(revisionId)) {
+          throw new ContentCommitMismatch(
+            `archive pin cannot reference released revision: ${revisionId}`,
+          );
+        }
+        if (!staged.has(revisionId) && !known.has(revisionId)) {
+          throw new ContentCommitMismatch(`archive pin references missing revision: ${revisionId}`);
+        }
+      }
+    }
+  }
+
+  private recordRevisionState(documentId: string, journal: ContentJournalEntry): void {
+    const known = this.knownRevisions.get(documentId) ?? new Map();
+    const released = this.releasedRevisions.get(documentId) ?? new Set();
+    const pins = this.historyPins.get(documentId) ?? new Set();
+    for (const revision of journal.stagedContentRevisions) known.set(revision.revisionId, structuredClone(revision));
+    for (const revisionId of journal.releasedContentRevisions) {
+      known.delete(revisionId);
+      released.add(revisionId);
+    }
+    for (const pin of journal.historyPinsAdded) pins.add(pin.pinId);
+    for (const pinId of journal.historyPinsReleased) pins.delete(pinId);
+    this.knownRevisions.set(documentId, known);
+    this.releasedRevisions.set(documentId, released);
+    this.historyPins.set(documentId, pins);
+  }
+}
+
+function sameRevisionRef(left: ContentRevisionRef, right: ContentRevisionRef): boolean {
+  return (
+    left.revisionId === right.revisionId &&
+    left.kind === right.kind &&
+    left.byteLength === right.byteLength &&
+    left.sha256 === right.sha256 &&
+    left.temporary === right.temporary &&
+    JSON.stringify(left.metadata) === JSON.stringify(right.metadata)
+  );
 }
