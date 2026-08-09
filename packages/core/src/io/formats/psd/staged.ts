@@ -50,6 +50,13 @@ export function parsePsdHeader(
   if (!Number.isSafeInteger(decodedBytes) || decodedBytes > limits.maxDecodedBytes) {
     throw new PsdHostileFileError("PSD decoded payload exceeds limits");
   }
+  if (decodedBytes / Math.max(1, bytes.byteLength) > limits.maxExpansionRatio) {
+    throw new PsdHostileFileError("PSD compressed expansion exceeds limits");
+  }
+  const renderBytes = header.width * header.height * 4;
+  if (!Number.isSafeInteger(renderBytes) || renderBytes > limits.maxRenderBytes) {
+    throw new PsdHostileFileError("PSD render buffer exceeds limits");
+  }
   return header;
 }
 

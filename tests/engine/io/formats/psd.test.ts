@@ -37,3 +37,13 @@ test("rejects decoded payload expansion before allocation", () => {
     }),
   ).toThrow("decoded payload exceeds limits");
 });
+
+test("rejects compressed expansion and render-buffer budgets", () => {
+  const bytes = stagePsdExport({ width: 10, height: 20, layers: [] });
+  expect(() => stagePsdImport(bytes, { ...DEFAULT_PSD_LIMITS, maxExpansionRatio: 1 })).toThrow(
+    "compressed expansion exceeds limits",
+  );
+  expect(() => stagePsdImport(bytes, { ...DEFAULT_PSD_LIMITS, maxRenderBytes: 100 })).toThrow(
+    "render buffer exceeds limits",
+  );
+});

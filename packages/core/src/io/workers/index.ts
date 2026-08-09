@@ -1,1 +1,6 @@
-export { WorkerProtocolError, WorkerStateMachine, type WorkerAdmissionOptions } from "./state";
+export {
+  WorkerMemoryPressureError,
+  WorkerProtocolError,
+  WorkerStateMachine,
+  type WorkerAdmissionOptions,
+} from "./state";

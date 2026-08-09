@@ -12,6 +12,10 @@ export class WorkerProtocolError extends Error {
   readonly code = "worker-protocol-error";
 }
 
+export class WorkerMemoryPressureError extends WorkerProtocolError {
+  readonly code = "worker-memory-pressure";
+}
+
 export interface WorkerAdmissionOptions {
   readonly memoryProfile: string;
   readonly maxResidentBytes: number;
@@ -87,10 +91,33 @@ export class WorkerStateMachine {
       throw new WorkerProtocolError("estimatedResidentBytes must be a non-negative safe integer");
     }
     if (this.options && progress.estimatedResidentBytes > this.options.maxResidentBytes) {
-      throw new WorkerProtocolError(
+      throw new WorkerMemoryPressureError(
         `estimatedResidentBytes exceeds ${this.options.memoryProfile} admission`,
       );
     }
+  }
+
+  admitRenderBuffer(width: number, height: number, bytesPerPixel = 4): number {
+    if (
+      !Number.isSafeInteger(width) ||
+      !Number.isSafeInteger(height) ||
+      !Number.isSafeInteger(bytesPerPixel) ||
+      width <= 0 ||
+      height <= 0 ||
+      bytesPerPixel <= 0
+    ) {
+      throw new WorkerProtocolError("render dimensions must be positive safe integers");
+    }
+    const bytes = width * height * bytesPerPixel;
+    if (!Number.isSafeInteger(bytes)) {
+      throw new WorkerMemoryPressureError("render buffer size exceeds safe integer range");
+    }
+    if (this.options && bytes > this.options.maxResidentBytes) {
+      throw new WorkerMemoryPressureError(
+        `render buffer exceeds ${this.options.memoryProfile} admission`,
+      );
+    }
+    return bytes;
   }
 
   recordLongTask(durationMs: number): void {

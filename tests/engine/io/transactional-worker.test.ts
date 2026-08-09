@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { HostTransaction } from "#core/io/transactional";
-import { WorkerStateMachine } from "#core/io/workers";
+import { WorkerMemoryPressureError, WorkerStateMachine } from "#core/io/workers";
 
 const digest = "a".repeat(64);
 const chunk = (index: number) => ({
@@ -86,6 +86,8 @@ describe("transactional IO and worker contracts", () => {
     });
     worker.recordLongTask(9);
     expect(worker.longTaskBudget()).toEqual({ maxTaskMs: 8, taskCount: 1, overBudgetCount: 1 });
+    expect(worker.admitRenderBuffer(4, 4)).toBe(64);
+    expect(() => worker.admitRenderBuffer(5, 5)).toThrow(WorkerMemoryPressureError);
   });
 
   test("host rejects input above declared admission before staging", () => {
