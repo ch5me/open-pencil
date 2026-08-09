@@ -1,6 +1,12 @@
 import { expect, test } from "bun:test";
 
-import { EvidenceCollector, EvidenceContractError } from "#core/editor/image-observability";
+import {
+  createBenchmarkResult,
+  deterministicP95,
+  EvidenceCollector,
+  EvidenceContractError,
+  GpuProfileUnavailableError,
+} from "#core/editor/image-observability";
 
 const identity = { repo: "open-pencil", commit: "abc", runtime: "bun" };
 
@@ -21,4 +27,23 @@ test("marks stale and substituted evidence visibly", () => {
   expect(receipt.substituted).toBe(true);
   const empty = new EvidenceCollector("empty", identity);
   expect(() => empty.assertNonzeroOutput()).toThrow(EvidenceContractError);
+});
+
+test("performance-d1-m1-v1 tracks deterministic p95 and unavailable GPU profile", () => {
+  const result = createBenchmarkResult(100, [3, 1, 4, 2, 5]);
+  expect(result.p95).toBe(5);
+  expect(deterministicP95([10, 20, 30, 40])).toBe(40);
+  const profile = {
+    version: "performance-d1-m1-v1" as const,
+    memoryProfile: "D1",
+    tiled: true,
+    mipmaps: true,
+    proxyPreview: true,
+    renderGraphScheduling: true,
+    filterFusion: true,
+    gpuProfile: "UNKNOWN" as const,
+  };
+  expect(profile.version).toBe("performance-d1-m1-v1");
+  expect(profile.gpuProfile).toBe("UNKNOWN");
+  expect(new GpuProfileUnavailableError().code).toBe("E_PERFORMANCE_GPU_PROFILE_UNAVAILABLE");
 });
