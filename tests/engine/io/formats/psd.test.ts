@@ -7,6 +7,7 @@ import {
   PsdHostileFileError,
   PsdUnsupportedError,
   parsePsdHeader,
+  readPsdFile,
   stagePsdExport,
   stagePsdImport,
 } from "#core/io/formats/psd";
@@ -115,4 +116,20 @@ test("psd-corpus-v1 covers capabilities with fail-loud external reopen status", 
   expect(manifest.warningCoverage).toBe(1);
   expect(manifest.failedImportVisibleMutationCount).toBe(0);
   expect(manifest.cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(true);
+});
+
+test("rejects oversized PSD files before reading payload", async () => {
+  let reads = 0;
+  const file = {
+    size: 101,
+    arrayBuffer: async () => {
+      reads += 1;
+      return new ArrayBuffer(26);
+    },
+  } as unknown as File;
+
+  await expect(readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxBytes: 100 })).rejects.toThrow(
+    "PSD exceeds byte limit",
+  );
+  expect(reads).toBe(0);
 });
