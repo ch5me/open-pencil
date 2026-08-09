@@ -32,6 +32,17 @@ export class ImageEditorStore {
     return chunk && { ...chunk, bytes: new Uint8Array(chunk.bytes) };
   }
 
+  discardStaged(transactionId: string): void {
+    for (const key of this.chunks.keys()) {
+      if (key.startsWith(`${transactionId}/`)) this.chunks.delete(key);
+    }
+  }
+
+  stagedChunkCount(transactionId: string): number {
+    return [...this.chunks.values()].filter((chunk) => chunk.transactionId === transactionId)
+      .length;
+  }
+
   setInitialHead(documentId: string, head: ContentVersion): void {
     if (this.heads.has(documentId)) throw new Error(`content head already exists: ${documentId}`);
     this.heads.set(documentId, structuredClone(head));
@@ -56,11 +67,11 @@ export class ImageEditorStore {
         throw new StagedChunkMismatch(`missing staged revision: ${revisionId}`);
       }
     }
-    this.heads.set(commit.documentId, structuredClone(commit.nextHead));
     this.journals.set(
       `${commit.documentId}/${commit.journal.journalSequence}`,
       structuredClone(commit.journal),
     );
+    this.heads.set(commit.documentId, structuredClone(commit.nextHead));
   }
 
   getJournal(documentId: string, sequence: number): ContentJournalEntry | undefined {

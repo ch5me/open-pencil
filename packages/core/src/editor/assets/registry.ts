@@ -85,6 +85,28 @@ export class AssetRegistry {
     return { releasedRevisionIds, releasedBytes };
   }
 
+  assertConsistent(): void {
+    for (const binding of this.bindings.values()) this.requireRevision(binding.revisionId);
+  }
+
+  reachableRevisionIds(): ReadonlySet<ContentRevisionId> {
+    return new Set([...this.bindings.values()].map((binding) => binding.revisionId));
+  }
+
+  snapshot(): {
+    readonly bindings: readonly AssetBinding[];
+    readonly revisions: readonly AssetRevision[];
+  } {
+    return {
+      bindings: [...this.bindings.values()].map((binding) => ({ ...binding })),
+      revisions: [...this.revisions.values()].map((revision) => ({
+        ...revision,
+        metadata: structuredClone(revision.metadata),
+        bytes: new Uint8Array(revision.bytes),
+      })),
+    };
+  }
+
   private requireBinding(assetId: AssetId): AssetBinding {
     const binding = this.bindings.get(assetId);
     if (!binding) throw new Error(`missing asset binding: ${assetId}`);
