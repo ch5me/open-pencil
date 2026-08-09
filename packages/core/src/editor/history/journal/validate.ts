@@ -125,6 +125,11 @@ export function validateContentJournal(entry: ContentJournalEntry): void {
     }
     releasedRevisionIds.add(revisionId);
   });
+  for (const revisionId of stagedRevisionIds) {
+    if (releasedRevisionIds.has(revisionId)) {
+      throw new Error(`revision cannot be staged and released in one journal: ${revisionId}`);
+    }
+  }
   const pinIds = new Set<string>();
   entry.historyPinsAdded.forEach((pin, index) => {
     assertHistoryPin(pin, index);
@@ -132,6 +137,11 @@ export function validateContentJournal(entry: ContentJournalEntry): void {
       throw new Error(`historyPinsAdded contains duplicate pin ID: ${pin.pinId}`);
     }
     pinIds.add(pin.pinId);
+    for (const revisionId of pin.revisionIds) {
+      if (releasedRevisionIds.has(revisionId)) {
+        throw new Error(`history pin cannot reference released revision: ${revisionId}`);
+      }
+    }
   });
   const releasedPinIds = new Set<string>();
   entry.historyPinsReleased.forEach((pinId, index) => {
@@ -141,6 +151,11 @@ export function validateContentJournal(entry: ContentJournalEntry): void {
     }
     releasedPinIds.add(pinId);
   });
+  for (const pinId of pinIds) {
+    if (releasedPinIds.has(pinId)) {
+      throw new Error(`history pin cannot be added and released in one journal: ${pinId}`);
+    }
+  }
   for (const pinId of pinIds) {
     if (releasedPinIds.has(pinId)) {
       throw new Error(`history pin cannot be added and released in one journal: ${pinId}`);

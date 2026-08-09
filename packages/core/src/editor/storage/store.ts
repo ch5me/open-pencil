@@ -1,4 +1,8 @@
-import type { ContentJournalEntry, ContentVersion } from "#core/editor/history/journal";
+import {
+  validateContentJournal,
+  type ContentJournalEntry,
+  type ContentVersion,
+} from "#core/editor/history/journal";
 
 import type { ContentCommit, StagedChunk } from "./types";
 
@@ -98,6 +102,7 @@ export class ImageEditorStore {
   }
 
   commitContent(commit: ContentCommit): void {
+    validateContentJournal(commit.journal);
     if (
       commit.nextHead.sequence !== commit.journal.nextContentVersion.sequence ||
       commit.nextHead.contentRootHash !== commit.journal.nextContentVersion.contentRootHash
