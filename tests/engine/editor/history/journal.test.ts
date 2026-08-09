@@ -65,6 +65,35 @@ describe("editor history journal", () => {
     expect(journal.status).toBe("published");
   });
 
+  test("view-only commits leave content history unchanged", () => {
+    const allocator = createJournalIdAllocator(0, () => "journal-id");
+    const content = createContentJournal(allocator, {
+      journalSequence: allocator.journalSequence(),
+      baseContentVersion: { sequence: 1, contentRootHash: ROOT },
+      nextContentVersion: { sequence: 2, contentRootHash: "b".repeat(64) },
+      contractHash: "contract",
+      authorityMatrixHash: "c".repeat(64),
+    });
+    const view = createViewJournal(allocator, {
+      baseViewVersion: { sequence: 4, viewRootHash: ROOT },
+      nextViewVersion: { sequence: 5, viewRootHash: "d".repeat(64) },
+    });
+
+    const publishedView = transitionViewJournal(
+      transitionViewJournal(view, "committed"),
+      "published",
+    );
+
+    expect(publishedView.status).toBe("published");
+    expect(content).toMatchObject({
+      status: "validating",
+      baseContentVersion: { sequence: 1, contentRootHash: ROOT },
+      nextContentVersion: { sequence: 2, contentRootHash: "b".repeat(64) },
+    });
+    expect(content).not.toHaveProperty("baseViewVersion");
+    expect(content).not.toHaveProperty("nextViewVersion");
+  });
+
   test("revision identity changes when metadata or bytes change", async () => {
     const first = await createContentRevisionId("png", { width: 2 }, new Uint8Array([1]));
     const metadataChange = await createContentRevisionId("png", { width: 3 }, new Uint8Array([1]));
