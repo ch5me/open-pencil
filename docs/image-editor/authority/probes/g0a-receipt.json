@@ -23,7 +23,7 @@
     "git -C /Users/hassoncs/src/ch5/ch5-packages fetch --prune origin",
     "omx agents list"
   ],
-  "staleStateResolution": "Fresh origin/main tips fetched from all three Grove leader Trees. All leader Trees clean; ch5-packages origin/main reconciled to 98ad2b407069a4878233f023e041466664584f7e. No producer source edits made or included.",
+  "staleStateResolution": "Fresh origin/main tips fetched from all three Grove leader Trees. All leader Trees clean; ch5-packages origin/main reconciled to 2e81e50973e6d1ce367c159b47300089b1b4bb60. No producer source edits made or included.",
   "status": "submitted_pending_architect",
   "subagentEvidence": "Subagent spawn evidence: 2 child tasks (canonical plan/receipt extraction; authority-surface inspection) spawned; findings integrated.",
   "testSpecSha256": "ee70da2d841561ec93f68b7f3093f4373c18b27e03360b837f9e7aec74c1077b",
