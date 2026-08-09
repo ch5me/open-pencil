@@ -8,7 +8,7 @@
   "lane": "G0A-O",
   "pathAllocationHash": "a62536f291cad2eb77dc55e21f04da8f5c54484524af88176580f5fc50ded21a",
   "planSha256": "5370f27489c456f2ae3dc6fdf1d28e98252b26c1bd2616c662f54c9c1b9592d9",
-  "producerTipSetHash": "30e53ef5692094c7fd5040c082e4d8524a5c7e659ab48cb4c70e0a3a74cf2c5f",
+  "producerTipSetHash": "143eb3b9d3f224470b7fe4752a4bff117e150d809e9b7bc0bb1bb76bd996d242",
   "readOnlyProbePaths": [
     "docs/image-editor/authority/probes/behavioral-probes.json",
     "docs/image-editor/authority/probes/installed-roster.json",
