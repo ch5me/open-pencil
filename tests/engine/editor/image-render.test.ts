@@ -193,6 +193,38 @@ test("image render adapter emits commands for visible nodes but skips hidden or 
 
   expect(frame.commands.map((command) => command.nodeId)).toEqual(["visible"]);
   expect(frame.textures).toEqual([]);
+  expect(frame.gaps).toEqual([
+    {
+      code: "missing-asset-revision",
+      message: "asset revision is unavailable: sha256:revision-1",
+      assetId: "asset:hero",
+    },
+  ]);
+});
+
+test("image render adapter exposes typed gaps for missing and mismatched bindings", () => {
+  const plan = imagePlan([imageNode("missing", "asset:missing"), imageNode("mismatch", "asset:mismatch")]);
+  const frame = createImageRenderAdapter().render(plan, {
+    getAsset: (assetId) =>
+      assetId === "asset:mismatch"
+        ? { assetId: "asset:other", revisionId: "sha256:revision-1" }
+        : undefined,
+    getRevision: () => undefined,
+  });
+
+  expect(frame.gaps).toEqual([
+    {
+      code: "missing-asset-binding",
+      message: "asset binding is unavailable: asset:missing",
+      assetId: "asset:missing",
+    },
+    {
+      code: "asset-binding-mismatch",
+      message: "asset binding does not match requested asset: asset:mismatch",
+      assetId: "asset:mismatch",
+    },
+  ]);
+  expect(frame.textures).toEqual([]);
 });
 
 test("renderer-resilience-v1 records unsupported runtime paths as UNKNOWN", () => {
