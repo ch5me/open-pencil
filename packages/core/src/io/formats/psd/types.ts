@@ -4,6 +4,38 @@ export type PsdWarningCode =
   | "unsupported-layer-feature"
   | "hostile-file-limit";
 
+export type PsdCapabilityCode =
+  | "E_PSD_CAPABILITY_EDITABLE_TEXT"
+  | "E_PSD_CAPABILITY_SHAPES"
+  | "E_PSD_CAPABILITY_ROTATED_MASKS"
+  | "E_PSD_CAPABILITY_BLEND_MODES"
+  | "E_PSD_CAPABILITY_ADJUSTMENTS"
+  | "E_PSD_CAPABILITY_SMART_OBJECTS"
+  | "E_PSD_CAPABILITY_VECTORS"
+  | "E_PSD_CAPABILITY_PATHS"
+  | "E_PSD_CAPABILITY_EFFECTS"
+  | "E_PSD_CAPABILITY_VECTOR_MASKS"
+  | "E_PSD_CAPABILITY_CHANNELS"
+  | "E_PSD_CAPABILITY_ICC"
+  | "E_PSD_CAPABILITY_DPI"
+  | "E_PSD_CAPABILITY_CMYK"
+  | "E_PSD_CAPABILITY_16_BIT"
+  | "E_PSD_CAPABILITY_PSB";
+
+export interface PsdCorpusCase {
+  readonly name: string;
+  readonly capability: PsdCapabilityCode;
+  readonly warning: PsdWarningCode;
+  readonly externalReopen: "UNKNOWN";
+}
+
+export interface PsdCorpusManifest {
+  readonly version: "psd-corpus-v1";
+  readonly cases: readonly PsdCorpusCase[];
+  readonly warningCoverage: 1;
+  readonly failedImportVisibleMutationCount: 0;
+}
+
 export interface PsdLimits {
   readonly maxBytes: number;
   readonly maxWidth: number;

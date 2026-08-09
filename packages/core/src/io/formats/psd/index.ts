@@ -3,10 +3,19 @@ export {
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdExportInput,
+  type PsdCapabilityCode,
+  type PsdCorpusCase,
+  type PsdCorpusManifest,
   type PsdHeader,
   type PsdImportResult,
   type PsdLayerMetadata,
   type PsdLimits,
   type PsdWarningCode,
 } from "./types";
-export { layerMetadata, parsePsdHeader, stagePsdExport, stagePsdImport } from "./staged";
+export {
+  createPsdCorpusManifest,
+  layerMetadata,
+  parsePsdHeader,
+  stagePsdExport,
+  stagePsdImport,
+} from "./staged";
