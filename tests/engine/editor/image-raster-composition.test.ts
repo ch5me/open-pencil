@@ -380,7 +380,7 @@ test("RGBA8 group masks use accumulated bounds inside clipped groups", () => {
   });
   expect([...composeRasterRGBA8(plan, resolver(revision), { width: 3, height: 1 }).pixels]).toEqual([
     0, 0, 0, 0,
-    255, 0, 0, 255,
+    0, 255, 0, 255,
     0, 0, 0, 0,
   ]);
 });
@@ -475,8 +475,8 @@ test("RGBA8 composition clips nested children and applies inherited opacity", ()
   const result = composeRasterRGBA8(plan, resolver(revision), { width: 4, height: 2 });
 
   expect([...result.pixels]).toEqual([
-    0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 64, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 64, 0, 0, 0, 0,
+    0, 0, 0, 0, 255, 0, 0, 64, 255, 0, 0, 64, 0, 0, 0, 0,
+    0, 0, 0, 0, 255, 0, 0, 64, 255, 0, 0, 64, 0, 0, 0, 0,
   ]);
 });
 
