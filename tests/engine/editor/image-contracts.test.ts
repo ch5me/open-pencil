@@ -10,6 +10,15 @@ import {
 } from "#core/editor/image-contracts";
 
 describe("image editor contracts", () => {
+  test("matches the accepted current-authority artifacts", () => {
+    expect(AUTHORITY_MATRIX_HASH).toBe(
+      "c9fa1e9e0167e69a73c0bc1534e7e4d089237b2063f1d9a0701510fe54477ae7",
+    );
+    expect(PATH_ALLOCATION_HASH).toBe(
+      "40e2dcedf8e530630d881594ea92e68fcc9b0d7fc09fe66dacaa3cf6ff1b3625",
+    );
+  });
+
   test("accepts the approved Wave 1 dependency receipt", () => {
     expect(() =>
       assertWaveOneDependency({
