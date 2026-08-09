@@ -12,9 +12,7 @@ export function assertInputWithinLimit(byteLength: number, maxInputBytes?: numbe
     throw new IOInputLimitError("maxInputBytes must be a non-negative safe integer");
   }
   if (byteLength > maxInputBytes) {
-    throw new IOInputLimitError(
-      `input exceeds maxInputBytes: ${byteLength} > ${maxInputBytes}`,
-    );
+    throw new IOInputLimitError(`input exceeds maxInputBytes: ${byteLength} > ${maxInputBytes}`);
   }
 }
 

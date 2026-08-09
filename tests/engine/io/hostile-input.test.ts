@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
 
-import { IOInputLimitError, IORegistry } from "#core/io/registry";
 import { readFigFile } from "#core/io/formats/fig/read";
 import { readPenFile } from "#core/io/formats/pen/read";
+import { IOInputLimitError, IORegistry } from "#core/io/registry";
 
 const oversizedFile = (size: number) => {
   let reads = 0;
@@ -24,9 +24,7 @@ const oversizedFile = (size: number) => {
 
 test("hostile-io-v1 rejects JSON before payload allocation", async () => {
   const input = oversizedFile(101);
-  await expect(readPenFile(input.file, { maxInputBytes: 100 })).rejects.toThrow(
-    IOInputLimitError,
-  );
+  await expect(readPenFile(input.file, { maxInputBytes: 100 })).rejects.toThrow(IOInputLimitError);
   expect(input.reads()).toBe(0);
 });
 
