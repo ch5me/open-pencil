@@ -6,6 +6,7 @@ import {
   type HostState,
   assertResourceLimit,
   assertMemoryProfile,
+  MAX_LONG_TASK_BUDGET_MS,
 } from "./protocol";
 
 export class TransactionProtocolError extends Error {
@@ -70,7 +71,12 @@ export class HostTransaction {
         throw new TransactionProtocolError("maxRenderBufferBytes exceeds maxResidentBytes");
       }
     }
-    if (request.maxTaskMs !== undefined) assertResourceLimit(request.maxTaskMs, "maxTaskMs");
+    if (request.maxTaskMs !== undefined) {
+      assertResourceLimit(request.maxTaskMs, "maxTaskMs");
+      if (request.maxTaskMs > MAX_LONG_TASK_BUDGET_MS) {
+        throw new TransactionProtocolError("maxTaskMs exceeds 50ms budget");
+      }
+    }
     this.advance("staging-input");
   }
 

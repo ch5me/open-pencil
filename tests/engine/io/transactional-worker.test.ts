@@ -132,6 +132,9 @@ describe("transactional IO and worker contracts", () => {
     expect(() => new WorkerStateMachine({ memoryProfile: "unknown", maxResidentBytes: 128 })).toThrow(
       "unsupported memory profile",
     );
+    expect(() => new WorkerStateMachine({ memoryProfile: "D1", maxResidentBytes: 128, maxTaskMs: 51 })).toThrow(
+      "maxTaskMs exceeds 50ms budget",
+    );
   });
 
   test("render buffer admission has its own bound within resident memory", () => {

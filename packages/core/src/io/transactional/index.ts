@@ -11,6 +11,7 @@ export {
   canTransitionHost,
   canTransitionWorker,
   DEFAULT_LONG_TASK_BUDGET_MS,
+  MAX_LONG_TASK_BUDGET_MS,
   WORKER_PROTOCOL,
   type BeginRequest,
   type ChunkDescriptor,
