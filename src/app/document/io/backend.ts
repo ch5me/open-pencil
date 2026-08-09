@@ -17,6 +17,8 @@ export type DocumentBackendCapability =
   | "hostedAutosave"
   | "metadataLoad";
 
+export type DocumentCapabilityState = "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
+
 export type DocumentBackendErrorCode =
   | "illegal-operation"
   | "missing-capability"
@@ -29,6 +31,7 @@ export type DocumentOperationPolicy = {
 };
 
 export type DocumentCapabilityPolicy = {
+  state: DocumentCapabilityState;
   supported: boolean;
   reason: string;
 };
@@ -150,6 +153,7 @@ export function createCapabilityPolicies(
       return [
         capability,
         {
+          state: isSupported ? "SUPPORTED" : "UNSUPPORTED",
           supported: isSupported,
           reason:
             reasonByCapability[capability] ??

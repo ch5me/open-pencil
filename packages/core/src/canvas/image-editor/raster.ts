@@ -77,6 +77,10 @@ export class RasterCompositionError extends Error {
   readonly code = "E_RASTER_COMPOSITION";
 }
 
+export class RasterBackendUnavailableError extends RasterCompositionError {
+  readonly code = "E_RASTER_BACKEND_UNAVAILABLE";
+}
+
 export const RASTER_RGBA8_PARITY: RasterParityThresholds = {
   maxChannelDelta: 1 / 255,
   maxMeanBias: 1 / 255,
@@ -234,6 +238,11 @@ export function composeRasterRGBA8(
   resolve: RasterCompositionAssetResolver,
   options: RasterCompositionOptions,
 ): RasterCompositionPixels {
+  if (options.backend !== undefined && options.backend !== "canvas2d") {
+    throw new RasterBackendUnavailableError(
+      `RGBA8 compositor cannot claim ${options.backend} backend support`,
+    );
+  }
   if (!Number.isInteger(options.width) || !Number.isInteger(options.height) || options.width <= 0 || options.height <= 0) {
     throw new RasterCompositionError("invalid RGBA8 output dimensions");
   }

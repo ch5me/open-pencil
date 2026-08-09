@@ -5,6 +5,7 @@ import { assertPixelParity } from "#core/color/composition";
 import {
   composeRaster,
   composeRasterRGBA8,
+  RasterBackendUnavailableError,
   RASTER_RGBA8_PARITY,
   type RasterCompositionAssetResolver,
 } from "#core/canvas/image-editor";
@@ -33,6 +34,16 @@ function node(overrides: Partial<SceneNode> & Pick<SceneNode, "id" | "type">): S
     fills: overrides.fills ?? [],
   } as SceneNode;
 }
+
+test("RGBA8 compositor rejects non-Canvas2D backend claims", () => {
+  expect(() =>
+    composeRasterRGBA8(
+      planFor([node({ id: "image", type: "IMAGE" })], "image"),
+      { getAsset: () => undefined, getRevision: () => undefined },
+      { width: 1, height: 1, backend: "webgpu" },
+    ),
+  ).toThrow(RasterBackendUnavailableError);
+});
 
 function resolver(revision: AssetRevision): RasterCompositionAssetResolver {
   return {

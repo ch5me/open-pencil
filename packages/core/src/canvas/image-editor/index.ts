@@ -18,6 +18,7 @@ export {
 export {
   composeRaster,
   composeRasterRGBA8,
+  RasterBackendUnavailableError,
   RasterCompositionError,
   type RasterAdjustment,
   type RasterCompositionAssetResolver,
