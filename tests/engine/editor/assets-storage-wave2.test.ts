@@ -75,6 +75,46 @@ test("staged chunks can be discarded without changing committed head", () => {
   expect(store.getHead("doc")?.sequence).toBe(1);
 });
 
+test("staged chunks validate offsets and content digests", () => {
+  const store = new ImageEditorStore();
+  const base = {
+    transactionId: "tx:validate",
+    chunkIndex: 0,
+    offset: 0,
+    byteLength: 1,
+    sha256: "b".repeat(64),
+    final: true,
+    bytes: new Uint8Array([1]),
+  };
+  expect(() => store.stageChunk({ ...base, offset: -1 })).toThrow(
+    "offset must be a non-negative safe integer",
+  );
+  expect(() => store.stageChunk({ ...base, sha256: "not-a-digest" })).toThrow(
+    "staged chunk sha256 must be a lowercase SHA-256 hex digest",
+  );
+  expect(() => store.stageChunk(base)).not.toThrow();
+});
+
+test("asset revisions reject same-size content mutation and allocator collisions", () => {
+  const registry = new AssetRegistry({ assetId: () => "asset:fixed" });
+  registry.registerRevision({
+    revisionId: revision(1),
+    kind: "image",
+    metadata: { width: 1 },
+    bytes: new Uint8Array([1, 2]),
+  });
+  expect(() =>
+    registry.registerRevision({
+      revisionId: revision(1),
+      kind: "image",
+      metadata: { width: 1 },
+      bytes: new Uint8Array([1, 3]),
+    }),
+  ).toThrow("immutable asset revision conflict");
+  registry.createAsset(revision(1));
+  expect(() => registry.createAsset(revision(1))).toThrow("duplicate asset binding");
+});
+
 test("10,000 combined edits restore hashes and leave no dangling or mixed references", () => {
   let seed = 0x7e57c0de;
   const next = (max: number) => {

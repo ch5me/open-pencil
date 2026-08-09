@@ -22,7 +22,10 @@ export class AssetRegistry {
     const existing = this.revisions.get(revision.revisionId);
     if (
       existing &&
-      (existing.kind !== revision.kind || existing.bytes.length !== revision.bytes.length)
+      (existing.kind !== revision.kind ||
+        existing.bytes.length !== revision.bytes.length ||
+        !bytesEqual(existing.bytes, revision.bytes) ||
+        JSON.stringify(existing.metadata) !== JSON.stringify(revision.metadata))
     ) {
       throw new Error(`immutable asset revision conflict: ${revision.revisionId}`);
     }
@@ -36,6 +39,9 @@ export class AssetRegistry {
   createAsset(revisionId: ContentRevisionId): AssetBinding {
     this.requireRevision(revisionId);
     const binding = { assetId: this.ids.assetId(), revisionId };
+    if (this.bindings.has(binding.assetId)) {
+      throw new Error(`duplicate asset binding: ${binding.assetId}`);
+    }
     this.bindings.set(binding.assetId, binding);
     return binding;
   }
@@ -118,4 +124,9 @@ export class AssetRegistry {
     if (!revision) throw new Error(`missing content revision: ${revisionId}`);
     return revision;
   }
+}
+
+function bytesEqual(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((byte, index) => byte === right[index]);
 }

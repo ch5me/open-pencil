@@ -7,6 +7,7 @@ import type {
 export interface StagedChunk {
   readonly transactionId: string;
   readonly chunkIndex: number;
+  readonly offset: number;
   readonly byteLength: number;
   readonly sha256: string;
   readonly final: boolean;

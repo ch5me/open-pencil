@@ -19,8 +19,14 @@ export class ImageEditorStore {
     if (chunk.chunkIndex < 0 || !Number.isSafeInteger(chunk.chunkIndex)) {
       throw new Error("chunkIndex must be a non-negative safe integer");
     }
+    if (chunk.offset < 0 || !Number.isSafeInteger(chunk.offset)) {
+      throw new Error("offset must be a non-negative safe integer");
+    }
     if (chunk.byteLength !== chunk.bytes.byteLength)
       throw new StagedChunkMismatch("staged chunk length mismatch");
+    if (!/^[0-9a-f]{64}$/u.test(chunk.sha256)) {
+      throw new StagedChunkMismatch("staged chunk sha256 must be a lowercase SHA-256 hex digest");
+    }
     this.chunks.set(`${chunk.transactionId}/${chunk.chunkIndex}`, {
       ...chunk,
       bytes: new Uint8Array(chunk.bytes),
