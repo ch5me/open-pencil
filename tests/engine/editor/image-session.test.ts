@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import {
+  activateDocument,
   closeDocument,
   createImageSession,
   markDocumentDirty,
@@ -26,6 +27,26 @@ test("dirty close fails loud; clean close restores active tab", () => {
   const closed = closeDocument(opened.state, "doc:one", "tx:close");
   expect(closed.state.activeDocumentId).toBeNull();
   expect(new SessionCapabilityUnavailableError().code).toBe("E_SESSION_CAPABILITY_UNAVAILABLE");
+});
+
+test("document workflow rejects unknown tabs and activates an existing tab", () => {
+  const opened = openDocument(
+    openDocument(createImageSession(), "doc:one", "One", "tx:open-one").state,
+    "doc:two",
+    "Two",
+    "tx:open-two",
+  );
+  const activated = activateDocument(opened.state, "doc:one", "tx:activate");
+  expect(activated.state.activeDocumentId).toBe("doc:one");
+  expect(() => activateDocument(opened.state, "doc:missing", "tx:activate")).toThrow(
+    SessionCapabilityUnavailableError,
+  );
+  expect(() => markDocumentDirty(opened.state, "doc:missing", true, "tx:edit")).toThrow(
+    "document is not open",
+  );
+  expect(() => closeDocument(opened.state, "doc:missing", "tx:close")).toThrow(
+    "document is not open",
+  );
 });
 
 test("shell-command-v1 maps visible actions and isolates three document sessions", () => {

@@ -37,6 +37,12 @@ export class SessionCapabilityUnavailableError extends Error {
   readonly code = "E_SESSION_CAPABILITY_UNAVAILABLE";
 }
 
+function requireDocument(state: ImageSessionState, documentId: string): DocumentTab {
+  const tab = state.tabs.find((candidate) => candidate.documentId === documentId);
+  if (!tab) throw new SessionCapabilityUnavailableError(`document is not open: ${documentId}`);
+  return tab;
+}
+
 export function createImageSession(state: Partial<ImageSessionState> = {}): ImageSessionState {
   return {
     activeDocumentId: state.activeDocumentId ?? null,
@@ -70,8 +76,18 @@ export function markDocumentDirty(
   dirty: boolean,
   transactionId: `tx:${string}`,
 ): SessionMutation {
+  requireDocument(state, documentId);
   const tabs = state.tabs.map((tab) => (tab.documentId === documentId ? { ...tab, dirty } : tab));
   return { documentId, transactionId, state: { ...state, tabs } };
+}
+
+export function activateDocument(
+  state: ImageSessionState,
+  documentId: string,
+  transactionId: `tx:${string}`,
+): SessionMutation {
+  requireDocument(state, documentId);
+  return { documentId, transactionId, state: { ...state, activeDocumentId: documentId } };
 }
 
 export function closeDocument(
@@ -79,8 +95,8 @@ export function closeDocument(
   documentId: string,
   transactionId: `tx:${string}`,
 ): SessionMutation {
-  const tab = state.tabs.find((candidate) => candidate.documentId === documentId);
-  if (tab?.dirty) throw new SessionCapabilityUnavailableError("dirty document needs confirmation");
+  const tab = requireDocument(state, documentId);
+  if (tab.dirty) throw new SessionCapabilityUnavailableError("dirty document needs confirmation");
   const tabs = state.tabs.filter((candidate) => candidate.documentId !== documentId);
   return {
     documentId,

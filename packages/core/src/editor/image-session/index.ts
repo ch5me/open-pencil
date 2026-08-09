@@ -1,4 +1,5 @@
 export {
+  activateDocument,
   closeDocument,
   createImageSession,
   markDocumentDirty,
