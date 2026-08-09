@@ -16,6 +16,7 @@ export {
   createPsdCorpusManifest,
   layerMetadata,
   parsePsdHeader,
+  readPsdFile,
   stagePsdExport,
   stagePsdImport,
 } from "./staged";

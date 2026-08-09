@@ -123,6 +123,14 @@ export function stagePsdImport(
   };
 }
 
+export async function readPsdFile(
+  file: File,
+  limits: PsdLimits = DEFAULT_PSD_LIMITS,
+): Promise<PsdImportResult> {
+  if (file.size > limits.maxBytes) throw new PsdHostileFileError("PSD exceeds byte limit");
+  return stagePsdImport(new Uint8Array(await file.arrayBuffer()), limits);
+}
+
 export function stagePsdExport(
   input: PsdExportInput,
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
