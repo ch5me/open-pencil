@@ -5,6 +5,7 @@ import { assertPixelParity } from "#core/color/composition";
 import {
   composeRaster,
   composeRasterRGBA8,
+  RASTER_RGBA8_PARITY,
   type RasterCompositionAssetResolver,
 } from "#core/canvas/image-editor";
 import type { AssetRevision } from "#core/editor/assets";
@@ -408,12 +409,75 @@ test("RGBA16F and Skia oracle paths emit typed unsupported gaps", () => {
   const plan = planFor([image], image.id);
   expect(composeRaster(plan, resolver(revision), { width: 1, height: 1 })).toMatchObject({
     status: "SUPPORTED",
+    backend: "canvas2d",
+    capability: {
+      state: "UNKNOWN",
+      equivalence: "NON_EQUIVALENT",
+    },
     gaps: [{ code: "rgba16f-unavailable" }],
   });
   expect(composeRaster(plan, resolver(revision), { width: 1, height: 1, backend: "skia" })).toMatchObject({
     status: "UNSUPPORTED",
+    backend: "skia",
+    capability: {
+      state: "UNSUPPORTED",
+      equivalence: "UNKNOWN",
+    },
     gaps: [{ code: "skia-oracle-unavailable" }],
   });
+});
+
+test("Canvas 2D fallback exposes non-equivalence and explicit RGBA8 parity thresholds", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:rgba8",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:rgba8",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255]),
+  } satisfies AssetRevision;
+  const result = composeRaster(planFor([image], image.id), resolver(revision), {
+    width: 1,
+    height: 1,
+  });
+  expect(result).toMatchObject({
+    status: "SUPPORTED",
+    backend: "canvas2d",
+    capability: {
+      state: "SUPPORTED",
+      equivalence: "NON_EQUIVALENT",
+      parity: RASTER_RGBA8_PARITY,
+    },
+  });
+  expect(result.capability.equivalence).not.toBe("PARITY_PROVEN");
+});
+
+test("Unavailable GPU backends expose typed gaps instead of fallback parity claims", () => {
+  const plan = planFor([node({ id: "image", type: "IMAGE" })], "image");
+  const resolve: RasterCompositionAssetResolver = {
+    getAsset: () => undefined,
+    getRevision: () => undefined,
+  };
+  for (const backend of ["webgl2", "webgpu"] as const) {
+    const result = composeRaster(plan, resolve, { width: 1, height: 1, backend });
+    expect(result).toMatchObject({
+      status: "UNSUPPORTED",
+      backend,
+      capability: { state: "UNSUPPORTED", equivalence: "UNKNOWN" },
+      gaps: [{ code: "backend-unavailable" }],
+    });
+  }
 });
 
 test("RGBA8 composition clips nested children and applies inherited opacity", () => {
