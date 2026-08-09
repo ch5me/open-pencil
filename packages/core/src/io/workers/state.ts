@@ -30,6 +30,20 @@ export class WorkerCancelledError extends WorkerProtocolError {
   readonly code: string = "worker-cancelled";
 }
 
+export type WorkerMemoryState = "WITHIN_BUDGET" | "PRESSURE";
+
+export interface WorkerMemoryStatus {
+  readonly version: "worker-memory-status-v1";
+  readonly state: WorkerMemoryState;
+  readonly profile: MemoryProfile | null;
+  readonly limits: {
+    readonly maxInputBytes: number | null;
+    readonly maxResidentBytes: number | null;
+    readonly maxRenderBufferBytes: number | null;
+  };
+  readonly accounting: Pick<MemoryAccounting, "residentBytes" | "peakResidentBytes">;
+}
+
 export interface WorkerAdmissionOptions {
   readonly memoryProfile: MemoryProfile;
   readonly maxResidentBytes: number;
@@ -78,6 +92,7 @@ export class WorkerStateMachine {
   private inputFinal = false;
   private residentBytes = 0;
   private peakResidentBytes = 0;
+  private memoryState: WorkerMemoryState = "WITHIN_BUDGET";
 
   constructor(options?: WorkerAdmissionOptions) {
     if (options) {
@@ -177,7 +192,7 @@ export class WorkerStateMachine {
       throw new WorkerProtocolError("estimatedResidentBytes must be a non-negative safe integer");
     }
     if (this.options && progress.estimatedResidentBytes > this.options.maxResidentBytes) {
-      throw new WorkerMemoryPressureError(
+      this.rejectMemoryPressure(
         `estimatedResidentBytes exceeds ${this.options.memoryProfile} admission`,
       );
     }
@@ -196,14 +211,12 @@ export class WorkerStateMachine {
     }
     const bytes = width * height * bytesPerPixel;
     if (!Number.isSafeInteger(bytes)) {
-      throw new WorkerMemoryPressureError("render buffer size exceeds safe integer range");
+      this.rejectMemoryPressure("render buffer size exceeds safe integer range");
     }
     const maxRenderBufferBytes =
       this.options?.maxRenderBufferBytes ?? this.options?.maxResidentBytes;
     if (maxRenderBufferBytes !== undefined && bytes > maxRenderBufferBytes) {
-      throw new WorkerMemoryPressureError(
-        `render buffer exceeds ${this.options.memoryProfile} admission`,
-      );
+      this.rejectMemoryPressure(`render buffer exceeds ${this.options.memoryProfile} admission`);
     }
     return bytes;
   }
@@ -226,19 +239,17 @@ export class WorkerStateMachine {
     }
     const renderLimit = this.options?.maxRenderBufferBytes ?? this.options?.maxResidentBytes;
     if (renderLimit !== undefined && normalized.renderBytes > renderLimit) {
-      throw new WorkerMemoryPressureError(
+      this.rejectMemoryPressure(
         `render buffer exceeds ${this.options?.memoryProfile ?? "unknown"} admission`,
       );
     }
     const reservationBytes = values.reduce((total, value) => total + value, 0);
     const residentBytes = this.residentBytes + reservationBytes;
     if (!Number.isSafeInteger(residentBytes)) {
-      throw new WorkerMemoryPressureError("resident memory exceeds safe integer range");
+      this.rejectMemoryPressure("resident memory exceeds safe integer range");
     }
     if (this.options && residentBytes > this.options.maxResidentBytes) {
-      throw new WorkerMemoryPressureError(
-        `resident memory exceeds ${this.options.memoryProfile} admission`,
-      );
+      this.rejectMemoryPressure(`resident memory exceeds ${this.options.memoryProfile} admission`);
     }
     this.residentBytes = residentBytes;
     this.peakResidentBytes = Math.max(this.peakResidentBytes, residentBytes);
@@ -267,6 +278,20 @@ export class WorkerStateMachine {
 
   memoryAccounting(): Pick<MemoryAccounting, "residentBytes" | "peakResidentBytes"> {
     return { residentBytes: this.residentBytes, peakResidentBytes: this.peakResidentBytes };
+  }
+
+  memoryStatus(): WorkerMemoryStatus {
+    return {
+      version: "worker-memory-status-v1",
+      state: this.memoryState,
+      profile: this.options?.memoryProfile ?? null,
+      limits: {
+        maxInputBytes: this.options?.maxInputBytes ?? null,
+        maxResidentBytes: this.options?.maxResidentBytes ?? null,
+        maxRenderBufferBytes: this.options?.maxRenderBufferBytes ?? null,
+      },
+      accounting: this.memoryAccounting(),
+    };
   }
 
   recordLongTask(durationMs: number): void {
@@ -301,5 +326,10 @@ export class WorkerStateMachine {
   private requireActive(operation: string): void {
     if (this.state === "cancelled")
       throw new WorkerCancelledError(`cannot ${operation}: worker cancelled`);
+  }
+
+  private rejectMemoryPressure(message: string): never {
+    this.memoryState = "PRESSURE";
+    throw new WorkerMemoryPressureError(message);
   }
 }

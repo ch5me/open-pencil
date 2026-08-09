@@ -7,6 +7,8 @@ export {
   createWorkerAdmissionOptions,
   type MemoryAccounting,
   type MemoryReservation,
+  type WorkerMemoryState,
+  type WorkerMemoryStatus,
   type WorkerAdmissionOptions,
 } from "./state";
 export {
