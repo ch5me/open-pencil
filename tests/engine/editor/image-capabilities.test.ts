@@ -17,7 +17,9 @@ import {
   validatePenPath,
 } from "#core/editor/image-capabilities";
 import {
+  assertEffectPixelAcceptance,
   EffectAccelerationUnavailableError,
+  EffectPixelAcceptanceError,
   reorderEffectStack,
   validateEffectFilter,
   type EffectFilter,
@@ -157,4 +159,34 @@ test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouch
   expect(filter.affectedArea).not.toContain(99);
   expect(() => validateEffectFilter(filter)).not.toThrow();
   expect(new EffectAccelerationUnavailableError().code).toBe("E_EFFECT_ACCELERATION_UNAVAILABLE");
+});
+
+test("effects-v1 pixel acceptance preserves unrelated pixels and tolerates acceleration quantization", () => {
+  const source = [
+    10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255,
+    130, 140, 150, 255, 160, 170, 180, 255, 190, 200, 210, 255, 220, 230, 240, 255,
+    250, 250, 250, 255,
+  ];
+  const reference = [...source];
+  reference.splice(20, 4, 128, 128, 128, 255);
+  const accelerated = [...source];
+  accelerated.splice(20, 4, 129, 127, 128, 255);
+  expect(() =>
+    assertEffectPixelAcceptance(source, reference, accelerated, 4, 4, [0, 0, 2, 2], {
+      maxChannelDelta: 1,
+      maxMeanBias: 0.5,
+    }),
+  ).not.toThrow();
+});
+
+test("effects-v1 pixel acceptance fails loud on changed unrelated pixels or oversized area", () => {
+  const source = new Array(4 * 4 * 4).fill(0);
+  const changed = [...source];
+  changed[15] = 1;
+  expect(() =>
+    assertEffectPixelAcceptance(source, source, changed, 4, 4, [0, 0, 2, 2]),
+  ).toThrow(EffectPixelAcceptanceError);
+  expect(() =>
+    assertEffectPixelAcceptance(source, source, source, 4, 4, [0, 0, 3, 3]),
+  ).toThrow("bounded pixel contract");
 });

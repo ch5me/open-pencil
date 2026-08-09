@@ -42,6 +42,89 @@ export class EffectAccelerationUnavailableError extends Error {
   readonly code = "E_EFFECT_ACCELERATION_UNAVAILABLE";
 }
 
+export class EffectPixelAcceptanceError extends Error {
+  readonly code = "E_EFFECT_PIXEL_ACCEPTANCE";
+}
+
+export interface EffectPixelAcceptanceOptions {
+  readonly maxChannelDelta?: number;
+  readonly maxMeanBias?: number;
+}
+
+function pixelIndex(width: number, x: number, y: number): number {
+  return (y * width + x) * 4;
+}
+
+/**
+ * Checks the CPU reference and accelerated effect output at the pixel boundary.
+ * Pixels outside the declared effect area must stay byte-identical.
+ */
+export function assertEffectPixelAcceptance(
+  source: readonly number[],
+  reference: readonly number[],
+  accelerated: readonly number[],
+  width: number,
+  height: number,
+  affectedArea: readonly [number, number, number, number],
+  options: EffectPixelAcceptanceOptions = {},
+): void {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+    throw new EffectPixelAcceptanceError("invalid pixel dimensions");
+  }
+  const expectedLength = width * height * 4;
+  if (source.length !== expectedLength || reference.length !== expectedLength) {
+    throw new EffectPixelAcceptanceError("invalid reference pixel length");
+  }
+  if (accelerated.length !== expectedLength) {
+    throw new EffectPixelAcceptanceError("invalid accelerated pixel length");
+  }
+  const [x, y, areaWidth, areaHeight] = affectedArea;
+  if (
+    ![x, y, areaWidth, areaHeight].every(Number.isInteger) ||
+    areaWidth < 0 ||
+    areaHeight < 0 ||
+    x < 0 ||
+    y < 0 ||
+    x + areaWidth > width ||
+    y + areaHeight > height ||
+    (areaWidth * areaHeight) / (width * height) > 0.25
+  ) {
+    throw new EffectPixelAcceptanceError("effect area exceeds bounded pixel contract");
+  }
+  const maxChannelDelta = options.maxChannelDelta ?? 0;
+  const maxMeanBias = options.maxMeanBias ?? 0;
+  if (maxChannelDelta < 0 || maxMeanBias < 0) {
+    throw new EffectPixelAcceptanceError("invalid pixel tolerance");
+  }
+  let comparedChannels = 0;
+  let totalBias = 0;
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      const inside =
+        column >= x && column < x + areaWidth && row >= y && row < y + areaHeight;
+      const index = pixelIndex(width, column, row);
+      for (let channel = 0; channel < 4; channel += 1) {
+        const actual = accelerated[index + channel] ?? 0;
+        const expected = (inside ? reference : source)[index + channel] ?? 0;
+        const delta = Math.abs(actual - expected);
+        if (!inside && delta !== 0) {
+          throw new EffectPixelAcceptanceError("unrelated pixel changed");
+        }
+        if (inside) {
+          if (delta > maxChannelDelta) {
+            throw new EffectPixelAcceptanceError("accelerated pixel exceeds tolerance");
+          }
+          comparedChannels += 1;
+          totalBias += delta;
+        }
+      }
+    }
+  }
+  if (comparedChannels > 0 && totalBias / comparedChannels > maxMeanBias) {
+    throw new EffectPixelAcceptanceError("accelerated pixel mean bias exceeds tolerance");
+  }
+}
+
 export function validateEffectFilter(filter: EffectFilter): void {
   if (!filter.id || !filter.transactionId.startsWith("tx:")) {
     throw new RangeError("invalid effect identity");
