@@ -5,6 +5,7 @@ import {
   DEFAULT_LONG_TASK_BUDGET_MS,
   WorkerMemoryPressureError,
   WorkerStateMachine,
+  createWorkerAdmissionOptions,
 } from "#core/io/workers";
 
 const digest = "a".repeat(64);
@@ -249,5 +250,38 @@ describe("transactional IO and worker contracts", () => {
         maxInputBytes: 64,
       }),
     ).toThrow("exceeds maxInputBytes");
+  });
+
+  test("named D1/M1 profiles account render resources before allocation", () => {
+    const d1 = new WorkerStateMachine(createWorkerAdmissionOptions("D1"));
+    expect(() => d1.admitRenderBuffer(8192, 8192)).toThrow(WorkerMemoryPressureError);
+    const first = d1.admitMemory({
+      sourcesBytes: 8,
+      masksBytes: 4,
+      groupCanvasesBytes: 16,
+      renderBytes: 32,
+      readbackBytes: 8,
+    });
+    expect(first).toMatchObject({ residentBytes: 68, peakResidentBytes: 68 });
+    expect(d1.memoryAccounting()).toEqual({ residentBytes: 68, peakResidentBytes: 68 });
+    const released = d1.releaseMemory({ renderBytes: 32, readbackBytes: 8 });
+    expect(released).toMatchObject({ residentBytes: 28, peakResidentBytes: 68 });
+
+    const m1 = new WorkerStateMachine(createWorkerAdmissionOptions("M1"));
+    expect(() =>
+      m1.admitMemory({ renderBytes: 128 * 1024 * 1024 + 1 }),
+    ).toThrow(WorkerMemoryPressureError);
+    expect(m1.memoryAccounting()).toEqual({ residentBytes: 0, peakResidentBytes: 0 });
+  });
+
+  test("memory admission rejects total peak without partial accounting", () => {
+    const worker = new WorkerStateMachine({
+      memoryProfile: "D1",
+      maxResidentBytes: 100,
+      maxRenderBufferBytes: 100,
+    });
+    worker.admitMemory({ sourcesBytes: 60 });
+    expect(() => worker.admitMemory({ masksBytes: 41 })).toThrow(WorkerMemoryPressureError);
+    expect(worker.memoryAccounting()).toEqual({ residentBytes: 60, peakResidentBytes: 60 });
   });
 });

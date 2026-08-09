@@ -4,6 +4,14 @@ export {
   WorkerMemoryPressureError,
   WorkerProtocolError,
   WorkerStateMachine,
+  createWorkerAdmissionOptions,
+  type MemoryAccounting,
+  type MemoryReservation,
   type WorkerAdmissionOptions,
 } from "./state";
-export type { MemoryProfile } from "#core/io/transactional/protocol";
+export {
+  MEMORY_PROFILE_LIMITS,
+  memoryProfileLimits,
+  type MemoryProfile,
+  type MemoryProfileLimits,
+} from "#core/io/transactional/protocol";

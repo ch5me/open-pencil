@@ -7,6 +7,7 @@ import {
   type ProgressPayload,
   type WorkerState,
   DEFAULT_LONG_TASK_BUDGET_MS,
+  MEMORY_PROFILE_LIMITS,
   MAX_LONG_TASK_BUDGET_MS,
   assertMemoryProfile,
   assertResourceLimit,
@@ -35,6 +36,20 @@ export interface WorkerAdmissionOptions {
   readonly maxInputBytes?: number;
   readonly maxRenderBufferBytes?: number;
   readonly maxTaskMs?: number;
+}
+
+export function createWorkerAdmissionOptions(
+  memoryProfile: MemoryProfile,
+  overrides: Omit<Partial<WorkerAdmissionOptions>, "memoryProfile"> = {},
+): WorkerAdmissionOptions {
+  const limits = MEMORY_PROFILE_LIMITS[memoryProfile];
+  return {
+    memoryProfile,
+    maxInputBytes: limits.maxInputBytes,
+    maxResidentBytes: limits.maxResidentBytes,
+    maxRenderBufferBytes: limits.maxRenderBufferBytes,
+    ...overrides,
+  };
 }
 
 export interface MemoryReservation {
