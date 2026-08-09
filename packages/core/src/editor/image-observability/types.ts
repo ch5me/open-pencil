@@ -41,6 +41,26 @@ export interface DirtyRect {
   readonly height: number;
 }
 
+export interface RenderGraphEvidence {
+  readonly version: "render-graph-v1";
+  readonly scheduled: boolean;
+  readonly nodeCount: number;
+  readonly filterFusion: boolean;
+}
+
+export interface MemoryProfileEvidence {
+  readonly profile: "D1" | "M1" | "UNKNOWN";
+  readonly peakBytes: number | "UNKNOWN";
+  readonly tiled: boolean | "UNKNOWN";
+  readonly mipmaps: boolean | "UNKNOWN";
+}
+
+export interface MainThreadBudgetEvidence {
+  readonly budgetMs: number;
+  readonly observedMs: number | "UNKNOWN";
+  readonly withinBudget: boolean | "UNKNOWN";
+}
+
 export interface TextureVersion {
   readonly textureId: string;
   readonly revisionId: string;
@@ -66,6 +86,54 @@ export interface BenchmarkResult {
   readonly layerCount: 100 | 512;
   readonly samples: readonly number[];
   readonly p95: number;
+}
+
+export interface PerformanceEvidence {
+  readonly version: "performance-d1-m1-v1";
+  readonly textureVersion: TextureVersion;
+  readonly dirtyRect: DirtyRect;
+  readonly renderGraph: RenderGraphEvidence;
+  readonly benchmark: BenchmarkResult;
+  readonly memoryProfile: MemoryProfileEvidence;
+  readonly mainThreadBudget: MainThreadBudgetEvidence;
+  readonly gpuProfile: "UNKNOWN" | string;
+}
+
+export function validateDirtyRect(rect: DirtyRect): void {
+  if (
+    ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+    rect.width < 0 ||
+    rect.height < 0
+  ) {
+    throw new EvidenceContractError("invalid dirty rectangle");
+  }
+}
+
+export function validateTextureVersion(texture: TextureVersion): void {
+  if (!texture.textureId || !texture.revisionId) {
+    throw new EvidenceContractError("invalid texture version");
+  }
+}
+
+export function validatePerformanceEvidence(evidence: PerformanceEvidence): void {
+  if (evidence.version !== "performance-d1-m1-v1") {
+    throw new EvidenceContractError("invalid performance evidence version");
+  }
+  validateTextureVersion(evidence.textureVersion);
+  validateDirtyRect(evidence.dirtyRect);
+  if (
+    evidence.renderGraph.version !== "render-graph-v1" ||
+    evidence.renderGraph.nodeCount < 0 ||
+    !Number.isInteger(evidence.renderGraph.nodeCount)
+  ) {
+    throw new EvidenceContractError("invalid render graph evidence");
+  }
+  if (evidence.benchmark.layerCount !== 100 && evidence.benchmark.layerCount !== 512) {
+    throw new EvidenceContractError("invalid benchmark layer count");
+  }
+  if (!Number.isFinite(evidence.mainThreadBudget.budgetMs) || evidence.mainThreadBudget.budgetMs <= 0) {
+    throw new EvidenceContractError("invalid main-thread budget");
+  }
 }
 
 export function deterministicP95(samples: readonly number[]): number {

@@ -6,6 +6,9 @@ import {
   EvidenceCollector,
   EvidenceContractError,
   GpuProfileUnavailableError,
+  validateDirtyRect,
+  validatePerformanceEvidence,
+  validateTextureVersion,
 } from "#core/editor/image-observability";
 
 const identity = { repo: "open-pencil", commit: "abc", runtime: "bun" };
@@ -46,4 +49,31 @@ test("performance-d1-m1-v1 tracks deterministic p95 and unavailable GPU profile"
   expect(profile.version).toBe("performance-d1-m1-v1");
   expect(profile.gpuProfile).toBe("UNKNOWN");
   expect(new GpuProfileUnavailableError().code).toBe("E_PERFORMANCE_GPU_PROFILE_UNAVAILABLE");
+});
+
+test("performance-d1-m1-v1 validates texture, dirty-rect, render-graph, memory, and budget evidence", () => {
+  const evidence = {
+    version: "performance-d1-m1-v1" as const,
+    textureVersion: { textureId: "texture:one", revisionId: "content:one", uploaded: true },
+    dirtyRect: { x: 0, y: 0, width: 64, height: 64 },
+    renderGraph: {
+      version: "render-graph-v1" as const,
+      scheduled: true,
+      nodeCount: 100,
+      filterFusion: true,
+    },
+    benchmark: createBenchmarkResult(100, [3, 1, 4, 2, 5]),
+    memoryProfile: { profile: "UNKNOWN" as const, peakBytes: "UNKNOWN" as const, tiled: true, mipmaps: true },
+    mainThreadBudget: { budgetMs: 16, observedMs: "UNKNOWN" as const, withinBudget: "UNKNOWN" as const },
+    gpuProfile: "UNKNOWN" as const,
+  };
+  expect(() => validateTextureVersion(evidence.textureVersion)).not.toThrow();
+  expect(() => validateDirtyRect(evidence.dirtyRect)).not.toThrow();
+  expect(() => validatePerformanceEvidence(evidence)).not.toThrow();
+  expect(() => validateDirtyRect({ x: 0, y: 0, width: -1, height: 1 })).toThrow(
+    "dirty rectangle",
+  );
+  expect(() => validatePerformanceEvidence({ ...evidence, version: "wrong" })).toThrow(
+    "performance evidence version",
+  );
 });
