@@ -251,6 +251,67 @@ test("RGBA8 composition applies nested mask bounds and clipping with pixel parit
   ]);
 });
 
+test("RGBA8 composition applies group masks to following sibling content", () => {
+  const group = node({
+    id: "group",
+    type: "GROUP",
+    width: 2,
+    height: 1,
+    childIds: ["mask", "image"],
+  });
+  const mask = node({
+    id: "mask",
+    type: "GROUP",
+    parentId: group.id,
+    width: 1,
+    height: 1,
+    isMask: true,
+    childIds: ["mask-shape"],
+  });
+  const maskShape = node({
+    id: "mask-shape",
+    type: "RECTANGLE",
+    parentId: mask.id,
+    width: 1,
+    height: 1,
+  });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: group.id,
+    width: 2,
+    height: 1,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:group-mask",
+      },
+    ],
+  });
+  const graph = {
+    rootId: group.id,
+    getNode: (id: string) =>
+      new Map([group, mask, maskShape, image].map((entry) => [entry.id, entry])).get(id),
+  } as unknown as SceneGraph;
+  const revision = {
+    revisionId: "sha256:group-mask",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 2, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255]),
+  } satisfies AssetRevision;
+
+  const result = composeRasterRGBA8(
+    createCompositionPlan(graph, group.id),
+    resolver(revision),
+    { width: 2, height: 1 },
+  );
+
+  expect([...result.pixels]).toEqual([255, 0, 0, 255, 0, 0, 0, 0]);
+});
+
 test("RGBA16F and Skia oracle paths emit typed unsupported gaps", () => {
   const image = node({
     id: "image",

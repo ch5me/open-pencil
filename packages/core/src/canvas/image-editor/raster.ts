@@ -119,6 +119,23 @@ function maskAlpha(plan: CompositionPlan, node: CompositionNode, x: number, y: n
     const parent = plan.nodes.get(parentId);
     if (!parent) break;
     if (parent.maskType && !pointInRotatedNode(parent, x, y)) return 0;
+    const childIndex = parent.childIds.indexOf(node.nodeId);
+    if (childIndex > 0) {
+      let maskIndex = childIndex - 1;
+      const siblingMasks: CompositionNode[] = [];
+      while (maskIndex >= 0) {
+        const siblingId = parent.childIds[maskIndex];
+        const sibling = siblingId ? plan.nodes.get(siblingId) : undefined;
+        if (!sibling?.visible || !sibling.maskType) break;
+        siblingMasks.push(sibling);
+        maskIndex -= 1;
+      }
+      if (siblingMasks.length > 0 && siblingMasks.some((mask) => !pointInRotatedNode(mask, x, y))) {
+        return 0;
+      }
+    }
+    if (childIndex < 0) break;
+    node = parent;
     parentId = parent.parentId;
   }
   return 1;
@@ -148,7 +165,7 @@ export function composeRasterRGBA8(
   const pixels = new Uint8Array(options.width * options.height * 4);
   const gaps: RasterUnsupportedGap[] = [];
   for (const node of plan.nodes.values()) {
-    if (!node.visible || node.assetIds.length === 0) continue;
+    if (!node.visible || node.maskType || node.assetIds.length === 0) continue;
     const assetId = node.assetIds[0];
     if (!assetId) continue;
     const binding = resolve.getAsset(assetId);
