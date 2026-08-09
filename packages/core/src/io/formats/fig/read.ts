@@ -1,6 +1,12 @@
 import { parseFigBuffer } from "@open-pencil/kiwi/fig/parse";
 
 import { IS_BROWSER } from "#core/constants";
+import {
+  assertDecodedWithinLimits,
+  assertZipDecodedWithinLimits,
+  IOCancelledError,
+  throwIfIOCancelled,
+} from "#core/io/limits";
 import { assertInputWithinLimit } from "#core/io/registry";
 import { importNodeChanges } from "#core/kiwi/fig/import";
 import { deserializeSceneGraph } from "#core/kiwi/fig/parse/transfer";
@@ -10,9 +16,15 @@ import type { SceneGraph } from "#core/scene-graph";
 export interface ParseFigFileOptions {
   populate?: "all" | "first-page";
   maxInputBytes?: number;
+  maxDecodedBytes?: number;
+  maxExpansionRatio?: number;
+  signal?: AbortSignal;
 }
 
 function parseFigFileSync(buffer: ArrayBuffer, options: ParseFigFileOptions = {}): SceneGraph {
+  throwIfIOCancelled(options.signal);
+  assertDecodedWithinLimits(buffer.byteLength, buffer.byteLength, options);
+  assertZipDecodedWithinLimits(new Uint8Array(buffer), options);
   const {
     nodeChanges,
     blobs,
@@ -23,6 +35,7 @@ function parseFigFileSync(buffer: ArrayBuffer, options: ParseFigFileOptions = {}
   const graph = importNodeChanges(nodeChanges, blobs, new Map(imageEntries), options);
   graph.figKiwiVersion = figKiwiVersion;
   graph.figSchemaDeflated = figSchemaDeflated;
+  throwIfIOCancelled(options.signal);
   return graph;
 }
 
@@ -39,6 +52,10 @@ function parseViaWorker(buffer: ArrayBuffer, options: ParseFigFileOptions): Prom
 
     worker.onmessage = (e: MessageEvent<WorkerParseResult>) => {
       worker.terminate();
+      if (options.signal?.aborted) {
+        reject(new IOCancelledError("IO import cancelled"));
+        return;
+      }
       if (e.data.error || !e.data.graph) {
         reject(new Error(e.data.error ?? "Worker failed to parse .fig file"));
         return;
@@ -51,7 +68,13 @@ function parseViaWorker(buffer: ArrayBuffer, options: ParseFigFileOptions): Prom
       reject(new Error(err.message || "Worker failed to parse .fig file"));
     };
 
-    worker.postMessage({ buffer, options }, [buffer]);
+    const workerOptions = {
+      populate: options.populate,
+      maxInputBytes: options.maxInputBytes,
+      maxDecodedBytes: options.maxDecodedBytes,
+      maxExpansionRatio: options.maxExpansionRatio,
+    };
+    worker.postMessage({ buffer, options: workerOptions }, [buffer]);
   });
 }
 
@@ -59,12 +82,16 @@ export async function parseFigFile(
   buffer: ArrayBuffer,
   options: ParseFigFileOptions = {},
 ): Promise<SceneGraph> {
+  throwIfIOCancelled(options.signal);
   assertInputWithinLimit(buffer.byteLength, options.maxInputBytes);
+  assertDecodedWithinLimits(buffer.byteLength, buffer.byteLength, options);
+  assertZipDecodedWithinLimits(new Uint8Array(buffer), options);
   if (typeof Worker !== "undefined" && IS_BROWSER) {
     const copy = buffer.slice(0);
     try {
       return await parseViaWorker(buffer, options);
     } catch (error) {
+      throwIfIOCancelled(options.signal);
       console.warn("Worker parsing failed, falling back to main thread:", error);
       return parseFigFileSync(copy, options);
     }
@@ -76,6 +103,7 @@ export async function readFigFile(
   file: File,
   options: ParseFigFileOptions = {},
 ): Promise<SceneGraph> {
+  throwIfIOCancelled(options.signal);
   assertInputWithinLimit(file.size, options.maxInputBytes);
   return parseFigFile(await file.arrayBuffer(), options);
 }

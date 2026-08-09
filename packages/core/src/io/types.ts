@@ -64,6 +64,9 @@ export interface IOContext {
   renderer?: SkiaRenderer;
   /** Reject oversized input before a format adapter allocates decoded state. */
   maxInputBytes?: number;
+  maxDecodedBytes?: number;
+  maxExpansionRatio?: number;
+  signal?: AbortSignal;
 }
 
 export interface FigWriteOptions {

@@ -1,4 +1,11 @@
 export { IOInputLimitError, IORegistry, assertInputWithinLimit } from "./registry";
+export {
+  assertDecodedWithinLimits,
+  IOCancelledError,
+  IOHostileInputError,
+  throwIfIOCancelled,
+} from "./limits";
+export type { IOInputLimits } from "./limits";
 export { extractExportGraph } from "./subgraph";
 export {
   BUILTIN_IO_FORMATS,
