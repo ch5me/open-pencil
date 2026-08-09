@@ -480,6 +480,79 @@ test("RGBA8 composition clips nested children and applies inherited opacity", ()
   ]);
 });
 
+test("nested group composition blends RGBA8 colors in document-linear space", () => {
+  const outer = node({
+    id: "outer",
+    type: "GROUP",
+    childIds: ["background", "inner"],
+  });
+  const background = node({
+    id: "background",
+    type: "IMAGE",
+    parentId: outer.id,
+    childIds: [],
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:background",
+      },
+    ],
+  });
+  const inner = node({
+    id: "inner",
+    type: "GROUP",
+    parentId: outer.id,
+    opacity: 0.5,
+    childIds: ["foreground"],
+  });
+  const foreground = node({
+    id: "foreground",
+    type: "IMAGE",
+    parentId: inner.id,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:foreground",
+      },
+    ],
+  });
+  const revisions: Record<string, AssetRevision> = {
+    "asset:background": {
+      revisionId: "sha256:background",
+      kind: "image",
+      metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+      bytes: new Uint8Array([0, 0, 0, 255]),
+    },
+    "asset:foreground": {
+      revisionId: "sha256:foreground",
+      kind: "image",
+      metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+      bytes: new Uint8Array([188, 188, 188, 255]),
+    },
+  };
+  const graph = {
+    rootId: outer.id,
+    getNode: (id: string) =>
+      new Map([outer, background, inner, foreground].map((entry) => [entry.id, entry])).get(id),
+  } as unknown as SceneGraph;
+  const plan = createCompositionPlan(graph, outer.id);
+  const result = composeRasterRGBA8(plan, {
+    getAsset: (assetId) => {
+      const revision = revisions[assetId];
+      return revision ? { assetId, revisionId: revision.revisionId } : undefined;
+    },
+    getRevision: (revisionId) => Object.values(revisions).find((revision) => revision.revisionId === revisionId),
+  }, { width: 1, height: 1 });
+
+  expect([...result.pixels]).toEqual([137, 137, 137, 255]);
+});
+
 test("RGBA8 composition skips assets below hidden clipping bases", () => {
   const frame = node({
     id: "frame",

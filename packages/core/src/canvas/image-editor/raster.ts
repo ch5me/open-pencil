@@ -64,6 +64,17 @@ function formatMetadata(revision: AssetRevision): RasterPixelFormat {
     : "rgba8-srgb";
 }
 
+function srgbToLinear(value: number): number {
+  return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+}
+
+function linearToSrgb(value: number): number {
+  const clamped = Math.min(1, Math.max(0, value));
+  return clamped <= 0.0031308
+    ? clamped * 12.92
+    : 1.055 * clamped ** (1 / 2.4) - 0.055;
+}
+
 function blendOver(
   output: Uint8Array,
   outputIndex: number,
@@ -76,10 +87,13 @@ function blendOver(
   const resultAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
   if (resultAlpha <= 0) return;
   for (let channel = 0; channel < 3; channel += 1) {
-    const sourceColor = source[channel] / 255;
-    const destinationColor = (output[outputIndex + channel] ?? 0) / 255;
-    const result = (sourceColor * sourceAlpha + destinationColor * destinationAlpha * (1 - sourceAlpha)) / resultAlpha;
-    output[outputIndex + channel] = Math.round(result * 255);
+    const sourceColor = srgbToLinear(source[channel] / 255);
+    const destinationColor = srgbToLinear((output[outputIndex + channel] ?? 0) / 255);
+    const result =
+      (sourceColor * sourceAlpha +
+        destinationColor * destinationAlpha * (1 - sourceAlpha)) /
+      resultAlpha;
+    output[outputIndex + channel] = Math.round(linearToSrgb(result) * 255);
   }
   output[outputIndex + 3] = Math.round(resultAlpha * 255);
 }
