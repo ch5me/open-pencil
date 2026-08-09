@@ -84,13 +84,24 @@ test("RGBA8 composition consumes pixels with ancestor clipping and adjustment ho
       0, 0, 255, 255, 255, 255, 255, 255,
     ]),
   } satisfies AssetRevision;
-  const result = composeRasterRGBA8(planFor([group, image], group.id), resolver(revision), {
+  const result = composeRasterRGBA8(
+    createCompositionPlan(
+      {
+        rootId: group.id,
+        getNode: (id: string) => new Map([group, image].map((entry) => [entry.id, entry])).get(id),
+      } as unknown as SceneGraph,
+      group.id,
+      { adjustmentHooks: ["exposure"] },
+    ),
+    resolver(revision),
+    {
     width: 2,
     height: 2,
     adjustments: {
       exposure: (pixel) => [pixel[0], pixel[1], pixel[2], 128],
+      },
     },
-  });
+  );
   expect(result.status).toBe("SUPPORTED");
   expect([...result.pixels]).toEqual([
     255, 0, 0, 128, 0, 0, 0, 0,
