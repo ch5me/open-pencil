@@ -3,6 +3,14 @@ import type { BlendMode, NodeType, SceneNode } from "#core/scene-graph";
 export const LAYER_MODEL_VERSION = "layer-model-v1";
 export type LayerModelMaskTransform = readonly [number, number, number, number, number, number];
 export type LayerModelMaskTransformMode = "linked" | "independent";
+export type LayerModelMaskType = "ALPHA" | "VECTOR" | "LUMINANCE";
+
+export interface LayerModelEdgeRefinement {
+  readonly smooth: number;
+  readonly feather: number;
+  readonly contrast: number;
+  readonly shiftEdge: number;
+}
 
 export const LAYER_MODEL_BLEND_MODES = [
   "NORMAL",
@@ -44,6 +52,14 @@ export interface UnsupportedLayerMaskKind {
 
 export type LayerModelResolvedMaskKind = LayerModelMaskKind | UnsupportedLayerMaskKind;
 
+export interface UnsupportedLayerMaskType {
+  readonly kind: "unsupported";
+  readonly code: "layer-model-unsupported-mask-type";
+  readonly value: string;
+}
+
+export type LayerModelResolvedMaskType = LayerModelMaskType | UnsupportedLayerMaskType;
+
 export type LayerModelNodeInput = Omit<
   Pick<SceneNode, "id" | "parentId" | "childIds" | "blendMode">,
   "blendMode"
@@ -54,6 +70,10 @@ export type LayerModelNodeInput = Omit<
   readonly maskKind?: LayerModelMaskKind | string | null;
   readonly maskTransform?: LayerModelMaskTransform | null;
   readonly maskTransformMode?: LayerModelMaskTransformMode | string | null;
+  readonly maskType?: LayerModelMaskType | string | null;
+  readonly maskDensity?: number | null;
+  readonly maskFeather?: number | null;
+  readonly edgeRefinement?: Partial<LayerModelEdgeRefinement> | null;
 };
 
 export interface LayerModelNode {
@@ -66,6 +86,11 @@ export interface LayerModelNode {
   readonly maskKind: LayerModelResolvedMaskKind | null;
   readonly maskTransform: LayerModelMaskTransform | null;
   readonly maskTransformMode: LayerModelMaskTransformMode;
+  readonly maskType: LayerModelResolvedMaskType | null;
+  readonly maskDensity: number;
+  readonly maskFeather: number;
+  readonly edgeRefinement: LayerModelEdgeRefinement | null;
+  readonly vectorMask: boolean;
   readonly groupMask: boolean;
   readonly adjustmentLayerMask: boolean;
   readonly passThrough: boolean;
