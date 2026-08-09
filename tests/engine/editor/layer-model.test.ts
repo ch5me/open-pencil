@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  LAYER_MODEL_BLEND_MODES,
   LayerModelTransaction,
   LayerModelTransactionConflict,
   LayerModelValidationError,
+  isUnsupportedLayerBlendMode,
   migrateLayerModel,
 } from "#core/editor/layer-model";
 import type { BlendMode } from "#core/scene-graph";
@@ -37,6 +39,27 @@ describe("layer-model-v1", () => {
     expect(first.model.nodes.get("group")?.passThrough).toBe(true);
     expect(first.cycles).toBe(0);
     expect(first.danglingRefs).toBe(0);
+    expect(first.model.nodes.get("group")?.blendMode).toBe("PASS_THROUGH");
+  });
+
+  test("declares extended modes and preserves unsupported modes as typed values", async () => {
+    expect(LAYER_MODEL_BLEND_MODES).toContain("OVERLAY");
+    expect(LAYER_MODEL_BLEND_MODES).toContain("LUMINOSITY");
+
+    const migrated = await migrateLayerModel([
+      node("overlay", null, [], { blendMode: "OVERLAY" }),
+      node("unknown", null, [], { blendMode: "VIVID_LIGHT" as BlendMode }),
+    ]);
+    expect(migrated.model.nodes.get("overlay")?.blendMode).toBe("OVERLAY");
+    const unsupported = migrated.model.nodes.get("unknown")?.blendMode;
+    expect(unsupported).toEqual({
+      kind: "unsupported",
+      code: "layer-model-unsupported-blend-mode",
+      value: "VIVID_LIGHT",
+    });
+    expect(unsupported).toBeDefined();
+    if (unsupported === undefined) throw new Error("missing migrated blend mode");
+    expect(isUnsupportedLayerBlendMode(unsupported)).toBe(true);
   });
 
   test("rejects cycles and dangling parent, child, and mask references", async () => {
