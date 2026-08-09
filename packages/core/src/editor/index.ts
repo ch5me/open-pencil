@@ -12,12 +12,15 @@ export {
   LayerModelValidationError,
   isUnsupportedLayerBlendMode,
   isUnsupportedLayerMaskKind,
+  isUnsupportedLayerMaskType,
   migrateLayerModel,
 } from "./layer-model";
 export type {
   LayerModel,
   LayerModelBlendMode,
   LayerModelMaskKind,
+  LayerModelMaskType,
+  LayerModelEdgeRefinement,
   LayerModelMaskTransform,
   LayerModelMaskTransformMode,
   LayerModelMigration,
@@ -25,7 +28,9 @@ export type {
   LayerModelNodeInput,
   LayerModelResolvedBlendMode,
   LayerModelResolvedMaskKind,
+  LayerModelResolvedMaskType,
   UnsupportedLayerMaskKind,
+  UnsupportedLayerMaskType,
   UnsupportedLayerBlendMode,
 } from "./layer-model";
 export type {

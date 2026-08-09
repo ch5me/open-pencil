@@ -129,6 +129,10 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     ? ([...node.maskTransform] as LayerModelMaskTransform)
     : null;
   const maskTransformMode = node.maskTransformMode ?? (maskTransform ? "independent" : "linked");
+  const maskType = resolveMaskType(node.maskType);
+  const maskDensity = node.maskDensity ?? 1;
+  const maskFeather = node.maskFeather ?? 0;
+  const edgeRefinement = resolveEdgeRefinement(node.edgeRefinement);
   const passThrough = blendMode === "PASS_THROUGH" && type === "GROUP";
   return {
     id: node.id,
@@ -140,6 +144,11 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     maskKind,
     maskTransform,
     maskTransformMode: resolveMaskTransformMode(maskTransformMode),
+    maskType,
+    maskDensity,
+    maskFeather,
+    edgeRefinement,
+    vectorMask: maskType === "VECTOR",
     groupMask: maskKind === "group",
     adjustmentLayerMask: maskKind === "adjustment-layer",
     passThrough,
@@ -153,6 +162,42 @@ function resolveMaskTransformMode(
     return mode ?? "linked";
   }
   throw new LayerModelMaskValidationError(`unsupported mask transform mode: ${mode}`);
+}
+
+function resolveMaskType(type: LayerModelNodeInput["maskType"]): LayerModelResolvedMaskType | null {
+  if (type === undefined || type === null) return null;
+  if (type === "ALPHA" || type === "VECTOR" || type === "LUMINANCE") return type;
+  return {
+    kind: "unsupported",
+    code: "layer-model-unsupported-mask-type",
+    value: type,
+  };
+}
+
+export function isUnsupportedLayerMaskType(
+  type: LayerModelResolvedMaskType,
+): type is UnsupportedLayerMaskType {
+  return typeof type === "object" && type.kind === "unsupported";
+}
+
+function maskNumber(value: number | undefined, label: string, min: number, max?: number): number {
+  const resolved = value ?? 0;
+  if (!Number.isFinite(resolved) || resolved < min || (max !== undefined && resolved > max)) {
+    throw new LayerModelMaskValidationError(`invalid ${label}: ${String(value)}`);
+  }
+  return resolved;
+}
+
+function resolveEdgeRefinement(
+  refinement: LayerModelNodeInput["edgeRefinement"],
+): LayerModelEdgeRefinement | null {
+  if (refinement === undefined || refinement === null) return null;
+  return {
+    smooth: maskNumber(refinement.smooth, "edge refinement smooth", 0, 100),
+    feather: maskNumber(refinement.feather, "edge refinement feather", 0),
+    contrast: maskNumber(refinement.contrast, "edge refinement contrast", -100, 100),
+    shiftEdge: maskNumber(refinement.shiftEdge, "edge refinement shift", -100, 100),
+  };
 }
 
 function resolveBlendMode(mode: BlendMode | string): LayerModelResolvedBlendMode {
@@ -205,6 +250,11 @@ function canonicalJson(nodes: readonly LayerModelNode[]): string {
         maskKind: node.maskKind,
         maskTransform: node.maskTransform,
         maskTransformMode: node.maskTransformMode,
+        maskType: node.maskType,
+        maskDensity: node.maskDensity,
+        maskFeather: node.maskFeather,
+        edgeRefinement: node.edgeRefinement,
+        vectorMask: node.vectorMask,
         groupMask: node.groupMask,
         adjustmentLayerMask: node.adjustmentLayerMask,
         passThrough: node.passThrough,
@@ -261,6 +311,34 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
       throw new LayerModelMaskValidationError(
         `mask kind requires mask reference: ${node.id} -> ${String(node.maskKind)}`,
       );
+    }
+    if (node.maskDensity < 0 || node.maskDensity > 1 || !Number.isFinite(node.maskDensity)) {
+      throw new LayerModelMaskValidationError(`invalid mask density: ${node.id}`);
+    }
+    if (!Number.isFinite(node.maskFeather) || node.maskFeather < 0) {
+      throw new LayerModelMaskValidationError(`invalid mask feather: ${node.id}`);
+    }
+    if (node.maskType !== null && node.maskId === null) {
+      throw new LayerModelMaskValidationError(
+        `mask type requires mask reference: ${node.id} -> ${String(node.maskType)}`,
+      );
+    }
+    if (node.maskType === "VECTOR" && !node.vectorMask) {
+      throw new LayerModelMaskValidationError(`vector mask flag mismatch: ${node.id}`);
+    }
+    if (node.maskType !== "VECTOR" && node.vectorMask) {
+      throw new LayerModelMaskValidationError(`vector mask flag mismatch: ${node.id}`);
+    }
+    if (
+      node.edgeRefinement !== null &&
+      (node.edgeRefinement.smooth > 100 ||
+        node.edgeRefinement.feather < 0 ||
+        node.edgeRefinement.contrast < -100 ||
+        node.edgeRefinement.contrast > 100 ||
+        node.edgeRefinement.shiftEdge < -100 ||
+        node.edgeRefinement.shiftEdge > 100)
+    ) {
+      throw new LayerModelMaskValidationError(`invalid edge refinement: ${node.id}`);
     }
     if (node.maskTransformMode === "independent" && node.maskTransform === null) {
       throw new LayerModelMaskValidationError(
