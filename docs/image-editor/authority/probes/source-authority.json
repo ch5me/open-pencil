@@ -1,6 +1,6 @@
 {
   "authorityMatrixHash": "7df61fa8d9fd23438bebbfa86aa053641c48e5f4e041449bb3baf9423d235e3e",
-  "base": "f2de0a638a9d63f7be98d3e96bdd3b7962a1bdb3",
+  "base": "e07b390dd987bda87f95f2951bfff2ad535a8927",
   "pathAllocationHash": "771c12edc26bda2cdac372b4f2494540c969e0b155abaa6cc976005ab36d014f",
   "probes": [
     {
@@ -25,13 +25,13 @@
   "producer": "open-pencil",
   "schema": "ch5.image-editor.probe.source-authority.v1",
   "executionProvenance": {
-    "commit": "95643e0812906028e1856b85e0eb54968c202e55",
-    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/execute-revision-r8-c-25ae46f9/worktrees/worker-1",
-    "team": "execute-revision-r8-c-25ae46f9",
+    "commit": "bc874b8ade7cba3b6beb855d16c6d44ccc59d346",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/r17-g0a-o-authority-r-25ae46f9/worktrees/worker-1",
+    "team": "r17-g0a-o-authority-r-25ae46f9",
     "worker": "worker-1",
     "role": "executor",
-    "session": "019fe606-cfc4-77c3-a44d-9efc0a1f460a",
-    "observedAt": "2026-08-09T10:23:46Z"
+    "session": "019fe66f-0e7e-7361-b4dd-f53bb30e25a6",
+    "observedAt": "2026-08-09T12:13:19Z"
   },
-  "observedAt": "2026-08-09T10:23:46Z"
+  "observedAt": "2026-08-09T12:13:19Z"
 }

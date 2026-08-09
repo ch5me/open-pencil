@@ -3,12 +3,12 @@
   "architectApprovalRequired": true,
   "architectVerdict": "APPROVED_AX-O",
   "authorityMatrixHash": "7df61fa8d9fd23438bebbfa86aa053641c48e5f4e041449bb3baf9423d235e3e",
-  "baseCommit": "f2de0a638a9d63f7be98d3e96bdd3b7962a1bdb3",
+  "baseCommit": "e07b390dd987bda87f95f2951bfff2ad535a8927",
   "installedRosterHash": "12c391c9c94da6814668193092cf32b1b64b965244a4db44edf33d96f74eabea",
   "lane": "G0A-O",
   "pathAllocationHash": "771c12edc26bda2cdac372b4f2494540c969e0b155abaa6cc976005ab36d014f",
   "planSha256": "5370f27489c456f2ae3dc6fdf1d28e98252b26c1bd2616c662f54c9c1b9592d9",
-  "producerTipSetHash": "0be91060c46a4c98b1f6b8fc64b10a5ab19850852907a22d33d648620a41f1a5",
+  "producerTipSetHash": "b5fed9dcf3eeef7547d4629b7ad0fd757340703ad8560d93067149de484e2079",
   "readOnlyProbePaths": [
     "docs/image-editor/authority/probes/behavioral-probes.json",
     "docs/image-editor/authority/probes/installed-roster.json",
@@ -29,19 +29,19 @@
   "testSpecSha256": "ee70da2d841561ec93f68b7f3093f4373c18b27e03360b837f9e7aec74c1077b",
   "usedRoleHash": "84b08c112d0d6b2352db11746f3517e69d88dcb93d84ef137368c21f59e26c77",
   "executionProvenance": {
-    "commit": "95643e0812906028e1856b85e0eb54968c202e55",
-    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/execute-revision-r8-c-25ae46f9/worktrees/worker-1",
-    "team": "execute-revision-r8-c-25ae46f9",
+    "commit": "bc874b8ade7cba3b6beb855d16c6d44ccc59d346",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/r17-g0a-o-authority-r-25ae46f9/worktrees/worker-1",
+    "team": "r17-g0a-o-authority-r-25ae46f9",
     "worker": "worker-1",
     "role": "executor",
-    "session": "019fe606-cfc4-77c3-a44d-9efc0a1f460a",
-    "observedAt": "2026-08-09T10:23:46Z"
+    "session": "019fe66f-0e7e-7361-b4dd-f53bb30e25a6",
+    "observedAt": "2026-08-09T12:13:19Z"
   },
-  "executionCommit": "95643e0812906028e1856b85e0eb54968c202e55",
-  "executionTree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/execute-revision-r8-c-25ae46f9/worktrees/worker-1",
-  "executionTeam": "execute-revision-r8-c-25ae46f9",
+  "executionCommit": "bc874b8ade7cba3b6beb855d16c6d44ccc59d346",
+  "executionTree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/r17-g0a-o-authority-r-25ae46f9/worktrees/worker-1",
+  "executionTeam": "r17-g0a-o-authority-r-25ae46f9",
   "executionWorker": "worker-1",
   "executionRole": "executor",
-  "executionSession": "019fe606-cfc4-77c3-a44d-9efc0a1f460a",
-  "observedAt": "2026-08-09T10:23:46Z"
+  "executionSession": "019fe66f-0e7e-7361-b4dd-f53bb30e25a6",
+  "observedAt": "2026-08-09T12:13:19Z"
 }
