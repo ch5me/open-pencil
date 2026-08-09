@@ -58,6 +58,108 @@ const node = (
 });
 
 describe("layer-model-v1", () => {
+  test("migrates typed non-destructive layer effects and canonicalizes their order", async () => {
+    const effects = [
+      {
+        kind: "shadow" as const,
+        color: { r: 0, g: 0, b: 0, a: 0.4 },
+        offset: { x: 4, y: 6 },
+        blur: 12,
+        spread: 2,
+        visible: true,
+        inset: false,
+      },
+      {
+        kind: "glow" as const,
+        color: { r: 1, g: 0.5, b: 0, a: 1 },
+        radius: 8,
+        intensity: 0.75,
+        visible: true,
+      },
+      {
+        kind: "stroke" as const,
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        width: 2,
+        position: "inside" as const,
+        visible: true,
+      },
+      {
+        kind: "overlay" as const,
+        color: { r: 0.2, g: 0.3, b: 0.4, a: 1 },
+        opacity: 0.5,
+        blendMode: "OVERLAY" as const,
+        visible: true,
+      },
+      {
+        kind: "bevel" as const,
+        highlightColor: { r: 1, g: 1, b: 1, a: 0.5 },
+        shadowColor: { r: 0, g: 0, b: 0, a: 0.5 },
+        depth: 3,
+        angle: 45,
+        visible: true,
+      },
+      {
+        kind: "pattern" as const,
+        patternId: "paper",
+        opacity: 0.25,
+        scale: 1,
+        rotation: 0,
+        visible: false,
+      },
+    ];
+    const first = await migrateLayerModel([node("card", null, [], { effects })]);
+    const second = await migrateLayerModel([
+      node("card", null, [], { effects: structuredClone(effects) }),
+    ]);
+
+    expect(first.model.migrationHash).toBe(second.model.migrationHash);
+    expect(first.model.nodes.get("card")?.effects).toEqual(effects);
+  });
+
+  test("keeps unsupported effect kinds typed and rejects invalid effect values", async () => {
+    const migrated = await migrateLayerModel([
+      node("future", null, [], {
+        effects: [{ kind: "displacement" }],
+      }),
+    ]);
+    expect(migrated.model.nodes.get("future")?.effects[0]).toEqual({
+      kind: "unsupported",
+      code: "layer-model-unsupported-effect",
+      value: "displacement",
+    });
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], {
+          effects: [
+            {
+              kind: "glow",
+              color: { r: 1, g: 1, b: 1, a: 1 },
+              radius: -1,
+              intensity: 1,
+              visible: true,
+            },
+          ],
+        }),
+      ]),
+    ).rejects.toThrow("invalid glow radius");
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], {
+          effects: [
+            {
+              kind: "pattern",
+              patternId: "",
+              opacity: 1,
+              scale: 1,
+              rotation: 0,
+              visible: true,
+            },
+          ],
+        }),
+      ]),
+    ).rejects.toThrow("invalid pattern id");
+  });
+
   test("migration is deterministic across clean Trees and preserves pass-through groups", async () => {
     const first = await migrateLayerModel([
       node("child", "group"),

@@ -271,67 +271,77 @@ function effectOffset(value: unknown): Vector {
 
 function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect {
   if (effect.kind === "shadow") {
+    const shadow = effect as LayerModelShadowEffect;
     return {
       kind: "shadow",
-      color: effectColor(effect.color, "shadow color"),
-      offset: effectOffset(effect.offset),
-      blur: finiteEffectNumber(effect.blur, "shadow blur"),
-      spread: finiteEffectNumber(effect.spread, "shadow spread"),
-      visible: effect.visible,
-      inset: effect.inset,
+      color: effectColor(shadow.color, "shadow color"),
+      offset: effectOffset(shadow.offset),
+      blur: finiteEffectNumber(shadow.blur, "shadow blur"),
+      spread: finiteEffectNumber(shadow.spread, "shadow spread"),
+      visible: shadow.visible,
+      inset: shadow.inset,
     };
   }
   if (effect.kind === "glow") {
+    const glow = effect as LayerModelGlowEffect;
     return {
       kind: "glow",
-      color: effectColor(effect.color, "glow color"),
-      radius: finiteEffectNumber(effect.radius, "glow radius"),
-      intensity: finiteEffectNumber(effect.intensity, "glow intensity", 0, 1),
-      visible: effect.visible,
+      color: effectColor(glow.color, "glow color"),
+      radius: finiteEffectNumber(glow.radius, "glow radius"),
+      intensity: finiteEffectNumber(glow.intensity, "glow intensity", 0, 1),
+      visible: glow.visible,
     };
   }
   if (effect.kind === "stroke") {
-    if (effect.position !== "inside" && effect.position !== "center" && effect.position !== "outside") {
-      throw new LayerModelValidationError(`invalid stroke position: ${String(effect.position)}`);
+    const stroke = effect as LayerModelStrokeEffect;
+    if (
+      stroke.position !== "inside" &&
+      stroke.position !== "center" &&
+      stroke.position !== "outside"
+    ) {
+      throw new LayerModelValidationError(`invalid stroke position: ${String(stroke.position)}`);
     }
     return {
       kind: "stroke",
-      color: effectColor(effect.color, "stroke color"),
-      width: finiteEffectNumber(effect.width, "stroke width"),
-      position: effect.position,
-      visible: effect.visible,
+      color: effectColor(stroke.color, "stroke color"),
+      width: finiteEffectNumber(stroke.width, "stroke width"),
+      position: stroke.position,
+      visible: stroke.visible,
     };
   }
   if (effect.kind === "overlay") {
+    const overlay = effect as LayerModelOverlayEffect;
     return {
       kind: "overlay",
-      color: effectColor(effect.color, "overlay color"),
-      opacity: finiteEffectNumber(effect.opacity, "overlay opacity", 0, 1),
-      blendMode: resolveBlendMode(effect.blendMode),
-      visible: effect.visible,
+      color: effectColor(overlay.color, "overlay color"),
+      opacity: finiteEffectNumber(overlay.opacity, "overlay opacity", 0, 1),
+      blendMode: resolveBlendMode(overlay.blendMode),
+      visible: overlay.visible,
     };
   }
   if (effect.kind === "bevel") {
+    const bevel = effect as LayerModelBevelEffect;
     return {
       kind: "bevel",
-      highlightColor: effectColor(effect.highlightColor, "bevel highlight color"),
-      shadowColor: effectColor(effect.shadowColor, "bevel shadow color"),
-      depth: finiteEffectNumber(effect.depth, "bevel depth"),
-      angle: finiteEffectNumber(effect.angle, "bevel angle", -360, 360),
-      visible: effect.visible,
+      highlightColor: effectColor(bevel.highlightColor, "bevel highlight color"),
+      shadowColor: effectColor(bevel.shadowColor, "bevel shadow color"),
+      depth: finiteEffectNumber(bevel.depth, "bevel depth"),
+      angle: finiteEffectNumber(bevel.angle, "bevel angle", -360, 360),
+      visible: bevel.visible,
     };
   }
   if (effect.kind === "pattern") {
-    if (typeof effect.patternId !== "string" || effect.patternId.length === 0) {
+    const pattern = effect as LayerModelPatternEffect;
+    if (typeof pattern.patternId !== "string" || pattern.patternId.length === 0) {
       throw new LayerModelValidationError("invalid pattern id");
     }
     return {
       kind: "pattern",
-      patternId: effect.patternId,
-      opacity: finiteEffectNumber(effect.opacity, "pattern opacity", 0, 1),
-      scale: finiteEffectNumber(effect.scale, "pattern scale"),
-      rotation: finiteEffectNumber(effect.rotation, "pattern rotation", -360, 360),
-      visible: effect.visible,
+      patternId: pattern.patternId,
+      opacity: finiteEffectNumber(pattern.opacity, "pattern opacity", 0, 1),
+      scale: finiteEffectNumber(pattern.scale, "pattern scale"),
+      rotation: finiteEffectNumber(pattern.rotation, "pattern rotation", -360, 360),
+      visible: pattern.visible,
     };
   }
   return {

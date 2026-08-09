@@ -37,6 +37,17 @@ export type {
   UnsupportedLayerMaskKind,
   UnsupportedLayerMaskType,
   UnsupportedLayerBlendMode,
+  LayerModelEffectKind,
+  LayerModelShadowEffect,
+  LayerModelGlowEffect,
+  LayerModelStrokeEffect,
+  LayerModelOverlayEffect,
+  LayerModelBevelEffect,
+  LayerModelPatternEffect,
+  LayerModelEffect,
+  UnsupportedLayerEffect,
+  LayerModelResolvedEffect,
+  LayerModelEffectInput,
 } from "./layer-model";
 export type {
   EditorContext,
