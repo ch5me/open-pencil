@@ -1,11 +1,11 @@
 import { parseFigBuffer } from "@open-pencil/kiwi/fig/parse";
 
 import { IS_BROWSER } from "#core/constants";
+import { assertInputWithinLimit } from "#core/io/registry";
 import { importNodeChanges } from "#core/kiwi/fig/import";
 import { deserializeSceneGraph } from "#core/kiwi/fig/parse/transfer";
 import type { SerializedSceneGraph } from "#core/kiwi/fig/parse/transfer";
 import type { SceneGraph } from "#core/scene-graph";
-import { assertInputWithinLimit } from "#core/io/registry";
 
 export interface ParseFigFileOptions {
   populate?: "all" | "first-page";

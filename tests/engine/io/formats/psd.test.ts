@@ -55,9 +55,7 @@ test("rejects hostile PSD dimensions before staging", () => {
 
 test("rejects non-integral and non-finite export dimensions", () => {
   for (const width of [1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
-    expect(() => stagePsdExport({ width, height: 20, layers: [] })).toThrow(
-      PsdHostileFileError,
-    );
+    expect(() => stagePsdExport({ width, height: 20, layers: [] })).toThrow(PsdHostileFileError);
   }
 });
 

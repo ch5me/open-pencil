@@ -525,7 +525,10 @@ export function parsePenFile(json: string): SceneGraph {
   return graph;
 }
 
-export async function readPenFile(file: File, options: { maxInputBytes?: number } = {}): Promise<SceneGraph> {
+export async function readPenFile(
+  file: File,
+  options: { maxInputBytes?: number } = {},
+): Promise<SceneGraph> {
   assertInputWithinLimit(file.size, options.maxInputBytes);
   return parsePenFile(await file.text());
 }
