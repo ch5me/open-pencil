@@ -124,4 +124,32 @@ describe("image editor assets and storage", () => {
       }),
     ).toThrow("revision is not declared by journal");
   });
+
+  test("rejects an invalid archive journal before changing the content head", () => {
+    const store = new ImageEditorStore();
+    store.setInitialHead("doc", { sequence: 1, contentRootHash: ROOT });
+    const allocator = createJournalIdAllocator(0, () => "tx");
+    const journal = createContentJournal(allocator, {
+      journalSequence: 1,
+      baseContentVersion: { sequence: 1, contentRootHash: ROOT },
+      nextContentVersion: { sequence: 2, contentRootHash: "c".repeat(64) },
+      contractHash: "contract",
+      authorityMatrixHash: "d".repeat(64),
+    });
+    const invalidJournal = {
+      ...journal,
+      historyPinsAdded: [{ pinId: "archive", kind: "archive", revisionIds: [] }],
+    };
+
+    expect(() =>
+      store.commitContent({
+        documentId: "doc",
+        journal: invalidJournal,
+        nextHead: journal.nextContentVersion,
+        revisions: [],
+      }),
+    ).toThrow("at least one revision");
+    expect(store.getHead("doc")).toEqual(journal.baseContentVersion);
+    expect(store.getJournal("doc", 1)).toBeUndefined();
+  });
 });
