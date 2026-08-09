@@ -37,6 +37,19 @@ export interface WorkerAdmissionOptions {
   readonly maxTaskMs?: number;
 }
 
+export interface MemoryReservation {
+  readonly sourcesBytes?: number;
+  readonly masksBytes?: number;
+  readonly groupCanvasesBytes?: number;
+  readonly renderBytes?: number;
+  readonly readbackBytes?: number;
+}
+
+export interface MemoryAccounting extends Required<MemoryReservation> {
+  readonly residentBytes: number;
+  readonly peakResidentBytes: number;
+}
+
 export class WorkerStateMachine {
   state: WorkerState = "starting";
   private inputSequence = 0;
@@ -48,6 +61,8 @@ export class WorkerStateMachine {
   private inputCount = 0;
   private inputBytes = 0;
   private inputFinal = false;
+  private residentBytes = 0;
+  private peakResidentBytes = 0;
 
   constructor(options?: WorkerAdmissionOptions) {
     if (options) {
@@ -176,6 +191,67 @@ export class WorkerStateMachine {
       );
     }
     return bytes;
+  }
+
+  /**
+   * Validate the full reservation before mutating accounting.
+   * This keeps hostile work from reaching a partial render/publish state.
+   */
+  admitMemory(reservation: MemoryReservation): MemoryAccounting {
+    const normalized: Required<MemoryReservation> = {
+      sourcesBytes: reservation.sourcesBytes ?? 0,
+      masksBytes: reservation.masksBytes ?? 0,
+      groupCanvasesBytes: reservation.groupCanvasesBytes ?? 0,
+      renderBytes: reservation.renderBytes ?? 0,
+      readbackBytes: reservation.readbackBytes ?? 0,
+    };
+    const values = Object.values(normalized);
+    if (values.some((value) => !Number.isSafeInteger(value) || value < 0)) {
+      throw new WorkerProtocolError("memory reservation must contain non-negative safe integers");
+    }
+    const renderLimit = this.options?.maxRenderBufferBytes ?? this.options?.maxResidentBytes;
+    if (renderLimit !== undefined && normalized.renderBytes > renderLimit) {
+      throw new WorkerMemoryPressureError(
+        `render buffer exceeds ${this.options?.memoryProfile ?? "unknown"} admission`,
+      );
+    }
+    const reservationBytes = values.reduce((total, value) => total + value, 0);
+    const residentBytes = this.residentBytes + reservationBytes;
+    if (!Number.isSafeInteger(residentBytes)) {
+      throw new WorkerMemoryPressureError("resident memory exceeds safe integer range");
+    }
+    if (this.options && residentBytes > this.options.maxResidentBytes) {
+      throw new WorkerMemoryPressureError(
+        `resident memory exceeds ${this.options.memoryProfile} admission`,
+      );
+    }
+    this.residentBytes = residentBytes;
+    this.peakResidentBytes = Math.max(this.peakResidentBytes, residentBytes);
+    return { ...normalized, residentBytes, peakResidentBytes: this.peakResidentBytes };
+  }
+
+  releaseMemory(reservation: MemoryReservation): MemoryAccounting {
+    const normalized: Required<MemoryReservation> = {
+      sourcesBytes: reservation.sourcesBytes ?? 0,
+      masksBytes: reservation.masksBytes ?? 0,
+      groupCanvasesBytes: reservation.groupCanvasesBytes ?? 0,
+      renderBytes: reservation.renderBytes ?? 0,
+      readbackBytes: reservation.readbackBytes ?? 0,
+    };
+    const values = Object.values(normalized);
+    if (values.some((value) => !Number.isSafeInteger(value) || value < 0)) {
+      throw new WorkerProtocolError("memory reservation must contain non-negative safe integers");
+    }
+    const releasedBytes = values.reduce((total, value) => total + value, 0);
+    if (releasedBytes > this.residentBytes) {
+      throw new WorkerProtocolError("memory release exceeds resident accounting");
+    }
+    this.residentBytes -= releasedBytes;
+    return { ...normalized, residentBytes: this.residentBytes, peakResidentBytes: this.peakResidentBytes };
+  }
+
+  memoryAccounting(): Pick<MemoryAccounting, "residentBytes" | "peakResidentBytes"> {
+    return { residentBytes: this.residentBytes, peakResidentBytes: this.peakResidentBytes };
   }
 
   recordLongTask(durationMs: number): void {

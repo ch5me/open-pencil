@@ -2,6 +2,25 @@ export const WORKER_PROTOCOL = "ch5.image-editor.worker";
 
 export type WorkerDirection = "host-to-worker" | "worker-to-host";
 export type MemoryProfile = "D1" | "M1";
+export interface MemoryProfileLimits {
+  readonly maxInputBytes: number;
+  readonly maxResidentBytes: number;
+  readonly maxRenderBufferBytes: number;
+}
+
+// Reject an 8192x8192 RGBA render before CanvasKit allocation.
+export const MEMORY_PROFILE_LIMITS: Readonly<Record<MemoryProfile, MemoryProfileLimits>> = {
+  D1: {
+    maxInputBytes: 128 * 1024 * 1024,
+    maxResidentBytes: 256 * 1024 * 1024,
+    maxRenderBufferBytes: 64 * 1024 * 1024,
+  },
+  M1: {
+    maxInputBytes: 256 * 1024 * 1024,
+    maxResidentBytes: 512 * 1024 * 1024,
+    maxRenderBufferBytes: 128 * 1024 * 1024,
+  },
+};
 export type WorkerOperation =
   | "open-archive"
   | "save-archive"
@@ -101,6 +120,10 @@ export function assertMemoryProfile(value: string): asserts value is MemoryProfi
   if (value !== "D1" && value !== "M1") {
     throw new Error(`unsupported memory profile: ${value}`);
   }
+}
+
+export function memoryProfileLimits(profile: MemoryProfile): MemoryProfileLimits {
+  return MEMORY_PROFILE_LIMITS[profile];
 }
 
 export function assertResourceLimit(value: number, label: string): void {
