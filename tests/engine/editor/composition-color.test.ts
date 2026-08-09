@@ -69,3 +69,22 @@ test("composition parity rejects channel drift and aggregate bias", () => {
     }),
   ).toThrow("pixel parity mean bias exceeded");
 });
+
+test("composition parity fixture keeps signed mean bias within the explicit contract", () => {
+  const expected = [24, 32, 48, 255];
+  const maxChannelDelta = 3;
+  const maxMeanBias = 0.25;
+
+  expect(() =>
+    assertPixelParity([27, 35, 51, 258], expected, {
+      maxChannelDelta,
+      maxMeanBias,
+    }),
+  ).toThrow("pixel parity mean bias exceeded");
+  expect(() =>
+    assertPixelParity([24.25, 32.25, 48.25, 255.25], expected, {
+      maxChannelDelta,
+      maxMeanBias,
+    }),
+  ).not.toThrow();
+});
