@@ -1,4 +1,4 @@
-import type { BlendMode, NodeType, SceneNode } from "#core/scene-graph";
+import type { BlendMode, Color, NodeType, SceneNode, Vector } from "#core/scene-graph";
 
 export const LAYER_MODEL_VERSION = "layer-model-v1";
 export type LayerModelMaskTransform = readonly [number, number, number, number, number, number];
@@ -28,6 +28,83 @@ export interface LayerModelEdgeRefinement {
   readonly contrast: number;
   readonly shiftEdge: number;
 }
+
+export type LayerModelEffectKind = "shadow" | "glow" | "stroke" | "overlay" | "bevel" | "pattern";
+
+export interface LayerModelShadowEffect {
+  readonly kind: "shadow";
+  readonly color: Color;
+  readonly offset: Vector;
+  readonly blur: number;
+  readonly spread: number;
+  readonly visible: boolean;
+  readonly inset: boolean;
+}
+
+export interface LayerModelGlowEffect {
+  readonly kind: "glow";
+  readonly color: Color;
+  readonly radius: number;
+  readonly intensity: number;
+  readonly visible: boolean;
+}
+
+export interface LayerModelStrokeEffect {
+  readonly kind: "stroke";
+  readonly color: Color;
+  readonly width: number;
+  readonly position: "inside" | "center" | "outside";
+  readonly visible: boolean;
+}
+
+export interface LayerModelOverlayEffect {
+  readonly kind: "overlay";
+  readonly color: Color;
+  readonly opacity: number;
+  readonly blendMode: LayerModelResolvedBlendMode;
+  readonly visible: boolean;
+}
+
+export interface LayerModelBevelEffect {
+  readonly kind: "bevel";
+  readonly highlightColor: Color;
+  readonly shadowColor: Color;
+  readonly depth: number;
+  readonly angle: number;
+  readonly visible: boolean;
+}
+
+export interface LayerModelPatternEffect {
+  readonly kind: "pattern";
+  readonly patternId: string;
+  readonly opacity: number;
+  readonly scale: number;
+  readonly rotation: number;
+  readonly visible: boolean;
+}
+
+export type LayerModelEffect =
+  | LayerModelShadowEffect
+  | LayerModelGlowEffect
+  | LayerModelStrokeEffect
+  | LayerModelOverlayEffect
+  | LayerModelBevelEffect
+  | LayerModelPatternEffect;
+
+export interface UnsupportedLayerEffect {
+  readonly kind: "unsupported";
+  readonly code: "layer-model-unsupported-effect";
+  readonly value: string;
+}
+
+export type LayerModelResolvedEffect = LayerModelEffect | UnsupportedLayerEffect;
+
+export type LayerModelEffectInput =
+  | LayerModelEffect
+  | {
+      readonly kind: string;
+      readonly [key: string]: unknown;
+    };
 
 export const LAYER_MODEL_BLEND_MODES = [
   "NORMAL",
@@ -94,6 +171,7 @@ export type LayerModelNodeInput = Omit<
   readonly linkId?: string | null;
   readonly linkedLayerIds?: readonly string[] | null;
   readonly colorLabel?: LayerModelColorLabel | string | null;
+  readonly effects?: readonly LayerModelEffectInput[] | null;
 };
 
 export interface LayerModelNode {
@@ -117,6 +195,7 @@ export interface LayerModelNode {
   readonly linkId: string | null;
   readonly linkedLayerIds: readonly string[];
   readonly colorLabel: LayerModelResolvedColorLabel | null;
+  readonly effects: readonly LayerModelResolvedEffect[];
 }
 
 export interface LayerModel {
@@ -144,6 +223,130 @@ export class LayerModelTransactionConflict extends Error {
   readonly code = "layer-model-transaction-conflict";
 }
 
+function finiteEffectNumber(value: unknown, label: string, min = 0, max?: number): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < min ||
+    (max !== undefined && value > max)
+  ) {
+    throw new LayerModelValidationError(`invalid ${label}: ${String(value)}`);
+  }
+  return value;
+}
+
+function effectColor(value: unknown, label: string): Color {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof (value as { r?: unknown }).r !== "number" ||
+    typeof (value as { g?: unknown }).g !== "number" ||
+    typeof (value as { b?: unknown }).b !== "number" ||
+    typeof (value as { a?: unknown }).a !== "number"
+  ) {
+    throw new LayerModelValidationError(`invalid ${label}`);
+  }
+  const color = value as Color;
+  if (![color.r, color.g, color.b, color.a].every(Number.isFinite)) {
+    throw new LayerModelValidationError(`invalid ${label}`);
+  }
+  return { ...color };
+}
+
+function effectOffset(value: unknown): Vector {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof (value as { x?: unknown }).x !== "number" ||
+    typeof (value as { y?: unknown }).y !== "number"
+  ) {
+    throw new LayerModelValidationError("invalid shadow offset");
+  }
+  const offset = value as Vector;
+  if (![offset.x, offset.y].every(Number.isFinite)) {
+    throw new LayerModelValidationError("invalid shadow offset");
+  }
+  return { ...offset };
+}
+
+function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect {
+  if (effect.kind === "shadow") {
+    return {
+      kind: "shadow",
+      color: effectColor(effect.color, "shadow color"),
+      offset: effectOffset(effect.offset),
+      blur: finiteEffectNumber(effect.blur, "shadow blur"),
+      spread: finiteEffectNumber(effect.spread, "shadow spread"),
+      visible: effect.visible,
+      inset: effect.inset,
+    };
+  }
+  if (effect.kind === "glow") {
+    return {
+      kind: "glow",
+      color: effectColor(effect.color, "glow color"),
+      radius: finiteEffectNumber(effect.radius, "glow radius"),
+      intensity: finiteEffectNumber(effect.intensity, "glow intensity", 0, 1),
+      visible: effect.visible,
+    };
+  }
+  if (effect.kind === "stroke") {
+    if (effect.position !== "inside" && effect.position !== "center" && effect.position !== "outside") {
+      throw new LayerModelValidationError(`invalid stroke position: ${String(effect.position)}`);
+    }
+    return {
+      kind: "stroke",
+      color: effectColor(effect.color, "stroke color"),
+      width: finiteEffectNumber(effect.width, "stroke width"),
+      position: effect.position,
+      visible: effect.visible,
+    };
+  }
+  if (effect.kind === "overlay") {
+    return {
+      kind: "overlay",
+      color: effectColor(effect.color, "overlay color"),
+      opacity: finiteEffectNumber(effect.opacity, "overlay opacity", 0, 1),
+      blendMode: resolveBlendMode(effect.blendMode),
+      visible: effect.visible,
+    };
+  }
+  if (effect.kind === "bevel") {
+    return {
+      kind: "bevel",
+      highlightColor: effectColor(effect.highlightColor, "bevel highlight color"),
+      shadowColor: effectColor(effect.shadowColor, "bevel shadow color"),
+      depth: finiteEffectNumber(effect.depth, "bevel depth"),
+      angle: finiteEffectNumber(effect.angle, "bevel angle", -360, 360),
+      visible: effect.visible,
+    };
+  }
+  if (effect.kind === "pattern") {
+    if (typeof effect.patternId !== "string" || effect.patternId.length === 0) {
+      throw new LayerModelValidationError("invalid pattern id");
+    }
+    return {
+      kind: "pattern",
+      patternId: effect.patternId,
+      opacity: finiteEffectNumber(effect.opacity, "pattern opacity", 0, 1),
+      scale: finiteEffectNumber(effect.scale, "pattern scale"),
+      rotation: finiteEffectNumber(effect.rotation, "pattern rotation", -360, 360),
+      visible: effect.visible,
+    };
+  }
+  return {
+    kind: "unsupported",
+    code: "layer-model-unsupported-effect",
+    value: effect.kind,
+  };
+}
+
+function resolveEffects(
+  effects: LayerModelNodeInput["effects"],
+): readonly LayerModelResolvedEffect[] {
+  return (effects ?? []).map(resolveEffect);
+}
+
 function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
   const type = node.type ?? "GROUP";
   const blendMode = resolveBlendMode(node.blendMode);
@@ -166,6 +369,7 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
   const maskFeather = node.maskFeather ?? 0;
   const edgeRefinement = resolveEdgeRefinement(node.edgeRefinement);
   const passThrough = blendMode === "PASS_THROUGH" && type === "GROUP";
+  const effects = resolveEffects(node.effects);
   return {
     id: node.id,
     parentId: node.parentId,
@@ -187,6 +391,7 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     linkId,
     linkedLayerIds,
     colorLabel,
+    effects,
   };
 }
 
@@ -316,6 +521,7 @@ function canonicalJson(nodes: readonly LayerModelNode[]): string {
         linkId: node.linkId,
         linkedLayerIds: [...node.linkedLayerIds],
         colorLabel: node.colorLabel,
+        effects: node.effects,
       })),
   );
 }
