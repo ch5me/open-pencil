@@ -1,7 +1,7 @@
 {
   "schema": "ch5.image-editor.authority-behavioral-probes.v1",
   "authorityMatrixHash": "fa6ec1364421a3e34300eeb8afed1d5b288a47187e7a9b4cb58c15b39a455afa",
-  "pathAllocationHash": "f49a6be8e155f76039f7cad87a3dc1e8aa831003ab5e31dbaf1df21ef7343eba",
+  "pathAllocationHash": "a62536f291cad2eb77dc55e21f04da8f5c54484524af88176580f5fc50ded21a",
   "status": "partial",
   "probes": [
     {
@@ -169,7 +169,7 @@
       "observed": "Directional transfer ownership and cancellation not proved."
     }
   ],
-  "probeHash": "12745b6723d3ca0bebd30788060b31975d70c296a3a479a892b92b16ced67d82",
+  "probeHash": "8b3ceb3201bdd97ad8fbd8ffd9acbf9f606572ac6c148384bb7ca24cd3ee3bd7",
   "executionProvenance": {
     "commit": "0583d630963f4532840ba731996e7d7c11edf17c",
     "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
