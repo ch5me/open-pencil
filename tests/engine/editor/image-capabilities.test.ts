@@ -21,6 +21,9 @@ import {
   EffectAccelerationUnavailableError,
   EffectPixelAcceptanceError,
   reorderEffectStack,
+  setEffectEnabled,
+  updateEffectFilter,
+  validateEffectStack,
   validateEffectFilter,
   type EffectFilter,
   type EffectStack,
@@ -174,6 +177,31 @@ test("effects-v1 validates bounded filters and reorderable smart-mask stacks", (
   expect(() => validateEffectFilter(filter)).not.toThrow();
   expect(reorderEffectStack(stack, 0, 1).filters[1]?.id).toBe("effect:one");
   expect(new EffectAccelerationUnavailableError().code).toBe("E_EFFECT_ACCELERATION_UNAVAILABLE");
+});
+
+test("effects-v1 validates unique masks and supports non-destructive adjustment edits", () => {
+  const filter: EffectFilter = {
+    id: "effect:one",
+    kind: "brightness",
+    enabled: true,
+    affectedArea: [0, 0, 10, 10],
+    transactionId: "tx:effect",
+    adjustments: { amount: 0.25 },
+  };
+  const stack: EffectStack = {
+    layerId: "layer:one",
+    adjustmentScope: "layer",
+    filters: [filter],
+    effectMaskIds: ["mask:one"],
+    smart: true,
+  };
+  expect(() => validateEffectStack(stack)).not.toThrow();
+  expect(updateEffectFilter(stack, filter.id, { adjustments: { amount: 0.5 } }).filters[0])
+    .toMatchObject({ adjustments: { amount: 0.5 } });
+  expect(setEffectEnabled(stack, filter.id, false).filters[0]?.enabled).toBe(false);
+  expect(() => validateEffectStack({ ...stack, effectMaskIds: ["mask:one", "mask:one"] })).toThrow(
+    "invalid effect mask id",
+  );
 });
 
 test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouched by contract", () => {

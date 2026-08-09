@@ -14,7 +14,13 @@ export const setEffects = defineTool({
       type: "string",
       description: "Effect type",
       required: true,
-      enum: ["DROP_SHADOW", "INNER_SHADOW", "FOREGROUND_BLUR", "BACKGROUND_BLUR"],
+      enum: [
+        "DROP_SHADOW",
+        "INNER_SHADOW",
+        "LAYER_BLUR",
+        "FOREGROUND_BLUR",
+        "BACKGROUND_BLUR",
+      ],
     },
     color: { type: "color", description: "Shadow color (hex). Ignored for blur." },
     offset_x: { type: "number", description: "Shadow X offset", default: 0 },
@@ -26,7 +32,10 @@ export const setEffects = defineTool({
     const node = figma.getNodeById(args.id);
     if (!node) return nodeNotFound(args.id);
 
-    const isBlur = args.type === "FOREGROUND_BLUR" || args.type === "BACKGROUND_BLUR";
+    const isBlur =
+      args.type === "LAYER_BLUR" ||
+      args.type === "FOREGROUND_BLUR" ||
+      args.type === "BACKGROUND_BLUR";
     let color = { ...DEFAULT_SHADOW_COLOR };
     if (isBlur) color = { ...TRANSPARENT };
     else if (args.color) color = parseColor(args.color);

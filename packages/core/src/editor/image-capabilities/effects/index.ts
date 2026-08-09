@@ -28,6 +28,11 @@ export interface EffectFilter {
   readonly enabled: boolean;
   readonly affectedArea: readonly [number, number, number, number];
   readonly transactionId: `tx:${string}`;
+  /**
+   * Normalized adjustment controls. Raster effects may omit this field.
+   * Keeping controls numeric makes the contract serializable and host-neutral.
+   */
+  readonly adjustments?: Readonly<Record<string, number>>;
 }
 
 export interface EffectStack {
@@ -126,12 +131,18 @@ export function assertEffectPixelAcceptance(
 }
 
 export function validateEffectFilter(filter: EffectFilter): void {
-  if (!filter.id || !filter.transactionId.startsWith("tx:")) {
+  if (!filter.id || typeof filter.enabled !== "boolean" || !filter.transactionId.startsWith("tx:")) {
     throw new RangeError("invalid effect identity");
   }
   const [x, y, width, height] = filter.affectedArea;
   if (![x, y, width, height].every(Number.isFinite) || width < 0 || height < 0) {
     throw new RangeError("invalid effect affected area");
+  }
+  if (
+    filter.adjustments &&
+    Object.values(filter.adjustments).some((value) => !Number.isFinite(value))
+  ) {
+    throw new RangeError("invalid effect adjustments");
   }
 }
 
@@ -149,4 +160,47 @@ export function reorderEffectStack(stack: EffectStack, from: number, to: number)
 export interface RasterEffectMutation {
   readonly effect: RasterEffect;
   readonly transactionId: `tx:${string}`;
+}
+
+export type EffectFilterPatch = Partial<
+  Pick<EffectFilter, "kind" | "enabled" | "affectedArea" | "transactionId" | "adjustments">
+>;
+
+export function validateEffectStack(stack: EffectStack): void {
+  if (!stack.layerId || (stack.adjustmentScope !== "layer" && stack.adjustmentScope !== "group")) {
+    throw new RangeError("invalid effect stack identity");
+  }
+  const ids = new Set<string>();
+  for (const filter of stack.filters) {
+    validateEffectFilter(filter);
+    if (ids.has(filter.id)) throw new RangeError("duplicate effect filter id");
+    ids.add(filter.id);
+  }
+  const maskIds = new Set<string>();
+  for (const maskId of stack.effectMaskIds) {
+    if (!maskId || maskIds.has(maskId)) throw new RangeError("invalid effect mask id");
+    maskIds.add(maskId);
+  }
+}
+
+export function updateEffectFilter(
+  stack: EffectStack,
+  filterId: string,
+  patch: EffectFilterPatch,
+): EffectStack {
+  const index = stack.filters.findIndex((filter) => filter.id === filterId);
+  if (index < 0) throw new RangeError("missing effect filter");
+  const filters = [...stack.filters];
+  const current = filters[index];
+  if (!current) throw new RangeError("missing effect filter");
+  const next = { ...current, ...patch };
+  validateEffectFilter(next);
+  filters[index] = next;
+  const updated = { ...stack, filters };
+  validateEffectStack(updated);
+  return updated;
+}
+
+export function setEffectEnabled(stack: EffectStack, filterId: string, enabled: boolean): EffectStack {
+  return updateEffectFilter(stack, filterId, { enabled });
 }

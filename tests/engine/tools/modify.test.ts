@@ -79,6 +79,20 @@ describe("set_effects", () => {
     expect(effects.length).toBe(1);
     expect(effects[0].type).toBe("BACKGROUND_BLUR");
   });
+
+  test("adds layer blur", () => {
+    const { figma } = setupToolTest();
+    const frame = figma.createFrame();
+    frame.resize(100, 100);
+
+    const tool = getTool("set_effects");
+    tool.execute(figma, { id: frame.id, type: "LAYER_BLUR", radius: 10 });
+
+    const effects = expectDefined(figma.getNodeById(frame.id), "frame node").effects;
+    expect(effects.length).toBe(1);
+    expect(effects[0].type).toBe("LAYER_BLUR");
+    expect(effects[0].radius).toBe(10);
+  });
 });
 
 describe("update_node", () => {
