@@ -23,7 +23,13 @@ export {
   type RasterCompositionPixels,
   type RasterCompositionResult,
   type RasterCompositionUnsupported,
+  type RasterBackend,
+  type RasterBackendCapability,
+  type RasterCapabilityState,
+  type RasterParityThresholds,
   type RasterPixelFormat,
   type RasterUnsupportedGap,
   type RasterUnsupportedGapCode,
+  RASTER_RGBA8_PARITY,
+  validateRasterBackendCapability,
 } from "./raster";

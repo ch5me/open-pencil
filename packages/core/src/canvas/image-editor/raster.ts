@@ -3,9 +3,28 @@ import type { AssetId, AssetRevision } from "#core/editor/assets";
 
 export type RasterPixelFormat = "rgba8-srgb" | "rgba16f-linear-premultiplied";
 
+export type RasterBackend = "canvas2d" | "webgl2" | "webgpu" | "skia";
+export type RasterCapabilityState = "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
+
+export interface RasterParityThresholds {
+  readonly maxChannelDelta: number;
+  readonly maxMeanBias: number;
+}
+
+export interface RasterBackendCapability {
+  readonly version: "raster-backend-capability-v1";
+  readonly backend: RasterBackend;
+  readonly format: RasterPixelFormat;
+  readonly state: RasterCapabilityState;
+  readonly equivalence: "PARITY_PROVEN" | "NON_EQUIVALENT" | "UNKNOWN";
+  readonly parity: RasterParityThresholds;
+  readonly gaps: readonly RasterUnsupportedGap[];
+}
+
 export type RasterUnsupportedGapCode =
   | "rgba16f-unavailable"
   | "skia-oracle-unavailable"
+  | "backend-unavailable"
   | "malformed-rgba8";
 
 export interface RasterUnsupportedGap {
@@ -17,6 +36,8 @@ export interface RasterUnsupportedGap {
 export interface RasterCompositionUnsupported {
   readonly status: "UNSUPPORTED";
   readonly format: RasterPixelFormat;
+  readonly backend: RasterBackend;
+  readonly capability: RasterBackendCapability;
   readonly gaps: readonly RasterUnsupportedGap[];
   readonly pixels?: never;
 }
@@ -24,6 +45,8 @@ export interface RasterCompositionUnsupported {
 export interface RasterCompositionPixels {
   readonly status: "SUPPORTED";
   readonly format: "rgba8-srgb";
+  readonly backend: RasterBackend;
+  readonly capability: RasterBackendCapability;
   readonly width: number;
   readonly height: number;
   readonly pixels: Uint8Array;
@@ -46,11 +69,49 @@ export interface RasterCompositionOptions {
   readonly width: number;
   readonly height: number;
   readonly adjustments?: Readonly<Record<string, RasterAdjustment>>;
-  readonly backend?: "cpu-rgba8" | "skia";
+  readonly backend?: RasterBackend;
+  readonly parity?: Partial<RasterParityThresholds>;
 }
 
 export class RasterCompositionError extends Error {
   readonly code = "E_RASTER_COMPOSITION";
+}
+
+export const RASTER_RGBA8_PARITY: RasterParityThresholds = {
+  maxChannelDelta: 1 / 255,
+  maxMeanBias: 1 / 255,
+};
+
+function capability(
+  backend: RasterBackend,
+  state: RasterCapabilityState,
+  equivalence: RasterBackendCapability["equivalence"],
+  gaps: readonly RasterUnsupportedGap[],
+  parity: Partial<RasterParityThresholds> = {},
+): RasterBackendCapability {
+  return {
+    version: "raster-backend-capability-v1",
+    backend,
+    format: "rgba8-srgb",
+    state,
+    equivalence,
+    parity: { ...RASTER_RGBA8_PARITY, ...parity },
+    gaps,
+  };
+}
+
+export function validateRasterBackendCapability(capability: RasterBackendCapability): void {
+  if (
+    capability.version !== "raster-backend-capability-v1" ||
+    !["canvas2d", "webgl2", "webgpu", "skia"].includes(capability.backend) ||
+    !["rgba8-srgb", "rgba16f-linear-premultiplied"].includes(capability.format) ||
+    !["SUPPORTED", "UNKNOWN", "UNSUPPORTED"].includes(capability.state) ||
+    !["PARITY_PROVEN", "NON_EQUIVALENT", "UNKNOWN"].includes(capability.equivalence) ||
+    !Number.isFinite(capability.parity.maxChannelDelta) ||
+    !Number.isFinite(capability.parity.maxMeanBias)
+  ) {
+    throw new RasterCompositionError("invalid raster backend capability");
+  }
 }
 
 function numberMetadata(revision: AssetRevision, key: string): number | undefined {
@@ -213,7 +274,25 @@ export function composeRasterRGBA8(
       }
     }
   }
-  return { status: "SUPPORTED", format: "rgba8-srgb", width: options.width, height: options.height, pixels, gaps };
+  const backend = options.backend ?? "canvas2d";
+  const backendCapability = capability(
+    backend,
+    gaps.length > 0 ? "UNKNOWN" : "SUPPORTED",
+    backend === "canvas2d" ? "NON_EQUIVALENT" : "UNKNOWN",
+    gaps,
+    options.parity,
+  );
+  validateRasterBackendCapability(backendCapability);
+  return {
+    status: "SUPPORTED",
+    format: "rgba8-srgb",
+    backend,
+    capability: backendCapability,
+    width: options.width,
+    height: options.height,
+    pixels,
+    gaps,
+  };
 }
 
 export function composeRaster(
@@ -222,10 +301,31 @@ export function composeRaster(
   options: RasterCompositionOptions,
 ): RasterCompositionResult {
   if (options.backend === "skia") {
+    const gaps: RasterUnsupportedGap[] = [
+      { code: "skia-oracle-unavailable", message: "Skia raster oracle is unavailable" },
+    ];
+    const backendCapability = capability("skia", "UNSUPPORTED", "UNKNOWN", gaps, options.parity);
+    validateRasterBackendCapability(backendCapability);
     return {
       status: "UNSUPPORTED",
       format: "rgba8-srgb",
-      gaps: [{ code: "skia-oracle-unavailable", message: "Skia raster oracle is unavailable" }],
+      backend: "skia",
+      capability: backendCapability,
+      gaps,
+    };
+  }
+  if (options.backend === "webgl2" || options.backend === "webgpu") {
+    const gaps: RasterUnsupportedGap[] = [
+      { code: "backend-unavailable", message: `${options.backend} raster oracle is unavailable` },
+    ];
+    const backendCapability = capability(options.backend, "UNSUPPORTED", "UNKNOWN", gaps, options.parity);
+    validateRasterBackendCapability(backendCapability);
+    return {
+      status: "UNSUPPORTED",
+      format: "rgba8-srgb",
+      backend: options.backend,
+      capability: backendCapability,
+      gaps,
     };
   }
   return composeRasterRGBA8(plan, resolve, options);
