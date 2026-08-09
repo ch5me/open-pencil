@@ -63,6 +63,10 @@ export interface WaveOneDependencyReceipt {
   pathAllocationHash: string;
 }
 
+export class ImageEditorContractError extends Error {
+  readonly code = "E_IMAGE_EDITOR_CONTRACT";
+}
+
 export const IMAGE_EDITOR_CONTRACT: ImageEditorContract = {
   schema: IMAGE_EDITOR_CONTRACT_SCHEMA,
   contractVersion: "1.0.0",
@@ -146,6 +150,92 @@ export function assertWaveOneDependency(receipt: WaveOneDependencyReceipt): void
   if (receipt.pathAllocationHash !== PATH_ALLOCATION_HASH) {
     throw new Error("stale pathAllocationHash");
   }
+}
+
+function assertEqual<T>(actual: T, expected: T, label: string): void {
+  if (actual !== expected) {
+    throw new ImageEditorContractError(`invalid ${label}`);
+  }
+}
+
+function assertNonEmptyStrings(values: readonly string[], label: string): void {
+  if (values.some((value) => !value.trim())) {
+    throw new ImageEditorContractError(`${label} must contain non-empty strings`);
+  }
+}
+
+export function validateImageEditorContract(contract: ImageEditorContract): void {
+  assertEqual(contract.schema, IMAGE_EDITOR_CONTRACT_SCHEMA, "schema");
+  assertEqual(contract.contractVersion, "1.0.0", "contractVersion");
+  assertDigest(contract.authorityMatrixHash, "authorityMatrixHash");
+  assertDigest(contract.pathAllocationHash, "pathAllocationHash");
+  assertEqual(contract.authorityMatrixHash, AUTHORITY_MATRIX_HASH, "authorityMatrixHash");
+  assertEqual(contract.pathAllocationHash, PATH_ALLOCATION_HASH, "pathAllocationHash");
+
+  if (
+    !/^content:\d+$/u.test(contract.transaction.contentVersion) ||
+    !/^view:\d+$/u.test(contract.transaction.viewVersion)
+  ) {
+    throw new ImageEditorContractError("invalid transaction version");
+  }
+  assertNonEmptyStrings(contract.transaction.contentFields, "contentFields");
+  assertNonEmptyStrings(contract.transaction.viewFields, "viewFields");
+  const viewFields = new Set(contract.transaction.viewFields);
+  if (contract.transaction.contentFields.some((field) => viewFields.has(field))) {
+    throw new ImageEditorContractError("content and view fields must be disjoint");
+  }
+  assertEqual(contract.transaction.contentCas, "content-version-only", "contentCas");
+  assertEqual(contract.transaction.viewChangesAffectContent, false, "viewChangesAffectContent");
+
+  assertEqual(contract.storage.substrate, "indexeddb", "storage.substrate");
+  assertEqual(contract.storage.database, "openpencil-image-editor-v1", "storage.database");
+  assertEqual(contract.storage.objectStore, "records", "storage.objectStore");
+  assertEqual(
+    contract.storage.stagedChunksOutsideContentTransaction,
+    true,
+    "storage.stagedChunksOutsideContentTransaction",
+  );
+  assertEqual(contract.storage.contentCommitAtomic, true, "storage.contentCommitAtomic");
+  assertEqual(
+    contract.storage.autosaveAckSeparateTransaction,
+    true,
+    "storage.autosaveAckSeparateTransaction",
+  );
+
+  assertEqual(
+    contract.composition.workingSpace,
+    "document-primaries-linear",
+    "composition.workingSpace",
+  );
+  assertEqual(contract.composition.alpha, "premultiplied", "composition.alpha");
+  assertEqual(contract.composition.quantization, "declared-by-backend", "composition.quantization");
+  assertEqual(
+    contract.composition.passThroughSemantics,
+    "open-pencil-current-v1",
+    "composition.passThroughSemantics",
+  );
+
+  assertEqual(contract.layerModel.version, "layer-model-v1", "layerModel.version");
+  assertDigest(contract.layerModel.migrationHash, "layerModel.migrationHash");
+  assertNonEmptyStrings(contract.layerModel.invariants, "layerModel.invariants");
+  assertEqual(
+    contract.layerModel.multiLayerTransaction,
+    "old-or-new",
+    "layerModel.multiLayerTransaction",
+  );
+  assertNonEmptyStrings(contract.layerModel.unsupportedFields, "layerModel.unsupportedFields");
+  for (const [name, enabled] of Object.entries(contract.layerModel.capabilities)) {
+    assertEqual(enabled, true, `layerModel.capabilities.${name}`);
+  }
+
+  assertEqual(contract.archive.authorityId, "open-pencil-fig-kiwi", "archive.authorityId");
+  assertEqual(
+    contract.archive.protocolVersion,
+    "existing-version-preserving-fig-container",
+    "archive.protocolVersion",
+  );
+  assertEqual(contract.archive.workerResult, "staged-output-manifest", "archive.workerResult");
+  assertEqual(contract.archive.durableCommitOwnedBy, "host", "archive.durableCommitOwnedBy");
 }
 
 export function canonicalContractJson(

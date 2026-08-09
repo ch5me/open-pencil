@@ -3,10 +3,12 @@ import { describe, expect, test } from "bun:test";
 import {
   AUTHORITY_MATRIX_HASH,
   IMAGE_EDITOR_CONTRACT,
+  ImageEditorContractError,
   PATH_ALLOCATION_HASH,
   assertWaveOneDependency,
   canonicalContractJson,
   computeContractHash,
+  validateImageEditorContract,
 } from "#core/editor/image-contracts";
 
 describe("image editor contracts", () => {
@@ -35,6 +37,48 @@ describe("image editor contracts", () => {
         pathAllocationHash: PATH_ALLOCATION_HASH,
       }),
     ).toThrow("stale authorityMatrixHash");
+    expect(() =>
+      assertWaveOneDependency({
+        authorityMatrixHash: AUTHORITY_MATRIX_HASH,
+        pathAllocationHash: "0".repeat(64),
+      }),
+    ).toThrow("stale pathAllocationHash");
+  });
+
+  test("rejects malformed dependency digest", () => {
+    expect(() =>
+      assertWaveOneDependency({
+        authorityMatrixHash: "not-a-digest",
+        pathAllocationHash: PATH_ALLOCATION_HASH,
+      }),
+    ).toThrow("must be a lowercase SHA-256 hex digest");
+  });
+
+  test("validates the complete transaction and capability contract", () => {
+    expect(() => validateImageEditorContract(IMAGE_EDITOR_CONTRACT)).not.toThrow();
+    expect(IMAGE_EDITOR_CONTRACT.schema).toBe("ch5.open-pencil.image-editor.contract.v1");
+    expect(IMAGE_EDITOR_CONTRACT.contractVersion).toBe("1.0.0");
+    expect(IMAGE_EDITOR_CONTRACT.storage.contentCommitAtomic).toBe(true);
+    expect(IMAGE_EDITOR_CONTRACT.composition.alpha).toBe("premultiplied");
+    expect(IMAGE_EDITOR_CONTRACT.archive.durableCommitOwnedBy).toBe("host");
+  });
+
+  test("rejects contract drift in transaction fields", () => {
+    expect(() =>
+      validateImageEditorContract({
+        ...IMAGE_EDITOR_CONTRACT,
+        transaction: {
+          ...IMAGE_EDITOR_CONTRACT.transaction,
+          viewFields: [...IMAGE_EDITOR_CONTRACT.transaction.viewFields, "document"],
+        },
+      }),
+    ).toThrow(ImageEditorContractError);
+    expect(() =>
+      validateImageEditorContract({
+        ...IMAGE_EDITOR_CONTRACT,
+        storage: { ...IMAGE_EDITOR_CONTRACT.storage, contentCommitAtomic: false },
+      }),
+    ).toThrow("invalid storage.contentCommitAtomic");
   });
 
   test("separates content and view versions", () => {
