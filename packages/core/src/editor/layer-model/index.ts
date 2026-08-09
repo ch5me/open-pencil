@@ -2,7 +2,41 @@ import type { BlendMode, NodeType, SceneNode } from "#core/scene-graph";
 
 export const LAYER_MODEL_VERSION = "layer-model-v1";
 
-export type LayerModelNodeInput = Pick<SceneNode, "id" | "parentId" | "childIds" | "blendMode"> & {
+export const LAYER_MODEL_BLEND_MODES = [
+  "NORMAL",
+  "DARKEN",
+  "MULTIPLY",
+  "COLOR_BURN",
+  "LIGHTEN",
+  "SCREEN",
+  "COLOR_DODGE",
+  "OVERLAY",
+  "SOFT_LIGHT",
+  "HARD_LIGHT",
+  "DIFFERENCE",
+  "EXCLUSION",
+  "HUE",
+  "SATURATION",
+  "COLOR",
+  "LUMINOSITY",
+  "PASS_THROUGH",
+] as const satisfies readonly BlendMode[];
+
+export type LayerModelBlendMode = (typeof LAYER_MODEL_BLEND_MODES)[number];
+
+export interface UnsupportedLayerBlendMode {
+  readonly kind: "unsupported";
+  readonly code: "layer-model-unsupported-blend-mode";
+  readonly value: string;
+}
+
+export type LayerModelResolvedBlendMode = LayerModelBlendMode | UnsupportedLayerBlendMode;
+
+export type LayerModelNodeInput = Omit<
+  Pick<SceneNode, "id" | "parentId" | "childIds" | "blendMode">,
+  "blendMode"
+> & {
+  readonly blendMode: BlendMode | string;
   readonly type?: NodeType | string;
   readonly maskId?: string | null;
 };
@@ -11,7 +45,7 @@ export interface LayerModelNode {
   readonly id: string;
   readonly parentId: string | null;
   readonly childIds: readonly string[];
-  readonly blendMode: BlendMode | string;
+  readonly blendMode: LayerModelResolvedBlendMode;
   readonly type: NodeType | string;
   readonly maskId: string | null;
   readonly passThrough: boolean;
@@ -40,16 +74,34 @@ export class LayerModelTransactionConflict extends Error {
 
 function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
   const type = node.type ?? "GROUP";
-  const passThrough = node.blendMode === "PASS_THROUGH" && type === "GROUP";
+  const blendMode = resolveBlendMode(node.blendMode);
+  const passThrough = blendMode === "PASS_THROUGH" && type === "GROUP";
   return {
     id: node.id,
     parentId: node.parentId,
     childIds: [...node.childIds],
-    blendMode: node.blendMode,
+    blendMode,
     type,
     maskId: node.maskId ?? null,
     passThrough,
   };
+}
+
+function resolveBlendMode(mode: BlendMode | string): LayerModelResolvedBlendMode {
+  if ((LAYER_MODEL_BLEND_MODES as readonly string[]).includes(mode)) {
+    return mode as LayerModelBlendMode;
+  }
+  return {
+    kind: "unsupported",
+    code: "layer-model-unsupported-blend-mode",
+    value: mode,
+  };
+}
+
+export function isUnsupportedLayerBlendMode(
+  mode: LayerModelResolvedBlendMode,
+): mode is UnsupportedLayerBlendMode {
+  return typeof mode === "object" && mode.kind === "unsupported";
 }
 
 function canonicalJson(nodes: readonly LayerModelNode[]): string {
