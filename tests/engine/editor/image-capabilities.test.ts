@@ -10,6 +10,8 @@ import {
   type VectorCapability,
   validateVectorCapability,
 } from "#core/editor/image-capabilities";
+import { createRasterMutation } from "#core/editor/image-raster";
+import { createImageSelection } from "#core/editor/image-selection";
 
 test("text capability preserves editable imported metadata fields", () => {
   const text: TextCapability = {
@@ -71,4 +73,23 @@ test("content-edit-v1 save and reopen retains all semantic fields in one transac
   const next = createContentSnapshot("b".repeat(64));
   expect(applyContentSnapshotTransition(base, { base, next }, "redo")).toEqual(next);
   expect("E_CAPABILITY_EXTERNAL_UNAVAILABLE").toMatch(/^E_CAPABILITY_[A-Z_]+$/u);
+});
+
+test("raster mutations and selections carry one transaction without pixel processing", () => {
+  const mutation = createRasterMutation(
+    "crop",
+    { sourceId: "source:one", revisionId: `sha256:${"a".repeat(64)}`, width: 100, height: 80 },
+    "tx:raster",
+  );
+  const selection = createImageSelection(
+    "lasso",
+    [
+      { x: 1, y: 2 },
+      { x: 5, y: 8 },
+    ],
+    "tx:raster",
+  );
+  expect(mutation.transactionId).toBe(selection.transactionId);
+  expect(mutation.source.revisionId).toBe(`sha256:${"a".repeat(64)}`);
+  expect(selection.points).toHaveLength(2);
 });
