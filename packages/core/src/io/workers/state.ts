@@ -9,16 +9,24 @@ import {
 } from "#core/io/transactional/protocol";
 
 export class WorkerProtocolError extends Error {
-  readonly code = "worker-protocol-error";
+  readonly name: string = "WorkerProtocolError";
+  readonly code: string = "worker-protocol-error";
 }
 
 export class WorkerMemoryPressureError extends WorkerProtocolError {
-  readonly code = "worker-memory-pressure";
+  readonly name = "WorkerMemoryPressureError";
+  readonly code: string = "worker-memory-pressure";
+}
+
+export class WorkerCancelledError extends WorkerProtocolError {
+  readonly name = "WorkerCancelledError";
+  readonly code: string = "worker-cancelled";
 }
 
 export interface WorkerAdmissionOptions {
   readonly memoryProfile: string;
   readonly maxResidentBytes: number;
+  readonly maxInputBytes?: number;
   readonly maxTaskMs?: number;
 }
 
@@ -28,10 +36,16 @@ export class WorkerStateMachine {
   private readonly options?: WorkerAdmissionOptions;
   private taskCount = 0;
   private overBudgetCount = 0;
+  private inputCount = 0;
+  private inputBytes = 0;
+  private inputFinal = false;
 
   constructor(options?: WorkerAdmissionOptions) {
     if (options) {
       assertResourceLimit(options.maxResidentBytes, "maxResidentBytes");
+      if (options.maxInputBytes !== undefined) {
+        assertResourceLimit(options.maxInputBytes, "maxInputBytes");
+      }
       if (options.maxTaskMs !== undefined) assertResourceLimit(options.maxTaskMs, "maxTaskMs");
       this.options = options;
     }
@@ -46,29 +60,50 @@ export class WorkerStateMachine {
   }
 
   receiveInput(chunk: ChunkDescriptor): void {
+    this.requireActive("receiving input");
     if (this.state !== "receiving-input")
       throw new WorkerProtocolError("worker is not receiving input");
     assertChunk(chunk);
     if (chunk.chunkIndex !== this.inputSequence)
       throw new WorkerProtocolError("input sequence gap");
+    if (this.inputFinal) throw new WorkerProtocolError("input already complete");
+    if (chunk.offset !== this.inputBytes) throw new WorkerProtocolError("input offset gap");
+    const nextInputBytes = this.inputBytes + chunk.byteLength;
+    if (!Number.isSafeInteger(nextInputBytes)) {
+      throw new WorkerMemoryPressureError("input size exceeds safe integer range");
+    }
+    if (this.options?.maxInputBytes !== undefined && nextInputBytes > this.options.maxInputBytes) {
+      throw new WorkerMemoryPressureError(
+        `input exceeds ${this.options.memoryProfile} maxInputBytes admission`,
+      );
+    }
     this.inputSequence += 1;
+    this.inputCount += 1;
+    this.inputBytes = nextInputBytes;
+    this.inputFinal = chunk.final;
   }
 
   finishInput(): void {
+    this.requireActive("finish input");
+    if (this.inputCount === 0 || !this.inputFinal)
+      throw new WorkerProtocolError("input must end with a final chunk");
     this.advance("input-complete");
     this.advance("validating");
   }
 
   transform(): void {
+    this.requireActive("transform");
     this.advance("transforming");
     this.advance("emitting-output");
   }
 
   finishOutput(): void {
+    this.requireActive("finish output");
     this.advance("output-complete");
   }
 
   sendResult(): void {
+    this.requireActive("send result");
     this.advance("result-sent");
   }
 
@@ -143,5 +178,10 @@ export class WorkerStateMachine {
       throw new WorkerProtocolError(`invalid worker transition: ${this.state} -> ${next}`);
     }
     this.state = next;
+  }
+
+  private requireActive(operation: string): void {
+    if (this.state === "cancelled")
+      throw new WorkerCancelledError(`cannot ${operation}: worker cancelled`);
   }
 }

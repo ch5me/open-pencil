@@ -90,6 +90,73 @@ describe("transactional IO and worker contracts", () => {
     expect(() => worker.admitRenderBuffer(5, 5)).toThrow(WorkerMemoryPressureError);
   });
 
+  test("worker admits incremental input without retaining prior chunks", () => {
+    const worker = new WorkerStateMachine({
+      memoryProfile: "D1",
+      maxResidentBytes: 4,
+      maxInputBytes: 6,
+    });
+    worker.ready();
+    worker.beginInput();
+    worker.receiveInput({
+      ...chunk(0),
+      byteLength: 2,
+      offset: 0,
+      final: false,
+      bytes: new Uint8Array([0, 1]),
+    });
+    worker.receiveInput({
+      ...chunk(1),
+      byteLength: 2,
+      offset: 2,
+      final: false,
+      bytes: new Uint8Array([2, 3]),
+    });
+    worker.receiveInput({
+      ...chunk(2),
+      byteLength: 2,
+      offset: 4,
+      final: true,
+      bytes: new Uint8Array([4, 5]),
+    });
+    worker.finishInput();
+    expect(worker.state).toBe("validating");
+  });
+
+  test("worker rejects non-contiguous or over-admission incremental input", () => {
+    const worker = new WorkerStateMachine({
+      memoryProfile: "D1",
+      maxResidentBytes: 4,
+      maxInputBytes: 3,
+    });
+    worker.ready();
+    worker.beginInput();
+    expect(() =>
+      worker.receiveInput({
+        ...chunk(0),
+        byteLength: 1,
+        offset: 1,
+        bytes: new Uint8Array([0]),
+      }),
+    ).toThrow("input offset gap");
+    worker.receiveInput({
+      ...chunk(0),
+      byteLength: 2,
+      offset: 0,
+      final: false,
+      bytes: new Uint8Array([0, 1]),
+    });
+    expect(() =>
+      worker.receiveInput({
+        ...chunk(1),
+        byteLength: 2,
+        offset: 2,
+        final: true,
+        bytes: new Uint8Array([2, 3]),
+      }),
+    ).toThrow("maxInputBytes admission");
+  });
+
   test("host rejects input above declared admission before staging", () => {
     const tx = new HostTransaction();
     expect(() =>
