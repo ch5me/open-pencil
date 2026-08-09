@@ -5,10 +5,16 @@ import {
   applyContentSnapshotTransition,
 } from "#core/editor/history/journal";
 import {
+  deletePathAnchor,
+  insertPathAnchor,
+  movePathAnchor,
+  type PathAnchor,
+  type PenPath,
   type TextCapability,
   validateTextCapability,
   type VectorCapability,
   validateVectorCapability,
+  validatePenPath,
 } from "#core/editor/image-capabilities";
 import { createRasterMutation } from "#core/editor/image-raster";
 import { createImageSelection } from "#core/editor/image-selection";
@@ -92,4 +98,20 @@ test("raster mutations and selections carry one transaction without pixel proces
   expect(mutation.transactionId).toBe(selection.transactionId);
   expect(mutation.source.revisionId).toBe(`sha256:${"a".repeat(64)}`);
   expect(selection.points).toHaveLength(2);
+});
+
+test("pen path supports deterministic anchor editing and closed/open semantics", () => {
+  const path: PenPath = {
+    anchors: [
+      { id: "a", x: 0, y: 0 },
+      { id: "b", x: 10, y: 10, handleIn: [8, 8], handleOut: [12, 12] },
+    ],
+    closed: false,
+    transactionId: "tx:pen",
+  };
+  const inserted: PathAnchor = { id: "c", x: 5, y: 5 };
+  const edited = movePathAnchor(insertPathAnchor(path, inserted, 1), "a", 1, 2);
+  expect(edited.anchors.map((anchor) => anchor.id)).toEqual(["a", "c", "b"]);
+  expect(deletePathAnchor(edited, "c").anchors).toHaveLength(2);
+  expect(() => validatePenPath({ ...path, anchors: [] })).toThrow("requires an anchor");
 });
