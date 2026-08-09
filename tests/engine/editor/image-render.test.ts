@@ -85,12 +85,21 @@ test("image render adapter resolves the first bound image asset", () => {
   expect(frame.textures[0]?.uploaded).toBe(true);
 });
 
-test("image render adapter carries full composition metadata for raster bases", () => {
-  const adapter = createImageRenderAdapter();
-  const base = imageNode("base");
+test("image render adapter emits clipped raster bases from composition groups", () => {
+  const group = {
+    ...imageNode("group"),
+    type: "GROUP",
+    childIds: ["raster"],
+    clipsContent: true,
+    blendMode: "PASS_THROUGH",
+  };
+  const raster = {
+    ...imageNode("raster", "asset:raster-base"),
+    parentId: "group",
+  };
   const graph = {
-    rootId: base.id,
-    getNode: (id: string) => (id === base.id ? base : undefined),
+    rootId: "group",
+    getNode: (id: string) => [group, raster].find((node) => node.id === id),
   } as unknown as SceneGraph;
   const plan = createCompositionPlan(graph, "group", {
     adjustmentHooks: ["exposure"],

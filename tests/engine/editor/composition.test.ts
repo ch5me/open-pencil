@@ -77,6 +77,64 @@ describe("editor composition plan", () => {
     expect(serializeCompositionPlan(plan)).toBe(serializeCompositionPlan(plan));
   });
 
+  test("plans raster bases inside composition-full-v1 groups with clip, mask, rotation, and adjustments", () => {
+    const group = node({
+      id: "group",
+      type: "GROUP",
+      childIds: ["mask", "raster"],
+      clipsContent: true,
+      rotation: 18,
+      blendMode: "PASS_THROUGH",
+    });
+    const mask = node({
+      id: "mask",
+      type: "VECTOR",
+      parentId: group.id,
+      isMask: true,
+      maskType: "VECTOR",
+      maskIsOutline: true,
+    });
+    const raster = node({
+      id: "raster",
+      type: "IMAGE",
+      parentId: group.id,
+      rotation: -7,
+      fills: [
+        {
+          type: "IMAGE",
+          color: { r: 1, g: 1, b: 1, a: 1 },
+          opacity: 1,
+          visible: true,
+          imageHash: "asset:raster-base",
+        },
+      ],
+    });
+    const plan = createCompositionPlan(
+      graphOf([{ ...group }, mask, raster], group.id),
+      group.id,
+      { adjustmentHooks: ["exposure", "temperature"] },
+    );
+
+    expect(plan.nodes.get(group.id)).toMatchObject({
+      clipsContent: true,
+      clipDepth: 1,
+      rotation: 18,
+      isolation: "pass-through",
+      adjustmentHooks: ["exposure", "temperature"],
+    });
+    expect(plan.nodes.get(mask.id)).toMatchObject({
+      maskType: "VECTOR",
+      maskIsOutline: true,
+      maskDepth: 1,
+    });
+    expect(plan.nodes.get(raster.id)).toMatchObject({
+      assetIds: ["asset:raster-base"],
+      clipDepth: 1,
+      rotation: -7,
+      adjustmentHooks: ["exposure", "temperature"],
+    });
+  });
+
   test("hidden ancestors hide descendants without changing node semantics", () => {
     const frame = node({ id: "frame", type: "FRAME", visible: false, childIds: ["child"] });
     const child = node({ id: "child", type: "RECTANGLE", parentId: frame.id });
