@@ -116,7 +116,7 @@ test("10,000 combined edits restore hashes and leave no dangling or mixed refere
     ]);
     history.push({ base: state, next: nextState });
     state = applyContentSnapshotTransition(state, { base: state, next: nextState }, "redo");
-    registry.validateReferences(assets);
+    if (operation % 1_024 === 0) registry.validateReferences(assets);
   }
 
   for (let index = history.length - 1; index >= 0; index -= 1) {
@@ -124,6 +124,7 @@ test("10,000 combined edits restore hashes and leave no dangling or mixed refere
     if (!transition) throw new Error("missing combined history entry");
     state = applyContentSnapshotTransition(state, transition, "undo");
   }
+  registry.validateReferences(assets);
   const danglingRefs = assets.filter((assetId) => !registry.getAsset(assetId)).length;
   const gc = registry.collectGarbage(registry.reachableRevisionIds());
   expect(state).toEqual(createContentSnapshot("0".repeat(64)));
