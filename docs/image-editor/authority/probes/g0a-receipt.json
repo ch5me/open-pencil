@@ -1,7 +1,7 @@
 {
   "agentReasoning": "Reused OpenPencil SceneGraph, image map, UndoManager, color, Skia, IORegistry, FIG worker, digest/provenance, package smoke, and worker-test authorities. Added only bounded identity/persistence rows where no complete current authority was observed. Protected paths assigned exactly once to fixed CP/L writers.",
   "architectApprovalRequired": true,
-  "architectVerdict": "PENDING_AX-O",
+  "architectVerdict": "APPROVED_AX-O",
   "authorityMatrixHash": "4e8bac3fc8b92bd0157f6ce24a73c5bbb6962012df87a001cbc36748582de784",
   "baseCommit": "3f97c97bbda052af0d94077deb6e035165ef249e",
   "installedRosterHash": "12c391c9c94da6814668193092cf32b1b64b965244a4db44edf33d96f74eabea",
@@ -24,23 +24,23 @@
     "omx agents list"
   ],
   "staleStateResolution": "Fresh origin/main tips fetched from all three Grove leader Trees. All leader Trees clean; ch5-packages origin/main reconciled to 2e81e50973e6d1ce367c159b47300089b1b4bb60. No producer source edits made or included.",
-  "status": "submitted_pending_architect",
+  "status": "approved",
   "subagentEvidence": "Subagent spawn evidence: 2 child tasks (canonical plan/receipt extraction; authority-surface inspection) spawned; findings integrated.",
   "testSpecSha256": "ee70da2d841561ec93f68b7f3093f4373c18b27e03360b837f9e7aec74c1077b",
   "usedRoleHash": "84b08c112d0d6b2352db11746f3517e69d88dcb93d84ef137368c21f59e26c77",
   "executionProvenance": {
-    "commit": "0583d630963f4532840ba731996e7d7c11edf17c",
-    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
-    "team": "repair-wave-0-g0a-o-a-c0d9d17e",
+    "commit": "9ad9af0827ebf332e9fe06df380dfd2796356e8b",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/g0a-o-approval-record-25ae46f9/worktrees/worker-1",
+    "team": "g0a-o-approval-record-25ae46f9",
     "worker": "worker-1",
     "role": "executor",
-    "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
-    "observedAt": "2026-08-09T01:45:00Z"
+    "session": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61",
+    "observedAt": "2026-08-09T03:30:33Z"
   },
-  "executionCommit": "0583d630963f4532840ba731996e7d7c11edf17c",
-  "executionTree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
-  "executionTeam": "repair-wave-0-g0a-o-a-c0d9d17e",
+  "executionCommit": "9ad9af0827ebf332e9fe06df380dfd2796356e8b",
+  "executionTree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/g0a-o-approval-record-25ae46f9/worktrees/worker-1",
+  "executionTeam": "g0a-o-approval-record-25ae46f9",
   "executionWorker": "worker-1",
   "executionRole": "executor",
-  "executionSession": "019fe42f-6619-7303-8e6e-69a1f46c8491"
+  "executionSession": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61"
 }

@@ -3,13 +3,13 @@
     "id": "open-pencil-fig-kiwi",
     "version": "existing-version-preserving-fig-container"
   },
-  "architectVerdict": "PENDING_AX-O",
+  "architectVerdict": "APPROVED_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
   "authorityMatrixHash": "4e8bac3fc8b92bd0157f6ce24a73c5bbb6962012df87a001cbc36748582de784",
   "currentOwnerRepo": "open-pencil",
   "rows": [
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "SceneGraph.nodes",
       "candidate": "extend",
@@ -29,7 +29,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "SceneGraph.images",
       "candidate": "extend",
@@ -49,7 +49,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "logical asset/revision identity",
       "candidate": "new-bounded-authority",
@@ -69,7 +69,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "UndoManager and durable history",
       "candidate": "extend",
@@ -89,7 +89,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "mask nodes and raster mask bytes",
       "candidate": "extend",
@@ -109,7 +109,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "DocumentColorSpace and working primaries",
       "candidate": "extend",
@@ -129,7 +129,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "Skia renderer and composition plan",
       "candidate": "extend",
@@ -149,7 +149,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "IORegistry and staged formats",
       "candidate": "extend",
@@ -169,7 +169,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "FIG read/parse worker and fallback",
       "candidate": "extend",
@@ -189,7 +189,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "FIG export worker and buffer ownership",
       "candidate": "extend",
@@ -209,7 +209,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "FIG compression/container and fflate",
       "candidate": "extend",
@@ -229,7 +229,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "SHA/canonical/package provenance utilities",
       "candidate": "extend",
@@ -249,7 +249,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "package metadata/pack/install/import smoke utilities",
       "candidate": "extend",
@@ -269,7 +269,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "existing FIG worker tests",
       "candidate": "extend",
@@ -289,7 +289,7 @@
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof"
     },
     {
-      "architectVerdict": "PENDING_AX-O",
+      "architectVerdict": "APPROVED_AX-O",
       "atomicityEvidence": "AR-O source inspection only; execution proof pending",
       "authorityId": "persistence atomicity",
       "candidate": "new-bounded-authority",
@@ -327,7 +327,7 @@
         "AUTH-003"
       ],
       "decision": "extend",
-      "architectVerdict": "PENDING_AX-O"
+      "architectVerdict": "APPROVED_AX-O"
     },
     {
       "authorityId": "raster mask bytes",
@@ -347,7 +347,7 @@
         "AUTH-003"
       ],
       "decision": "new-bounded-authority",
-      "architectVerdict": "PENDING_AX-O"
+      "architectVerdict": "APPROVED_AX-O"
     },
     {
       "authorityId": "working primaries",
@@ -368,7 +368,7 @@
         "AUTH-003"
       ],
       "decision": "extend",
-      "architectVerdict": "PENDING_AX-O"
+      "architectVerdict": "APPROVED_AX-O"
     },
     {
       "authorityId": "composition plan",
@@ -388,7 +388,7 @@
         "AUTH-003"
       ],
       "decision": "extend",
-      "architectVerdict": "PENDING_AX-O"
+      "architectVerdict": "APPROVED_AX-O"
     },
     {
       "authorityId": "FIG parse transfer",
@@ -408,7 +408,7 @@
         "AUTH-003"
       ],
       "decision": "extend",
-      "architectVerdict": "PENDING_AX-O"
+      "architectVerdict": "APPROVED_AX-O"
     }
   ],
   "schema": "ch5.image-editor.authority-matrix.v1",
@@ -474,12 +474,12 @@
   "archiveAuthorityId": "open-pencil-fig-kiwi",
   "archiveProtocolVersion": "existing-version-preserving-fig-container",
   "executionProvenance": {
-    "commit": "0583d630963f4532840ba731996e7d7c11edf17c",
-    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
-    "team": "repair-wave-0-g0a-o-a-c0d9d17e",
+    "commit": "9ad9af0827ebf332e9fe06df380dfd2796356e8b",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/g0a-o-approval-record-25ae46f9/worktrees/worker-1",
+    "team": "g0a-o-approval-record-25ae46f9",
     "worker": "worker-1",
     "role": "executor",
-    "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
-    "observedAt": "2026-08-09T01:45:00Z"
+    "session": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61",
+    "observedAt": "2026-08-09T03:30:33Z"
   }
 }
