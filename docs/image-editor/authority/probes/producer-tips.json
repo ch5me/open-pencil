@@ -5,11 +5,11 @@
     "openPencil": true
   },
   "command": "git fetch --prune origin; git rev-parse origin/main",
-  "observedAt": "2026-08-09T09:10:00Z",
-  "producerTipSetHash": "8ee177d9ced3320d790ebf4c1b5b6a3929107c7a00a08c9a8174f7f3d6cc7b24",
+  "observedAt": "2026-08-09T09:22:00Z",
+  "producerTipSetHash": "5072c72647188d66c5b4c4df22a45a0dcfaa2fafaa6c818ef0ca5bc79ccf5d60",
   "producerTips": {
-    "openPencil": "70ca981345d77ebf9d5d73442be8634a863ff470",
-    "ch5Packages": "5ebe4fbf31c076b124ca000422e70087e4aeb38c",
+    "openPencil": "6785cb3be6a42cc90898e06ab7ba27d0045228cb",
+    "ch5Packages": "06ce357bbfdba8750d063446d85da6a012d11a05",
     "mahjong": "4ed827d8badb920dd2af0f1624fd5d9c3cc3ee0a"
   },
   "schema": "ch5.image-editor.probe.producer-tips.v1",

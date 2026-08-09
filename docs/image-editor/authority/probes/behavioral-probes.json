@@ -1,7 +1,7 @@
 {
   "schema": "ch5.image-editor.authority-behavioral-probes.v1",
-  "authorityMatrixHash": "08bdb89e74f2b9e16da7071b56df5e154ed21e014620afb71ff2ce3c0cb08e2e",
-  "pathAllocationHash": "036df90502b9e877141c867bbee9a6fcfd9d53fbf6d02dba37503fed328407e4",
+  "authorityMatrixHash": "c9fa1e9e0167e69a73c0bc1534e7e4d089237b2063f1d9a0701510fe54477ae7",
+  "pathAllocationHash": "40e2dcedf8e530630d881594ea92e68fcc9b0d7fc09fe66dacaa3cf6ff1b3625",
   "status": "partial",
   "probes": [
     {
@@ -178,6 +178,6 @@
     "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
     "observedAt": "2026-08-09T01:45:00Z"
   },
-  "probeHash": "8639a7814ae43b434581f5911f1572418e32358bd2ea6635f5b4a01fb210ffd1",
-  "observedAt": "2026-08-09T09:10:00Z"
+  "probeHash": "db87742d990d8d10a5a6174ebfa36a4e7d442012b4a3b6a5ead7a3e8b8a4dd1d",
+  "observedAt": "2026-08-09T09:22:00Z"
 }

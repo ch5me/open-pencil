@@ -2,13 +2,13 @@
   "agentReasoning": "Reused OpenPencil SceneGraph, image map, UndoManager, color, Skia, IORegistry, FIG worker, digest/provenance, package smoke, and worker-test authorities. Added only bounded identity/persistence rows where no complete current authority was observed. Protected paths assigned exactly once to fixed CP/L writers.",
   "architectApprovalRequired": true,
   "architectVerdict": "APPROVED_AX-O",
-  "authorityMatrixHash": "08bdb89e74f2b9e16da7071b56df5e154ed21e014620afb71ff2ce3c0cb08e2e",
-  "baseCommit": "70ca981345d77ebf9d5d73442be8634a863ff470",
+  "authorityMatrixHash": "c9fa1e9e0167e69a73c0bc1534e7e4d089237b2063f1d9a0701510fe54477ae7",
+  "baseCommit": "6785cb3be6a42cc90898e06ab7ba27d0045228cb",
   "installedRosterHash": "12c391c9c94da6814668193092cf32b1b64b965244a4db44edf33d96f74eabea",
   "lane": "G0A-O",
-  "pathAllocationHash": "036df90502b9e877141c867bbee9a6fcfd9d53fbf6d02dba37503fed328407e4",
+  "pathAllocationHash": "40e2dcedf8e530630d881594ea92e68fcc9b0d7fc09fe66dacaa3cf6ff1b3625",
   "planSha256": "5370f27489c456f2ae3dc6fdf1d28e98252b26c1bd2616c662f54c9c1b9592d9",
-  "producerTipSetHash": "8ee177d9ced3320d790ebf4c1b5b6a3929107c7a00a08c9a8174f7f3d6cc7b24",
+  "producerTipSetHash": "5072c72647188d66c5b4c4df22a45a0dcfaa2fafaa6c818ef0ca5bc79ccf5d60",
   "readOnlyProbePaths": [
     "docs/image-editor/authority/probes/behavioral-probes.json",
     "docs/image-editor/authority/probes/installed-roster.json",
@@ -23,7 +23,7 @@
     "git -C /Users/hassoncs/src/ch5/ch5-packages fetch --prune origin",
     "omx agents list"
   ],
-  "staleStateResolution": "Fresh origin/main tips fetched and reconciled against existing approved 20-row authority matrix and 67 protected paths; no producer implementation writes.",
+  "staleStateResolution": "Fresh origin/main tips fetched and reconciled; package producer drift included; no producer implementation writes.",
   "status": "approved-current-tips",
   "subagentEvidence": "Subagent spawn evidence: 2 child tasks (canonical plan/receipt extraction; authority-surface inspection) spawned; findings integrated.",
   "testSpecSha256": "ee70da2d841561ec93f68b7f3093f4373c18b27e03360b837f9e7aec74c1077b",
@@ -43,5 +43,5 @@
   "executionWorker": "worker-1",
   "executionRole": "executor",
   "executionSession": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61",
-  "observedAt": "2026-08-09T09:10:00Z"
+  "observedAt": "2026-08-09T09:22:00Z"
 }
