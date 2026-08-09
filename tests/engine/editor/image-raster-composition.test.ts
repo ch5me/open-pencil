@@ -251,35 +251,30 @@ test("RGBA8 composition applies nested mask bounds and clipping with pixel parit
   ]);
 });
 
-test("RGBA8 composition applies group masks to following sibling content", () => {
-  const group = node({
-    id: "group",
+test("RGBA8 group masks use accumulated bounds inside clipped groups", () => {
+  const clip = node({
+    id: "clip",
     type: "GROUP",
     width: 2,
     height: 1,
-    childIds: ["mask", "image"],
+    clipsContent: true,
+    childIds: ["mask"],
   });
   const mask = node({
     id: "mask",
     type: "GROUP",
-    parentId: group.id,
+    parentId: clip.id,
+    x: 1,
     width: 1,
     height: 1,
     isMask: true,
-    childIds: ["mask-shape"],
-  });
-  const maskShape = node({
-    id: "mask-shape",
-    type: "RECTANGLE",
-    parentId: mask.id,
-    width: 1,
-    height: 1,
+    childIds: ["image"],
   });
   const image = node({
     id: "image",
     type: "IMAGE",
-    parentId: group.id,
-    width: 2,
+    parentId: mask.id,
+    width: 3,
     height: 1,
     fills: [
       {
@@ -287,29 +282,33 @@ test("RGBA8 composition applies group masks to following sibling content", () =>
         color: { r: 1, g: 1, b: 1, a: 1 },
         opacity: 1,
         visible: true,
-        imageHash: "asset:group-mask",
+        imageHash: "asset:offset-mask",
       },
     ],
   });
-  const graph = {
-    rootId: group.id,
-    getNode: (id: string) =>
-      new Map([group, mask, maskShape, image].map((entry) => [entry.id, entry])).get(id),
-  } as unknown as SceneGraph;
   const revision = {
-    revisionId: "sha256:group-mask",
+    revisionId: "sha256:offset-mask",
     kind: "image",
-    metadata: { format: "rgba8-srgb", width: 2, height: 1 },
-    bytes: new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255]),
+    metadata: { format: "rgba8-srgb", width: 3, height: 1 },
+    bytes: new Uint8Array([
+      255, 0, 0, 255,
+      0, 255, 0, 255,
+      0, 0, 255, 255,
+    ]),
   } satisfies AssetRevision;
+  const plan = planFor([clip, mask, image], clip.id);
 
-  const result = composeRasterRGBA8(
-    createCompositionPlan(graph, group.id),
-    resolver(revision),
-    { width: 2, height: 1 },
-  );
-
-  expect([...result.pixels]).toEqual([255, 0, 0, 255, 0, 0, 0, 0]);
+  expect(plan.nodes.get(mask.id)?.bounds).toEqual({
+    x: 1,
+    y: 0,
+    width: 1,
+    height: 1,
+  });
+  expect([...composeRasterRGBA8(plan, resolver(revision), { width: 3, height: 1 }).pixels]).toEqual([
+    0, 0, 0, 0,
+    255, 0, 0, 255,
+    0, 0, 0, 0,
+  ]);
 });
 
 test("RGBA16F and Skia oracle paths emit typed unsupported gaps", () => {
@@ -341,4 +340,103 @@ test("RGBA16F and Skia oracle paths emit typed unsupported gaps", () => {
     status: "UNSUPPORTED",
     gaps: [{ code: "skia-oracle-unavailable" }],
   });
+});
+
+test("RGBA8 composition clips nested children and applies inherited opacity", () => {
+  const outer = node({
+    id: "outer",
+    type: "GROUP",
+    width: 3,
+    height: 3,
+    x: 0,
+    y: 0,
+    clipsContent: true,
+    childIds: ["inner"],
+  });
+  const inner = node({
+    id: "inner",
+    type: "FRAME",
+    parentId: outer.id,
+    width: 2,
+    height: 2,
+    x: 1,
+    y: 0,
+    clipsContent: true,
+    opacity: 0.5,
+    childIds: ["image"],
+  });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: inner.id,
+    width: 2,
+    height: 2,
+    x: 1,
+    y: 0,
+    opacity: 0.5,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:nested",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:nested",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255]),
+  } satisfies AssetRevision;
+  const plan = createCompositionPlan(
+    {
+      rootId: outer.id,
+      getNode: (id: string) => new Map([outer, inner, image].map((entry) => [entry.id, entry])).get(id),
+    } as unknown as SceneGraph,
+    outer.id,
+  );
+
+  const result = composeRasterRGBA8(plan, resolver(revision), { width: 4, height: 2 });
+
+  expect([...result.pixels]).toEqual([
+    0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 64, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 64, 0, 0, 0, 0,
+  ]);
+});
+
+test("RGBA8 composition skips assets below hidden clipping bases", () => {
+  const frame = node({
+    id: "frame",
+    type: "FRAME",
+    visible: false,
+    clipsContent: true,
+    childIds: ["image"],
+  });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: frame.id,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:hidden",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:hidden",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255]),
+  } satisfies AssetRevision;
+  const plan = planFor([frame, image], frame.id);
+
+  expect([...composeRasterRGBA8(plan, resolver(revision), { width: 1, height: 1 }).pixels]).toEqual([
+    0, 0, 0, 0,
+  ]);
 });
