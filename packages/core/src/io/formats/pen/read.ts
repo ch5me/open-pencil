@@ -1,4 +1,5 @@
 import { parseSVGPath } from "#core/io/formats/svg/parse-path";
+import { assertInputWithinLimit } from "#core/io/registry";
 import { SceneGraph } from "#core/scene-graph";
 import type { LayoutMode, LayoutSizing, SceneNode, VectorNetwork } from "#core/scene-graph";
 import { copyEffects, copyFills, copyStrokes } from "#core/scene-graph/copy";
@@ -528,4 +529,3 @@ export async function readPenFile(file: File, options: { maxInputBytes?: number 
   assertInputWithinLimit(file.size, options.maxInputBytes);
   return parsePenFile(await file.text());
 }
-import { assertInputWithinLimit } from "#core/io/registry";
