@@ -1,4 +1,5 @@
 export {
+  WorkerCancelledError,
   WorkerMemoryPressureError,
   WorkerProtocolError,
   WorkerStateMachine,
