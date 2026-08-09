@@ -16,6 +16,13 @@ import {
   validateVectorCapability,
   validatePenPath,
 } from "#core/editor/image-capabilities";
+import {
+  EffectAccelerationUnavailableError,
+  reorderEffectStack,
+  validateEffectFilter,
+  type EffectFilter,
+  type EffectStack,
+} from "#core/editor/image-capabilities/effects";
 import { createRasterMutation } from "#core/editor/image-raster";
 import { createImageSelection } from "#core/editor/image-selection";
 
@@ -114,4 +121,24 @@ test("pen path supports deterministic anchor editing and closed/open semantics",
   expect(edited.anchors.map((anchor) => anchor.id)).toEqual(["a", "c", "b"]);
   expect(deletePathAnchor(edited, "c").anchors).toHaveLength(2);
   expect(() => validatePenPath({ ...path, anchors: [] })).toThrow("requires an anchor");
+});
+
+test("effects-v1 validates bounded filters and reorderable smart-mask stacks", () => {
+  const filter: EffectFilter = {
+    id: "effect:one",
+    kind: "brightness",
+    enabled: true,
+    affectedArea: [0, 0, 100, 80],
+    transactionId: "tx:effect",
+  };
+  const stack: EffectStack = {
+    layerId: "layer:one",
+    adjustmentScope: "group",
+    filters: [filter, { ...filter, id: "effect:two", kind: "blur" }],
+    effectMaskIds: ["mask:one"],
+    smart: true,
+  };
+  expect(() => validateEffectFilter(filter)).not.toThrow();
+  expect(reorderEffectStack(stack, 0, 1).filters[1]?.id).toBe("effect:one");
+  expect(new EffectAccelerationUnavailableError().code).toBe("E_EFFECT_ACCELERATION_UNAVAILABLE");
 });
