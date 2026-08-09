@@ -1,7 +1,7 @@
 {
-  "authorityMatrixHash": "4e8bac3fc8b92bd0157f6ce24a73c5bbb6962012df87a001cbc36748582de784",
-  "base": "3f97c97bbda052af0d94077deb6e035165ef249e",
-  "pathAllocationHash": "ca831997c578c54aae5338e054cca75915ad8ecf56f1f92c3b704107a279fcdc",
+  "authorityMatrixHash": "08bdb89e74f2b9e16da7071b56df5e154ed21e014620afb71ff2ce3c0cb08e2e",
+  "base": "70ca981345d77ebf9d5d73442be8634a863ff470",
+  "pathAllocationHash": "036df90502b9e877141c867bbee9a6fcfd9d53fbf6d02dba37503fed328407e4",
   "probes": [
     {
       "evidence": "current OpenPencil source files listed in matrix.sourceReferences exist at fetched producer tip",
@@ -32,5 +32,6 @@
     "role": "executor",
     "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
     "observedAt": "2026-08-09T01:45:00Z"
-  }
+  },
+  "observedAt": "2026-08-09T09:10:00Z"
 }

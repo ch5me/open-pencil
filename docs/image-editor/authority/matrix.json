@@ -5,7 +5,7 @@
   },
   "architectVerdict": "APPROVED_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
-  "authorityMatrixHash": "4e8bac3fc8b92bd0157f6ce24a73c5bbb6962012df87a001cbc36748582de784",
+  "authorityMatrixHash": "08bdb89e74f2b9e16da7071b56df5e154ed21e014620afb71ff2ce3c0cb08e2e",
   "currentOwnerRepo": "open-pencil",
   "rows": [
     {
@@ -412,7 +412,7 @@
     }
   ],
   "schema": "ch5.image-editor.authority-matrix.v1",
-  "sourceBase": "3f97c97bbda052af0d94077deb6e035165ef249e",
+  "sourceBase": "70ca981345d77ebf9d5d73442be8634a863ff470",
   "sourceReferences": [
     {
       "path": "/Users/hassoncs/src/ch5/open-pencil/packages/core/src/scene-graph/index.ts",
@@ -481,5 +481,6 @@
     "role": "executor",
     "session": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61",
     "observedAt": "2026-08-09T03:30:33Z"
-  }
+  },
+  "sourceTip": "70ca981345d77ebf9d5d73442be8634a863ff470"
 }

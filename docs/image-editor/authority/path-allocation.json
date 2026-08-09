@@ -1,7 +1,7 @@
 {
   "architectVerdict": "APPROVED_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
-  "pathAllocationHash": "ca831997c578c54aae5338e054cca75915ad8ecf56f1f92c3b704107a279fcdc",
+  "pathAllocationHash": "036df90502b9e877141c867bbee9a6fcfd9d53fbf6d02dba37503fed328407e4",
   "protectedPaths": [
     {
       "path": ".ch5/proof.yaml",
@@ -341,9 +341,9 @@
   ],
   "schema": "ch5.image-editor.path-allocation.v1",
   "sourceBases": {
-    "ch5Packages": "2e81e50973e6d1ce367c159b47300089b1b4bb60",
-    "mahjong": "215da31896c7cec46d5f072ce71ae0dc05aaff6c",
-    "openPencil": "3f97c97bbda052af0d94077deb6e035165ef249e"
+    "openPencil": "70ca981345d77ebf9d5d73442be8634a863ff470",
+    "ch5Packages": "5ebe4fbf31c076b124ca000422e70087e4aeb38c",
+    "mahjong": "4ed827d8badb920dd2af0f1624fd5d9c3cc3ee0a"
   },
   "writerRules": {
     "CP-C-PUBLIC": "ch5-ui public indexes only",

@@ -2,13 +2,13 @@
   "agentReasoning": "Reused OpenPencil SceneGraph, image map, UndoManager, color, Skia, IORegistry, FIG worker, digest/provenance, package smoke, and worker-test authorities. Added only bounded identity/persistence rows where no complete current authority was observed. Protected paths assigned exactly once to fixed CP/L writers.",
   "architectApprovalRequired": true,
   "architectVerdict": "APPROVED_AX-O",
-  "authorityMatrixHash": "4e8bac3fc8b92bd0157f6ce24a73c5bbb6962012df87a001cbc36748582de784",
-  "baseCommit": "3f97c97bbda052af0d94077deb6e035165ef249e",
+  "authorityMatrixHash": "08bdb89e74f2b9e16da7071b56df5e154ed21e014620afb71ff2ce3c0cb08e2e",
+  "baseCommit": "70ca981345d77ebf9d5d73442be8634a863ff470",
   "installedRosterHash": "12c391c9c94da6814668193092cf32b1b64b965244a4db44edf33d96f74eabea",
   "lane": "G0A-O",
-  "pathAllocationHash": "ca831997c578c54aae5338e054cca75915ad8ecf56f1f92c3b704107a279fcdc",
+  "pathAllocationHash": "036df90502b9e877141c867bbee9a6fcfd9d53fbf6d02dba37503fed328407e4",
   "planSha256": "5370f27489c456f2ae3dc6fdf1d28e98252b26c1bd2616c662f54c9c1b9592d9",
-  "producerTipSetHash": "32927db398a0926c2d2bb14e14481858286fa5e790b6ea89b0167c18fc6182a3",
+  "producerTipSetHash": "8ee177d9ced3320d790ebf4c1b5b6a3929107c7a00a08c9a8174f7f3d6cc7b24",
   "readOnlyProbePaths": [
     "docs/image-editor/authority/probes/behavioral-probes.json",
     "docs/image-editor/authority/probes/installed-roster.json",
@@ -23,8 +23,8 @@
     "git -C /Users/hassoncs/src/ch5/ch5-packages fetch --prune origin",
     "omx agents list"
   ],
-  "staleStateResolution": "Fresh origin/main tips fetched from all three Grove leader Trees. All leader Trees clean; ch5-packages origin/main reconciled to 2e81e50973e6d1ce367c159b47300089b1b4bb60. No producer source edits made or included.",
-  "status": "approved",
+  "staleStateResolution": "Fresh origin/main tips fetched and reconciled against existing approved 20-row authority matrix and 67 protected paths; no producer implementation writes.",
+  "status": "approved-current-tips",
   "subagentEvidence": "Subagent spawn evidence: 2 child tasks (canonical plan/receipt extraction; authority-surface inspection) spawned; findings integrated.",
   "testSpecSha256": "ee70da2d841561ec93f68b7f3093f4373c18b27e03360b837f9e7aec74c1077b",
   "usedRoleHash": "84b08c112d0d6b2352db11746f3517e69d88dcb93d84ef137368c21f59e26c77",
@@ -42,5 +42,6 @@
   "executionTeam": "g0a-o-approval-record-25ae46f9",
   "executionWorker": "worker-1",
   "executionRole": "executor",
-  "executionSession": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61"
+  "executionSession": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61",
+  "observedAt": "2026-08-09T09:10:00Z"
 }
