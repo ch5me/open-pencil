@@ -1,7 +1,7 @@
 {
   "schema": "ch5.image-editor.authority-behavioral-probes.v1",
-  "authorityMatrixHash": "d25a3ebfa80b601be215b078c93a9407bf43b64c55acf1d4d83336055a7e892e",
-  "pathAllocationHash": "268bd02b8ad7fbee73e7138997c385d5e6f9294ba2c1f116e64415b8c2682f41",
+  "authorityMatrixHash": "cb5aebfc0830630af9455898c7bc40c9276dee3571f804560b45bb2dd82fd187",
+  "pathAllocationHash": "dc4180514afebc786adc2f7f9edffae46f9504660653f2b62c0db9db13b05156",
   "status": "partial",
   "probes": [
     {
