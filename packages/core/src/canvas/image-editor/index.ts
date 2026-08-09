@@ -7,6 +7,8 @@ export {
   type ImageRenderAdapter,
   type ImageRenderCommand,
   type ImageRenderFrame,
+  type ImageRenderGap,
+  type ImageRenderGapCode,
   type ImageRevisionResolver,
   type ImageTexture,
   type ImageRenderBackend,

@@ -66,6 +66,17 @@ export class UnsupportedImageBackendError extends Error {
   readonly code = "unsupported-image-backend";
 }
 
+export type ImageRenderGapCode =
+  | "missing-asset-binding"
+  | "missing-asset-revision"
+  | "asset-binding-mismatch";
+
+export interface ImageRenderGap {
+  readonly code: ImageRenderGapCode;
+  readonly message: string;
+  readonly assetId: AssetId;
+}
+
 export interface ImageTexture {
   readonly assetId: AssetId;
   readonly revisionId: string;
@@ -90,6 +101,7 @@ export interface ImageRenderFrame {
   readonly backend: ImageRenderBackend;
   readonly commands: readonly ImageRenderCommand[];
   readonly textures: readonly ImageTexture[];
+  readonly gaps: readonly ImageRenderGap[];
 }
 
 export interface ImageRevisionResolver {
