@@ -99,8 +99,9 @@ test("image render adapter emits clipped raster bases from composition groups", 
     parentId: "group",
   };
   const graph = {
-    rootId: base.id,
-    getNode: (id: string) => (id === base.id ? base : undefined),
+    rootId: group.id,
+    getNode: (id: string) =>
+      id === group.id ? group : id === raster.id ? raster : undefined,
   } as unknown as SceneGraph;
   const plan = createCompositionPlan(graph, "group", {
     adjustmentHooks: ["exposure"],
@@ -128,6 +129,10 @@ test("image render adapter emits clipped raster bases from composition groups", 
       opacity: 1,
       blendMode: "PASS_THROUGH",
       clipped: true,
+      rotation: 0,
+      maskType: null,
+      maskIsOutline: false,
+      adjustmentHooks: ["exposure"],
     },
     {
       nodeId: "raster",
@@ -135,6 +140,10 @@ test("image render adapter emits clipped raster bases from composition groups", 
       opacity: 1,
       blendMode: "NORMAL",
       clipped: false,
+      rotation: 0,
+      maskType: null,
+      maskIsOutline: false,
+      adjustmentHooks: ["exposure"],
     },
   ]);
   expect(frame.textures).toEqual([
@@ -161,7 +170,7 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
 
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
   expect(adapter.render(plan, resolve).textures).toHaveLength(1);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
+  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
