@@ -64,6 +64,11 @@ function assertRevisionRef(
   if (!/^[0-9a-f]{64}$/u.test(revision.sha256)) {
     throw new Error(`stagedContentRevisions[${index}].sha256 must be a lowercase SHA-256 digest`);
   }
+  if (revision.revisionId.slice("sha256:".length) !== revision.sha256) {
+    throw new Error(
+      `stagedContentRevisions[${index}] revisionId and sha256 must identify the same bytes`,
+    );
+  }
   if (typeof revision.temporary !== "boolean") {
     throw new Error(`stagedContentRevisions[${index}].temporary must be boolean`);
   }
@@ -75,6 +80,9 @@ function assertRevisionRef(
 function assertHistoryPin(pin: HistoryPin, index: number): void {
   if (!pin.pinId.trim()) throw new Error(`historyPinsAdded[${index}].pinId must not be empty`);
   if (!pin.kind.trim()) throw new Error(`historyPinsAdded[${index}].kind must not be empty`);
+  if (pin.revisionIds.length === 0) {
+    throw new Error(`historyPinsAdded[${index}] must reference at least one revision`);
+  }
   const revisions = new Set<ContentRevisionId>();
   for (const [revisionIndex, revisionId] of pin.revisionIds.entries()) {
     assertRevisionId(revisionId, `historyPinsAdded[${index}].revisionIds[${revisionIndex}]`);
