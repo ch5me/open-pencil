@@ -4,6 +4,7 @@ import {
   type BeginRequest,
   type ChunkDescriptor,
   type HostState,
+  assertResourceLimit,
 } from "./protocol";
 
 export class TransactionProtocolError extends Error {
@@ -48,6 +49,15 @@ export class HostTransaction {
     this.advance("validating-request");
     if (request.expectedInputBytes < 0 || !Number.isSafeInteger(request.expectedInputBytes)) {
       throw new TransactionProtocolError("expectedInputBytes must be a non-negative safe integer");
+    }
+    if (request.maxInputBytes !== undefined) {
+      assertResourceLimit(request.maxInputBytes, "maxInputBytes");
+      if (request.expectedInputBytes > request.maxInputBytes) {
+        throw new TransactionProtocolError("expectedInputBytes exceeds maxInputBytes");
+      }
+    }
+    if (request.maxResidentBytes !== undefined) {
+      assertResourceLimit(request.maxResidentBytes, "maxResidentBytes");
     }
     this.advance("staging-input");
   }

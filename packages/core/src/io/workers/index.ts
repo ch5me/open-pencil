@@ -1,1 +1,1 @@
-export { WorkerProtocolError, WorkerStateMachine } from "./state";
+export { WorkerProtocolError, WorkerStateMachine, type WorkerAdmissionOptions } from "./state";

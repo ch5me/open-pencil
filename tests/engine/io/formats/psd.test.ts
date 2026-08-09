@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import {
+  DEFAULT_PSD_LIMITS,
   layerMetadata,
   PsdHostileFileError,
   stagePsdExport,
@@ -25,4 +26,14 @@ test("rejects hostile PSD dimensions before staging", () => {
   expect(() => stagePsdExport({ width: 100_000, height: 20, layers: [] })).toThrow(
     PsdHostileFileError,
   );
+});
+
+test("rejects decoded payload expansion before allocation", () => {
+  const bytes = stagePsdExport({ width: 10, height: 20, layers: [] });
+  expect(() =>
+    stagePsdImport(bytes, {
+      ...DEFAULT_PSD_LIMITS,
+      maxDecodedBytes: 100,
+    }),
+  ).toThrow("decoded payload exceeds limits");
 });

@@ -9,6 +9,7 @@ export interface PsdLimits {
   readonly maxWidth: number;
   readonly maxHeight: number;
   readonly maxLayers: number;
+  readonly maxDecodedBytes: number;
 }
 
 export const DEFAULT_PSD_LIMITS: PsdLimits = {
@@ -16,6 +17,7 @@ export const DEFAULT_PSD_LIMITS: PsdLimits = {
   maxWidth: 32_768,
   maxHeight: 32_768,
   maxLayers: 4096,
+  maxDecodedBytes: 2 * 1024 * 1024 * 1024,
 };
 
 export interface PsdHeader {

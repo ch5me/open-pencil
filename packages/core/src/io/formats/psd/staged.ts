@@ -45,6 +45,11 @@ export function parsePsdHeader(
   if (header.width > limits.maxWidth || header.height > limits.maxHeight) {
     throw new PsdHostileFileError("PSD dimensions exceed limits");
   }
+  const decodedBytes =
+    header.width * header.height * header.channels * Math.ceil(header.bitsPerChannel / 8);
+  if (!Number.isSafeInteger(decodedBytes) || decodedBytes > limits.maxDecodedBytes) {
+    throw new PsdHostileFileError("PSD decoded payload exceeds limits");
+  }
   return header;
 }
 

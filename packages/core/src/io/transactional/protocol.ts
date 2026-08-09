@@ -70,6 +70,8 @@ export interface BeginRequest {
   readonly expectedInputBytes: number;
   readonly expectedOutputClass: string;
   readonly replayable: boolean;
+  readonly maxInputBytes?: number;
+  readonly maxResidentBytes?: number;
 }
 
 export interface ProgressPayload {
@@ -79,6 +81,18 @@ export interface ProgressPayload {
   readonly completedItems: number;
   readonly totalItems: number | null;
   readonly estimatedResidentBytes: number;
+}
+
+export interface LongTaskBudget {
+  readonly maxTaskMs: number;
+  readonly taskCount: number;
+  readonly overBudgetCount: number;
+}
+
+export function assertResourceLimit(value: number, label: string): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative safe integer`);
+  }
 }
 
 export interface WorkerErrorPayload {

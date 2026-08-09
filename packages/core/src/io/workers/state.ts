@@ -2,16 +2,36 @@ import {
   assertChunk,
   canTransitionWorker,
   type ChunkDescriptor,
+  type LongTaskBudget,
+  type ProgressPayload,
   type WorkerState,
+  assertResourceLimit,
 } from "#core/io/transactional/protocol";
 
 export class WorkerProtocolError extends Error {
   readonly code = "worker-protocol-error";
 }
 
+export interface WorkerAdmissionOptions {
+  readonly memoryProfile: string;
+  readonly maxResidentBytes: number;
+  readonly maxTaskMs?: number;
+}
+
 export class WorkerStateMachine {
   state: WorkerState = "starting";
   private inputSequence = 0;
+  private readonly options?: WorkerAdmissionOptions;
+  private taskCount = 0;
+  private overBudgetCount = 0;
+
+  constructor(options?: WorkerAdmissionOptions) {
+    if (options) {
+      assertResourceLimit(options.maxResidentBytes, "maxResidentBytes");
+      if (options.maxTaskMs !== undefined) assertResourceLimit(options.maxTaskMs, "maxTaskMs");
+      this.options = options;
+    }
+  }
 
   ready(): void {
     this.advance("ready");
@@ -57,6 +77,38 @@ export class WorkerStateMachine {
   fail(): void {
     if (canTransitionWorker(this.state, "failed")) this.advance("failed");
     else throw new WorkerProtocolError(`cannot fail worker from ${this.state}`);
+  }
+
+  admitProgress(progress: ProgressPayload): void {
+    if (
+      progress.estimatedResidentBytes < 0 ||
+      !Number.isSafeInteger(progress.estimatedResidentBytes)
+    ) {
+      throw new WorkerProtocolError("estimatedResidentBytes must be a non-negative safe integer");
+    }
+    if (this.options && progress.estimatedResidentBytes > this.options.maxResidentBytes) {
+      throw new WorkerProtocolError(
+        `estimatedResidentBytes exceeds ${this.options.memoryProfile} admission`,
+      );
+    }
+  }
+
+  recordLongTask(durationMs: number): void {
+    if (!Number.isFinite(durationMs) || durationMs < 0) {
+      throw new WorkerProtocolError("durationMs must be a non-negative finite number");
+    }
+    this.taskCount += 1;
+    if (this.options?.maxTaskMs !== undefined && durationMs > this.options.maxTaskMs) {
+      this.overBudgetCount += 1;
+    }
+  }
+
+  longTaskBudget(): LongTaskBudget {
+    return {
+      maxTaskMs: this.options?.maxTaskMs ?? 0,
+      taskCount: this.taskCount,
+      overBudgetCount: this.overBudgetCount,
+    };
   }
 
   private advance(next: WorkerState): void {

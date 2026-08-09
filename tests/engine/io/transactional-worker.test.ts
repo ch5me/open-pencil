@@ -59,4 +59,48 @@ describe("transactional IO and worker contracts", () => {
     worker.sendResult();
     expect(worker.state).toBe("result-sent");
   });
+
+  test("admission rejects resident-memory overflow and records long tasks", () => {
+    const worker = new WorkerStateMachine({
+      memoryProfile: "D1",
+      maxResidentBytes: 64,
+      maxTaskMs: 8,
+    });
+    expect(() =>
+      worker.admitProgress({
+        stage: "decode",
+        consumedBytes: 1,
+        producedBytes: 1,
+        completedItems: 0,
+        totalItems: null,
+        estimatedResidentBytes: 65,
+      }),
+    ).toThrow("D1 admission");
+    worker.admitProgress({
+      stage: "decode",
+      consumedBytes: 1,
+      producedBytes: 1,
+      completedItems: 0,
+      totalItems: null,
+      estimatedResidentBytes: 64,
+    });
+    worker.recordLongTask(9);
+    expect(worker.longTaskBudget()).toEqual({ maxTaskMs: 8, taskCount: 1, overBudgetCount: 1 });
+  });
+
+  test("host rejects input above declared admission before staging", () => {
+    const tx = new HostTransaction();
+    expect(() =>
+      tx.begin({
+        operation: "decode-raster",
+        memoryProfile: "D1",
+        protocolCapabilities: [],
+        inputManifestHash: digest,
+        expectedInputBytes: 65,
+        expectedOutputClass: "raster",
+        replayable: true,
+        maxInputBytes: 64,
+      }),
+    ).toThrow("exceeds maxInputBytes");
+  });
 });
