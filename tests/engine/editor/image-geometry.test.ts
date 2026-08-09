@@ -39,6 +39,25 @@ describe("image geometry", () => {
     expect(pointInTransformedRect(transform, { x: -100, y: -100 })).toBe(false);
   });
 
+  test("scaled rotated bounds follow the transformed corners", () => {
+    const bounds = transformedBounds({
+      ...transform,
+      rotation: 45,
+      scaleX: 2,
+      scaleY: 0.5,
+    });
+    const corners = [
+      mapForward({ ...transform, rotation: 45, scaleX: 2, scaleY: 0.5 }, { x: 0, y: 0 }),
+      mapForward({ ...transform, rotation: 45, scaleX: 2, scaleY: 0.5 }, { x: 100, y: 0 }),
+      mapForward({ ...transform, rotation: 45, scaleX: 2, scaleY: 0.5 }, { x: 100, y: 50 }),
+      mapForward({ ...transform, rotation: 45, scaleX: 2, scaleY: 0.5 }, { x: 0, y: 50 }),
+    ];
+    expect(bounds.left).toBeCloseTo(Math.min(...corners.map((point) => point.x)), 8);
+    expect(bounds.right).toBeCloseTo(Math.max(...corners.map((point) => point.x)), 8);
+    expect(bounds.top).toBeCloseTo(Math.min(...corners.map((point) => point.y)), 8);
+    expect(bounds.bottom).toBeCloseTo(Math.max(...corners.map((point) => point.y)), 8);
+  });
+
   test("selection union and typed invalid transform", () => {
     const selection = selectionBounds([transform, { ...transform, x: 200 }]);
     expect(selection.bounds.x).toBeLessThan(200);

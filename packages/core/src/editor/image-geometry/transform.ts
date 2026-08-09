@@ -1,5 +1,5 @@
 import Matrix, { type Mat3 } from "#core/canvas/matrix";
-import { degToRad, rotatedBBox } from "#core/geometry";
+import { degToRad } from "#core/geometry";
 import type { Vector } from "#core/types";
 
 import { InvalidTransformError, type GeometryTransform } from "./types";
@@ -58,25 +58,26 @@ export function transformedBounds(transform: GeometryTransform): {
   centerY: number;
 } {
   validateTransform(transform);
-  const base = rotatedBBox(
-    transform.x,
-    transform.y,
-    transform.width,
-    transform.height,
-    transform.rotation,
-  );
-  const scaleX = Math.abs(transform.scaleX ?? 1);
-  const scaleY = Math.abs(transform.scaleY ?? 1);
-  const centerX = transform.x + transform.width / 2;
-  const centerY = transform.y + transform.height / 2;
-  const halfWidth = ((base.right - base.left) * scaleX) / 2;
-  const halfHeight = ((base.bottom - base.top) * scaleY) / 2;
+  const corners = [
+    { x: 0, y: 0 },
+    { x: transform.width, y: 0 },
+    { x: transform.width, y: transform.height },
+    { x: 0, y: transform.height },
+  ].map((point) => mapForward(transform, point));
+  const left = Math.min(...corners.map((point) => point.x));
+  const right = Math.max(...corners.map((point) => point.x));
+  const top = Math.min(...corners.map((point) => point.y));
+  const bottom = Math.max(...corners.map((point) => point.y));
+  const center = mapForward(transform, {
+    x: transform.width / 2,
+    y: transform.height / 2,
+  });
   return {
-    left: centerX - halfWidth,
-    right: centerX + halfWidth,
-    top: centerY - halfHeight,
-    bottom: centerY + halfHeight,
-    centerX,
-    centerY,
+    left,
+    right,
+    top,
+    bottom,
+    centerX: center.x,
+    centerY: center.y,
   };
 }
