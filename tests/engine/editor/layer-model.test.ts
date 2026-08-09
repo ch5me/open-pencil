@@ -8,6 +8,7 @@ import {
   LayerModelValidationError,
   isUnsupportedLayerMaskKind,
   isUnsupportedLayerMaskType,
+  isUnsupportedLayerColorLabel,
   isUnsupportedLayerBlendMode,
   migrateLayerModel,
 } from "#core/editor/layer-model";
@@ -33,6 +34,9 @@ const node = (
       contrast?: number;
       shiftEdge?: number;
     } | null;
+    linkId: string | null;
+    linkedLayerIds: readonly string[] | null;
+    colorLabel: string | null;
   }> = {},
 ) => ({
   id,
@@ -48,6 +52,9 @@ const node = (
     maskDensity: overrides.maskDensity ?? null,
     maskFeather: overrides.maskFeather ?? null,
     edgeRefinement: overrides.edgeRefinement ?? null,
+    linkId: overrides.linkId ?? null,
+    linkedLayerIds: overrides.linkedLayerIds ?? null,
+    colorLabel: overrides.colorLabel ?? null,
 });
 
 describe("layer-model-v1", () => {
@@ -152,6 +159,38 @@ describe("layer-model-v1", () => {
       maskTransformMode: "independent",
     });
     expect(migrated.model.nodes.get("independent")?.maskTransform).not.toBe(transform);
+  });
+
+  test("supports linked layer editing and color labels with typed future values", async () => {
+    const migrated = await migrateLayerModel([
+      node("base", null, [], { linkId: "hero", colorLabel: "BLUE" }),
+      node("copy", null, [], { linkId: "hero", linkedLayerIds: ["base"], colorLabel: "MAGENTA" }),
+    ]);
+    expect(migrated.model.nodes.get("base")).toMatchObject({
+      linkId: "hero",
+      colorLabel: "BLUE",
+    });
+    expect(migrated.model.nodes.get("copy")).toMatchObject({
+      linkId: "hero",
+      linkedLayerIds: ["base"],
+    });
+    const label = migrated.model.nodes.get("copy")?.colorLabel;
+    expect(label).toEqual({
+      kind: "unsupported",
+      code: "layer-model-unsupported-color-label",
+      value: "MAGENTA",
+    });
+    if (label === null || label === undefined) throw new Error("missing color label");
+    expect(isUnsupportedLayerColorLabel(label)).toBe(true);
+  });
+
+  test("rejects dangling and self-linked layers", async () => {
+    await expect(
+      migrateLayerModel([node("a", null, [], { linkedLayerIds: ["missing"] })]),
+    ).rejects.toThrow("dangling linked layer reference");
+    await expect(
+      migrateLayerModel([node("a", null, [], { linkedLayerIds: ["a"] })]),
+    ).rejects.toThrow("self-referencing layer link");
   });
 
   test("models density, feather, edge refinement, and vector masks", async () => {
