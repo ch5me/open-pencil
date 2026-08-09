@@ -524,6 +524,8 @@ export function parsePenFile(json: string): SceneGraph {
   return graph;
 }
 
-export async function readPenFile(file: File): Promise<SceneGraph> {
+export async function readPenFile(file: File, options: { maxInputBytes?: number } = {}): Promise<SceneGraph> {
+  assertInputWithinLimit(file.size, options.maxInputBytes);
   return parsePenFile(await file.text());
 }
+import { assertInputWithinLimit } from "#core/io/registry";

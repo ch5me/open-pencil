@@ -62,6 +62,8 @@ export interface ExportRequest {
 export interface IOContext {
   canvasKit?: CanvasKit;
   renderer?: SkiaRenderer;
+  /** Reject oversized input before a format adapter allocates decoded state. */
+  maxInputBytes?: number;
 }
 
 export interface FigWriteOptions {
