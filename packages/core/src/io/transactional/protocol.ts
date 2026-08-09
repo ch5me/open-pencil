@@ -95,6 +95,7 @@ export interface LongTaskBudget {
 }
 
 export const DEFAULT_LONG_TASK_BUDGET_MS = 50;
+export const MAX_LONG_TASK_BUDGET_MS = 50;
 
 export function assertMemoryProfile(value: string): asserts value is MemoryProfile {
   if (value !== "D1" && value !== "M1") {

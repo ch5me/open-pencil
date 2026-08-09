@@ -7,6 +7,7 @@ import {
   type ProgressPayload,
   type WorkerState,
   DEFAULT_LONG_TASK_BUDGET_MS,
+  MAX_LONG_TASK_BUDGET_MS,
   assertMemoryProfile,
   assertResourceLimit,
 } from "#core/io/transactional/protocol";
@@ -61,7 +62,12 @@ export class WorkerStateMachine {
           throw new WorkerProtocolError("maxRenderBufferBytes exceeds maxResidentBytes");
         }
       }
-      if (options.maxTaskMs !== undefined) assertResourceLimit(options.maxTaskMs, "maxTaskMs");
+      if (options.maxTaskMs !== undefined) {
+        assertResourceLimit(options.maxTaskMs, "maxTaskMs");
+        if (options.maxTaskMs > MAX_LONG_TASK_BUDGET_MS) {
+          throw new WorkerProtocolError("maxTaskMs exceeds 50ms budget");
+        }
+      }
       this.options = options;
     }
   }

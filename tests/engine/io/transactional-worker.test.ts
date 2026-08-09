@@ -125,7 +125,23 @@ describe("transactional IO and worker contracts", () => {
     expect(() => worker.admitRenderBuffer(5, 5)).toThrow(WorkerMemoryPressureError);
   });
 
-  test("uses named M1 profile and records the default 50ms long-task budget", () => {
+  test("named profiles default to a 50ms long-task budget", () => {
+    const worker = new WorkerStateMachine({ memoryProfile: "M1", maxResidentBytes: 128 });
+    worker.recordLongTask(50);
+    expect(worker.longTaskBudget()).toMatchObject({
+      maxTaskMs: 50,
+      taskCount: 1,
+      overBudgetCount: 0,
+    });
+    expect(() => new WorkerStateMachine({ memoryProfile: "unknown", maxResidentBytes: 128 })).toThrow(
+      "unsupported memory profile",
+    );
+    expect(() => new WorkerStateMachine({ memoryProfile: "D1", maxResidentBytes: 128, maxTaskMs: 51 })).toThrow(
+      "maxTaskMs exceeds 50ms budget",
+    );
+  });
+
+  test("render buffer admission has its own bound within resident memory", () => {
     const worker = new WorkerStateMachine({
       memoryProfile: "M1",
       maxResidentBytes: 128,
