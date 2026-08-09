@@ -6,6 +6,7 @@ import type {
   ViewJournalEntry,
   ViewJournalStatus,
 } from "./types";
+import { createContentSnapshot } from "./snapshot";
 
 const CONTENT_TRANSITIONS: Readonly<Record<ContentJournalStatus, readonly ContentJournalStatus[]>> =
   {
@@ -97,6 +98,20 @@ export function validateContentJournal(entry: ContentJournalEntry): void {
   assertFiniteNonNegative(entry.journalSequence, "journalSequence");
   assertVersion(entry.baseContentVersion, "baseContentVersion");
   assertVersion(entry.nextContentVersion, "nextContentVersion");
+  const baseSnapshot = createContentSnapshot(
+    entry.baseContentSnapshot.contentRootHash,
+    entry.baseContentSnapshot.maskHashes,
+  );
+  const nextSnapshot = createContentSnapshot(
+    entry.nextContentSnapshot.contentRootHash,
+    entry.nextContentSnapshot.maskHashes,
+  );
+  if (baseSnapshot.contentRootHash !== entry.baseContentVersion.contentRootHash) {
+    throw new Error("baseContentSnapshot root must match baseContentVersion");
+  }
+  if (nextSnapshot.contentRootHash !== entry.nextContentVersion.contentRootHash) {
+    throw new Error("nextContentSnapshot root must match nextContentVersion");
+  }
   if (entry.nextContentVersion.sequence <= entry.baseContentVersion.sequence) {
     throw new Error("nextContentVersion must advance baseContentVersion");
   }

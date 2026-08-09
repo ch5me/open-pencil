@@ -60,6 +60,8 @@ export interface ContentJournalEntry {
   readonly journalSequence: number;
   readonly baseContentVersion: ContentVersion;
   readonly nextContentVersion: ContentVersion;
+  readonly baseContentSnapshot: ContentSnapshot;
+  readonly nextContentSnapshot: ContentSnapshot;
   readonly contractHash: string;
   readonly authorityMatrixHash: string;
   readonly capabilityVersions: readonly string[];

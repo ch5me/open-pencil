@@ -1,6 +1,9 @@
 import {
+  applyContentSnapshotTransition,
+  createContentSnapshot,
   validateContentJournal,
   type ContentJournalEntry,
+  type ContentSnapshot,
   type ContentRevisionRef,
   type ContentVersion,
 } from "#core/editor/history/journal";
@@ -31,6 +34,7 @@ export class ImageEditorStore {
   private readonly chunks = new Map<string, StagedChunk>();
   private readonly journals = new Map<string, ContentJournalEntry>();
   private readonly heads = new Map<string, ContentVersion>();
+  private readonly snapshots = new Map<string, ContentSnapshot>();
   private readonly stagedBytes = new Map<string, number>();
   private readonly knownRevisions = new Map<string, Map<string, ContentRevisionRef>>();
   private readonly releasedRevisions = new Map<string, Set<string>>();
@@ -98,11 +102,32 @@ export class ImageEditorStore {
   setInitialHead(documentId: string, head: ContentVersion): void {
     if (this.heads.has(documentId)) throw new Error(`content head already exists: ${documentId}`);
     this.heads.set(documentId, structuredClone(head));
+    this.snapshots.set(documentId, createContentSnapshot(head.contentRootHash));
   }
 
   getHead(documentId: string): ContentVersion | undefined {
     const head = this.heads.get(documentId);
     return head && structuredClone(head);
+  }
+
+  getContentSnapshot(documentId: string): ContentSnapshot | undefined {
+    const snapshot = this.snapshots.get(documentId);
+    return snapshot && structuredClone(snapshot);
+  }
+
+  transitionContentSnapshot(
+    documentId: string,
+    transition: {
+      readonly base: ContentSnapshot;
+      readonly next: ContentSnapshot;
+    },
+    direction: "undo" | "redo",
+  ): ContentSnapshot {
+    const current = this.snapshots.get(documentId);
+    if (!current) throw new Error(`content snapshot does not exist: ${documentId}`);
+    const next = applyContentSnapshotTransition(current, transition, direction);
+    this.snapshots.set(documentId, structuredClone(next));
+    return structuredClone(next);
   }
 
   commitContent(commit: ContentCommit): void {
@@ -112,6 +137,13 @@ export class ImageEditorStore {
       commit.nextHead.contentRootHash !== commit.journal.nextContentVersion.contentRootHash
     ) {
       throw new ContentCommitMismatch("next head must match journal next content version");
+    }
+    const currentSnapshot = this.snapshots.get(commit.documentId);
+    if (
+      !currentSnapshot ||
+      JSON.stringify(currentSnapshot) !== JSON.stringify(commit.journal.baseContentSnapshot)
+    ) {
+      throw new ContentVersionConflict("content snapshot changed before commit");
     }
     const stagedRevisionIds = new Set(
       commit.journal.stagedContentRevisions.map((revision) => revision.revisionId),
@@ -147,6 +179,10 @@ export class ImageEditorStore {
     );
     this.recordRevisionState(commit.documentId, commit.journal);
     this.heads.set(commit.documentId, structuredClone(commit.nextHead));
+    this.snapshots.set(
+      commit.documentId,
+      structuredClone(commit.journal.nextContentSnapshot),
+    );
     this.discardStaged(commit.journal.transactionId);
   }
 
@@ -196,6 +232,29 @@ export class ImageEditorStore {
         }
       }
     }
+    const referenced = this.referencedRevisionIds(documentId);
+    for (const revisionId of journal.releasedContentRevisions) {
+      if (referenced.has(revisionId)) {
+        throw new ContentCommitMismatch(
+          `cannot release revision retained by content history: ${revisionId}`,
+        );
+      }
+    }
+  }
+
+  private referencedRevisionIds(documentId: string): Set<string> {
+    const referenced = new Set<string>();
+    const current = this.snapshots.get(documentId);
+    for (const snapshot of current ? [current] : []) {
+      for (const mask of snapshot.maskHashes) referenced.add(mask.byteHash);
+    }
+    for (const [key, journal] of this.journals) {
+      if (!key.startsWith(`${documentId}/`)) continue;
+      for (const snapshot of [journal.baseContentSnapshot, journal.nextContentSnapshot]) {
+        for (const mask of snapshot.maskHashes) referenced.add(mask.byteHash);
+      }
+    }
+    return referenced;
   }
 
   private recordRevisionState(documentId: string, journal: ContentJournalEntry): void {

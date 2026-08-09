@@ -1,18 +1,22 @@
 import type { JournalIdAllocator } from "./ids";
 import type {
   ContentJournalEntry,
+  ContentSnapshot,
   ContentRevisionRef,
   ContentVersion,
   HistoryPin,
   ViewJournalEntry,
   ViewVersion,
 } from "./types";
+import { createContentSnapshot } from "./snapshot";
 import { validateContentJournal, validateViewJournal } from "./validate";
 
 export interface ContentJournalInput {
   readonly journalSequence: number;
   readonly baseContentVersion: ContentVersion;
   readonly nextContentVersion: ContentVersion;
+  readonly baseContentSnapshot?: ContentSnapshot;
+  readonly nextContentSnapshot?: ContentSnapshot;
   readonly contractHash: string;
   readonly authorityMatrixHash: string;
   readonly capabilityVersions?: readonly string[];
@@ -36,6 +40,14 @@ export function createContentJournal(
     journalSequence: input.journalSequence,
     baseContentVersion: structuredClone(input.baseContentVersion),
     nextContentVersion: structuredClone(input.nextContentVersion),
+    baseContentSnapshot: structuredClone(
+      input.baseContentSnapshot ??
+        createContentSnapshot(input.baseContentVersion.contentRootHash),
+    ),
+    nextContentSnapshot: structuredClone(
+      input.nextContentSnapshot ??
+        createContentSnapshot(input.nextContentVersion.contentRootHash),
+    ),
     contractHash: input.contractHash,
     authorityMatrixHash: input.authorityMatrixHash,
     capabilityVersions: [...(input.capabilityVersions ?? [])],
