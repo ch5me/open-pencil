@@ -5,7 +5,7 @@
   },
   "architectVerdict": "PENDING_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
-  "authorityMatrixHash": "cb5aebfc0830630af9455898c7bc40c9276dee3571f804560b45bb2dd82fd187",
+  "authorityMatrixHash": "fa6ec1364421a3e34300eeb8afed1d5b288a47187e7a9b4cb58c15b39a455afa",
   "currentOwnerRepo": "open-pencil",
   "rows": [
     {
@@ -472,5 +472,14 @@
     }
   ],
   "archiveAuthorityId": "open-pencil-fig-kiwi",
-  "archiveProtocolVersion": "existing-version-preserving-fig-container"
+  "archiveProtocolVersion": "existing-version-preserving-fig-container",
+  "executionProvenance": {
+    "commit": "0583d630963f4532840ba731996e7d7c11edf17c",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
+    "team": "repair-wave-0-g0a-o-a-c0d9d17e",
+    "worker": "worker-1",
+    "role": "executor",
+    "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
+    "observedAt": "2026-08-09T01:45:00Z"
+  }
 }

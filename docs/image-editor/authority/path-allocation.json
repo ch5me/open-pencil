@@ -1,7 +1,7 @@
 {
   "architectVerdict": "PENDING_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
-  "pathAllocationHash": "dc4180514afebc786adc2f7f9edffae46f9504660653f2b62c0db9db13b05156",
+  "pathAllocationHash": "f49a6be8e155f76039f7cad87a3dc1e8aa831003ab5e31dbaf1df21ef7343eba",
   "protectedPaths": [
     {
       "path": ".ch5/proof.yaml",
@@ -356,5 +356,14 @@
     "L-C": "ch5-packages manifests/proof/release files only",
     "L-M": "Mahjong manifests/proof/release files only",
     "L-O": "OpenPencil manifests/proof/release files only"
+  },
+  "executionProvenance": {
+    "commit": "0583d630963f4532840ba731996e7d7c11edf17c",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
+    "team": "repair-wave-0-g0a-o-a-c0d9d17e",
+    "worker": "worker-1",
+    "role": "executor",
+    "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
+    "observedAt": "2026-08-09T01:45:00Z"
   }
 }
