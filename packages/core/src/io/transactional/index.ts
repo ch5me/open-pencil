@@ -7,12 +7,15 @@ export {
 } from "./host";
 export {
   assertChunk,
+  assertMemoryProfile,
   canTransitionHost,
   canTransitionWorker,
+  DEFAULT_LONG_TASK_BUDGET_MS,
   WORKER_PROTOCOL,
   type BeginRequest,
   type ChunkDescriptor,
   type HostState,
+  type MemoryProfile,
   type WorkerDirection,
   type WorkerEnvelope,
   type WorkerOperation,

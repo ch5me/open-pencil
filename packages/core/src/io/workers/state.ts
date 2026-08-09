@@ -3,8 +3,11 @@ import {
   canTransitionWorker,
   type ChunkDescriptor,
   type LongTaskBudget,
+  type MemoryProfile,
   type ProgressPayload,
   type WorkerState,
+  DEFAULT_LONG_TASK_BUDGET_MS,
+  assertMemoryProfile,
   assertResourceLimit,
 } from "#core/io/transactional/protocol";
 
@@ -24,9 +27,10 @@ export class WorkerCancelledError extends WorkerProtocolError {
 }
 
 export interface WorkerAdmissionOptions {
-  readonly memoryProfile: string;
+  readonly memoryProfile: MemoryProfile;
   readonly maxResidentBytes: number;
   readonly maxInputBytes?: number;
+  readonly maxRenderBufferBytes?: number;
   readonly maxTaskMs?: number;
 }
 
@@ -36,15 +40,24 @@ export class WorkerStateMachine {
   private readonly options?: WorkerAdmissionOptions;
   private taskCount = 0;
   private overBudgetCount = 0;
+  private totalTaskMs = 0;
+  private maxObservedTaskMs = 0;
   private inputCount = 0;
   private inputBytes = 0;
   private inputFinal = false;
 
   constructor(options?: WorkerAdmissionOptions) {
     if (options) {
+      assertMemoryProfile(options.memoryProfile);
       assertResourceLimit(options.maxResidentBytes, "maxResidentBytes");
       if (options.maxInputBytes !== undefined) {
         assertResourceLimit(options.maxInputBytes, "maxInputBytes");
+      }
+      if (options.maxRenderBufferBytes !== undefined) {
+        assertResourceLimit(options.maxRenderBufferBytes, "maxRenderBufferBytes");
+        if (options.maxRenderBufferBytes > options.maxResidentBytes) {
+          throw new WorkerProtocolError("maxRenderBufferBytes exceeds maxResidentBytes");
+        }
       }
       if (options.maxTaskMs !== undefined) assertResourceLimit(options.maxTaskMs, "maxTaskMs");
       this.options = options;
@@ -147,7 +160,9 @@ export class WorkerStateMachine {
     if (!Number.isSafeInteger(bytes)) {
       throw new WorkerMemoryPressureError("render buffer size exceeds safe integer range");
     }
-    if (this.options && bytes > this.options.maxResidentBytes) {
+    const maxRenderBufferBytes =
+      this.options?.maxRenderBufferBytes ?? this.options?.maxResidentBytes;
+    if (maxRenderBufferBytes !== undefined && bytes > maxRenderBufferBytes) {
       throw new WorkerMemoryPressureError(
         `render buffer exceeds ${this.options.memoryProfile} admission`,
       );
@@ -160,16 +175,21 @@ export class WorkerStateMachine {
       throw new WorkerProtocolError("durationMs must be a non-negative finite number");
     }
     this.taskCount += 1;
-    if (this.options?.maxTaskMs !== undefined && durationMs > this.options.maxTaskMs) {
+    this.totalTaskMs += durationMs;
+    this.maxObservedTaskMs = Math.max(this.maxObservedTaskMs, durationMs);
+    const maxTaskMs = this.options?.maxTaskMs ?? DEFAULT_LONG_TASK_BUDGET_MS;
+    if (durationMs > maxTaskMs) {
       this.overBudgetCount += 1;
     }
   }
 
   longTaskBudget(): LongTaskBudget {
     return {
-      maxTaskMs: this.options?.maxTaskMs ?? 0,
+      maxTaskMs: this.options?.maxTaskMs ?? DEFAULT_LONG_TASK_BUDGET_MS,
       taskCount: this.taskCount,
       overBudgetCount: this.overBudgetCount,
+      totalTaskMs: this.totalTaskMs,
+      maxObservedTaskMs: this.maxObservedTaskMs,
     };
   }
 

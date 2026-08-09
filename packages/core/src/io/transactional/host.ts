@@ -5,6 +5,7 @@ import {
   type ChunkDescriptor,
   type HostState,
   assertResourceLimit,
+  assertMemoryProfile,
 } from "./protocol";
 
 export class TransactionProtocolError extends Error {
@@ -47,6 +48,7 @@ export class HostTransaction {
   begin(request: BeginRequest): void {
     this.advance("allocated");
     this.advance("validating-request");
+    assertMemoryProfile(request.memoryProfile);
     if (request.expectedInputBytes < 0 || !Number.isSafeInteger(request.expectedInputBytes)) {
       throw new TransactionProtocolError("expectedInputBytes must be a non-negative safe integer");
     }
@@ -59,6 +61,16 @@ export class HostTransaction {
     if (request.maxResidentBytes !== undefined) {
       assertResourceLimit(request.maxResidentBytes, "maxResidentBytes");
     }
+    if (request.maxRenderBufferBytes !== undefined) {
+      assertResourceLimit(request.maxRenderBufferBytes, "maxRenderBufferBytes");
+      if (
+        request.maxResidentBytes !== undefined &&
+        request.maxRenderBufferBytes > request.maxResidentBytes
+      ) {
+        throw new TransactionProtocolError("maxRenderBufferBytes exceeds maxResidentBytes");
+      }
+    }
+    if (request.maxTaskMs !== undefined) assertResourceLimit(request.maxTaskMs, "maxTaskMs");
     this.advance("staging-input");
   }
 
