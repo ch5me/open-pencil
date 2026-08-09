@@ -12,6 +12,7 @@ import {
   isUnsupportedLayerBlendMode,
   migrateLayerModel,
 } from "#core/editor/layer-model";
+import type { LayerModelEffectInput } from "#core/editor/layer-model";
 import type { BlendMode } from "#core/scene-graph";
 
 const node = (
@@ -37,6 +38,7 @@ const node = (
     linkId: string | null;
     linkedLayerIds: readonly string[] | null;
     colorLabel: string | null;
+    effects: readonly LayerModelEffectInput[] | null;
   }> = {},
 ) => ({
   id,
@@ -55,6 +57,7 @@ const node = (
     linkId: overrides.linkId ?? null,
     linkedLayerIds: overrides.linkedLayerIds ?? null,
     colorLabel: overrides.colorLabel ?? null,
+    effects: overrides.effects ?? null,
 });
 
 describe("layer-model-v1", () => {
