@@ -12,7 +12,7 @@ import {
   assertResourceLimit,
 } from "#core/io/transactional/protocol";
 
-export const DEFAULT_LONG_TASK_BUDGET_MS = 50;
+export { DEFAULT_LONG_TASK_BUDGET_MS };
 
 export class WorkerProtocolError extends Error {
   readonly name: string = "WorkerProtocolError";
