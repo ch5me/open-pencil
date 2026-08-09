@@ -1,18 +1,22 @@
 import type { ContentMaskHash, ContentSnapshot, ContentSnapshotTransition } from "./types";
 
-function assertHash(value: string, label: string): void {
-  if (!/^(?:sha256:)?[0-9a-f]{64}$/u.test(value)) {
+function normalizeHash(value: string, label: string, prefix: boolean): string {
+  const hex = value.startsWith("sha256:") ? value.slice("sha256:".length) : value;
+  if (!/^[0-9a-f]{64}$/u.test(hex)) {
     throw new Error(`${label} must be a lowercase SHA-256 hash`);
   }
+  return prefix ? `sha256:${hex}` : hex;
 }
 
 function cloneSnapshot(snapshot: ContentSnapshot): ContentSnapshot {
-  assertHash(snapshot.contentRootHash, "contentRootHash");
+  const contentRootHash = normalizeHash(snapshot.contentRootHash, "contentRootHash", false);
   const maskHashes = snapshot.maskHashes
     .map((mask) => {
       if (!mask.maskId) throw new Error("maskId must not be empty");
-      assertHash(mask.byteHash, `mask ${mask.maskId} byteHash`);
-      return { maskId: mask.maskId, byteHash: mask.byteHash };
+      return {
+        maskId: mask.maskId,
+        byteHash: normalizeHash(mask.byteHash, `mask ${mask.maskId} byteHash`, true),
+      };
     })
     .sort((left, right) => left.maskId.localeCompare(right.maskId));
   for (let index = 1; index < maskHashes.length; index += 1) {
@@ -20,7 +24,7 @@ function cloneSnapshot(snapshot: ContentSnapshot): ContentSnapshot {
       throw new Error(`duplicate maskId: ${maskHashes[index]?.maskId}`);
     }
   }
-  return { contentRootHash: snapshot.contentRootHash, maskHashes };
+  return { contentRootHash, maskHashes };
 }
 
 export function createContentSnapshot(

@@ -120,6 +120,38 @@ describe("editor history journal", () => {
     );
   });
 
+  test("canonicalizes hash prefixes before comparing snapshot ownership", () => {
+    const base = createContentSnapshot(`sha256:${"a".repeat(64)}`, [
+      { maskId: "mask-a", byteHash: "b".repeat(64) as `sha256:${string}` },
+    ]);
+    const next = createContentSnapshot("c".repeat(64), [
+      { maskId: "mask-a", byteHash: `sha256:${"d".repeat(64)}` },
+    ]);
+
+    expect(base).toEqual({
+      contentRootHash: "a".repeat(64),
+      maskHashes: [{ maskId: "mask-a", byteHash: `sha256:${"b".repeat(64)}` }],
+    });
+    expect(
+      applyContentSnapshotTransition(
+        createContentSnapshot(`sha256:${"a".repeat(64)}`, [
+          { maskId: "mask-a", byteHash: `sha256:${"b".repeat(64)}` },
+        ]),
+        { base, next },
+        "redo",
+      ),
+    ).toEqual(next);
+  });
+
+  test("rejects duplicate mask ownership in one snapshot", () => {
+    expect(() =>
+      createContentSnapshot("a".repeat(64), [
+        { maskId: "mask-a", byteHash: `sha256:${"b".repeat(64)}` },
+        { maskId: "mask-a", byteHash: `sha256:${"c".repeat(64)}` },
+      ]),
+    ).toThrow("duplicate maskId: mask-a");
+  });
+
   test("10,000 deterministic snapshot replays preserve exact base and next hashes", () => {
     let state = createContentSnapshot("0".repeat(64));
     const snapshots = [state];
