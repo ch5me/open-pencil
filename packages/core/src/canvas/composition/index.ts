@@ -1,5 +1,6 @@
 export {
   COMPOSITION_PLAN_VERSION,
+  CompositionUnsupportedClassError,
   createCompositionPlan,
   isCompositionContainer,
   serializeCompositionPlan,

@@ -5,6 +5,10 @@ export const COMPOSITION_PLAN_VERSION = "composition:1";
 
 export type CompositionIsolation = "isolated" | "pass-through";
 
+export class CompositionUnsupportedClassError extends Error {
+  readonly code = "unsupported-composition-class";
+}
+
 export interface CompositionNode {
   readonly nodeId: string;
   readonly parentId: string | null;
@@ -15,8 +19,10 @@ export interface CompositionNode {
   readonly blendMode: BlendMode;
   readonly isolation: CompositionIsolation;
   readonly clipsContent: boolean;
+  readonly clipDepth: number;
   readonly rotation: number;
   readonly maskType: MaskType | null;
+  readonly maskDepth: number;
   readonly assetIds: readonly AssetId[];
   readonly adjustmentHooks: readonly string[];
 }
@@ -42,17 +48,54 @@ export function isCompositionContainer(type: string): boolean {
   );
 }
 
+function assertSupportedType(type: string): void {
+  if (
+    !new Set([
+      "CANVAS",
+      "FRAME",
+      "RECTANGLE",
+      "ROUNDED_RECTANGLE",
+      "ELLIPSE",
+      "TEXT",
+      "LINE",
+      "STAR",
+      "POLYGON",
+      "VECTOR",
+      "BOOLEAN_OPERATION",
+      "GROUP",
+      "SECTION",
+      "COMPONENT",
+      "COMPONENT_SET",
+      "INSTANCE",
+      "CONNECTOR",
+      "SHAPE_WITH_TEXT",
+      "IMAGE",
+    ]).has(type)
+  ) {
+    throw new CompositionUnsupportedClassError(`unsupported composition class: ${type}`);
+  }
+}
+
 export function createCompositionPlan(
   graph: SceneGraph,
   rootId = graph.rootId,
   options: CompositionOptions = {},
 ): CompositionPlan {
   const nodes = new Map<string, CompositionNode>();
-  const visit = (nodeId: string, parentOpacity: number, parentVisible: boolean): void => {
+  const visit = (
+    nodeId: string,
+    parentOpacity: number,
+    parentVisible: boolean,
+    parentClipDepth: number,
+    parentMaskDepth: number,
+  ): void => {
     const node = graph.getNode(nodeId);
     if (!node) throw new Error(`missing composition node: ${nodeId}`);
+    assertSupportedType(node.type);
     const visible = parentVisible && node.visible;
     const inheritedOpacity = parentOpacity * node.opacity;
+    const clipDepth = parentClipDepth + (node.clipsContent ? 1 : 0);
+    const maskDepth = parentMaskDepth + (node.isMask ? 1 : 0);
     const isolation =
       node.blendMode === "PASS_THROUGH" && isCompositionContainer(node.type)
         ? "pass-through"
@@ -67,16 +110,20 @@ export function createCompositionPlan(
       blendMode: node.blendMode,
       isolation,
       clipsContent: node.clipsContent,
+      clipDepth,
       rotation: node.rotation,
       maskType: node.isMask ? node.maskType : null,
+      maskDepth,
       assetIds: (node.fills ?? [])
         .filter((fill) => fill.type === "IMAGE" && fill.imageHash?.startsWith("asset:"))
         .map((fill) => fill.imageHash as AssetId),
       adjustmentHooks: [...(options.adjustmentHooks ?? [])],
     });
-    for (const childId of node.childIds) visit(childId, inheritedOpacity, visible);
+    for (const childId of node.childIds) {
+      visit(childId, inheritedOpacity, visible, clipDepth, maskDepth);
+    }
   };
-  visit(rootId, 1, true);
+  visit(rootId, 1, true, 0, 0);
   return { version: COMPOSITION_PLAN_VERSION, rootId, nodes };
 }
 
@@ -93,8 +140,10 @@ export function serializeCompositionPlan(plan: CompositionPlan): string {
       blendMode: node.blendMode,
       isolation: node.isolation,
       clipsContent: node.clipsContent,
+      clipDepth: node.clipDepth,
       rotation: node.rotation,
       maskType: node.maskType,
+      maskDepth: node.maskDepth,
       assetIds: [...node.assetIds].sort(),
       adjustmentHooks: [...node.adjustmentHooks],
     }));

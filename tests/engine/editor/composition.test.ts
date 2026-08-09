@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { createCompositionPlan, serializeCompositionPlan } from "#core/canvas/composition";
+import {
+  CompositionUnsupportedClassError,
+  createCompositionPlan,
+  serializeCompositionPlan,
+} from "#core/canvas/composition";
 import type { SceneGraph, SceneNode } from "#core/scene-graph";
 
 function graphOf(nodes: SceneNode[], rootId: string): SceneGraph {
@@ -48,6 +52,7 @@ describe("editor composition plan", () => {
     expect(plan.version).toBe("composition:1");
     expect(plan.nodes.get(frame.id)?.isolation).toBe("pass-through");
     expect(plan.nodes.get(frame.id)?.clipsContent).toBe(true);
+    expect(entry?.clipDepth).toBe(1);
     expect(plan.nodes.get(frame.id)?.rotation).toBe(15);
     expect(entry?.inheritedOpacity).toBeCloseTo(0.2);
   });
@@ -78,5 +83,12 @@ describe("editor composition plan", () => {
     expect(plan.nodes.get(frame.id)?.visible).toBe(false);
     expect(plan.nodes.get(child.id)?.visible).toBe(false);
     expect(plan.nodes.get(child.id)?.opacity).toBe(1);
+  });
+
+  test("reports typed unsupported classes instead of silently dropping them", () => {
+    const unsupported = node({ id: "unsupported", type: "WIDGET" as never });
+    expect(() => createCompositionPlan(graphOf([unsupported], unsupported.id))).toThrow(
+      CompositionUnsupportedClassError,
+    );
   });
 });
