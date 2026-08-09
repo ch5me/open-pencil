@@ -106,6 +106,7 @@ export class HostTransaction {
   }
 
   publish(): void {
+    if (this.tombstoned) throw new TransactionCancelledError("transaction is tombstoned");
     this.requireState("committed");
     this.advance("publishing");
     this.advance("published");

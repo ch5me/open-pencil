@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { HostTransaction } from "#core/io/transactional";
+import { HostTransaction, TransactionCancelledError } from "#core/io/transactional";
 import { WorkerMemoryPressureError, WorkerStateMachine } from "#core/io/workers";
 
 const digest = "a".repeat(64);
@@ -45,6 +45,29 @@ describe("transactional IO and worker contracts", () => {
     expect(tx.state).toBe("rolled-back");
     expect(tx.acceptsWorkerMessage()).toBe(false);
     expect(() => tx.receiveOutput(chunk(0))).toThrow("expected receiving-output");
+  });
+
+  test("tombstoned host cannot publish after cancellation", () => {
+    const tx = new HostTransaction();
+    tx.begin({
+      operation: "open-archive",
+      memoryProfile: "D1",
+      protocolCapabilities: [],
+      inputManifestHash: digest,
+      expectedInputBytes: 1,
+      expectedOutputClass: "archive",
+      replayable: true,
+    });
+    tx.stageInput(chunk(0));
+    tx.inputComplete();
+    tx.workerDispatched();
+    tx.receiveOutput(chunk(0));
+    tx.verifyOutput();
+    tx.commit();
+    tx.cancel();
+
+    expect(() => tx.publish()).toThrow(TransactionCancelledError);
+    expect(tx.state).toBe("rolled-back");
   });
 
   test("worker enforces sequence and directional lifecycle", () => {
