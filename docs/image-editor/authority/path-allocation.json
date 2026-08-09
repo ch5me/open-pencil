@@ -1,7 +1,7 @@
 {
   "architectVerdict": "APPROVED_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
-  "pathAllocationHash": "40e2dcedf8e530630d881594ea92e68fcc9b0d7fc09fe66dacaa3cf6ff1b3625",
+  "pathAllocationHash": "771c12edc26bda2cdac372b4f2494540c969e0b155abaa6cc976005ab36d014f",
   "protectedPaths": [
     {
       "path": ".ch5/proof.yaml",
@@ -341,9 +341,9 @@
   ],
   "schema": "ch5.image-editor.path-allocation.v1",
   "sourceBases": {
-    "openPencil": "6785cb3be6a42cc90898e06ab7ba27d0045228cb",
-    "ch5Packages": "06ce357bbfdba8750d063446d85da6a012d11a05",
-    "mahjong": "4ed827d8badb920dd2af0f1624fd5d9c3cc3ee0a"
+    "openPencil": "f2de0a638a9d63f7be98d3e96bdd3b7962a1bdb3",
+    "ch5Packages": "a5b21e750a948116cf5e9450e64cc9d3de07e8e8",
+    "mahjong": "0b13a513b63e02237b44c477063a6b2c3f708f52"
   },
   "writerRules": {
     "CP-C-PUBLIC": "ch5-ui public indexes only",
@@ -358,12 +358,12 @@
     "L-O": "OpenPencil manifests/proof/release files only"
   },
   "executionProvenance": {
-    "commit": "9ad9af0827ebf332e9fe06df380dfd2796356e8b",
-    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/g0a-o-approval-record-25ae46f9/worktrees/worker-1",
-    "team": "g0a-o-approval-record-25ae46f9",
+    "commit": "95643e0812906028e1856b85e0eb54968c202e55",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/execute-revision-r8-c-25ae46f9/worktrees/worker-1",
+    "team": "execute-revision-r8-c-25ae46f9",
     "worker": "worker-1",
     "role": "executor",
-    "session": "019fe48f-6f0c-7582-aa6e-a2dd8219dc61",
-    "observedAt": "2026-08-09T03:30:33Z"
+    "session": "019fe606-cfc4-77c3-a44d-9efc0a1f460a",
+    "observedAt": "2026-08-09T10:23:46Z"
   }
 }

@@ -1,7 +1,7 @@
 {
-  "authorityMatrixHash": "c9fa1e9e0167e69a73c0bc1534e7e4d089237b2063f1d9a0701510fe54477ae7",
-  "base": "6785cb3be6a42cc90898e06ab7ba27d0045228cb",
-  "pathAllocationHash": "40e2dcedf8e530630d881594ea92e68fcc9b0d7fc09fe66dacaa3cf6ff1b3625",
+  "authorityMatrixHash": "7df61fa8d9fd23438bebbfa86aa053641c48e5f4e041449bb3baf9423d235e3e",
+  "base": "f2de0a638a9d63f7be98d3e96bdd3b7962a1bdb3",
+  "pathAllocationHash": "771c12edc26bda2cdac372b4f2494540c969e0b155abaa6cc976005ab36d014f",
   "probes": [
     {
       "evidence": "current OpenPencil source files listed in matrix.sourceReferences exist at fetched producer tip",
@@ -25,13 +25,13 @@
   "producer": "open-pencil",
   "schema": "ch5.image-editor.probe.source-authority.v1",
   "executionProvenance": {
-    "commit": "0583d630963f4532840ba731996e7d7c11edf17c",
-    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/repair-wave-0-g0a-o-a-c0d9d17e/worktrees/worker-1",
-    "team": "repair-wave-0-g0a-o-a-c0d9d17e",
+    "commit": "95643e0812906028e1856b85e0eb54968c202e55",
+    "tree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-leader-open-pencil/.omx/team/execute-revision-r8-c-25ae46f9/worktrees/worker-1",
+    "team": "execute-revision-r8-c-25ae46f9",
     "worker": "worker-1",
     "role": "executor",
-    "session": "019fe42f-6619-7303-8e6e-69a1f46c8491",
-    "observedAt": "2026-08-09T01:45:00Z"
+    "session": "019fe606-cfc4-77c3-a44d-9efc0a1f460a",
+    "observedAt": "2026-08-09T10:23:46Z"
   },
-  "observedAt": "2026-08-09T09:22:00Z"
+  "observedAt": "2026-08-09T10:23:46Z"
 }
