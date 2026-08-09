@@ -5,7 +5,7 @@
   },
   "architectVerdict": "PENDING_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
-  "authorityMatrixHash": "d25a3ebfa80b601be215b078c93a9407bf43b64c55acf1d4d83336055a7e892e",
+  "authorityMatrixHash": "cb5aebfc0830630af9455898c7bc40c9276dee3571f804560b45bb2dd82fd187",
   "currentOwnerRepo": "open-pencil",
   "rows": [
     {
@@ -359,7 +359,7 @@
       "currentBehavior": "Color management remaps colors for selected document color space.",
       "requiredInvariant": "Composition uses declared linear document primaries.",
       "candidate": "extend",
-      "atomicityEvidence": "AUTH-003-COLOR-UNKNOWN",
+      "atomicityEvidence": "AUTH-003-COLOR-PARTIAL",
       "migrationAdapter": "Reuse color management; make working-space conversion explicit.",
       "retirementTrigger": "H2.5 duplicate-authority and consuming-path proof.",
       "publicApiImpact": "No second color model.",
@@ -470,5 +470,7 @@
       "path": "/Users/hassoncs/src/ch5/open-pencil/tests/engine/io/fig/export/worker.test.ts",
       "reason": "existing FIG worker coverage"
     }
-  ]
+  ],
+  "archiveAuthorityId": "open-pencil-fig-kiwi",
+  "archiveProtocolVersion": "existing-version-preserving-fig-container"
 }
