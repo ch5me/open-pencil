@@ -127,7 +127,7 @@ const HOST_TRANSITIONS: Readonly<Record<HostState, readonly HostState[]>> = {
   "verifying-output": ["prepared", "tombstoning"],
   prepared: ["committing", "tombstoning"],
   committing: ["committed", "tombstoning"],
-  committed: ["publishing"],
+  committed: ["publishing", "tombstoning"],
   publishing: ["published"],
   published: [],
   tombstoning: ["cancelling-worker"],
