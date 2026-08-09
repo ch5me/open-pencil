@@ -145,4 +145,62 @@ describe("editor history journal", () => {
     }
     expect(state).toEqual(snapshots[0]);
   });
+
+  test("rejects duplicate staged revisions and history pins", () => {
+    const allocator = createJournalIdAllocator(0, () => "journal-id");
+    const revision = {
+      revisionId: `sha256:${"d".repeat(64)}` as const,
+      kind: "mask",
+      metadata: {},
+      byteLength: 1,
+      sha256: "d".repeat(64),
+      temporary: true,
+    };
+    expect(() =>
+      createContentJournal(allocator, {
+        journalSequence: 1,
+        baseContentVersion: { sequence: 1, contentRootHash: ROOT },
+        nextContentVersion: { sequence: 2, contentRootHash: "b".repeat(64) },
+        contractHash: "contract",
+        authorityMatrixHash: "c".repeat(64),
+        stagedContentRevisions: [revision, revision],
+      }),
+    ).toThrow("duplicate revision ID");
+
+    expect(() =>
+      createContentJournal(allocator, {
+        journalSequence: 2,
+        baseContentVersion: { sequence: 2, contentRootHash: "b".repeat(64) },
+        nextContentVersion: { sequence: 3, contentRootHash: "e".repeat(64) },
+        contractHash: "contract",
+        authorityMatrixHash: "c".repeat(64),
+        historyPinsAdded: [
+          {
+            pinId: "pin",
+            kind: "archive",
+            revisionIds: [revision.revisionId, revision.revisionId],
+          },
+        ],
+      }),
+    ).toThrow("duplicate revision IDs");
+  });
+
+  test("transitions clone journal payloads and reject invalid timestamps", () => {
+    const allocator = createJournalIdAllocator(0, () => "journal-id");
+    const journal = createContentJournal(allocator, {
+      journalSequence: 1,
+      baseContentVersion: { sequence: 1, contentRootHash: ROOT },
+      nextContentVersion: { sequence: 2, contentRootHash: "b".repeat(64) },
+      contractHash: "contract",
+      authorityMatrixHash: "c".repeat(64),
+      forwardOps: [{ nested: { value: 1 } }],
+      now: 10,
+    });
+    expect(() => transitionContentJournal(journal, "staging", 9)).toThrow(
+      "not precede createdAt",
+    );
+    const transitioned = transitionContentJournal(journal, "staging", 11);
+    (transitioned.forwardOps[0] as { nested: { value: number } }).nested.value = 2;
+    expect((journal.forwardOps[0] as { nested: { value: number } }).nested.value).toBe(1);
+  });
 });
