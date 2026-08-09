@@ -25,8 +25,8 @@ import {
   type EffectFilter,
   type EffectStack,
 } from "#core/editor/image-capabilities/effects";
-import { createRasterMutation } from "#core/editor/image-raster";
-import { createImageSelection } from "#core/editor/image-selection";
+import { createRasterMutation, RasterMaskError, validateRasterMask } from "#core/editor/image-raster";
+import { clearMaskSelection, createImageSelection } from "#core/editor/image-selection";
 
 test("text capability preserves editable imported metadata fields", () => {
   const text: TextCapability = {
@@ -107,6 +107,37 @@ test("raster mutations and selections carry one transaction without pixel proces
   expect(mutation.transactionId).toBe(selection.transactionId);
   expect(mutation.source.revisionId).toBe(`sha256:${"a".repeat(64)}`);
   expect(selection.points).toHaveLength(2);
+});
+
+test("raster foundations reject malformed source and selection points", () => {
+  expect(() =>
+    createRasterMutation(
+      "crop",
+      { sourceId: "source:one", revisionId: `sha256:${"a".repeat(64)}`, width: 0, height: 80 },
+      "tx:raster",
+    ),
+  ).toThrow(RasterMaskError);
+  expect(() =>
+    createImageSelection("lasso", [{ x: Number.POSITIVE_INFINITY, y: 8 }], "tx:raster"),
+  ).toThrow("invalid image selection point");
+  expect(clearMaskSelection()).toEqual({ selectedMaskId: null, selectedThumbnailId: null });
+});
+
+test("raster mask validation clones transform and rejects bad revisions", () => {
+  const transform: [number, number, number, number, number, number] = [1, 0, 0, 1, 4, 8];
+  const mask = {
+    maskId: "mask:one",
+    revisionId: `sha256:${"a".repeat(64)}` as `sha256:${string}`,
+    thumbnailId: "thumb:one",
+    enabled: true,
+    inverted: false,
+    displayMode: "overlay" as const,
+    transform,
+  };
+  const validated = validateRasterMask(mask);
+  transform[4] = 99;
+  expect(validated.transform[4]).toBe(4);
+  expect(() => validateRasterMask({ ...mask, revisionId: "sha256:bad" })).toThrow(RasterMaskError);
 });
 
 test("pen path supports deterministic anchor editing and closed/open semantics", () => {

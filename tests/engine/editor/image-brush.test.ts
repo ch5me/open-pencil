@@ -86,3 +86,33 @@ test("palm-touch-like unavailable pressure input creates no false stroke", () =>
     ),
   ).toThrow(BrushDeviceUnavailableError);
 });
+
+test("non-pressure brush accepts unavailable pressure input", () => {
+  const stroke = createBrushStroke(
+    mask,
+    { size: 12, hardness: 1, opacity: 1, flow: 1, spacing: 0.1, pressure: false, smoothing: 0 },
+    [{ x: 9, y: 9, pressure: 0, time: 4 }],
+    "tx:mouse",
+    false,
+  );
+  expect(stroke.transactionId).toBe("tx:mouse");
+});
+
+test("brush rejects invalid pointer samples and malformed masks", () => {
+  expect(() =>
+    createBrushStroke(
+      mask,
+      { size: 12, hardness: 1, opacity: 1, flow: 1, spacing: 0.1, pressure: false, smoothing: 0 },
+      [{ x: Number.NaN, y: 9, pressure: 0, time: 4 }],
+      "tx:invalid",
+    ),
+  ).toThrow("invalid pointer sample");
+  expect(() =>
+    createBrushStroke(
+      { ...mask, revisionId: "sha256:bad" as typeof mask.revisionId },
+      { size: 12, hardness: 1, opacity: 1, flow: 1, spacing: 0.1, pressure: false, smoothing: 0 },
+      [],
+      "tx:invalid-mask",
+    ),
+  ).toThrow("invalid raster mask");
+});
