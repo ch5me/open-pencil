@@ -453,6 +453,7 @@ export * from "./editor/image-capabilities";
 export * from "./editor/image-geometry";
 export * from "./editor/image-observability";
 export * from "./editor/image-footprint";
+export * from "./editor/image-qa";
 export * from "./editor/image-raster";
 export * from "./editor/image-selection";
 export * from "./editor/image-session";
