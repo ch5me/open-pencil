@@ -1,0 +1,173 @@
+{
+  "schema": "ch5.image-editor.authority-behavioral-probes.v1",
+  "authorityMatrixHash": "d25a3ebfa80b601be215b078c93a9407bf43b64c55acf1d4d83336055a7e892e",
+  "pathAllocationHash": "d2290fb0debd6647afe9b7e14f2a6351239fdc0b02896614b24536c2c4cdcc1a",
+  "status": "partial",
+  "probes": [
+    {
+      "id": "AUTH-003-IMAGES-PARTIAL",
+      "authorityId": "SceneGraph.images",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/scene-graph/index.ts",
+        "packages/core/src/clipboard.ts"
+      ],
+      "observed": "Hash-keyed image bytes and consumers exist; immutable revision lifecycle UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-UNDO-PARTIAL",
+      "authorityId": "UndoManager and durable history",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/scene-graph/undo.ts",
+        "packages/core/src/editor/undo.ts"
+      ],
+      "observed": "Execute/push/batch/undo/redo/limit APIs exist; durable replay UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-MASK-PARTIAL",
+      "authorityId": "mask nodes",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/scene-graph/types.ts",
+        "packages/core/src/canvas/masks.ts"
+      ],
+      "observed": "Mask type/order traversal exists; audited raster semantics UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-COLOR-PARTIAL",
+      "authorityId": "DocumentColorSpace",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/color/management.ts",
+        "packages/core/src/editor/color-space.ts"
+      ],
+      "observed": "sRGB and Display-P3 paths exist; linear-primary round-trip UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-RENDER-PARTIAL",
+      "authorityId": "Skia renderer",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/canvas/renderer.ts",
+        "packages/core/src/canvas/renderer/pipeline.ts"
+      ],
+      "observed": "CanvasKit renderer and retained backing exist; plan determinism UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-IO-PARTIAL",
+      "authorityId": "IORegistry",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/io/registry.ts",
+        "packages/core/src/io/formats.ts"
+      ],
+      "observed": "Reader/writer/export dispatch exists; staged atomic commit UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-FIG-READ-PARTIAL",
+      "authorityId": "FIG read/parse worker",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/io/formats/fig/read.ts",
+        "packages/core/src/kiwi/fig/parse/worker.ts"
+      ],
+      "observed": "Worker/transfer/fallback paths exist; cancellation/progress UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-FIG-EXPORT-PARTIAL",
+      "authorityId": "FIG export worker",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/io/formats/fig/export.ts",
+        "packages/core/src/io/formats/fig/export-worker.ts"
+      ],
+      "observed": "Worker selection and transferable output exist; cancellation ownership UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-COMPRESS-PARTIAL",
+      "authorityId": "FIG compression/container and fflate",
+      "status": "PASS",
+      "evidence": [
+        "packages/core/src/io/formats/fig/compress.ts",
+        "tests/engine/io/fig/export/worker.test.ts"
+      ],
+      "observed": "fflate/container behavior covered; hostile-file limits UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-PROVENANCE-PARTIAL",
+      "authorityId": "SHA/canonical/package provenance utilities",
+      "status": "PASS",
+      "evidence": [
+        "packages/cli/src/ch5-review-receipt.ts",
+        "packages/cli/src/implementation-provenance.ts"
+      ],
+      "observed": "Canonical digest/provenance utilities exist; browser reuse UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-TESTS-PARTIAL",
+      "authorityId": "existing FIG worker tests",
+      "status": "PASS",
+      "evidence": [
+        "tests/engine/io/fig/export/worker.test.ts"
+      ],
+      "observed": "Startup/output/container tests exist; cancellation/progress/memory gaps UNKNOWN."
+    },
+    {
+      "id": "AUTH-003-PACKAGE-UNKNOWN",
+      "authorityId": "package metadata/pack/install/import smoke utilities",
+      "status": "UNKNOWN",
+      "evidence": [
+        "scripts/check-package-metadata.ts",
+        "scripts/smoke-packages.ts"
+      ],
+      "observed": "Source files exist; fresh package smoke receipt not produced."
+    },
+    {
+      "id": "AUTH-003-PERSISTENCE-UNKNOWN",
+      "authorityId": "persistence atomicity",
+      "status": "UNKNOWN",
+      "evidence": [
+        "src/app/document/io/create.ts"
+      ],
+      "observed": "Complete image-editor atomic transaction boundary not proved."
+    },
+    {
+      "id": "AUTH-003-IDENTITY-UNKNOWN",
+      "authorityId": "logical asset/revision identity",
+      "status": "UNKNOWN",
+      "evidence": [
+        "packages/core/src/scene-graph/index.ts"
+      ],
+      "observed": "Stable logical/revision binding not proved."
+    },
+    {
+      "id": "AUTH-003-MASK-BYTES-UNKNOWN",
+      "authorityId": "raster mask bytes",
+      "status": "UNKNOWN",
+      "evidence": [
+        "packages/core/src/canvas/masks.ts"
+      ],
+      "observed": "Immutable audited raster-mask byte authority not proved."
+    },
+    {
+      "id": "AUTH-003-COMPOSITION-UNKNOWN",
+      "authorityId": "composition plan",
+      "status": "UNKNOWN",
+      "evidence": [
+        "packages/core/src/canvas/renderer/pipeline.ts"
+      ],
+      "observed": "Composition-plan hash determinism not proved."
+    },
+    {
+      "id": "AUTH-003-FIG-TRANSFER-UNKNOWN",
+      "authorityId": "FIG parse transfer",
+      "status": "UNKNOWN",
+      "evidence": [
+        "packages/core/src/kiwi/fig/parse/transfer.ts"
+      ],
+      "observed": "Directional transfer ownership and cancellation not proved."
+    }
+  ],
+  "probeHash": "30ca79645723735eaef41de10184fa7504d6a7d0417fc3f1545b6b2dd3416a3f"
+}
