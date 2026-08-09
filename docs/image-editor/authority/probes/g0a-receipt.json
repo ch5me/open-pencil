@@ -6,9 +6,9 @@
   "baseCommit": "3f97c97bbda052af0d94077deb6e035165ef249e",
   "installedRosterHash": "12c391c9c94da6814668193092cf32b1b64b965244a4db44edf33d96f74eabea",
   "lane": "G0A-O",
-  "pathAllocationHash": "d2290fb0debd6647afe9b7e14f2a6351239fdc0b02896614b24536c2c4cdcc1a",
+  "pathAllocationHash": "268bd02b8ad7fbee73e7138997c385d5e6f9294ba2c1f116e64415b8c2682f41",
   "planSha256": "5370f27489c456f2ae3dc6fdf1d28e98252b26c1bd2616c662f54c9c1b9592d9",
-  "producerTipSetHash": "3ac5b885c520c87d8673f7a54e495349480cd1ced8a15f21ba4a721841aaf22b",
+  "producerTipSetHash": "30e53ef5692094c7fd5040c082e4d8524a5c7e659ab48cb4c70e0a3a74cf2c5f",
   "readOnlyProbePaths": [
     "docs/image-editor/authority/probes/behavioral-probes.json",
     "docs/image-editor/authority/probes/installed-roster.json",
@@ -23,9 +23,9 @@
     "git -C /Users/hassoncs/src/ch5/ch5-packages fetch --prune origin",
     "omx agents list"
   ],
-  "staleStateResolution": "Fresh origin/main tips fetched. Mahjong origin/main is 215da31896c7cec46d5f072ce71ae0dc05aaff6c and local source tree is dirty on unrelated animation paths; no Mahjong edits made or included. OpenPencil and ch5-packages source trees clean.",
+  "staleStateResolution": "Fresh origin/main tips fetched from all three Grove leader Trees. All leader Trees clean; ch5-packages origin/main reconciled to 98ad2b407069a4878233f023e041466664584f7e. No producer source edits made or included.",
   "status": "submitted_pending_architect",
-  "subagentEvidence": "2 native probes spawned: authority extraction and test coverage; findings integrated. Serial searches before spawn: 0.",
+  "subagentEvidence": "Subagent spawn evidence: 2 child tasks (canonical plan/receipt extraction; authority-surface inspection) spawned; findings integrated.",
   "testSpecSha256": "ee70da2d841561ec93f68b7f3093f4373c18b27e03360b837f9e7aec74c1077b",
   "usedRoleHash": "84b08c112d0d6b2352db11746f3517e69d88dcb93d84ef137368c21f59e26c77"
 }
