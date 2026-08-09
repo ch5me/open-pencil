@@ -7,6 +7,7 @@ import {
   LayerModelMaskValidationError,
   LayerModelValidationError,
   isUnsupportedLayerMaskKind,
+  isUnsupportedLayerMaskType,
   isUnsupportedLayerBlendMode,
   migrateLayerModel,
 } from "#core/editor/layer-model";
@@ -23,6 +24,15 @@ const node = (
     maskKind: "group" | "adjustment-layer" | string | null;
     maskTransform: readonly [number, number, number, number, number, number] | null;
     maskTransformMode: "linked" | "independent" | string | null;
+    maskType: "ALPHA" | "VECTOR" | "LUMINANCE" | string | null;
+    maskDensity: number | null;
+    maskFeather: number | null;
+    edgeRefinement: {
+      smooth?: number;
+      feather?: number;
+      contrast?: number;
+      shiftEdge?: number;
+    } | null;
   }> = {},
 ) => ({
   id,
@@ -32,8 +42,12 @@ const node = (
   blendMode: overrides.blendMode ?? "NORMAL",
   maskId: overrides.maskId ?? null,
   maskKind: overrides.maskKind ?? null,
-  maskTransform: overrides.maskTransform ?? null,
-  maskTransformMode: overrides.maskTransformMode ?? null,
+    maskTransform: overrides.maskTransform ?? null,
+    maskTransformMode: overrides.maskTransformMode ?? null,
+    maskType: overrides.maskType ?? null,
+    maskDensity: overrides.maskDensity ?? null,
+    maskFeather: overrides.maskFeather ?? null,
+    edgeRefinement: overrides.edgeRefinement ?? null,
 });
 
 describe("layer-model-v1", () => {
@@ -138,6 +152,57 @@ describe("layer-model-v1", () => {
       maskTransformMode: "independent",
     });
     expect(migrated.model.nodes.get("independent")?.maskTransform).not.toBe(transform);
+  });
+
+  test("models density, feather, edge refinement, and vector masks", async () => {
+    const migrated = await migrateLayerModel([
+      node("vector", null, [], {
+        maskId: "source",
+        maskKind: "group",
+        maskType: "VECTOR",
+        maskDensity: 0.75,
+        maskFeather: 12,
+        edgeRefinement: { smooth: 20, feather: 4, contrast: -10, shiftEdge: 8 },
+      }),
+      node("source", null),
+    ]);
+    expect(migrated.model.nodes.get("vector")).toMatchObject({
+      maskType: "VECTOR",
+      vectorMask: true,
+      maskDensity: 0.75,
+      maskFeather: 12,
+      edgeRefinement: { smooth: 20, feather: 4, contrast: -10, shiftEdge: 8 },
+    });
+  });
+
+  test("keeps unsupported vector mask types typed and rejects invalid refinements", async () => {
+    const migrated = await migrateLayerModel([
+      node("future", null, [], { maskId: "source", maskType: "PATH" }),
+      node("source", null),
+    ]);
+    const maskType = migrated.model.nodes.get("future")?.maskType;
+    expect(maskType).toEqual({
+      kind: "unsupported",
+      code: "layer-model-unsupported-mask-type",
+      value: "PATH",
+    });
+    if (maskType === null || maskType === undefined) throw new Error("missing mask type");
+    expect(isUnsupportedLayerMaskType(maskType)).toBe(true);
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], { maskId: "source", maskDensity: 2 }),
+        node("source", null),
+      ]),
+    ).rejects.toThrow("invalid mask density");
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], {
+          maskId: "source",
+          edgeRefinement: { contrast: 101 },
+        }),
+        node("source", null),
+      ]),
+    ).rejects.toThrow("invalid edge refinement");
   });
 
   test("rejects cycles and dangling parent, child, and mask references", async () => {
