@@ -141,6 +141,7 @@ export class ImageEditorStore {
       structuredClone(commit.journal),
     );
     this.heads.set(commit.documentId, structuredClone(commit.nextHead));
+    this.discardStaged(commit.journal.transactionId);
   }
 
   getJournal(documentId: string, sequence: number): ContentJournalEntry | undefined {

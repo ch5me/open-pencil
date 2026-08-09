@@ -4,6 +4,8 @@ import { AssetRegistry, type AssetId } from "#core/editor/assets";
 import {
   applyContentSnapshotTransition,
   createContentSnapshot,
+  createContentJournal,
+  createJournalIdAllocator,
   type ContentSnapshot,
 } from "#core/editor/history/journal";
 import { ImageEditorStore, StagedChunkMemoryPressure } from "#core/editor/storage";
@@ -73,6 +75,50 @@ test("staged chunks can be discarded without changing committed head", () => {
   store.discardStaged("tx:cancel");
   expect(store.stagedChunkCount("tx:cancel")).toBe(0);
   expect(store.getHead("doc")?.sequence).toBe(1);
+});
+
+test("committing content releases staged chunks after publishing the new head", () => {
+  const store = new ImageEditorStore();
+  const root = "a".repeat(64);
+  const nextRoot = "b".repeat(64);
+  store.setInitialHead("doc", { sequence: 1, contentRootHash: root });
+  const allocator = createJournalIdAllocator(0, () => "commit");
+  const journal = createContentJournal(allocator, {
+    journalSequence: 1,
+    baseContentVersion: { sequence: 1, contentRootHash: root },
+    nextContentVersion: { sequence: 2, contentRootHash: nextRoot },
+    contractHash: "contract",
+    authorityMatrixHash: "d".repeat(64),
+    stagedContentRevisions: [
+      {
+        revisionId: `sha256:${"b".repeat(64)}`,
+        kind: "image",
+        metadata: {},
+        byteLength: 1,
+        sha256: "b".repeat(64),
+        temporary: false,
+      },
+    ],
+  });
+  store.stageChunk({
+    transactionId: journal.transactionId,
+    chunkIndex: 0,
+    offset: 0,
+    byteLength: 1,
+    sha256: "b".repeat(64),
+    final: true,
+    bytes: new Uint8Array([1]),
+  });
+
+  store.commitContent({
+    documentId: "doc",
+    journal,
+    nextHead: journal.nextContentVersion,
+    revisions: [`sha256:${"b".repeat(64)}`],
+  });
+
+  expect(store.stagedChunkCount(journal.transactionId)).toBe(0);
+  expect(store.getHead("doc")).toEqual(journal.nextContentVersion);
 });
 
 test("staged chunks validate offsets and content digests", () => {
