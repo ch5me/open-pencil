@@ -2,7 +2,7 @@
   "agentReasoning": "Reused OpenPencil SceneGraph, image map, UndoManager, color, Skia, IORegistry, FIG worker, digest/provenance, package smoke, and worker-test authorities. Added only bounded identity/persistence rows where no complete current authority was observed. Protected paths assigned exactly once to fixed CP/L writers.",
   "architectApprovalRequired": true,
   "architectVerdict": "PENDING_AX-O",
-  "authorityMatrixHash": "fa6ec1364421a3e34300eeb8afed1d5b288a47187e7a9b4cb58c15b39a455afa",
+  "authorityMatrixHash": "4e8bac3fc8b92bd0157f6ce24a73c5bbb6962012df87a001cbc36748582de784",
   "baseCommit": "3f97c97bbda052af0d94077deb6e035165ef249e",
   "installedRosterHash": "12c391c9c94da6814668193092cf32b1b64b965244a4db44edf33d96f74eabea",
   "lane": "G0A-O",
