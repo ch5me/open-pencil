@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createCompositionPlan } from "#core/editor/composition";
+import { createCompositionPlan } from "#core/canvas/composition";
 import type { SceneGraph, SceneNode } from "#core/scene-graph";
 
 function graphOf(nodes: SceneNode[], rootId: string): SceneGraph {
