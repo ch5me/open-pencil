@@ -27,6 +27,11 @@ export interface PixelOracleOptions {
   readonly maxChannelDelta?: number;
 }
 
+export interface PixelParityOptions {
+  readonly maxChannelDelta: number;
+  readonly maxMeanBias: number;
+}
+
 export function assertPixelOracle(
   actual: ArrayLike<number>,
   expected: ArrayLike<number>,
@@ -46,5 +51,26 @@ export function assertPixelOracle(
         `pixel oracle mismatch at channel ${index}: ${actual[index]} vs ${expected[index]} (tolerance ${tolerance})`,
       );
     }
+  }
+}
+
+export function assertPixelParity(
+  actual: ArrayLike<number>,
+  expected: ArrayLike<number>,
+  options: PixelParityOptions,
+): void {
+  if (actual.length !== expected.length || actual.length % 4 !== 0) {
+    throw new Error("pixel parity length mismatch");
+  }
+  let bias = 0;
+  for (let index = 0; index < actual.length; index += 1) {
+    const delta = actual[index] - expected[index];
+    if (Math.abs(delta) > options.maxChannelDelta) {
+      throw new Error(`pixel parity max delta exceeded at channel ${index}`);
+    }
+    bias += delta;
+  }
+  if (Math.abs(bias / actual.length) > options.maxMeanBias) {
+    throw new Error("pixel parity mean bias exceeded");
   }
 }

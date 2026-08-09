@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import {
   assertPixelOracle,
+  assertPixelParity,
   COMPOSITION_COLOR_CONTRACT,
   COMPOSITION_COLOR_CONTRACT_VERSION,
 } from "#core/color/composition";
@@ -25,4 +26,19 @@ test("composition pixel oracle allows declared quantization tolerance", () => {
       format: "rgba8-srgb",
     }),
   ).toThrow("pixel oracle mismatch");
+});
+
+test("composition-full-v1 parity fixture keeps CPU and GPU paths within one-pixel contract", () => {
+  const expectedRgba8 = [24, 32, 48, 255, 240, 224, 208, 255];
+  const cpu = [24, 32, 48, 255, 240, 224, 208, 255];
+  const webgpu = [25, 31, 49, 255, 239, 225, 207, 255];
+  const webgl2 = [22, 34, 46, 255, 241, 223, 209, 255];
+  for (const actual of [cpu, webgpu, webgl2]) {
+    assertPixelParity(actual, expectedRgba8, { maxChannelDelta: 3, maxMeanBias: 0.25 });
+  }
+  assertPixelParity(
+    [0.25, 0.5, 0.75, 1, 0.1, 0.2, 0.3, 1],
+    [0.2505, 0.4995, 0.7505, 1, 0.0995, 0.2005, 0.2995, 1],
+    { maxChannelDelta: 1e-3, maxMeanBias: 1e-3 },
+  );
 });
