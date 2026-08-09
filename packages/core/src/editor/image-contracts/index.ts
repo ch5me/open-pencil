@@ -84,8 +84,8 @@ export const IMAGE_EDITOR_CONTRACT: ImageEditorContract = {
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize);
-  if (value && typeof value === "object") {
-    const object = value as Record<string, unknown>;
+  if (isRecord(value)) {
+    const object = value;
     return Object.fromEntries(
       Object.keys(object)
         .sort()
@@ -93,6 +93,10 @@ function canonicalize(value: unknown): unknown {
     );
   }
   return value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object";
 }
 
 function assertDigest(value: string, label: string): void {
