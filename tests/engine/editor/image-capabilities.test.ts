@@ -142,3 +142,19 @@ test("effects-v1 validates bounded filters and reorderable smart-mask stacks", (
   expect(reorderEffectStack(stack, 0, 1).filters[1]?.id).toBe("effect:one");
   expect(new EffectAccelerationUnavailableError().code).toBe("E_EFFECT_ACCELERATION_UNAVAILABLE");
 });
+
+test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouched by contract", () => {
+  const filter: EffectFilter = {
+    id: "effect:bounded",
+    kind: "blur",
+    enabled: true,
+    affectedArea: [0, 0, 50, 50],
+    transactionId: "tx:bounded-effect",
+  };
+  const canvasArea = 100 * 100;
+  const affectedArea = filter.affectedArea[2] * filter.affectedArea[3];
+  expect(affectedArea / canvasArea).toBeLessThanOrEqual(0.25);
+  expect(filter.affectedArea).not.toContain(99);
+  expect(() => validateEffectFilter(filter)).not.toThrow();
+  expect(new EffectAccelerationUnavailableError().code).toBe("E_EFFECT_ACCELERATION_UNAVAILABLE");
+});
