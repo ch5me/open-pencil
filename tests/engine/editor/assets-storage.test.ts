@@ -159,6 +159,14 @@ describe("image editor assets and storage", () => {
       authorityMatrixHash: "d".repeat(64),
     };
     const unknown = `sha256:${"f".repeat(64)}` as const;
+    const revision = {
+      revisionId: REVISION,
+      kind: "image",
+      metadata: { width: 1 },
+      byteLength: 1,
+      sha256: REVISION.slice("sha256:".length),
+      temporary: false,
+    } as const;
     const missing = createContentJournal(allocator, {
       ...base,
       historyPinsAdded: [{ pinId: "missing", kind: "archive", revisionIds: [unknown] }],
@@ -168,15 +176,71 @@ describe("image editor assets and storage", () => {
     ).toThrow("missing revision");
     expect(store.getHead("doc")).toEqual(base.baseContentVersion);
 
+    const release = createContentJournal(allocator, {
+      ...base,
+      stagedContentRevisions: [revision],
+      nextContentVersion: { sequence: 2, contentRootHash: "e".repeat(64) },
+    });
+    store.commitContent({
+      documentId: "doc",
+      journal: release,
+      nextHead: release.nextContentVersion,
+      revisions: [],
+    });
+    const releaseRevision = createContentJournal(allocator, {
+      ...base,
+      journalSequence: 2,
+      baseContentVersion: release.nextContentVersion,
+      nextContentVersion: { sequence: 3, contentRootHash: "f".repeat(64) },
+      releasedContentRevisions: [REVISION],
+    });
+    store.commitContent({
+      documentId: "doc",
+      journal: releaseRevision,
+      nextHead: releaseRevision.nextContentVersion,
+      revisions: [],
+    });
     const released = createContentJournal(allocator, {
       ...base,
+      journalSequence: 3,
+      baseContentVersion: releaseRevision.nextContentVersion,
+      nextContentVersion: { sequence: 4, contentRootHash: "7".repeat(64) },
       historyPinsAdded: [{ pinId: "released", kind: "archive", revisionIds: [REVISION] }],
-      releasedContentRevisions: [REVISION],
     });
     expect(() =>
       store.commitContent({ documentId: "doc", journal: released, nextHead: released.nextContentVersion, revisions: [] }),
     ).toThrow("released revision");
-    expect(store.getHead("doc")).toEqual(base.baseContentVersion);
+    expect(store.getHead("doc")).toEqual(releaseRevision.nextContentVersion);
+
+    const collisionStore = new ImageEditorStore();
+    collisionStore.setInitialHead("doc", { sequence: 1, contentRootHash: ROOT });
+    const pinned = createContentJournal(allocator, {
+      ...base,
+      historyPinsAdded: [{ pinId: "archive", kind: "archive", revisionIds: [REVISION] }],
+      stagedContentRevisions: [revision],
+    });
+    collisionStore.commitContent({
+      documentId: "doc",
+      journal: pinned,
+      nextHead: pinned.nextContentVersion,
+      revisions: [],
+    });
+    const collision = createContentJournal(allocator, {
+      ...base,
+      journalSequence: 2,
+      baseContentVersion: pinned.nextContentVersion,
+      nextContentVersion: { sequence: 3, contentRootHash: "8".repeat(64) },
+      historyPinsAdded: [{ pinId: "archive", kind: "archive", revisionIds: [REVISION] }],
+    });
+    expect(() =>
+      collisionStore.commitContent({
+        documentId: "doc",
+        journal: collision,
+        nextHead: collision.nextContentVersion,
+        revisions: [],
+      }),
+    ).toThrow("pin ID collision");
+    expect(collisionStore.getHead("doc")).toEqual(pinned.nextContentVersion);
   });
 
   test("requires committed revisions to be declared by the journal", () => {
