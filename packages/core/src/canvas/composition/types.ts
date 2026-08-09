@@ -22,6 +22,7 @@ export interface CompositionNode {
   readonly clipDepth: number;
   readonly rotation: number;
   readonly maskType: MaskType | null;
+  readonly maskIsOutline: boolean;
   readonly maskDepth: number;
   readonly assetIds: readonly AssetId[];
   readonly adjustmentHooks: readonly string[];
@@ -113,6 +114,7 @@ export function createCompositionPlan(
       clipDepth,
       rotation: node.rotation,
       maskType: node.isMask ? node.maskType : null,
+      maskIsOutline: node.isMask ? node.maskIsOutline : false,
       maskDepth,
       assetIds: (node.fills ?? [])
         .filter((fill) => fill.type === "IMAGE" && fill.imageHash?.startsWith("asset:"))
@@ -143,6 +145,7 @@ export function serializeCompositionPlan(plan: CompositionPlan): string {
       clipDepth: node.clipDepth,
       rotation: node.rotation,
       maskType: node.maskType,
+      maskIsOutline: node.maskIsOutline,
       maskDepth: node.maskDepth,
       assetIds: [...node.assetIds].sort(),
       adjustmentHooks: [...node.adjustmentHooks],

@@ -29,6 +29,7 @@ function node(overrides: Partial<SceneNode> & Pick<SceneNode, "id" | "type">): S
     rotation: overrides.rotation ?? 0,
     isMask: overrides.isMask ?? false,
     maskType: overrides.maskType ?? "ALPHA",
+    maskIsOutline: overrides.maskIsOutline ?? false,
     fills: overrides.fills ?? [],
   } as SceneNode;
 }
@@ -90,5 +91,21 @@ describe("editor composition plan", () => {
     expect(() => createCompositionPlan(graphOf([unsupported], unsupported.id))).toThrow(
       CompositionUnsupportedClassError,
     );
+  });
+
+  test("preserves independent mask semantics and pass-through blend modes", () => {
+    const mask = node({
+      id: "mask",
+      type: "VECTOR",
+      isMask: true,
+      maskType: "VECTOR",
+      maskIsOutline: true,
+      blendMode: "PASS_THROUGH",
+    });
+    const plan = createCompositionPlan(graphOf([mask], mask.id), mask.id);
+    const entry = plan.nodes.get(mask.id);
+    expect(entry?.maskType).toBe("VECTOR");
+    expect(entry?.maskIsOutline).toBe(true);
+    expect(entry?.isolation).toBe("isolated");
   });
 });
