@@ -34,6 +34,22 @@ export interface ImageEditorContract {
     quantization: "declared-by-backend";
     passThroughSemantics: "open-pencil-current-v1";
   };
+  layerModel: {
+    version: "layer-model-v1";
+    migrationHash: string;
+    invariants: readonly string[];
+    capabilities: {
+      passThroughGroups: true;
+      declaredBlendModes: true;
+      groupMasks: true;
+      adjustmentMasks: true;
+      linkedMasks: true;
+      independentMasks: true;
+      vectorMasks: true;
+    };
+    multiLayerTransaction: "old-or-new";
+    unsupportedFields: readonly string[];
+  };
   archive: {
     authorityId: "open-pencil-fig-kiwi";
     protocolVersion: "existing-version-preserving-fig-container";
@@ -73,6 +89,22 @@ export const IMAGE_EDITOR_CONTRACT: ImageEditorContract = {
     alpha: "premultiplied",
     quantization: "declared-by-backend",
     passThroughSemantics: "open-pencil-current-v1",
+  },
+  layerModel: {
+    version: "layer-model-v1",
+    migrationHash: "9cf8ea8ce6d9d42bb7bc6f1f7c4f6b4b5c29c7d5e531db4d6b9b0a8f2f84c6a1",
+    invariants: ["acyclic-parent-links", "no-dangling-mask-links", "stable-layer-order"],
+    capabilities: {
+      passThroughGroups: true,
+      declaredBlendModes: true,
+      groupMasks: true,
+      adjustmentMasks: true,
+      linkedMasks: true,
+      independentMasks: true,
+      vectorMasks: true,
+    },
+    multiLayerTransaction: "old-or-new",
+    unsupportedFields: ["layer-link-color-label", "feathered-mask-density"],
   },
   archive: {
     authorityId: "open-pencil-fig-kiwi",
@@ -116,7 +148,9 @@ export function assertWaveOneDependency(receipt: WaveOneDependencyReceipt): void
   }
 }
 
-export function canonicalContractJson(contract: ImageEditorContract = IMAGE_EDITOR_CONTRACT): string {
+export function canonicalContractJson(
+  contract: ImageEditorContract = IMAGE_EDITOR_CONTRACT,
+): string {
   return JSON.stringify(canonicalize(contract));
 }
 
@@ -125,6 +159,8 @@ export async function computeContractHash(
 ): Promise<`sha256:${string}`> {
   const bytes = new TextEncoder().encode(canonicalContractJson(contract));
   const digest = await crypto.subtle.digest("SHA-256", bytes);
-  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join(
+    "",
+  );
   return `sha256:${hex}`;
 }
