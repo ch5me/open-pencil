@@ -14,7 +14,7 @@ const node = (
   id: string,
   parentId: string | null,
   childIds: string[] = [],
-  overrides: Partial<{ type: string; blendMode: BlendMode; maskId: string | null }> = {},
+  overrides: Partial<{ type: string; blendMode: BlendMode | string; maskId: string | null }> = {},
 ) => ({
   id,
   parentId,
@@ -48,7 +48,7 @@ describe("layer-model-v1", () => {
 
     const migrated = await migrateLayerModel([
       node("overlay", null, [], { blendMode: "OVERLAY" }),
-      node("unknown", null, [], { blendMode: "VIVID_LIGHT" as BlendMode }),
+      node("unknown", null, [], { blendMode: "VIVID_LIGHT" }),
     ]);
     expect(migrated.model.nodes.get("overlay")?.blendMode).toBe("OVERLAY");
     const unsupported = migrated.model.nodes.get("unknown")?.blendMode;
@@ -60,6 +60,16 @@ describe("layer-model-v1", () => {
     expect(unsupported).toBeDefined();
     if (unsupported === undefined) throw new Error("missing migrated blend mode");
     expect(isUnsupportedLayerBlendMode(unsupported)).toBe(true);
+  });
+
+  test("only GROUP nodes interpret PASS_THROUGH as pass-through", async () => {
+    const migrated = await migrateLayerModel([
+      node("group", null, ["shape"], { type: "GROUP", blendMode: "PASS_THROUGH" }),
+      node("shape", "group", [], { blendMode: "PASS_THROUGH" }),
+    ]);
+
+    expect(migrated.model.nodes.get("group")?.passThrough).toBe(true);
+    expect(migrated.model.nodes.get("shape")?.passThrough).toBe(false);
   });
 
   test("rejects cycles and dangling parent, child, and mask references", async () => {
