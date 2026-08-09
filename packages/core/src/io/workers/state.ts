@@ -183,10 +183,7 @@ export class WorkerStateMachine {
       throw new WorkerProtocolError("durationMs must be a non-negative finite number");
     }
     this.taskCount += 1;
-    this.totalTaskMs += durationMs;
-    this.maxObservedTaskMs = Math.max(this.maxObservedTaskMs, durationMs);
-    const maxTaskMs = this.options?.maxTaskMs ?? DEFAULT_LONG_TASK_BUDGET_MS;
-    if (durationMs > maxTaskMs) {
+    if (durationMs > (this.options?.maxTaskMs ?? DEFAULT_LONG_TASK_BUDGET_MS)) {
       this.overBudgetCount += 1;
     }
   }
