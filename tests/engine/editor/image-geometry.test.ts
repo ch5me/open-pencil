@@ -7,7 +7,10 @@ import {
   mapForward,
   mapInverse,
   pointInTransformedRect,
+  resizeTransform,
+  snapValue,
   selectionBounds,
+  updateNumericTransform,
   transformedBounds,
 } from "#core/editor/image-geometry";
 
@@ -41,5 +44,17 @@ describe("image geometry", () => {
     expect(selection.bounds.x).toBeLessThan(200);
     expect(selection.bounds.width).toBeGreaterThan(100);
     expect(() => forwardTransform({ ...transform, scaleX: 0 })).toThrow(InvalidTransformError);
+  });
+
+  test("resize handles, aspect lock, snapping, numeric updates, and flip", () => {
+    const resized = resizeTransform(
+      transform,
+      "bottom-right",
+      { x: 20, y: 0 },
+      { lockAspect: true },
+    );
+    expect(resized.width / resized.height).toBeCloseTo(2, 8);
+    expect(snapValue(13, 8)).toBe(16);
+    expect(updateNumericTransform(transform, { x: 30, rotation: 90 }).rotation).toBe(90);
   });
 });

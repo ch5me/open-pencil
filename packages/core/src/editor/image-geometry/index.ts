@@ -1,5 +1,6 @@
 export { pointInTransformedRect } from "./hit-test";
 export { selectionBounds } from "./selection";
+export { flipTransform, resizeTransform, snapValue, updateNumericTransform } from "./operations";
 export {
   forwardTransform,
   inverseTransform,
@@ -13,4 +14,6 @@ export {
   type GeometrySelection,
   type GeometryTransform,
   type HitTestOptions,
+  type ResizeHandle,
+  type ResizeOptions,
 } from "./types";

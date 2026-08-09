@@ -24,4 +24,19 @@ export interface HitTestOptions {
   readonly tolerance?: number;
 }
 
+export type ResizeHandle =
+  | "top-left"
+  | "top"
+  | "top-right"
+  | "right"
+  | "bottom-right"
+  | "bottom"
+  | "bottom-left"
+  | "left";
+
+export interface ResizeOptions {
+  readonly lockAspect?: boolean;
+  readonly snap?: number;
+}
+
 export type { Rect, Vector };
