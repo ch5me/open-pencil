@@ -88,6 +88,43 @@ describe("transactional IO and worker contracts", () => {
     expect(worker.state).toBe("result-sent");
   });
 
+  test("worker cancellation blocks later input and output publication", () => {
+    const worker = new WorkerStateMachine();
+    worker.ready();
+    worker.beginInput();
+    worker.cancel();
+
+    expect(worker.state).toBe("cancelled");
+    expect(() => worker.receiveInput(chunk(0))).toThrow("worker cancelled");
+    expect(() => worker.finishOutput()).toThrow("worker cancelled");
+    expect(() => worker.sendResult()).toThrow("worker cancelled");
+  });
+
+  test("host cancellation after partial output leaves no publish path", () => {
+    const tx = new HostTransaction({
+      transactionId: () => "tx:partial",
+      requestId: () => "request:partial",
+    });
+    tx.begin({
+      operation: "decode-raster",
+      memoryProfile: "D1",
+      protocolCapabilities: [],
+      inputManifestHash: digest,
+      expectedInputBytes: 1,
+      expectedOutputClass: "raster",
+      replayable: true,
+    });
+    tx.stageInput(chunk(0));
+    tx.inputComplete();
+    tx.workerDispatched();
+    tx.receiveOutput(chunk(0));
+    tx.cancel();
+
+    expect(tx.state).toBe("rolled-back");
+    expect(tx.acceptsWorkerMessage()).toBe(false);
+    expect(() => tx.publish()).toThrow(TransactionCancelledError);
+  });
+
   test("admission rejects resident-memory overflow and records long tasks", () => {
     const worker = new WorkerStateMachine({
       memoryProfile: "D1",
