@@ -203,28 +203,34 @@ test("image render adapter emits commands for visible nodes but skips hidden or 
 });
 
 test("image render adapter exposes typed gaps for missing and mismatched bindings", () => {
-  const plan = imagePlan([imageNode("missing", "asset:missing"), imageNode("mismatch", "asset:mismatch")]);
-  const frame = createImageRenderAdapter().render(plan, {
+  const missing = createImageRenderAdapter().render(imagePlan([imageNode("missing", "asset:missing")]), {
     getAsset: (assetId) =>
       assetId === "asset:mismatch"
         ? { assetId: "asset:other", revisionId: "sha256:revision-1" }
         : undefined,
     getRevision: () => undefined,
   });
+  const mismatch = createImageRenderAdapter().render(imagePlan([imageNode("mismatch", "asset:mismatch")]), {
+    getAsset: () => ({ assetId: "asset:other", revisionId: "sha256:revision-1" }),
+    getRevision: () => undefined,
+  });
 
-  expect(frame.gaps).toEqual([
+  expect(missing.gaps).toEqual([
     {
       code: "missing-asset-binding",
       message: "asset binding is unavailable: asset:missing",
       assetId: "asset:missing",
     },
+  ]);
+  expect(mismatch.gaps).toEqual([
     {
       code: "asset-binding-mismatch",
       message: "asset binding does not match requested asset: asset:mismatch",
       assetId: "asset:mismatch",
     },
   ]);
-  expect(frame.textures).toEqual([]);
+  expect(missing.textures).toEqual([]);
+  expect(mismatch.textures).toEqual([]);
 });
 
 test("renderer-resilience-v1 records unsupported runtime paths as UNKNOWN", () => {
