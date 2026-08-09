@@ -57,4 +57,38 @@ describe("image geometry", () => {
     expect(snapValue(13, 8)).toBe(16);
     expect(updateNumericTransform(transform, { x: 30, rotation: 90 }).rotation).toBe(90);
   });
+
+  test("geometry-v1 10,000-case metamorphic corpus has no hit-test errors", () => {
+    let seed = 0x13579bdf;
+    const next = (max: number) => {
+      seed = (seed * 1_664_525 + 1_013_904_223) >>> 0;
+      return seed % max;
+    };
+    let roundTripFailures = 0;
+    let falsePositives = 0;
+    let falseNegatives = 0;
+    for (let index = 0; index < 10_000; index += 1) {
+      const candidate = {
+        x: next(500),
+        y: next(500),
+        width: 1 + next(300),
+        height: 1 + next(300),
+        rotation: next(360),
+      };
+      const local = { x: candidate.width / 3, y: candidate.height / 3 };
+      const mapped = mapForward(candidate, local);
+      const restored = mapInverse(candidate, mapped);
+      if (Math.abs(restored.x - local.x) > 0.25 || Math.abs(restored.y - local.y) > 0.25) {
+        roundTripFailures += 1;
+      }
+      if (!pointInTransformedRect(candidate, mapped)) falseNegatives += 1;
+      if (pointInTransformedRect(candidate, { x: -10_000, y: -10_000 })) falsePositives += 1;
+      const resized = resizeTransform(candidate, "bottom-right", { x: 2, y: 2 });
+      if (resized.width < 1 || resized.height < 1) roundTripFailures += 1;
+    }
+    expect(roundTripFailures).toBe(0);
+    expect(falsePositives).toBe(0);
+    expect(falseNegatives).toBe(0);
+    expect(() => snapValue(Number.NaN, 8)).toThrow(InvalidTransformError);
+  });
 });
