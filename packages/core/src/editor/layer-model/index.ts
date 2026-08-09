@@ -4,6 +4,23 @@ export const LAYER_MODEL_VERSION = "layer-model-v1";
 export type LayerModelMaskTransform = readonly [number, number, number, number, number, number];
 export type LayerModelMaskTransformMode = "linked" | "independent";
 export type LayerModelMaskType = "ALPHA" | "VECTOR" | "LUMINANCE";
+export const LAYER_MODEL_COLOR_LABELS = [
+  "NONE",
+  "RED",
+  "ORANGE",
+  "YELLOW",
+  "GREEN",
+  "BLUE",
+  "VIOLET",
+  "GRAY",
+] as const;
+export type LayerModelColorLabel = (typeof LAYER_MODEL_COLOR_LABELS)[number];
+export interface UnsupportedLayerColorLabel {
+  readonly kind: "unsupported";
+  readonly code: "layer-model-unsupported-color-label";
+  readonly value: string;
+}
+export type LayerModelResolvedColorLabel = LayerModelColorLabel | UnsupportedLayerColorLabel;
 
 export interface LayerModelEdgeRefinement {
   readonly smooth: number;
@@ -74,6 +91,9 @@ export type LayerModelNodeInput = Omit<
   readonly maskDensity?: number | null;
   readonly maskFeather?: number | null;
   readonly edgeRefinement?: Partial<LayerModelEdgeRefinement> | null;
+  readonly linkId?: string | null;
+  readonly linkedLayerIds?: readonly string[] | null;
+  readonly colorLabel?: LayerModelColorLabel | string | null;
 };
 
 export interface LayerModelNode {
@@ -94,6 +114,9 @@ export interface LayerModelNode {
   readonly groupMask: boolean;
   readonly adjustmentLayerMask: boolean;
   readonly passThrough: boolean;
+  readonly linkId: string | null;
+  readonly linkedLayerIds: readonly string[];
+  readonly colorLabel: LayerModelResolvedColorLabel | null;
 }
 
 export interface LayerModel {
@@ -130,6 +153,15 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     : null;
   const maskTransformMode = node.maskTransformMode ?? (maskTransform ? "independent" : "linked");
   const maskType = resolveMaskType(node.maskType);
+  const linkId = node.linkId ?? null;
+  if (linkId !== null && linkId.length === 0) {
+    throw new LayerModelValidationError(`empty layer link id: ${node.id}`);
+  }
+  const linkedLayerIds = [...new Set(node.linkedLayerIds ?? [])];
+  if (linkedLayerIds.some((id) => id.length === 0)) {
+    throw new LayerModelValidationError(`empty linked layer reference: ${node.id}`);
+  }
+  const colorLabel = resolveColorLabel(node.colorLabel);
   const maskDensity = node.maskDensity ?? 1;
   const maskFeather = node.maskFeather ?? 0;
   const edgeRefinement = resolveEdgeRefinement(node.edgeRefinement);
@@ -152,7 +184,30 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     groupMask: maskKind === "group",
     adjustmentLayerMask: maskKind === "adjustment-layer",
     passThrough,
+    linkId,
+    linkedLayerIds,
+    colorLabel,
   };
+}
+
+function resolveColorLabel(
+  label: LayerModelNodeInput["colorLabel"],
+): LayerModelResolvedColorLabel | null {
+  if (label === undefined || label === null) return null;
+  if ((LAYER_MODEL_COLOR_LABELS as readonly string[]).includes(label)) {
+    return label as LayerModelColorLabel;
+  }
+  return {
+    kind: "unsupported",
+    code: "layer-model-unsupported-color-label",
+    value: label,
+  };
+}
+
+export function isUnsupportedLayerColorLabel(
+  label: LayerModelResolvedColorLabel,
+): label is UnsupportedLayerColorLabel {
+  return typeof label === "object" && label.kind === "unsupported";
 }
 
 function resolveMaskTransformMode(
@@ -258,6 +313,9 @@ function canonicalJson(nodes: readonly LayerModelNode[]): string {
         groupMask: node.groupMask,
         adjustmentLayerMask: node.adjustmentLayerMask,
         passThrough: node.passThrough,
+        linkId: node.linkId,
+        linkedLayerIds: [...node.linkedLayerIds],
+        colorLabel: node.colorLabel,
       })),
   );
 }
@@ -364,6 +422,19 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
     }
     if (node.maskId === node.id) {
       throw new LayerModelMaskValidationError(`self-referencing mask: ${node.id}`);
+    }
+    if (node.linkedLayerIds.includes(node.id)) {
+      throw new LayerModelValidationError(`self-referencing layer link: ${node.id}`);
+    }
+    if (new Set(node.linkedLayerIds).size !== node.linkedLayerIds.length) {
+      throw new LayerModelValidationError(`duplicate linked layer reference: ${node.id}`);
+    }
+    for (const linkedId of node.linkedLayerIds) {
+      if (!byId.has(linkedId)) {
+        throw new LayerModelValidationError(
+          `dangling linked layer reference: ${node.id} -> ${linkedId}`,
+        );
+      }
     }
   }
 
