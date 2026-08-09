@@ -25,6 +25,27 @@ test("stages PSD import without mutating caller state and reports typed warnings
   expect(bytes).toEqual(before);
 });
 
+test("reopens the staged PSD export with stable interchange header fields", () => {
+  const bytes = stagePsdExport({
+    width: 10,
+    height: 20,
+    layers: [layerMetadata("background", "Background")],
+  });
+
+  const reopened = stagePsdImport(bytes);
+  expect(reopened.header).toEqual({
+    version: 1,
+    channels: 4,
+    height: 20,
+    width: 10,
+    bitsPerChannel: 8,
+    colorMode: 3,
+  });
+  expect(reopened.layers).toEqual([]);
+  expect(reopened.warnings).toEqual([]);
+  expect(reopened.degraded).toBe(false);
+});
+
 test("rejects hostile PSD dimensions before staging", () => {
   expect(() => stagePsdExport({ width: 100_000, height: 20, layers: [] })).toThrow(
     PsdHostileFileError,
