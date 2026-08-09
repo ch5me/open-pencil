@@ -1,7 +1,7 @@
 {
   "architectVerdict": "PENDING_AX-O",
   "authorityId": "open-pencil-g0a-wave-0",
-  "pathAllocationHash": "a62536f291cad2eb77dc55e21f04da8f5c54484524af88176580f5fc50ded21a",
+  "pathAllocationHash": "ca831997c578c54aae5338e054cca75915ad8ecf56f1f92c3b704107a279fcdc",
   "protectedPaths": [
     {
       "path": ".ch5/proof.yaml",
@@ -341,7 +341,7 @@
   ],
   "schema": "ch5.image-editor.path-allocation.v1",
   "sourceBases": {
-    "ch5Packages": "98ad2b407069a4878233f023e041466664584f7e",
+    "ch5Packages": "2e81e50973e6d1ce367c159b47300089b1b4bb60",
     "mahjong": "215da31896c7cec46d5f072ce71ae0dc05aaff6c",
     "openPencil": "3f97c97bbda052af0d94077deb6e035165ef249e"
   },
