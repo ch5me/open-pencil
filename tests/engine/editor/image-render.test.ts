@@ -35,7 +35,7 @@ function imageNode(id: string, assetId = "asset:hero", visible = true): SceneNod
       },
     ],
     // Test fixture intentionally models only composition fields.
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
+  // oxlint-disable-next-line open-pencil(no-broad-double-cast)
   } as unknown as SceneNode;
 }
 
@@ -44,7 +44,7 @@ function imagePlan(nodes = [imageNode("image")]): ReturnType<typeof createCompos
     rootId: nodes[0]?.id ?? "image",
     getNode: (id: string) => nodes.find((node) => node.id === id),
     // Test graph intentionally implements only the composition resolver surface.
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
+  // oxlint-disable-next-line open-pencil(no-broad-double-cast)
   } as unknown as SceneGraph;
   return createCompositionPlan(graph);
 }
@@ -75,8 +75,67 @@ test("image render adapter resolves the first bound image asset", () => {
         : undefined,
   });
   expect(frame.commands[0]?.assetId).toBe("asset:hero");
+  expect(frame.commands[0]).toMatchObject({
+    rotation: 0,
+    maskType: null,
+    maskIsOutline: false,
+    adjustmentHooks: [],
+  });
   expect(frame.textures[0]?.revisionId).toBe("sha256:revision-1");
   expect(frame.textures[0]?.uploaded).toBe(true);
+});
+
+test("image render adapter carries full composition metadata for raster bases", () => {
+  const adapter = createImageRenderAdapter();
+  const base = imageNode("base");
+  const graph = {
+    rootId: base.id,
+    getNode: (id: string) => (id === base.id ? base : undefined),
+  } as unknown as SceneGraph;
+  const plan = createCompositionPlan(graph, "group", {
+    adjustmentHooks: ["exposure"],
+  });
+  const frame = createImageRenderAdapter().render(plan, {
+    getAsset: (assetId) =>
+      assetId === "asset:raster-base"
+        ? { assetId, revisionId: "sha256:raster-revision" }
+        : undefined,
+    getRevision: (revisionId) =>
+      revisionId === "sha256:raster-revision"
+        ? {
+            revisionId,
+            kind: "image",
+            metadata: {},
+            bytes: new Uint8Array([1, 2, 3, 4]),
+          }
+        : undefined,
+  });
+
+  expect(frame.commands).toEqual([
+    {
+      nodeId: "group",
+      assetId: null,
+      opacity: 1,
+      blendMode: "PASS_THROUGH",
+      clipped: true,
+    },
+    {
+      nodeId: "raster",
+      assetId: "asset:raster-base",
+      opacity: 1,
+      blendMode: "NORMAL",
+      clipped: false,
+    },
+  ]);
+  expect(frame.textures).toEqual([
+    {
+      assetId: "asset:raster-base",
+      revisionId: "sha256:raster-revision",
+      byteLength: 4,
+      dirty: false,
+      uploaded: true,
+    },
+  ]);
 });
 
 test("image render adapter caches textures, deduplicates shared assets, and reuploads revisions", () => {
@@ -92,7 +151,7 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
 
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
   expect(adapter.render(plan, resolve).textures).toHaveLength(1);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
+  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
