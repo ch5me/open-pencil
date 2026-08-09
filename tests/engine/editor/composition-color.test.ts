@@ -42,3 +42,30 @@ test("composition-full-v1 parity fixture keeps CPU and GPU paths within one-pixe
     { maxChannelDelta: 1e-3, maxMeanBias: 1e-3 },
   );
 });
+
+test("composition pixel oracles reject malformed buffers and honor explicit tolerance", () => {
+  expect(() =>
+    assertPixelOracle([0, 0, 0], [0, 0, 0], { format: "rgba8-srgb" }),
+  ).toThrow("pixel oracle length mismatch");
+  expect(() =>
+    assertPixelOracle([0, 0, 0, 1], [0, 0, 0, 1.01], {
+      format: "rgba8-srgb",
+      maxChannelDelta: 0.02,
+    }),
+  ).not.toThrow();
+});
+
+test("composition parity rejects channel drift and aggregate bias", () => {
+  expect(() =>
+    assertPixelParity([0, 0, 0, 1], [0.2, 0, 0, 1], {
+      maxChannelDelta: 0.1,
+      maxMeanBias: 1,
+    }),
+  ).toThrow("pixel parity max delta exceeded");
+  expect(() =>
+    assertPixelParity([0.2, 0.2, 0.2, 1], [0, 0, 0, 1], {
+      maxChannelDelta: 1,
+      maxMeanBias: 0.05,
+    }),
+  ).toThrow("pixel parity mean bias exceeded");
+});

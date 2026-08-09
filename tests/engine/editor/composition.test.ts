@@ -108,4 +108,26 @@ describe("editor composition plan", () => {
     expect(entry?.maskIsOutline).toBe(true);
     expect(entry?.isolation).toBe("isolated");
   });
+
+  test("propagates adjustment hooks to every planned node", () => {
+    const frame = node({ id: "frame", type: "FRAME", childIds: ["child"] });
+    const child = node({ id: "child", type: "RECTANGLE", parentId: frame.id });
+    const plan = createCompositionPlan(
+      graphOf([frame, child], frame.id),
+      undefined,
+      { adjustmentHooks: ["tone-map", "grain"] },
+    );
+
+    expect(plan.nodes.get(frame.id)?.adjustmentHooks).toEqual(["tone-map", "grain"]);
+    expect(plan.nodes.get(child.id)?.adjustmentHooks).toEqual(["tone-map", "grain"]);
+    expect(serializeCompositionPlan(plan)).toContain('"adjustmentHooks":["tone-map","grain"]');
+  });
+
+  test("fails loudly when a planned child is missing", () => {
+    const frame = node({ id: "frame", type: "FRAME", childIds: ["missing"] });
+
+    expect(() => createCompositionPlan(graphOf([frame], frame.id), frame.id)).toThrow(
+      "missing composition node: missing",
+    );
+  });
 });
