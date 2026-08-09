@@ -6,6 +6,7 @@ export {
   type ViewJournalInput,
 } from "./create";
 export { createContentRevisionId } from "./revision";
+export { applyContentSnapshotTransition, createContentSnapshot } from "./snapshot";
 export {
   canTransitionContentJournal,
   canTransitionViewJournal,
@@ -16,7 +17,10 @@ export {
 } from "./validate";
 export type {
   ContentJournalEntry,
+  ContentMaskHash,
   ContentJournalStatus,
+  ContentSnapshot,
+  ContentSnapshotTransition,
   ContentRevisionId,
   ContentRevisionRef,
   ContentVersion,

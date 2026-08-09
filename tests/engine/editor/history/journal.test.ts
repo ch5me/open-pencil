@@ -3,11 +3,13 @@ import { describe, expect, test } from "bun:test";
 import {
   createContentJournal,
   createContentRevisionId,
+  createContentSnapshot,
   createJournalIdAllocator,
   createViewJournal,
   transitionContentJournal,
   transitionViewJournal,
   validateContentJournal,
+  applyContentSnapshotTransition,
 } from "#core/editor/history/journal";
 
 const ROOT = "a".repeat(64);
@@ -70,5 +72,48 @@ describe("editor history journal", () => {
     expect(first).toMatch(/^sha256:[0-9a-f]{64}$/u);
     expect(metadataChange).not.toBe(first);
     expect(bytesChange).not.toBe(first);
+  });
+
+  test("restores content and masks through deterministic undo/redo snapshots", () => {
+    const base = createContentSnapshot("a".repeat(64), [
+      { maskId: "mask-b", byteHash: `sha256:${"b".repeat(64)}` },
+      { maskId: "mask-a", byteHash: `sha256:${"a".repeat(64)}` },
+    ]);
+    const next = createContentSnapshot("c".repeat(64), [
+      { maskId: "mask-a", byteHash: `sha256:${"d".repeat(64)}` },
+      { maskId: "mask-b", byteHash: `sha256:${"e".repeat(64)}` },
+    ]);
+    const transition = { base, next };
+    expect(applyContentSnapshotTransition(next, transition, "undo")).toEqual(base);
+    expect(applyContentSnapshotTransition(base, transition, "redo")).toEqual(next);
+    expect(() => applyContentSnapshotTransition(base, transition, "undo")).toThrow(
+      "undo snapshot base mismatch",
+    );
+  });
+
+  test("10,000 deterministic snapshot replays preserve exact base and next hashes", () => {
+    let state = createContentSnapshot("0".repeat(64));
+    const snapshots = [state];
+    for (let index = 1; index <= 10_000; index += 1) {
+      const next = createContentSnapshot(index.toString(16).padStart(64, "0"), [
+        {
+          maskId: `mask-${index % 7}`,
+          byteHash: `sha256:${(index + 1).toString(16).padStart(64, "0")}`,
+        },
+      ]);
+      state = applyContentSnapshotTransition(state, { base: state, next }, "redo");
+      snapshots.push(state);
+    }
+    for (let index = snapshots.length - 1; index > 0; index -= 1) {
+      state = applyContentSnapshotTransition(
+        state,
+        {
+          base: snapshots[index - 1] as typeof state,
+          next: snapshots[index] as typeof state,
+        },
+        "undo",
+      );
+    }
+    expect(state).toEqual(snapshots[0]);
   });
 });

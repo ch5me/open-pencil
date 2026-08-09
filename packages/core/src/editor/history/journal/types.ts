@@ -34,6 +34,21 @@ export interface ContentRevisionRef {
   readonly temporary: boolean;
 }
 
+export interface ContentMaskHash {
+  readonly maskId: string;
+  readonly byteHash: ContentRevisionId;
+}
+
+export interface ContentSnapshot {
+  readonly contentRootHash: string;
+  readonly maskHashes: readonly ContentMaskHash[];
+}
+
+export interface ContentSnapshotTransition {
+  readonly base: ContentSnapshot;
+  readonly next: ContentSnapshot;
+}
+
 export interface HistoryPin {
   readonly pinId: string;
   readonly kind: string;
