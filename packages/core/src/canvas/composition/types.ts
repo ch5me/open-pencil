@@ -21,6 +21,7 @@ export interface CompositionNode {
   readonly clipsContent: boolean;
   readonly clipDepth: number;
   readonly rotation: number;
+  readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>;
   readonly maskType: MaskType | null;
   readonly maskIsOutline: boolean;
   readonly maskDepth: number;
@@ -118,6 +119,7 @@ export function createCompositionPlan(
       clipsContent: node.clipsContent,
       clipDepth,
       rotation: node.rotation,
+      bounds: { x: node.x, y: node.y, width: node.width, height: node.height },
       maskType: node.isMask ? node.maskType : null,
       maskIsOutline: node.isMask ? node.maskIsOutline : false,
       maskDepth,
@@ -150,6 +152,7 @@ export function serializeCompositionPlan(plan: CompositionPlan): string {
       clipsContent: node.clipsContent,
       clipDepth: node.clipDepth,
       rotation: node.rotation,
+      bounds: node.bounds,
       maskType: node.maskType,
       maskIsOutline: node.maskIsOutline,
       maskDepth: node.maskDepth,

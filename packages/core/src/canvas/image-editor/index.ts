@@ -13,3 +13,17 @@ export {
   type RendererResilienceContract,
   type RendererResilienceState,
 } from "./types";
+export {
+  composeRaster,
+  composeRasterRGBA8,
+  RasterCompositionError,
+  type RasterAdjustment,
+  type RasterCompositionAssetResolver,
+  type RasterCompositionOptions,
+  type RasterCompositionPixels,
+  type RasterCompositionResult,
+  type RasterCompositionUnsupported,
+  type RasterPixelFormat,
+  type RasterUnsupportedGap,
+  type RasterUnsupportedGapCode,
+} from "./raster";
