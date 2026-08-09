@@ -162,11 +162,12 @@ test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouch
 });
 
 test("effects-v1 pixel acceptance preserves unrelated pixels and tolerates acceleration quantization", () => {
-  const source = [
-    10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255, 100, 110, 120, 255,
-    130, 140, 150, 255, 160, 170, 180, 255, 190, 200, 210, 255, 220, 230, 240, 255,
-    250, 250, 250, 255,
-  ];
+  const source = Array.from({ length: 16 }, (_, index) => [
+    index * 10,
+    index * 10 + 1,
+    index * 10 + 2,
+    255,
+  ]).flat();
   const reference = [...source];
   reference.splice(20, 4, 128, 128, 128, 255);
   const accelerated = [...source];
