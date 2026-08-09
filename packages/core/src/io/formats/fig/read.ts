@@ -5,9 +5,11 @@ import { importNodeChanges } from "#core/kiwi/fig/import";
 import { deserializeSceneGraph } from "#core/kiwi/fig/parse/transfer";
 import type { SerializedSceneGraph } from "#core/kiwi/fig/parse/transfer";
 import type { SceneGraph } from "#core/scene-graph";
+import { assertInputWithinLimit } from "#core/io/registry";
 
 export interface ParseFigFileOptions {
   populate?: "all" | "first-page";
+  maxInputBytes?: number;
 }
 
 function parseFigFileSync(buffer: ArrayBuffer, options: ParseFigFileOptions = {}): SceneGraph {
@@ -57,6 +59,7 @@ export async function parseFigFile(
   buffer: ArrayBuffer,
   options: ParseFigFileOptions = {},
 ): Promise<SceneGraph> {
+  assertInputWithinLimit(buffer.byteLength, options.maxInputBytes);
   if (typeof Worker !== "undefined" && IS_BROWSER) {
     const copy = buffer.slice(0);
     try {
@@ -73,5 +76,6 @@ export async function readFigFile(
   file: File,
   options: ParseFigFileOptions = {},
 ): Promise<SceneGraph> {
+  assertInputWithinLimit(file.size, options.maxInputBytes);
   return parseFigFile(await file.arrayBuffer(), options);
 }

@@ -1,4 +1,4 @@
-export { IORegistry } from "./registry";
+export { IOInputLimitError, IORegistry, assertInputWithinLimit } from "./registry";
 export { extractExportGraph } from "./subgraph";
 export {
   BUILTIN_IO_FORMATS,
