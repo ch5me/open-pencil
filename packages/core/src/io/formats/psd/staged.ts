@@ -52,6 +52,12 @@ function readUint32(view: DataView, offset: number): number {
   return view.getUint32(offset, false);
 }
 
+function assertDimension(value: number): void {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new PsdHostileFileError("PSD dimensions exceed limits");
+  }
+}
+
 export function parsePsdHeader(
   bytes: Uint8Array,
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
@@ -76,6 +82,7 @@ export function parsePsdHeader(
     bitsPerChannel: readUint16(view, 22),
     colorMode: readUint16(view, 24),
   };
+  if (header.channels <= 0) throw new PsdUnsupportedError("PSD has no channels");
   if (header.width > limits.maxWidth || header.height > limits.maxHeight) {
     throw new PsdHostileFileError("PSD dimensions exceed limits");
   }
@@ -120,12 +127,9 @@ export function stagePsdExport(
   input: PsdExportInput,
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
 ): Uint8Array {
-  if (
-    input.width <= 0 ||
-    input.height <= 0 ||
-    input.width > limits.maxWidth ||
-    input.height > limits.maxHeight
-  ) {
+  assertDimension(input.width);
+  assertDimension(input.height);
+  if (input.width > limits.maxWidth || input.height > limits.maxHeight) {
     throw new PsdHostileFileError("PSD dimensions exceed limits");
   }
   if (input.layers.length > limits.maxLayers)

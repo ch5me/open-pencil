@@ -5,6 +5,8 @@ import {
   createPsdCorpusManifest,
   layerMetadata,
   PsdHostileFileError,
+  PsdUnsupportedError,
+  parsePsdHeader,
   stagePsdExport,
   stagePsdImport,
 } from "#core/io/formats/psd";
@@ -27,6 +29,41 @@ test("rejects hostile PSD dimensions before staging", () => {
   expect(() => stagePsdExport({ width: 100_000, height: 20, layers: [] })).toThrow(
     PsdHostileFileError,
   );
+});
+
+test("rejects non-integral and non-finite export dimensions", () => {
+  for (const width of [1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+    expect(() => stagePsdExport({ width, height: 20, layers: [] })).toThrow(
+      PsdHostileFileError,
+    );
+  }
+});
+
+test("rejects malformed PSD headers with typed errors", () => {
+  expect(() => parsePsdHeader(new Uint8Array(25))).toThrow(PsdUnsupportedError);
+
+  const invalidSignature = stagePsdExport({ width: 10, height: 20, layers: [] });
+  invalidSignature[0] = 0;
+  expect(() => parsePsdHeader(invalidSignature)).toThrow("invalid PSD signature");
+
+  const invalidVersion = stagePsdExport({ width: 10, height: 20, layers: [] });
+  new DataView(invalidVersion.buffer).setUint16(4, 3, false);
+  expect(() => parsePsdHeader(invalidVersion)).toThrow("unsupported PSD version: 3");
+
+  const noChannels = stagePsdExport({ width: 10, height: 20, layers: [] });
+  new DataView(noChannels.buffer).setUint16(12, 0, false);
+  expect(() => parsePsdHeader(noChannels)).toThrow("PSD has no channels");
+});
+
+test("reports degraded import for unsupported header properties", () => {
+  const bytes = stagePsdExport({ width: 10, height: 20, layers: [] });
+  const view = new DataView(bytes.buffer);
+  view.setUint16(22, 16, false);
+  view.setUint16(24, 4, false);
+
+  const result = stagePsdImport(bytes);
+  expect(result.degraded).toBe(true);
+  expect(result.warnings).toEqual(["unsupported-color-mode", "unsupported-bit-depth"]);
 });
 
 test("rejects decoded payload expansion before allocation", () => {
