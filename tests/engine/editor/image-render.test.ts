@@ -170,6 +170,7 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
   expect(adapter.render(plan, resolve).textures).toHaveLength(1);
   expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
+  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
@@ -178,8 +179,50 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
 
   adapter.markDirty("asset:hero");
   expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
+  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
   adapter.restore();
   expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
+});
+
+test("image render adapter uploads only assets invalidated by their revision or dirty mark", () => {
+  const adapter = createImageRenderAdapter();
+  const revisions = new Map<string, AssetRevision>([
+    [
+      "sha256:hero-1",
+      { revisionId: "sha256:hero-1", kind: "image", metadata: {}, bytes: new Uint8Array([1]) },
+    ],
+    [
+      "sha256:mask-1",
+      { revisionId: "sha256:mask-1", kind: "image", metadata: {}, bytes: new Uint8Array([2]) },
+    ],
+  ]);
+  const bindings = new Map([
+    ["asset:hero", "sha256:hero-1"],
+    ["asset:mask", "sha256:mask-1"],
+  ]);
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => {
+      const revisionId = bindings.get(assetId);
+      return revisionId ? { assetId, revisionId } : undefined;
+    },
+    getRevision: (revisionId) => revisions.get(revisionId),
+  };
+  const plan = imagePlan([imageNode("hero", "asset:hero"), imageNode("mask", "asset:mask")]);
+
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    true,
+    true,
+  ]);
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    false,
+    false,
+  ]);
+
+  adapter.markDirty("asset:mask");
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    false,
+    true,
+  ]);
 });
 
 test("image render adapter emits commands for visible nodes but skips hidden or unresolved textures", () => {
