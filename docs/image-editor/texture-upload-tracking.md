@@ -13,6 +13,18 @@ device upload.
 - A source or mask mutation must resolve to a new immutable asset revision and
   invalidate only that asset; unrelated textures remain reusable.
 
+## G088 performance boundary
+
+The image adapter only plans bounded tiles, proxy dimensions, mipmap level, and
+dirty regions. It does not schedule a render graph or fuse filters into a GPU
+pass. The `renderGraphScheduling` and `filterFusion` fields in the performance
+evidence contract describe evidence shape; `true` is not proof that either
+capability exists in this adapter or its consuming renderer.
+
+GPU execution, external renderer parity, device performance, and filter-fusion
+measurements remain `UNKNOWN` until observed on the consuming surface. The
+synthetic benchmark probe is not OpenPencil render acceptance.
+
 ## Partial updates
 
 The current adapter invalidates and reports whole-asset work. `ImageTexture`
