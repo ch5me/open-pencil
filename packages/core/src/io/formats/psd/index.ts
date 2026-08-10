@@ -36,4 +36,9 @@ export {
   stagePsbExport,
   stagePsbImport,
 } from "./staged";
-export { rasterizePsdLayers } from "./raster";
+export {
+  rasterizePsdLayers,
+  rasterizePsdLayersAdaptive,
+  rasterizePsdLayersInWorker,
+  type PsdRasterMetrics,
+} from "./raster";

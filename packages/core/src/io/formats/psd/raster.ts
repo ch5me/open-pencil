@@ -1,8 +1,14 @@
+import { IS_BROWSER } from "#core/constants";
 import {
   createRasterEffectAdjustment,
   type AdjustmentLayerKind,
+  type EffectPixelAdjustment,
 } from "#core/editor/image-capabilities/effects";
+import { createAdaptiveWorkerGate } from "#core/editor/image-observability";
+import type { Vector } from "#core/types";
+
 import {
+  PsdCancelledError,
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdRasterInput,
@@ -26,8 +32,14 @@ function clampByte(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-const PSD_SUPPORTED_BLEND_MODES = new Set(["NORMAL", "PASS_THROUGH", "MULTIPLY", "SCREEN", "OVERLAY"]);
-const PSD_SUPPORTED_ADJUSTMENT_TYPES: ReadonlySet<AdjustmentLayerKind> = new Set([
+const PSD_SUPPORTED_BLEND_MODES = new Set([
+  "NORMAL",
+  "PASS_THROUGH",
+  "MULTIPLY",
+  "SCREEN",
+  "OVERLAY",
+]);
+const PSD_SUPPORTED_ADJUSTMENT_TYPE_VALUES = [
   "brightness",
   "contrast",
   "saturation",
@@ -42,10 +54,13 @@ const PSD_SUPPORTED_ADJUSTMENT_TYPES: ReadonlySet<AdjustmentLayerKind> = new Set
   "posterize",
   "gradient-map",
   "selective-color",
-]);
+] as const satisfies readonly AdjustmentLayerKind[];
+const PSD_SUPPORTED_ADJUSTMENT_TYPES: ReadonlySet<string> = new Set(
+  PSD_SUPPORTED_ADJUSTMENT_TYPE_VALUES,
+);
 
 function isSupportedAdjustmentType(value: string): value is AdjustmentLayerKind {
-  return PSD_SUPPORTED_ADJUSTMENT_TYPES.has(value as AdjustmentLayerKind);
+  return PSD_SUPPORTED_ADJUSTMENT_TYPES.has(value);
 }
 
 function blendChannel(mode: string | undefined, source: number, destination: number): number {
@@ -69,16 +84,12 @@ function blendChannel(mode: string | undefined, source: number, destination: num
 type Affine = readonly [number, number, number, number, number, number];
 
 function assertTransform(transform: Affine | undefined): void {
-  if (transform && transform.some((value) => !Number.isFinite(value))) {
+  if (transform?.some((value) => !Number.isFinite(value))) {
     throw new PsdHostileFileError("PSD raster transform is invalid");
   }
 }
 
-function inverseMap(
-  transform: Affine,
-  x: number,
-  y: number,
-): { x: number; y: number } | undefined {
+function inverseMap(transform: Affine, x: number, y: number): Vector | undefined {
   const [a, b, c, d, e, f] = transform;
   const determinant = a * d - b * c;
   if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12) {
@@ -120,8 +131,9 @@ function sourcePoint(
   raster: Pick<PsdRasterLayer, "width" | "height" | "transform" | "rotation">,
   x: number,
   y: number,
-): { x: number; y: number } | undefined {
-  const transform = raster.transform ?? rotationTransform(raster.rotation, raster.width, raster.height);
+): Vector | undefined {
+  const transform =
+    raster.transform ?? rotationTransform(raster.rotation, raster.width, raster.height);
   return transform ? inverseMap(transform, x, y) : { x, y };
 }
 
@@ -153,6 +165,30 @@ function maskAlpha(mask: PsdRasterMask | undefined, x: number, y: number): numbe
   return mask.inverted ? 1 - value : value;
 }
 
+function prepareRasterLayer(
+  layer: PsdRasterInput["layers"][number],
+  width: number,
+  height: number,
+): EffectPixelAdjustment | undefined {
+  if (layer.blendMode !== undefined && !PSD_SUPPORTED_BLEND_MODES.has(layer.blendMode)) {
+    throw new PsdUnsupportedError(`unsupported PSD blend mode: ${layer.blendMode}`);
+  }
+  if (layer.adjustmentType !== undefined && !isSupportedAdjustmentType(layer.adjustmentType)) {
+    throw new PsdUnsupportedError(`unsupported PSD adjustment type: ${layer.adjustmentType}`);
+  }
+  const raster = layer.raster;
+  if (!raster) return undefined;
+  assertRasterDimensions(raster, width, height);
+  assertTransform(raster.transform);
+  if (raster.mask) {
+    assertRasterDimensions(raster.mask, width, height);
+    assertTransform(raster.mask.transform);
+  }
+  return layer.adjustmentType
+    ? createRasterEffectAdjustment(layer.adjustmentType, layer.adjustments)
+    : undefined;
+}
+
 /**
  * Composite producer-rendered RGBA8 layers into the flattened PSD image.
  * Text and vector shapes arrive here already rasterized by the renderer.
@@ -170,26 +206,8 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
   const result = new Uint8Array(input.width * input.height * 4);
   for (const layer of input.layers) {
     if (!layer.raster || !layer.visible || layer.opacity <= 0) continue;
-    if (layer.blendMode !== undefined && !PSD_SUPPORTED_BLEND_MODES.has(layer.blendMode)) {
-      throw new PsdUnsupportedError(`unsupported PSD blend mode: ${layer.blendMode}`);
-    }
-    if (
-      layer.adjustmentType !== undefined &&
-      !PSD_SUPPORTED_ADJUSTMENT_TYPES.has(layer.adjustmentType)
-    ) {
-      throw new PsdUnsupportedError(`unsupported PSD adjustment type: ${layer.adjustmentType}`);
-    }
-    assertRasterDimensions(layer.raster, input.width, input.height);
-    assertTransform(layer.raster.transform);
-    if (layer.raster.mask) {
-      assertRasterDimensions(layer.raster.mask, input.width, input.height);
-      assertTransform(layer.raster.mask.transform);
-    }
     const opacity = Math.max(0, Math.min(1, layer.opacity));
-    const adjustment =
-      layer.adjustmentType && isSupportedAdjustmentType(layer.adjustmentType)
-        ? createRasterEffectAdjustment(layer.adjustmentType, layer.adjustments)
-        : undefined;
+    const adjustment = prepareRasterLayer(layer, input.width, input.height);
 
     for (let y = 0; y < input.height; y += 1) {
       for (let x = 0; x < input.width; x += 1) {
@@ -199,26 +217,154 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
           ? adjustment(sourcePixel)
           : sourcePixel;
         const sourceAlpha = (sourceByteAlpha / 255) * opacity * maskAlpha(layer.raster.mask, x, y);
-      if (sourceAlpha === 0) continue;
-      const destinationAlpha = result[offset + 3] / 255;
-      const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
-      if (outputAlpha === 0) continue;
+        if (sourceAlpha === 0) continue;
+        const destinationAlpha = result[offset + 3] / 255;
+        const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
+        if (outputAlpha === 0) continue;
 
-      const source = [sourceRed, sourceGreen, sourceBlue];
-      for (let channel = 0; channel < 3; channel += 1) {
-        const sourceColor = (source[channel] ?? 0) / 255;
-        const destinationColor = result[offset + channel] / 255;
-        const blendedColor = blendChannel(layer.blendMode, sourceColor, destinationColor);
-        result[offset + channel] = clampByte(
-          ((1 - sourceAlpha) * destinationColor +
-            sourceAlpha * ((1 - destinationAlpha) * sourceColor + destinationAlpha * blendedColor)) /
-            outputAlpha *
-            255,
-        );
-      }
-      result[offset + 3] = clampByte(outputAlpha * 255);
+        const source = [sourceRed, sourceGreen, sourceBlue];
+        for (let channel = 0; channel < 3; channel += 1) {
+          const sourceColor = (source[channel] ?? 0) / 255;
+          const destinationColor = result[offset + channel] / 255;
+          const blendedColor = blendChannel(layer.blendMode, sourceColor, destinationColor);
+          result[offset + channel] = clampByte(
+            (((1 - sourceAlpha) * destinationColor +
+              sourceAlpha *
+                ((1 - destinationAlpha) * sourceColor + destinationAlpha * blendedColor)) /
+              outputAlpha) *
+              255,
+          );
+        }
+        result[offset + 3] = clampByte(outputAlpha * 255);
       }
     }
   }
+  return result;
+}
+
+const rasterWorkerGate = createAdaptiveWorkerGate();
+
+export interface PsdRasterMetrics {
+  readonly execution: "main-thread" | "worker";
+  readonly layerCount: number;
+  readonly mainThreadMs: number;
+  readonly workerMs: number | "UNKNOWN";
+  readonly elapsedMs: number;
+}
+
+interface PsdRasterWorkerResponse {
+  readonly pixels?: Uint8Array;
+  readonly workerMs?: number;
+  readonly error?: string;
+  readonly code?: string;
+}
+
+function canUseRasterWorker(): boolean {
+  return IS_BROWSER && typeof Worker !== "undefined";
+}
+
+function workerError(response: PsdRasterWorkerResponse): Error {
+  if (response.code === "hostile-psd-file") {
+    return new PsdHostileFileError(response.error ?? "PSD raster worker rejected input");
+  }
+  if (response.code === "unsupported-psd") {
+    return new PsdUnsupportedError(response.error ?? "PSD raster worker rejected input");
+  }
+  return new Error(response.error ?? "PSD raster worker failed");
+}
+
+export function rasterizePsdLayersInWorker(
+  input: PsdRasterInput,
+  signal?: AbortSignal,
+): Promise<{ pixels: Uint8Array; metrics: PsdRasterMetrics }> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new PsdCancelledError("PSD rasterization cancelled"));
+      return;
+    }
+    const startedAt = performance.now();
+    const worker = new Worker(new URL("./raster-worker.ts", import.meta.url), { type: "module" });
+    let mainThreadMs = 0;
+    let settled = false;
+    const finish = () => {
+      settled = true;
+      signal?.removeEventListener("abort", cancel);
+      worker.terminate();
+    };
+    const cancel = () => {
+      if (settled) return;
+      finish();
+      reject(new PsdCancelledError("PSD rasterization cancelled"));
+    };
+    signal?.addEventListener("abort", cancel, { once: true });
+    worker.onmessage = (event: MessageEvent<PsdRasterWorkerResponse>) => {
+      if (settled) return;
+      const elapsedMs = performance.now() - startedAt;
+      const response = event.data;
+      const workerMs = response.workerMs;
+      finish();
+      if (
+        response.error ||
+        !(response.pixels instanceof Uint8Array) ||
+        typeof workerMs !== "number" ||
+        !Number.isFinite(workerMs)
+      ) {
+        reject(workerError(response));
+        return;
+      }
+      resolve({
+        pixels: response.pixels,
+        metrics: {
+          execution: "worker",
+          layerCount: input.layers.length,
+          mainThreadMs,
+          workerMs,
+          elapsedMs,
+        },
+      });
+    };
+    worker.onerror = (event) => {
+      if (settled) return;
+      finish();
+      reject(new Error(event.message || "PSD raster worker failed"));
+    };
+    try {
+      // Keep caller-owned buffers attached so cancellation and failures remain retryable.
+      worker.postMessage(input, []);
+      mainThreadMs = performance.now() - startedAt;
+    } catch (error) {
+      finish();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  });
+}
+
+/**
+ * Use the PSD raster worker only after observed main-thread budget misses.
+ * The synchronous path remains the deterministic fallback for Node, Tauri, and worker failure.
+ */
+export async function rasterizePsdLayersAdaptive(
+  input: PsdRasterInput,
+  options: { signal?: AbortSignal; onMetrics?: (metrics: PsdRasterMetrics) => void } = {},
+): Promise<Uint8Array> {
+  if (options.signal?.aborted) {
+    throw new PsdCancelledError("PSD rasterization cancelled");
+  }
+  if (canUseRasterWorker() && rasterWorkerGate.policy(true).useWorker) {
+    const result = await rasterizePsdLayersInWorker(input, options.signal);
+    options.onMetrics?.(result.metrics);
+    return result.pixels;
+  }
+  const start = performance.now();
+  const result = rasterizePsdLayers(input);
+  const elapsedMs = performance.now() - start;
+  rasterWorkerGate.record(elapsedMs);
+  options.onMetrics?.({
+    execution: "main-thread",
+    layerCount: input.layers.length,
+    mainThreadMs: elapsedMs,
+    workerMs: "UNKNOWN",
+    elapsedMs,
+  });
   return result;
 }
