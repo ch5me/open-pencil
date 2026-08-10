@@ -290,21 +290,18 @@ export function createBrushStrokeHistoryEntry(
 ): BrushStrokeHistoryEntry {
   const validatedBefore = validateRasterMask(before);
   const validatedAfter = validateRasterMask(after);
-  if (stroke.version !== "brush-mask-v1" || stroke.transactionId.startsWith("tx:") === false) {
-    throw new RangeError("invalid brush stroke history");
-  }
+  const validatedStroke = cloneBrushStroke(stroke);
   if (
-    stroke.maskId !== validatedBefore.maskId ||
-    stroke.maskId !== validatedAfter.maskId ||
-    stroke.transactionId.length <= 3
+    validatedStroke.maskId !== validatedBefore.maskId ||
+    validatedStroke.maskId !== validatedAfter.maskId
   ) {
     throw new RangeError("brush stroke history mask mismatch");
   }
   return {
     version: "brush-mask-v1",
     kind: "brush-stroke",
-    transactionId: stroke.transactionId,
-    stroke: structuredClone(stroke),
+    transactionId: validatedStroke.transactionId,
+    stroke: validatedStroke,
     before: validatedBefore,
     after: validatedAfter,
   };
