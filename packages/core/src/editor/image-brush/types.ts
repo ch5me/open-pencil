@@ -22,6 +22,7 @@ export type BrushMode = "erase" | "reveal";
 export interface BrushStroke {
   readonly version: "brush-mask-v1";
   readonly maskId: string;
+  readonly thumbnailId: string;
   readonly mode: BrushMode;
   readonly samples: readonly PointerSample[];
   readonly config: BrushConfig;
@@ -92,6 +93,7 @@ export function createBrushStroke(
   return {
     version: "brush-mask-v1",
     maskId: validatedMask.maskId,
+    thumbnailId: validatedMask.thumbnailId,
     mode,
     samples: validateSamples(samples),
     config: normalized,
