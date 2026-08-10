@@ -3,11 +3,10 @@ import { useEditorCommands, useI18n } from "@open-pencil/vue";
 import { computed } from "vue";
 
 import { useEditorStore } from "@/app/editor/active-store";
-import { createSharedEditorMenuActions } from "@/app/shell/menu/editor-actions";
+import { createAppMenuActions } from "@/app/shell/menu/actions";
 import type { AppMenuActionItem, AppMenuEntry, AppMenuGroupSchema } from "@/app/shell/menu/schema";
 import { APP_MENU_SCHEMA } from "@/app/shell/menu/schema";
 import { appMenuShortcutLabel } from "@/app/shell/menu/shortcut";
-import { openFileDialog } from "@/app/shell/menu/use";
 import { useAppTheme } from "@/app/shell/theme";
 
 export interface AppMenuGroup {
@@ -71,24 +70,7 @@ export function useAppMenu() {
     })),
   );
 
-  function exportSelection(format: "png" | "svg" | "fig") {
-    if (store.state.selectedIds.size > 0) void store.exportSelection(1, format);
-  }
-
-  const actions: Partial<Record<string, () => void>> = {
-    new: () => {
-      void import("@/app/tabs").then((m) => m.createTab());
-    },
-    open: () => void openFileDialog(),
-    save: () => void store.saveFigFile(),
-    "save-as": () => void store.saveFigFileAs(),
-    "export-selection": () => exportSelection("png"),
-    cut: () => document.execCommand("cut"),
-    "export-png": () => exportSelection("png"),
-    "export-svg": () => exportSelection("svg"),
-    "export-fig": () => exportSelection("fig"),
-    ...createSharedEditorMenuActions(setTheme),
-  };
+  const actions: Partial<Record<string, () => void>> = createAppMenuActions(setTheme);
 
   function itemAction(item: AppMenuActionItem): (() => void) | undefined {
     return actions[item.id];

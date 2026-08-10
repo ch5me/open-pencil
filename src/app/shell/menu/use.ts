@@ -2,16 +2,12 @@ import { useEditorCommands, useI18n } from "@open-pencil/vue";
 import type { EditorCommandId } from "@open-pencil/vue";
 import { tryOnScopeDispose } from "@vueuse/core";
 
-import { useEditorStore } from "@/app/editor/active-store";
-import { pasteClipboardToReplace } from "@/app/editor/clipboard/paste-to-replace";
-import { createSharedEditorMenuActions } from "@/app/shell/menu/editor-actions";
+import { createAppMenuActions } from "@/app/shell/menu/actions";
 import { importFileDialog, openFileDialog } from "@/app/shell/menu/files";
 import { useAppTheme } from "@/app/shell/theme";
 import { checkForAppUpdate } from "@/app/shell/updater";
-import { createTab, closeTab, activeTab } from "@/app/tabs";
 import { isTauri } from "@/app/tauri/env";
 
-const store = useEditorStore();
 const COMMAND_MENU_IDS = new Set<string>([
   "edit.undo",
   "edit.redo",
@@ -41,10 +37,6 @@ const COMMAND_MENU_IDS = new Set<string>([
 export { importFileDialog, openFileDialog };
 export { openFileFromPath } from "@/app/shell/menu/files";
 
-function execBrowserCommand(command: "copy" | "cut" | "paste"): void {
-  document.execCommand(command);
-}
-
 export function useMenu() {
   if (!isTauri()) return;
 
@@ -54,34 +46,8 @@ export function useMenu() {
   const { runCommand } = useEditorCommands();
 
   const actions: Partial<Record<string, () => void>> = {
-    new: () => createTab(),
-    open: () => void openFileDialog(),
-    close: () => {
-      if (activeTab.value) closeTab(activeTab.value.id);
-    },
-    save: () => void store.saveFigFile(),
-    "save-as": () => void store.saveFigFileAs(),
-    "export-selection": () => {
-      if (store.state.selectedIds.size > 0) void store.exportSelection(1, "png");
-    },
-    "export-png": () => {
-      if (store.state.selectedIds.size > 0) void store.exportSelection(1, "png");
-    },
-    "export-svg": () => {
-      if (store.state.selectedIds.size > 0) void store.exportSelection(1, "svg");
-    },
-    "export-fig": () => {
-      if (store.state.selectedIds.size > 0) void store.exportSelection(1, "fig");
-    },
-    autosave: () => {
-      store.state.autosaveEnabled = !store.state.autosaveEnabled;
-    },
-    copy: () => execBrowserCommand("copy"),
-    cut: () => execBrowserCommand("cut"),
-    paste: () => execBrowserCommand("paste"),
-    "paste-to-replace": () => void pasteClipboardToReplace(store),
+    ...createAppMenuActions(setTheme),
     "check-updates": () => void checkForAppUpdate({ messages: dialogs }),
-    ...createSharedEditorMenuActions(setTheme),
   };
 
   void import("@tauri-apps/api/event").then(({ listen }) => {
