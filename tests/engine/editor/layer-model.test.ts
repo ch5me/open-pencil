@@ -173,6 +173,58 @@ describe("layer-model-v1", () => {
         }),
       ]),
     ).rejects.toThrow("invalid pattern id");
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], {
+          effects: [
+            {
+              kind: "shadow",
+              color: { r: 1, g: 1, b: 1, a: 1 },
+              offset: { x: 0, y: 0 },
+              blur: 1,
+              spread: 0,
+              visible: true,
+              inset: "yes",
+            },
+          ],
+        }),
+      ]),
+    ).rejects.toThrow("invalid effect visibility");
+  });
+
+  test("hashes equivalent effect values independently of input property order", async () => {
+    const first = await migrateLayerModel([
+      node("card", null, [], {
+        effects: [
+          {
+            kind: "shadow",
+            color: { r: 0.1, g: 0.2, b: 0.3, a: 0.4 },
+            offset: { x: 4, y: 6 },
+            blur: 12,
+            spread: 2,
+            visible: true,
+            inset: false,
+          },
+        ],
+      }),
+    ]);
+    const second = await migrateLayerModel([
+      node("card", null, [], {
+        effects: [
+          {
+            kind: "shadow",
+            color: { a: 0.4, b: 0.3, g: 0.2, r: 0.1 },
+            offset: { y: 6, x: 4 },
+            blur: 12,
+            spread: 2,
+            visible: true,
+            inset: false,
+          },
+        ],
+      }),
+    ]);
+
+    expect(first.model.migrationHash).toBe(second.model.migrationHash);
   });
 
   test("migration is deterministic across clean Trees and preserves pass-through groups", async () => {
@@ -484,5 +536,20 @@ describe("layer-model-v1", () => {
     await expect(
       transaction.commit(initial.model.migrationHash, [node("a", null)]),
     ).rejects.toThrow(LayerModelTransactionConflict);
+  });
+
+  test("invalidates removed layers without invalidating unrelated layers", async () => {
+    const initial = await migrateLayerModel([
+      node("a", null),
+      node("b", null),
+      node("unrelated", null),
+    ]);
+    const transaction = new LayerModelTransaction(initial.model);
+    const committed = await transaction.commit(initial.model.migrationHash, [
+      node("a", null, [], { blendMode: "MULTIPLY" }),
+      node("unrelated", null),
+    ]);
+
+    expect(committed.invalidatedNodeIds).toEqual(["a", "b"]);
   });
 });
