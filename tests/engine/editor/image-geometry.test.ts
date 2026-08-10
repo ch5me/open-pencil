@@ -6,6 +6,7 @@ import {
   InvalidTransformError,
   mapForward,
   mapInverse,
+  selectLayerAtPoint,
   pointInTransformedRect,
   resizeTransform,
   snapValue,
@@ -109,5 +110,32 @@ describe("image geometry", () => {
     expect(falsePositives).toBe(0);
     expect(falseNegatives).toBe(0);
     expect(() => snapValue(Number.NaN, 8)).toThrow(InvalidTransformError);
+  });
+
+  test("pixel hit-testing selects the topmost visible opaque layer", () => {
+    const source = (alpha: number) => ({
+      width: 2,
+      height: 2,
+      pixels: new Uint8Array([
+        0, 0, 0, alpha,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+        0, 0, 0, 0,
+      ]),
+    });
+    const layers = [
+      { id: "bottom", transform, source: source(255) },
+      { id: "top-transparent", transform: { ...transform, x: 10 }, source: source(0) },
+      { id: "top-opaque", transform: { ...transform, x: 10 }, source: source(255) },
+    ];
+    expect(selectLayerAtPoint(layers, mapForward(layers[2].transform, { x: 10, y: 10 }))?.id).toBe(
+      "top-opaque",
+    );
+    expect(
+      selectLayerAtPoint(
+        [{ ...layers[0], locked: true }, { ...layers[1], visible: false }],
+        mapForward(transform, { x: 10, y: 10 }),
+      ),
+    ).toBeNull();
   });
 });

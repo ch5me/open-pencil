@@ -22,6 +22,22 @@ export interface GeometrySelection {
 
 export interface HitTestOptions {
   readonly tolerance?: number;
+  /** Minimum source alpha (0-255) required for a pixel hit. */
+  readonly alphaThreshold?: number;
+}
+
+export interface RasterPixelSource {
+  readonly width: number;
+  readonly height: number;
+  readonly pixels: ArrayLike<number>;
+}
+
+export interface RasterLayer {
+  readonly id: string;
+  readonly transform: GeometryTransform;
+  readonly source: RasterPixelSource;
+  readonly visible?: boolean;
+  readonly locked?: boolean;
 }
 
 export type ResizeHandle =
