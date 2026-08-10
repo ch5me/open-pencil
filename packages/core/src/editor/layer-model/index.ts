@@ -138,6 +138,18 @@ export type LayerModelResolvedBlendMode = LayerModelBlendMode | UnsupportedLayer
 
 export type LayerModelMaskKind = "group" | "adjustment-layer";
 
+export type LayerModelSmartObjectKind = "linked" | "embedded";
+
+export interface UnsupportedLayerModelSmartObjectKind {
+  readonly kind: "unsupported";
+  readonly code: "layer-model-unsupported-smart-object-kind";
+  readonly value: string;
+}
+
+export type LayerModelResolvedSmartObjectKind =
+  | LayerModelSmartObjectKind
+  | UnsupportedLayerModelSmartObjectKind;
+
 export interface UnsupportedLayerMaskKind {
   readonly kind: "unsupported";
   readonly code: "layer-model-unsupported-mask-kind";
@@ -170,6 +182,12 @@ export type LayerModelNodeInput = Omit<
   readonly edgeRefinement?: Partial<LayerModelEdgeRefinement> | null;
   readonly linkId?: string | null;
   readonly linkedLayerIds?: readonly string[] | null;
+  readonly smartObjectId?: string | null;
+  readonly smartObjectKind?: LayerModelSmartObjectKind | string | null;
+  readonly linkedAssetId?: string | null;
+  readonly linkedAssetRevisionId?: string | null;
+  readonly embeddedDocumentId?: string | null;
+  readonly embeddedDocumentVersion?: string | null;
   readonly colorLabel?: LayerModelColorLabel | string | null;
   readonly effects?: readonly LayerModelEffectInput[] | null;
 };
@@ -194,6 +212,12 @@ export interface LayerModelNode {
   readonly passThrough: boolean;
   readonly linkId: string | null;
   readonly linkedLayerIds: readonly string[];
+  readonly smartObjectId: string | null;
+  readonly smartObjectKind: LayerModelResolvedSmartObjectKind | null;
+  readonly linkedAssetId: string | null;
+  readonly linkedAssetRevisionId: string | null;
+  readonly embeddedDocumentId: string | null;
+  readonly embeddedDocumentVersion: string | null;
   readonly colorLabel: LayerModelResolvedColorLabel | null;
   readonly effects: readonly LayerModelResolvedEffect[];
 }
@@ -382,6 +406,12 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     throw new LayerModelValidationError(`empty linked layer reference: ${node.id}`);
   }
   const colorLabel = resolveColorLabel(node.colorLabel);
+  const smartObjectId = node.smartObjectId ?? null;
+  const smartObjectKind = resolveSmartObjectKind(node.smartObjectKind);
+  const linkedAssetId = node.linkedAssetId ?? null;
+  const linkedAssetRevisionId = node.linkedAssetRevisionId ?? null;
+  const embeddedDocumentId = node.embeddedDocumentId ?? null;
+  const embeddedDocumentVersion = node.embeddedDocumentVersion ?? null;
   const maskDensity = node.maskDensity ?? 1;
   const maskFeather = node.maskFeather ?? 0;
   const edgeRefinement = resolveEdgeRefinement(node.edgeRefinement);
@@ -407,8 +437,26 @@ function canonicalNode(node: LayerModelNodeInput): LayerModelNode {
     passThrough,
     linkId,
     linkedLayerIds,
+    smartObjectId,
+    smartObjectKind,
+    linkedAssetId,
+    linkedAssetRevisionId,
+    embeddedDocumentId,
+    embeddedDocumentVersion,
     colorLabel,
     effects,
+  };
+}
+
+function resolveSmartObjectKind(
+  kind: LayerModelNodeInput["smartObjectKind"],
+): LayerModelResolvedSmartObjectKind | null {
+  if (kind === undefined || kind === null) return null;
+  if (kind === "linked" || kind === "embedded") return kind;
+  return {
+    kind: "unsupported",
+    code: "layer-model-unsupported-smart-object-kind",
+    value: kind,
   };
 }
 
@@ -512,6 +560,12 @@ export function isUnsupportedLayerMaskKind(
   return typeof kind === "object" && kind.kind === "unsupported";
 }
 
+export function isUnsupportedLayerModelSmartObjectKind(
+  kind: LayerModelResolvedSmartObjectKind,
+): kind is UnsupportedLayerModelSmartObjectKind {
+  return typeof kind === "object" && kind.kind === "unsupported";
+}
+
 function canonicalJson(nodes: readonly LayerModelNode[]): string {
   return JSON.stringify(
     nodes
@@ -537,6 +591,12 @@ function canonicalJson(nodes: readonly LayerModelNode[]): string {
         passThrough: node.passThrough,
         linkId: node.linkId,
         linkedLayerIds: [...node.linkedLayerIds],
+        smartObjectId: node.smartObjectId,
+        smartObjectKind: node.smartObjectKind,
+        linkedAssetId: node.linkedAssetId,
+        linkedAssetRevisionId: node.linkedAssetRevisionId,
+        embeddedDocumentId: node.embeddedDocumentId,
+        embeddedDocumentVersion: node.embeddedDocumentVersion,
         colorLabel: node.colorLabel,
         effects: node.effects,
       })),
@@ -658,6 +718,61 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
           `dangling linked layer reference: ${node.id} -> ${linkedId}`,
         );
       }
+    }
+    const ids = [
+      ["smart object", node.smartObjectId],
+      ["linked asset", node.linkedAssetId],
+      ["linked asset revision", node.linkedAssetRevisionId],
+      ["embedded document", node.embeddedDocumentId],
+      ["embedded document version", node.embeddedDocumentVersion],
+    ] as const;
+    for (const [label, value] of ids) {
+      if (value !== null && value.length === 0) {
+        throw new LayerModelValidationError(`empty ${label} reference: ${node.id}`);
+      }
+    }
+    if (node.smartObjectKind !== null && isUnsupportedLayerModelSmartObjectKind(node.smartObjectKind)) {
+      continue;
+    }
+    if (node.smartObjectKind === "linked") {
+      if (node.smartObjectId === null || node.linkedAssetId === null) {
+        throw new LayerModelValidationError(
+          `linked smart object requires object and asset references: ${node.id}`,
+        );
+      }
+      if (node.embeddedDocumentId !== null || node.embeddedDocumentVersion !== null) {
+        throw new LayerModelValidationError(
+          `linked smart object cannot embed a document: ${node.id}`,
+        );
+      }
+    }
+    if (node.smartObjectKind === "embedded") {
+      if (
+        node.smartObjectId === null ||
+        node.embeddedDocumentId === null ||
+        node.embeddedDocumentVersion === null
+      ) {
+        throw new LayerModelValidationError(
+          `embedded smart object requires object and document references: ${node.id}`,
+        );
+      }
+      if (node.linkedAssetId !== null || node.linkedAssetRevisionId !== null) {
+        throw new LayerModelValidationError(
+          `embedded smart object cannot link an asset: ${node.id}`,
+        );
+      }
+    }
+    if (
+      node.smartObjectKind === null &&
+      (node.smartObjectId !== null ||
+        node.linkedAssetId !== null ||
+        node.linkedAssetRevisionId !== null ||
+        node.embeddedDocumentId !== null ||
+        node.embeddedDocumentVersion !== null)
+    ) {
+      throw new LayerModelValidationError(
+        `smart object kind required for object references: ${node.id}`,
+      );
     }
   }
 
