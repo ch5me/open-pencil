@@ -67,6 +67,7 @@ export type AtomicPersistenceOptions = AtomicWorkingDocumentPersistenceOptions;
 export interface AcknowledgedWorkingDocumentIdentity {
   readonly contentSequence: number;
   readonly contentRootHash: string;
+  readonly rootKey: string;
 }
 
 export interface SaveWorkingDocumentOptions {
@@ -122,6 +123,19 @@ export class PersistenceTerminationError extends Error {
 const PNG_DATA_URL_PREFIX = /^data:image\/png(?:;[^,]*)?,/iu;
 const BASE64_PNG_DATA_URL = /^data:image\/png;base64,([a-z\d+/]*={0,2})$/iu;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
+const WORKING_DOCUMENT_RECORD_KEYS = new Set([
+  "schema",
+  "schemaVersion",
+  "documentId",
+  "contentSequence",
+  "contentRootHash",
+  "payload",
+  "viewport",
+  "selectionIds",
+  "historySequence",
+  "commitState",
+  "updatedAt",
+]);
 
 function assertFinite(value: number, label: string): void {
   if (!Number.isFinite(value)) throw new PersistenceContractError(`${label} must be finite`);
@@ -330,7 +344,40 @@ function durableRootKey(
   return `${documentId}\0${contentSequence}\0${contentRootHash}`;
 }
 
-type AcknowledgedRoot = AcknowledgedWorkingDocumentIdentity & { readonly rootKey: string };
+type AcknowledgedRoot = AcknowledgedWorkingDocumentIdentity;
+
+function assertAcknowledgementIdentity(
+  documentId: string,
+  identity: AcknowledgedWorkingDocumentIdentity,
+): void {
+  assertJsonValue(identity);
+  if (
+    !isPlainRecord(identity) ||
+    Reflect.ownKeys(identity).length !== 3 ||
+    !Number.isSafeInteger(identity.contentSequence) ||
+    identity.contentSequence < 0 ||
+    typeof identity.contentRootHash !== "string" ||
+    !/^[0-9a-f]{64}$/u.test(identity.contentRootHash) ||
+    identity.rootKey !==
+      durableRootKey(documentId, identity.contentSequence, identity.contentRootHash)
+  ) {
+    throw new PersistenceContractError("expected acknowledgement identity is invalid");
+  }
+}
+
+export function createAcknowledgedWorkingDocumentIdentity(
+  documentId: string,
+  contentSequence: number,
+  contentRootHash: string,
+): AcknowledgedWorkingDocumentIdentity {
+  const identity = {
+    contentSequence,
+    contentRootHash,
+    rootKey: durableRootKey(documentId, contentSequence, contentRootHash),
+  };
+  assertAcknowledgementIdentity(documentId, identity);
+  return identity;
+}
 
 function assertExpectedAcknowledgement(
   documentId: string,
@@ -338,27 +385,12 @@ function assertExpectedAcknowledgement(
   acknowledgedRoot: AcknowledgedRoot | undefined,
 ): void {
   if (expectedAcknowledgement === undefined) return;
-  assertJsonValue(expectedAcknowledgement);
-  if (
-    !isPlainRecord(expectedAcknowledgement) ||
-    Reflect.ownKeys(expectedAcknowledgement).length !== 2 ||
-    !Number.isSafeInteger(expectedAcknowledgement.contentSequence) ||
-    expectedAcknowledgement.contentSequence < 0 ||
-    typeof expectedAcknowledgement.contentRootHash !== "string" ||
-    !/^[0-9a-f]{64}$/u.test(expectedAcknowledgement.contentRootHash)
-  ) {
-    throw new PersistenceContractError("expected acknowledgement identity is invalid");
-  }
-  const expectedRootKey = durableRootKey(
-    documentId,
-    expectedAcknowledgement.contentSequence,
-    expectedAcknowledgement.contentRootHash,
-  );
+  assertAcknowledgementIdentity(documentId, expectedAcknowledgement);
   if (
     !acknowledgedRoot ||
     expectedAcknowledgement.contentSequence !== acknowledgedRoot.contentSequence ||
     expectedAcknowledgement.contentRootHash !== acknowledgedRoot.contentRootHash ||
-    expectedRootKey !== acknowledgedRoot.rootKey
+    expectedAcknowledgement.rootKey !== acknowledgedRoot.rootKey
   ) {
     throw new PersistenceConflictError(
       `working document acknowledgement changed from sequence ${expectedAcknowledgement.contentSequence} root ${expectedAcknowledgement.contentRootHash} to sequence ${acknowledgedRoot?.contentSequence ?? "none"} root ${acknowledgedRoot?.contentRootHash ?? "none"}`,
@@ -372,6 +404,11 @@ function assertExpectedContentRootHash(
 ): void {
   if (expectedContentRootHash !== undefined && !/^[0-9a-f]{64}$/u.test(expectedContentRootHash)) {
     throw new PersistenceContractError("expected content root hash must be a SHA-256 digest");
+  }
+  if (expectedContentRootHash !== undefined && acknowledgedRoot) {
+    throw new PersistenceContractError(
+      "expected content root hash cannot identify an acknowledged generation",
+    );
   }
   if (
     expectedContentRootHash !== undefined &&
@@ -605,9 +642,17 @@ export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>)
 export function validateWorkingDocumentRecord(
   record: unknown,
 ): asserts record is WorkingDocumentRecord {
-  assertJsonValue(record);
   if (
     !isPlainRecord(record) ||
+    Reflect.ownKeys(record).length !== WORKING_DOCUMENT_RECORD_KEYS.size ||
+    Reflect.ownKeys(record).some(
+      (key) => typeof key !== "string" || !WORKING_DOCUMENT_RECORD_KEYS.has(key),
+    )
+  ) {
+    throw new PersistenceContractError("working document has unknown record keys");
+  }
+  assertJsonValue(record);
+  if (
     record.schema !== "openpencil-working-document-v1" ||
     record.schemaVersion !== 1 ||
     typeof record.documentId !== "string" ||

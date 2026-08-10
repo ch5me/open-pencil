@@ -10,6 +10,7 @@ export {
 export type { ContentCommit, StagedChunk } from "./types";
 export {
   AtomicWorkingDocumentPersistence,
+  createAcknowledgedWorkingDocumentIdentity,
   createDetachedBinaryAssetReference,
   createPersistenceContractReceipt,
   createTerminationInjector,

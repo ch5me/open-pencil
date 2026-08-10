@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 
 import {
   AtomicWorkingDocumentPersistence,
+  createAcknowledgedWorkingDocumentIdentity,
   createPersistenceContractReceipt,
   createTerminationInjector,
   detachPngDataUrls,
@@ -53,6 +54,14 @@ async function detached(
       title: contentSequence === 1 ? "Prior" : "Next",
       image: PNG_DATA_URL,
     }),
+  );
+}
+
+function acknowledgement(workingDocument: WorkingDocumentRecord) {
+  return createAcknowledgedWorkingDocumentIdentity(
+    workingDocument.documentId,
+    workingDocument.contentSequence,
+    workingDocument.contentRootHash,
   );
 }
 
@@ -233,10 +242,7 @@ test("persistence-v1 rejects stale sequences and stale-root CAS without regressi
   const store = new AtomicWorkingDocumentPersistence();
   await store.save(prior.record, prior.assets);
   await store.save(next.record, next.assets, {
-    expectedAcknowledgement: {
-      contentSequence: prior.record.contentSequence,
-      contentRootHash: prior.record.contentRootHash,
-    },
+    expectedAcknowledgement: acknowledgement(prior.record),
   });
 
   await expect(store.save(prior.record, prior.assets)).rejects.toBeInstanceOf(
@@ -244,12 +250,14 @@ test("persistence-v1 rejects stale sequences and stale-root CAS without regressi
   );
   await expect(
     store.save(third.record, third.assets, {
-      expectedAcknowledgement: {
-        contentSequence: prior.record.contentSequence,
-        contentRootHash: prior.record.contentRootHash,
-      },
+      expectedAcknowledgement: acknowledgement(prior.record),
     }),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
+  await expect(
+    store.save(third.record, third.assets, {
+      expectedAcknowledgement: { ...acknowledgement(next.record), rootKey: "wrong" },
+    }),
+  ).rejects.toBeInstanceOf(PersistenceContractError);
   await expect(
     store.save({ ...next.record, contentRootHash: THIRD_ROOT }, next.assets),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
@@ -257,11 +265,10 @@ test("persistence-v1 rejects stale sequences and stale-root CAS without regressi
 
   const legacyStore = new AtomicWorkingDocumentPersistence();
   await legacyStore.save(prior.record, prior.assets);
-  await legacyStore.save(next.record, next.assets, { expectedContentRootHash: PRIOR_ROOT });
   await expect(
-    legacyStore.save(third.record, third.assets, { expectedContentRootHash: PRIOR_ROOT }),
-  ).rejects.toBeInstanceOf(PersistenceConflictError);
-  expect(legacyStore.recover("doc:one")).toEqual(next);
+    legacyStore.save(next.record, next.assets, { expectedContentRootHash: PRIOR_ROOT }),
+  ).rejects.toBeInstanceOf(PersistenceContractError);
+  expect(legacyStore.recover("doc:one")).toEqual(prior);
 });
 
 test("persistence-v1 rejects same-root ABA against the acknowledged generation", async () => {
@@ -272,26 +279,37 @@ test("persistence-v1 rejects same-root ABA against the acknowledged generation",
   const store = new AtomicWorkingDocumentPersistence();
   await store.save(first.record, first.assets);
   await store.save(middle.record, middle.assets, {
-    expectedAcknowledgement: {
-      contentSequence: first.record.contentSequence,
-      contentRootHash: first.record.contentRootHash,
-    },
+    expectedAcknowledgement: acknowledgement(first.record),
   });
   await store.save(latest.record, latest.assets, {
-    expectedAcknowledgement: {
-      contentSequence: middle.record.contentSequence,
-      contentRootHash: middle.record.contentRootHash,
-    },
+    expectedAcknowledgement: acknowledgement(middle.record),
   });
 
   await expect(
     store.save(candidate.record, candidate.assets, {
-      expectedAcknowledgement: {
-        contentSequence: first.record.contentSequence,
-        contentRootHash: first.record.contentRootHash,
-      },
+      expectedAcknowledgement: acknowledgement(first.record),
     }),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
+  expect(store.recover("doc:one")).toEqual(latest);
+});
+
+test("persistence-v1 rejects root-only CAS after same-root ABA", async () => {
+  const first = await detached(PRIOR_ROOT, 1);
+  const middle = await detached(NEXT_ROOT, 2);
+  const latest = await detached(PRIOR_ROOT, 3);
+  const candidate = await detached(THIRD_ROOT, 4);
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(first.record, first.assets);
+  await store.save(middle.record, middle.assets, {
+    expectedAcknowledgement: acknowledgement(first.record),
+  });
+  await store.save(latest.record, latest.assets, {
+    expectedAcknowledgement: acknowledgement(middle.record),
+  });
+
+  await expect(
+    store.save(candidate.record, candidate.assets, { expectedContentRootHash: PRIOR_ROOT }),
+  ).rejects.toBeInstanceOf(PersistenceContractError);
   expect(store.recover("doc:one")).toEqual(latest);
 });
 
@@ -356,6 +374,16 @@ test("persistence-v1 rejects non-JSON whole-record representations before serial
       new AtomicWorkingDocumentPersistence().save(invalidRecord, []),
     ).rejects.toBeInstanceOf(PersistenceContractError);
   }
+});
+
+test("persistence-v1 rejects unknown JSON-safe record keys before PNG detachment", async () => {
+  const base = record(NEXT_ROOT, 1, {});
+  await expect(detachPngDataUrls({ ...base, extra: PNG_DATA_URL })).rejects.toBeInstanceOf(
+    PersistenceContractError,
+  );
+  await expect(detachPngDataUrls({ ...base, extra: { benign: true } })).rejects.toBeInstanceOf(
+    PersistenceContractError,
+  );
 });
 
 test("persistence-v1 detaches caller and recovery asset buffers", async () => {
