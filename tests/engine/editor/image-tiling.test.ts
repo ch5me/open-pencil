@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 
 import {
   chooseProxyScale,
+  chooseTextureScale,
   createImageTilePlan,
   ImageTilePlanLimitError,
+  ImageTextureMemoryBudgetError,
   mipmapLevelForScale,
 } from "#core/canvas/image-editor";
 
@@ -81,6 +83,25 @@ describe("image tile planning", () => {
     ]);
   });
 
+  test("adapts resolution to a declared texture-memory budget", () => {
+    expect(chooseTextureScale(1024, 1024, 1, 1024 * 1024)).toBe(0.5);
+    expect(
+      createImageTilePlan({
+        sourceWidth: 1024,
+        sourceHeight: 1024,
+        tileSize: 256,
+        maxTextureBytes: 1024 * 1024,
+      }),
+    ).toMatchObject({
+      renderWidth: 512,
+      renderHeight: 512,
+      estimatedBytes: 1024 * 1024,
+      textureMemoryBudgetBytes: 1024 * 1024,
+      adaptiveResolution: true,
+      proxy: true,
+    });
+  });
+
   test("rejects invalid dimensions and unbounded tile plans", () => {
     expect(() => createImageTilePlan({ sourceWidth: 0, sourceHeight: 1 })).toThrow(
       "invalid source width",
@@ -96,5 +117,6 @@ describe("image tile planning", () => {
         maxTiles: 100,
       }),
     ).toThrow(ImageTilePlanLimitError);
+    expect(() => chooseTextureScale(1, 1, 1, 3)).toThrow(ImageTextureMemoryBudgetError);
   });
 });

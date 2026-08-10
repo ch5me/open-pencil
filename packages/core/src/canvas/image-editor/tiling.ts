@@ -18,6 +18,9 @@ export interface ImageTilePlan {
   readonly mipmapLevel: number;
   readonly scale: number;
   readonly proxy: boolean;
+  readonly estimatedBytes: number;
+  readonly textureMemoryBudgetBytes: number | "UNKNOWN";
+  readonly adaptiveResolution: boolean;
   readonly tiles: readonly ImageTile[];
 }
 
@@ -28,6 +31,7 @@ export interface ImageTilePlanOptions {
   readonly dirtyRect?: ImageDirtyRect;
   readonly scale?: number;
   readonly proxyMaxDimension?: number;
+  readonly maxTextureBytes?: number;
   readonly maxTiles?: number;
 }
 
@@ -36,6 +40,12 @@ const DEFAULT_MAX_TILES = 4096;
 
 export class ImageTilePlanLimitError extends Error {
   readonly code = "E_IMAGE_TILE_PLAN_LIMIT";
+  readonly name = "ImageTilePlanLimitError";
+}
+
+export class ImageTextureMemoryBudgetError extends Error {
+  readonly code = "E_IMAGE_TEXTURE_MEMORY_BUDGET";
+  readonly name = "ImageTextureMemoryBudgetError";
 }
 
 export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePlan {
@@ -48,11 +58,27 @@ export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePla
     options.proxyMaxDimension === undefined
       ? undefined
       : positiveFinite(options.proxyMaxDimension, "proxy max dimension");
-  const scale = proxyMaxDimension
+  const maxTextureBytes =
+    options.maxTextureBytes === undefined
+      ? undefined
+      : positiveInteger(options.maxTextureBytes, "max texture bytes");
+  const proxyScale = proxyMaxDimension
     ? chooseProxyScale(sourceWidth, sourceHeight, requestedScale, proxyMaxDimension)
     : requestedScale;
+  const scale = maxTextureBytes
+    ? chooseTextureScale(sourceWidth, sourceHeight, proxyScale, maxTextureBytes)
+    : proxyScale;
   const renderWidth = Math.max(1, Math.ceil(sourceWidth * scale));
   const renderHeight = Math.max(1, Math.ceil(sourceHeight * scale));
+  const estimatedBytes = renderWidth * renderHeight * 4;
+  if (!Number.isSafeInteger(estimatedBytes)) {
+    throw new ImageTextureMemoryBudgetError("image texture size exceeds safe integer range");
+  }
+  if (maxTextureBytes !== undefined && estimatedBytes > maxTextureBytes) {
+    throw new ImageTextureMemoryBudgetError(
+      `image texture exceeds budget: ${estimatedBytes} > ${maxTextureBytes}`,
+    );
+  }
   const dirtyRect = options.dirtyRect
     ? scaleDirtyRect(
         intersectDirtyRect(options.dirtyRect, sourceWidth, sourceHeight),
@@ -61,39 +87,7 @@ export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePla
         renderHeight,
       )
     : { x: 0, y: 0, width: renderWidth, height: renderHeight };
-  const tiles: ImageTile[] = [];
-
-  if (dirtyRect.width > 0 && dirtyRect.height > 0) {
-    const firstColumn = Math.floor(dirtyRect.x / tileSize);
-    const lastColumn = Math.ceil((dirtyRect.x + dirtyRect.width) / tileSize) - 1;
-    const firstRow = Math.floor(dirtyRect.y / tileSize);
-    const lastRow = Math.ceil((dirtyRect.y + dirtyRect.height) / tileSize) - 1;
-    const columns = Math.ceil(renderWidth / tileSize);
-    const rows = Math.ceil(renderHeight / tileSize);
-    const tileCount =
-      Math.max(0, lastColumn - firstColumn + 1) * Math.max(0, lastRow - firstRow + 1);
-    if (tileCount > maxTiles) {
-      throw new ImageTilePlanLimitError(
-        `image tile plan exceeds limit: ${tileCount} > ${maxTiles}`,
-      );
-    }
-
-    for (let row = firstRow; row <= lastRow; row += 1) {
-      for (let column = firstColumn; column <= lastColumn; column += 1) {
-        if (column < 0 || row < 0 || column >= columns || row >= rows) continue;
-        const x = column * tileSize;
-        const y = row * tileSize;
-        tiles.push({
-          column,
-          row,
-          x,
-          y,
-          width: Math.min(tileSize, renderWidth - x),
-          height: Math.min(tileSize, renderHeight - y),
-        });
-      }
-    }
-  }
+  const tiles = planTiles(dirtyRect, renderWidth, renderHeight, tileSize, maxTiles);
 
   return {
     sourceWidth,
@@ -104,8 +98,67 @@ export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePla
     mipmapLevel: mipmapLevelForScale(scale),
     scale,
     proxy: scale < 1,
+    estimatedBytes,
+    textureMemoryBudgetBytes: maxTextureBytes ?? "UNKNOWN",
+    adaptiveResolution: maxTextureBytes !== undefined && scale < proxyScale,
     tiles,
   };
+}
+
+function planTiles(
+  dirtyRect: ImageDirtyRect,
+  renderWidth: number,
+  renderHeight: number,
+  tileSize: number,
+  maxTiles: number,
+): ImageTile[] {
+  if (dirtyRect.width <= 0 || dirtyRect.height <= 0) return [];
+  const firstColumn = Math.floor(dirtyRect.x / tileSize);
+  const lastColumn = Math.ceil((dirtyRect.x + dirtyRect.width) / tileSize) - 1;
+  const firstRow = Math.floor(dirtyRect.y / tileSize);
+  const lastRow = Math.ceil((dirtyRect.y + dirtyRect.height) / tileSize) - 1;
+  const columns = Math.ceil(renderWidth / tileSize);
+  const rows = Math.ceil(renderHeight / tileSize);
+  const tileCount =
+    Math.max(0, lastColumn - firstColumn + 1) * Math.max(0, lastRow - firstRow + 1);
+  if (tileCount > maxTiles) {
+    throw new ImageTilePlanLimitError(`image tile plan exceeds limit: ${tileCount} > ${maxTiles}`);
+  }
+
+  const tiles: ImageTile[] = [];
+  for (let row = firstRow; row <= lastRow; row += 1) {
+    for (let column = firstColumn; column <= lastColumn; column += 1) {
+      if (column < 0 || row < 0 || column >= columns || row >= rows) continue;
+      const x = column * tileSize;
+      const y = row * tileSize;
+      tiles.push({
+        column,
+        row,
+        x,
+        y,
+        width: Math.min(tileSize, renderWidth - x),
+        height: Math.min(tileSize, renderHeight - y),
+      });
+    }
+  }
+  return tiles;
+}
+
+export function chooseTextureScale(
+  sourceWidth: number,
+  sourceHeight: number,
+  requestedScale: number,
+  maxTextureBytes: number,
+): number {
+  const width = positiveFinite(sourceWidth, "source width");
+  const height = positiveFinite(sourceHeight, "source height");
+  const scale = positiveFinite(requestedScale, "scale");
+  const maxBytes = positiveInteger(maxTextureBytes, "max texture bytes");
+  const maxDimension = Math.sqrt(maxBytes / 4);
+  if (maxDimension < 1) {
+    throw new ImageTextureMemoryBudgetError("max texture bytes must allow one RGBA pixel");
+  }
+  return chooseProxyScale(width, height, scale, maxDimension);
 }
 
 export function chooseProxyScale(

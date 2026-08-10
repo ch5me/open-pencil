@@ -406,7 +406,7 @@ test("image render adapter emits bounded tile and proxy upload plans", () => {
   };
 
   const texture = adapter.render(plan, resolve).textures[0];
-  expect(texture?.tilePlan).toMatchObject({
+  expect(texture.tilePlan).toMatchObject({
     sourceWidth: 4,
     sourceHeight: 2,
     renderWidth: 2,
@@ -422,6 +422,28 @@ test("image render adapter emits bounded tile and proxy upload plans", () => {
   expect(adapter.render(plan, resolve).textures[0]?.tilePlan?.tiles).toEqual([
     { column: 0, row: 0, x: 0, y: 0, width: 2, height: 1 },
   ]);
+});
+
+test("image render adapter exposes adaptive resolution and texture budget evidence", () => {
+  const adapter = createImageRenderAdapter({ tileSize: 256, maxTextureBytes: 1024 * 1024 });
+  const plan = imagePlan();
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId: "sha256:budgeted" }),
+    getRevision: (revisionId) => ({
+      revisionId: revisionId as AssetRevision["revisionId"],
+      kind: "image",
+      metadata: { width: 1024, height: 1024, format: "rgba8-srgb" },
+      bytes: new Uint8Array(4),
+    }),
+  };
+
+  expect(adapter.render(plan, resolve).textures[0]?.tilePlan).toMatchObject({
+    renderWidth: 512,
+    renderHeight: 512,
+    estimatedBytes: 1024 * 1024,
+    textureMemoryBudgetBytes: 1024 * 1024,
+    adaptiveResolution: true,
+  });
 });
 
 test("image render adapter preserves dirty state when tile planning fails", () => {

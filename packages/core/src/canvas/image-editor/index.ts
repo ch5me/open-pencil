@@ -1,8 +1,10 @@
 export { createImageRenderAdapter, type ImageRenderAdapterOptions } from "./adapter";
 export {
   chooseProxyScale,
+  chooseTextureScale,
   createImageTilePlan,
   ImageTilePlanLimitError,
+  ImageTextureMemoryBudgetError,
   mipmapLevelForScale,
   type ImageTile,
   type ImageTilePlan,

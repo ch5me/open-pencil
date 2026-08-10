@@ -17,6 +17,7 @@ export interface ImageRenderAdapterOptions {
   readonly backend?: string;
   readonly tileSize?: number;
   readonly proxyMaxDimension?: number;
+  readonly maxTextureBytes?: number;
   readonly maxTiles?: number;
 }
 
@@ -161,6 +162,7 @@ function createTextureTilePlan(
       ...(options.proxyMaxDimension === undefined
         ? {}
         : { proxyMaxDimension: options.proxyMaxDimension }),
+      ...(options.maxTextureBytes === undefined ? {} : { maxTextureBytes: options.maxTextureBytes }),
       ...(options.maxTiles === undefined ? {} : { maxTiles: options.maxTiles }),
     }),
   };
