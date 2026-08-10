@@ -15,7 +15,11 @@ export const EDITOR_COMMAND_METADATA = {
     keybinding: "$mod+KeyD",
     contextTestId: "context-duplicate",
   },
-  "selection.delete": { shortcut: "⌫", contextTestId: "context-delete" },
+  "selection.delete": {
+    shortcut: "⌫",
+    keybinding: ["Backspace", "Delete"],
+    contextTestId: "context-delete",
+  },
   "selection.group": { shortcut: "MOD+G", keybinding: "$mod+KeyG", contextTestId: "context-group" },
   "selection.frameSelection": {
     shortcut: "MOD+ALT+G",

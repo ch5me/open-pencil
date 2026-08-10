@@ -24,6 +24,7 @@ import { openFileFromPath, useMenu } from "@/app/shell/menu/use";
 import { createTab, activeTab, getActiveStore, tabCount } from "@/app/tabs";
 import { isTauri } from "@/app/tauri/env";
 import CollabPanel from "@/components/CollabPanel/CollabPanel.vue";
+import CommandSearch from "@/components/CommandSearch.vue";
 import EditorCanvas from "@/components/EditorCanvas.vue";
 import LayersPanel from "@/components/LayersPanel.vue";
 import MobileDrawer from "@/components/MobileDrawer.vue";
@@ -43,6 +44,7 @@ const firstTab = createdInitialTab ? createTab() : (activeTab.value ?? createTab
 const store = useEditorStore();
 const { dialogs } = useI18n();
 const { isMobile } = useViewportKind();
+const commandSearchOpen = ref(false);
 
 if (createdInitialTab && route.meta.demo && !("test" in params)) {
   createDemoShapes(firstTab.store);
@@ -51,6 +53,13 @@ if (createdInitialTab && route.meta.demo && !("test" in params)) {
 useHead({ title: route.meta.demo ? "Demo" : undefined });
 useKeyboard();
 useMenu();
+
+useEventListener(window, "keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "/")) {
+    event.preventDefault();
+    commandSearchOpen.value = true;
+  }
+});
 
 const collab = useCollab(getActiveStore);
 provide(COLLAB_KEY, collab);
@@ -184,6 +193,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <CommandSearch v-model:open="commandSearchOpen" />
   <div data-test-id="editor-root" class="flex h-screen w-screen flex-col">
     <SafariBanner />
     <TabBar />

@@ -115,7 +115,7 @@ function contextCommandIcon(id: EditorCommandId | undefined): Component | undefi
     <ContextMenuItem
       data-test-id="context-duplicate"
       :class="cls.item"
-      :disabled="!hasSelection"
+      :disabled="!getCommand('selection.duplicate').enabled.value"
       @select="getCommand('selection.duplicate').run()"
     >
       <span>{{ getCommand("selection.duplicate").label }}</span
@@ -126,7 +126,7 @@ function contextCommandIcon(id: EditorCommandId | undefined): Component | undefi
     <ContextMenuItem
       data-test-id="context-delete"
       :class="cls.item"
-      :disabled="!hasSelection"
+      :disabled="!getCommand('selection.delete').enabled.value"
       @select="getCommand('selection.delete').run()"
     >
       <span>{{ getCommand("selection.delete").label }}</span
