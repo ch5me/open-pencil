@@ -11,6 +11,8 @@ export {
   type PsdImportResult,
   type PsdLayerMetadata,
   type PsdLimits,
+  type PsdRasterInput,
+  type PsdRasterLayer,
   type PsdWarningCode,
 } from "./types";
 export {
@@ -21,3 +23,4 @@ export {
   stagePsdExport,
   stagePsdImport,
 } from "./staged";
+export { rasterizePsdLayers } from "./raster";
