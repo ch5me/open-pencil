@@ -6,6 +6,7 @@ import {
   BrushDeviceUnavailableError,
   BrushMaskCapabilityUnavailableError,
   BrushPalmInputError,
+  BrushSelectionCapabilityUnavailableError,
   createBrushStroke,
   createBrushStrokeHistoryEntry,
   createBrushStrokeUndoEntry,
@@ -15,6 +16,8 @@ import {
   disableMask,
   duplicateMask,
   invertMask,
+  maskToSelection,
+  selectionToMask,
   setMaskDisplayMode,
   transformMask,
   replayBrushStroke,
@@ -383,4 +386,52 @@ test("mask apply fails loud until a pixel consumer is available", () => {
     applied: true,
     mask: null,
   });
+});
+
+test("selection and mask conversions are transactional and replay-stable", () => {
+  const selection = {
+    mode: "marquee" as const,
+    points: [
+      { x: 1, y: 2 },
+      { x: 12, y: 2 },
+      { x: 12, y: 14 },
+    ],
+    transactionId: "tx:selection",
+  };
+  const toMask = selectionToMask(mask, selection, "tx:selection-to-mask", true);
+  const replayToMask = selectionToMask(mask, selection, "tx:selection-to-mask", true);
+  expect(toMask).toEqual(replayToMask);
+  expect(toMask).toMatchObject({
+    version: "brush-mask-v1",
+    operation: "selection-to-mask",
+    maskId: mask.maskId,
+    transactionId: "tx:selection-to-mask",
+    mask,
+    selection: null,
+  });
+
+  const toSelection = maskToSelection(mask, selection, "tx:mask-to-selection", true);
+  expect(toSelection).toMatchObject({
+    version: "brush-mask-v1",
+    operation: "mask-to-selection",
+    maskId: mask.maskId,
+    transactionId: "tx:mask-to-selection",
+    mask: null,
+    selection,
+  });
+  expect(toSelection.selection).not.toBe(selection);
+});
+
+test("selection and mask conversions fail loud without a pixel consumer", () => {
+  const selection = {
+    mode: "lasso" as const,
+    points: [{ x: 1, y: 2 }],
+    transactionId: "tx:selection",
+  };
+  expect(() => selectionToMask(mask, selection, "tx:selection-to-mask")).toThrow(
+    BrushSelectionCapabilityUnavailableError,
+  );
+  expect(() => maskToSelection(mask, selection, "tx:mask-to-selection")).toThrow(
+    BrushSelectionCapabilityUnavailableError,
+  );
 });
