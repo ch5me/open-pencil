@@ -62,7 +62,9 @@ test("reopens the staged PSD export with stable interchange header fields", () =
     bitsPerChannel: 8,
     colorMode: 3,
   });
-  expect(reopened.layers).toEqual([layerMetadata("background", "Background")]);
+  expect(reopened.layers).toEqual([
+    layerMetadata("background", "Background"),
+  ]);
   expect(reopened.warnings).toEqual([]);
   expect(reopened.degraded).toBe(false);
 });
@@ -220,7 +222,9 @@ test("preserves editable PSD text-layer metadata through producer staging", () =
     layers: [layerMetadata("text-1", "Headline", { text })],
   });
 
-  expect(stagePsdImport(bytes).layers).toEqual([layerMetadata("text-1", "Headline", { text })]);
+  expect(stagePsdImport(bytes).layers).toEqual([
+    layerMetadata("text-1", "Headline", { text }),
+  ]);
 });
 
 test("deterministically round-trips typed metadata without mutating caller data", () => {
@@ -250,7 +254,9 @@ test("deterministically round-trips typed metadata without mutating caller data"
     createPsdCorpusManifest(externalCorpusCases).cases.every(
       (entry) => entry.externalReopen === "UNKNOWN",
     ),
-  ).toBe(true);
+  ).toBe(
+    true,
+  );
 });
 
 test("preserves advanced PSD layer metadata and reports typed degradation", () => {
@@ -265,13 +271,11 @@ test("preserves advanced PSD layer metadata and reports typed degradation", () =
       height: 80,
       path: ["M 0 0", "L 100 80"],
     },
-    paths: [
-      {
-        id: "path:hero",
-        anchors: [{ id: "a", x: 0, y: 0, handleOut: [10, 10] }],
-        closed: false,
-      },
-    ],
+    paths: [{
+      id: "path:hero",
+      anchors: [{ id: "a", x: 0, y: 0, handleOut: [10, 10] }],
+      closed: false,
+    }],
     effects: [{ kind: "shadow", visible: true, blur: 4 }],
     vectorMask: {
       type: "VECTOR",
@@ -290,8 +294,8 @@ test("preserves advanced PSD layer metadata and reports typed degradation", () =
 test("rasterizes visible text and shape layers with opacity and source-over order", () => {
   const redShape = new Uint8Array([255, 0, 0, 255]);
   const blueText = new Uint8Array([0, 0, 255, 255]);
-  expect([
-    ...rasterizePsdLayers({
+  expect(
+    [...rasterizePsdLayers({
       width: 1,
       height: 1,
       layers: [
@@ -304,8 +308,8 @@ test("rasterizes visible text and shape layers with opacity and source-over orde
           raster: { width: 1, height: 1, pixels: blueText },
         },
       ],
-    }),
-  ]).toEqual([128, 0, 128, 255]);
+    })],
+  ).toEqual([128, 0, 128, 255]);
 });
 
 test("rasterizes supported PSD blend modes and rejects unsupported modes", () => {
@@ -400,26 +404,24 @@ test("rejects unsupported PSD adjustment types before raster mutation", () => {
 });
 
 test("applies supported PSD adjustment metadata during rasterization", () => {
-  expect([
-    ...rasterizePsdLayers({
+  expect(
+    [...rasterizePsdLayers({
       width: 1,
       height: 1,
-      layers: [
-        {
-          ...layerMetadata("exposure", "Exposure", {
-            adjustmentType: "exposure",
-            adjustments: { exposure: 1 },
-          }),
-          raster: { width: 1, height: 1, pixels: new Uint8Array([32, 64, 96, 255]) },
-        },
-      ],
-    }),
-  ]).toEqual([64, 128, 192, 255]);
+      layers: [{
+        ...layerMetadata("exposure", "Exposure", {
+          adjustmentType: "exposure",
+          adjustments: { exposure: 1 },
+        }),
+        raster: { width: 1, height: 1, pixels: new Uint8Array([32, 64, 96, 255]) },
+      }],
+    })],
+  ).toEqual([64, 128, 192, 255]);
 });
 
 test("skips hidden layers and rejects malformed raster payloads", () => {
-  expect([
-    ...rasterizePsdLayers({
+  expect(
+    [...rasterizePsdLayers({
       width: 1,
       height: 1,
       layers: [
@@ -428,8 +430,8 @@ test("skips hidden layers and rejects malformed raster payloads", () => {
           raster: { width: 1, height: 1, pixels: new Uint8Array([255, 0, 0, 255]) },
         },
       ],
-    }),
-  ]).toEqual([0, 0, 0, 0]);
+    })],
+  ).toEqual([0, 0, 0, 0]);
 
   expect(() =>
     rasterizePsdLayers({
@@ -446,9 +448,17 @@ test("skips hidden layers and rejects malformed raster payloads", () => {
 });
 
 test("preserves rotated raster layers and applies rotated alpha masks", () => {
-  const pixels = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 0, 255]);
+  const pixels = new Uint8Array([
+    255, 0, 0, 255,
+    0, 255, 0, 255,
+    0, 0, 255, 255,
+    255, 255, 0, 255,
+  ]);
   const mask = new Uint8Array([
-    255, 255, 255, 255, 255, 255, 255, 0, 255, 255, 255, 0, 255, 255, 255, 255,
+    255, 255, 255, 255,
+    255, 255, 255, 0,
+    255, 255, 255, 0,
+    255, 255, 255, 255,
   ]);
   const rotated = rasterizePsdLayers({
     width: 2,
@@ -466,7 +476,12 @@ test("preserves rotated raster layers and applies rotated alpha masks", () => {
       },
     ],
   });
-  expect([...rotated]).toEqual([0, 0, 0, 0, 255, 0, 0, 255, 255, 255, 0, 255, 0, 0, 0, 0]);
+  expect([...rotated]).toEqual([
+    0, 0, 0, 0,
+    255, 0, 0, 255,
+    255, 255, 0, 255,
+    0, 0, 0, 0,
+  ]);
 });
 
 test("rejects malformed rotated raster and mask transforms", () => {
@@ -574,11 +589,13 @@ test("rejects compressed expansion and render-buffer budgets", () => {
 
 test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen status", async () => {
   expect(() => createPsdCorpusManifest([])).toThrow("external corpus manifest is empty");
-  expect(() => createPsdCorpusManifest([{ ...externalCorpusCases[0]!, warning: "" }])).toThrow(
-    "warning coverage is incomplete",
-  );
   expect(() =>
-    createPsdCorpusManifest([{ ...externalCorpusCases[0]!, sha256: "not-a-digest" }]),
+    createPsdCorpusManifest([{ ...externalCorpusCases[0]!, warning: "" }]),
+  ).toThrow("warning coverage is incomplete");
+  expect(() =>
+    createPsdCorpusManifest([
+      { ...externalCorpusCases[0]!, sha256: "not-a-digest" },
+    ]),
   ).toThrow("lowercase SHA-256 digest");
   expect(() =>
     createPsdCorpusManifest(externalCorpusCases, [
@@ -622,9 +639,7 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
   expect(manifest.failedImportVisibleMutationCount).toBe(0);
   expect(manifest.cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(true);
   for (const entry of manifest.cases) {
-    const fixture = Bun.file(
-      new URL(`../../../fixtures/psd-corpus-v1/${entry.fixture}`, import.meta.url),
-    );
+    const fixture = Bun.file(new URL(`../../../fixtures/psd-corpus-v1/${entry.fixture}`, import.meta.url));
     const bytes = new Uint8Array(await fixture.arrayBuffer());
     expect(createHash("sha256").update(bytes).digest("hex")).toBe(entry.sha256);
     const header = parsePsdHeader(bytes);
@@ -689,9 +704,9 @@ test("rejects decoded dimensions after header read but before payload allocation
     },
   } as unknown as File;
 
-  await expect(readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxWidth: 9 })).rejects.toThrow(
-    "PSD dimensions exceed limits",
-  );
+  await expect(
+    readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxWidth: 9 }),
+  ).rejects.toThrow("PSD dimensions exceed limits");
   expect(headerReads).toBe(1);
   expect(payloadReads).toBe(0);
 });
