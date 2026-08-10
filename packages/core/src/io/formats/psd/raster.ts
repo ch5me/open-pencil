@@ -23,6 +23,12 @@ function clampByte(value: number): number {
 
 type Affine = readonly [number, number, number, number, number, number];
 
+function assertTransform(transform: Affine | undefined): void {
+  if (transform && transform.some((value) => !Number.isFinite(value))) {
+    throw new PsdHostileFileError("PSD raster transform is invalid");
+  }
+}
+
 function inverseMap(
   transform: Affine,
   x: number,
@@ -30,7 +36,9 @@ function inverseMap(
 ): { x: number; y: number } | undefined {
   const [a, b, c, d, e, f] = transform;
   const determinant = a * d - b * c;
-  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12) return undefined;
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12) {
+    throw new PsdHostileFileError("PSD raster transform is not invertible");
+  }
   const translatedX = x - e;
   const translatedY = y - f;
   return {
@@ -51,7 +59,7 @@ function rotationTransform(
   const sine = Math.sin(radians);
   const centerX = width / 2;
   const centerY = height / 2;
-  return [
+  const transform: Affine = [
     cosine,
     sine,
     -sine,
@@ -59,6 +67,8 @@ function rotationTransform(
     centerX - cosine * centerX + sine * centerY,
     centerY - sine * centerX - cosine * centerY,
   ];
+  assertTransform(transform);
+  return transform;
 }
 
 function sourcePoint(
@@ -116,6 +126,11 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
   for (const layer of input.layers) {
     if (!layer.raster || !layer.visible || layer.opacity <= 0) continue;
     assertRasterDimensions(layer.raster, input.width, input.height);
+    assertTransform(layer.raster.transform);
+    if (layer.raster.mask) {
+      assertRasterDimensions(layer.raster.mask, input.width, input.height);
+      assertTransform(layer.raster.mask.transform);
+    }
     const opacity = Math.max(0, Math.min(1, layer.opacity));
 
     for (let y = 0; y < input.height; y += 1) {
