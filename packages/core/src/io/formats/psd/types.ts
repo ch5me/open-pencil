@@ -75,6 +75,18 @@ export interface PsdLayerMetadata {
   readonly warnings: readonly PsdWarningCode[];
 }
 
+export interface PsdRasterLayer {
+  readonly width: number;
+  readonly height: number;
+  readonly pixels: Uint8Array;
+}
+
+export interface PsdRasterInput {
+  readonly width: number;
+  readonly height: number;
+  readonly layers: readonly (PsdLayerMetadata & { readonly raster?: PsdRasterLayer })[];
+}
+
 export interface PsdImportResult {
   readonly header: PsdHeader;
   readonly layers: readonly PsdLayerMetadata[];

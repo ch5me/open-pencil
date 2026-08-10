@@ -8,6 +8,7 @@ import {
   PsdHostileFileError,
   PsdUnsupportedError,
   parsePsdHeader,
+  rasterizePsdLayers,
   readPsdFile,
   stagePsdExport,
   stagePsdImport,
@@ -74,6 +75,55 @@ test("preserves editable PSD text-layer metadata through producer staging", () =
   expect(stagePsdImport(bytes).layers).toEqual([
     layerMetadata("text-1", "Headline", { text }),
   ]);
+});
+
+test("rasterizes visible text and shape layers with opacity and source-over order", () => {
+  const redShape = new Uint8Array([255, 0, 0, 255]);
+  const blueText = new Uint8Array([0, 0, 255, 255]);
+  expect(
+    [...rasterizePsdLayers({
+      width: 1,
+      height: 1,
+      layers: [
+        {
+          ...layerMetadata("shape", "Shape"),
+          raster: { width: 1, height: 1, pixels: redShape },
+        },
+        {
+          ...layerMetadata("text", "Text", { opacity: 0.5 }),
+          raster: { width: 1, height: 1, pixels: blueText },
+        },
+      ],
+    })],
+  ).toEqual([127, 0, 128, 255]);
+});
+
+test("skips hidden layers and rejects malformed raster payloads", () => {
+  expect(
+    [...rasterizePsdLayers({
+      width: 1,
+      height: 1,
+      layers: [
+        {
+          ...layerMetadata("hidden", "Hidden", { visible: false }),
+          raster: { width: 1, height: 1, pixels: new Uint8Array([255, 0, 0, 255]) },
+        },
+      ],
+    })],
+  ).toEqual([0, 0, 0, 0]);
+
+  expect(() =>
+    rasterizePsdLayers({
+      width: 1,
+      height: 1,
+      layers: [
+        {
+          ...layerMetadata("bad", "Bad"),
+          raster: { width: 2, height: 1, pixels: new Uint8Array(8) },
+        },
+      ],
+    }),
+  ).toThrow("raster layer dimensions do not match document");
 });
 
 test("keeps PSD export deterministic and leaves layer input unchanged", () => {
