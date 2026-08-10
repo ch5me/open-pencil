@@ -3,10 +3,12 @@ import type { AssetId, AssetRevision } from "#core/editor/assets";
 import {
   createRasterEffectAdjustment,
   isAdjustmentLayerKind,
+  validateEffectStack,
   validateEffectFilter,
   type AdjustmentLayerKind,
   type EffectFilter,
   type EffectKind,
+  type EffectStack,
 } from "#core/editor/image-capabilities/effects";
 
 export type RasterPixelFormat = "rgba8-srgb" | "rgba16f-linear-premultiplied";
@@ -83,6 +85,11 @@ export interface RasterCompositionOptions {
    * is supplied. Areas are expressed in output pixels.
    */
   readonly effectFilters?: readonly EffectFilter[];
+  /**
+   * Layer- or group-scoped, ordered effect stacks. Smart stacks remain
+   * non-destructive: the source pixels are read again for every composition.
+   */
+  readonly effectStacks?: readonly EffectStack[];
   readonly backend?: RasterBackend;
   readonly parity?: Partial<RasterParityThresholds>;
 }
@@ -252,6 +259,38 @@ function effectContainsPixel(effect: EffectFilter, x: number, y: number): boolea
   return x >= effectX && x < effectX + width && y >= effectY && y < effectY + height;
 }
 
+function isWithinNodeOrDescendant(plan: CompositionPlan, node: CompositionNode, ancestorId: string): boolean {
+  let current: CompositionNode | undefined = node;
+  while (current) {
+    if (current.nodeId === ancestorId) return true;
+    current = current.parentId ? plan.nodes.get(current.parentId) : undefined;
+  }
+  return false;
+}
+
+function effectMaskContainsPixel(
+  plan: CompositionPlan,
+  stack: EffectStack,
+  x: number,
+  y: number,
+): boolean {
+  if (stack.effectMaskIds.length === 0) return true;
+  return stack.effectMaskIds.every((maskId) => {
+    const mask = plan.nodes.get(maskId);
+    return mask !== undefined && pointInRotatedNode(mask, x + 0.5, y + 0.5) !== undefined;
+  });
+}
+
+function validateEffectArea(effect: EffectFilter, width: number, height: number): void {
+  const [x, y, areaWidth, areaHeight] = effect.affectedArea;
+  if (
+    x + areaWidth > width ||
+    y + areaHeight > height
+  ) {
+    throw new RasterCompositionError("effect area exceeds raster bounds");
+  }
+}
+
 export function composeRasterRGBA8(
   plan: CompositionPlan,
   resolve: RasterCompositionAssetResolver,
@@ -265,7 +304,14 @@ export function composeRasterRGBA8(
   if (!Number.isInteger(options.width) || !Number.isInteger(options.height) || options.width <= 0 || options.height <= 0) {
     throw new RasterCompositionError("invalid RGBA8 output dimensions");
   }
-  for (const effect of options.effectFilters ?? []) validateEffectFilter(effect);
+  for (const effect of options.effectFilters ?? []) {
+    validateEffectFilter(effect);
+    validateEffectArea(effect, options.width, options.height);
+  }
+  for (const stack of options.effectStacks ?? []) {
+    validateEffectStack(stack);
+    for (const effect of stack.filters) validateEffectArea(effect, options.width, options.height);
+  }
   const pixels = new Uint8Array(options.width * options.height * 4);
   const gaps: RasterUnsupportedGap[] = [];
   for (const node of plan.nodes.values()) {
@@ -306,6 +352,18 @@ export function composeRasterRGBA8(
         for (const effect of options.effectFilters ?? []) {
           if (!effect.enabled || !effectContainsPixel(effect, outputX, outputY)) continue;
           pixel = createRasterEffectAdjustment(effect.kind, effect.adjustments)(pixel);
+        }
+        for (const stack of options.effectStacks ?? []) {
+          if (
+            !isWithinNodeOrDescendant(plan, node, stack.layerId) ||
+            !effectMaskContainsPixel(plan, stack, outputX, outputY)
+          ) {
+            continue;
+          }
+          for (const effect of stack.filters) {
+            if (!effect.enabled || !effectContainsPixel(effect, outputX, outputY)) continue;
+            pixel = createRasterEffectAdjustment(effect.kind, effect.adjustments)(pixel);
+          }
         }
         const adjusted: readonly [number, number, number, number] = [pixel[0], pixel[1], pixel[2], Math.round(pixel[3] * alpha)];
         blendOver(pixels, (outputY * options.width + outputX) * 4, adjusted, node.inheritedOpacity);

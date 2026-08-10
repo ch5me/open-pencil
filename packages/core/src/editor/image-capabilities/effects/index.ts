@@ -481,7 +481,11 @@ export type EffectFilterPatch = Partial<
 >;
 
 export function validateEffectStack(stack: EffectStack): void {
-  if (!stack.layerId || (stack.adjustmentScope !== "layer" && stack.adjustmentScope !== "group")) {
+  if (
+    !stack.layerId ||
+    (stack.adjustmentScope !== "layer" && stack.adjustmentScope !== "group") ||
+    typeof stack.smart !== "boolean"
+  ) {
     throw new RangeError("invalid effect stack identity");
   }
   const ids = new Set<string>();

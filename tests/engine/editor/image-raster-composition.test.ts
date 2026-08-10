@@ -427,6 +427,76 @@ test("effects-gap-069 consumes typed effect filters with bounded areas", () => {
   expect([...result.pixels]).toEqual([255, 255, 255, 255, 20, 20, 20, 255]);
 });
 
+test("effects-gap-071 consumes ordered layer stacks and effect masks", () => {
+  const group = node({
+    id: "group",
+    type: "GROUP",
+    width: 2,
+    height: 1,
+    childIds: ["image", "mask"],
+  });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: group.id,
+    width: 2,
+    height: 1,
+    fills: [{
+      type: "IMAGE",
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      opacity: 1,
+      visible: true,
+      imageHash: "asset:stack",
+    }],
+  });
+  const mask = node({
+    id: "mask",
+    type: "GROUP",
+    parentId: group.id,
+    x: 0,
+    width: 1,
+    height: 1,
+    isMask: true,
+  });
+  const revision = {
+    revisionId: "sha256:stack",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 2, height: 1 },
+    bytes: new Uint8Array([128, 128, 128, 255, 128, 128, 128, 255]),
+  } satisfies AssetRevision;
+  const plan = planFor([group, image, mask], group.id);
+  const result = composeRasterRGBA8(plan, resolver(revision), {
+    width: 2,
+    height: 1,
+    effectStacks: [{
+      layerId: group.id,
+      adjustmentScope: "group",
+      smart: true,
+      effectMaskIds: [mask.id],
+      filters: [
+        {
+          id: "effect:exposure",
+          kind: "exposure",
+          enabled: true,
+          affectedArea: [0, 0, 1, 1],
+          transactionId: "tx:stack-exposure",
+          adjustments: { exposure: 1 },
+        },
+        {
+          id: "effect:threshold",
+          kind: "threshold",
+          enabled: true,
+          affectedArea: [0, 0, 1, 1],
+          transactionId: "tx:stack-threshold",
+          adjustments: { threshold: 200 },
+        },
+      ],
+    }],
+  });
+
+  expect([...result.pixels]).toEqual([255, 255, 255, 255, 128, 128, 128, 255]);
+});
+
 test("RGBA8 group masks use accumulated bounds inside clipped groups", () => {
   const clip = node({
     id: "clip",
