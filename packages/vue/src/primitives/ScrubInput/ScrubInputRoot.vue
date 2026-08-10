@@ -61,7 +61,13 @@ function startScrub(e: PointerEvent) {
 
   function finish(commit: boolean) {
     if (commit) pendingDelta.flush();
-    else pendingDelta.cancel();
+    else {
+      pendingDelta.cancel();
+      if (hasMoved && currentValue !== valueBeforeScrub) {
+        emit("update:modelValue", valueBeforeScrub);
+      }
+      currentValue = valueBeforeScrub;
+    }
     stopMove?.();
     stopUp?.();
     stopCancel?.();

@@ -66,7 +66,7 @@ function handleNumberChange(value: number) {
 }
 
 function handleRangeInput(value: number) {
-  pendingValue.push(display?.parse ? display.parse(value) : value);
+  pendingValue.push(value);
 }
 
 function handleRangeChange() {
