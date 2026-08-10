@@ -486,6 +486,27 @@ test("image render adapter exposes typed gaps for missing and mismatched binding
   expect(mismatch.textures).toEqual([]);
 });
 
+test("image render adapter rejects a revision whose identity differs from its binding", () => {
+  const frame = createImageRenderAdapter().render(imagePlan(), {
+    getAsset: (assetId) => ({ assetId, revisionId: "sha256:requested" }),
+    getRevision: () => ({
+      revisionId: "sha256:returned",
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  });
+
+  expect(frame.textures).toEqual([]);
+  expect(frame.gaps).toEqual([
+    {
+      code: "asset-revision-mismatch",
+      message: "asset revision does not match requested revision: sha256:requested",
+      assetId: "asset:hero",
+    },
+  ]);
+});
+
 test("renderer-resilience-v1 records unsupported runtime paths as UNKNOWN", () => {
   const contract = createRendererResilienceContract({
     contextRestoration: "SUPPORTED",
