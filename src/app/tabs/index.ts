@@ -139,7 +139,7 @@ export function closeTab(tabId: string) {
   const closingTab = tabsRef.value[idx];
   if (
     closingTab.store.isDirty() &&
-    IS_BROWSER &&
+    typeof window !== "undefined" &&
     !window.confirm(`Unsaved changes in "${closingTab.store.state.documentName}". Close anyway?`)
   ) {
     return;
