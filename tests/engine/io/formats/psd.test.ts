@@ -177,7 +177,7 @@ test("validates typed document metadata and preserves bytes on rejection", () =>
   }
 });
 
-test("keeps unsupported color mode and bit depth observable without mutating input", () => {
+test("keeps truly unsupported color mode and bit depth observable without mutating input", () => {
   const bytes = stagePsdExport({
     width: 4,
     height: 4,
@@ -185,6 +185,9 @@ test("keeps unsupported color mode and bit depth observable without mutating inp
     colorMode: 4,
     bitsPerChannel: 16,
   });
+  const view = new DataView(bytes.buffer);
+  view.setUint16(22, 32, false);
+  view.setUint16(24, 7, false);
   const before = bytes.slice();
   const result = stagePsdImport(bytes);
 
