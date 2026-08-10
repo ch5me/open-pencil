@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import {
+  createAdaptiveWorkerPolicy,
   createBenchmarkResult,
   deterministicP95,
   EvidenceCollector,
@@ -128,4 +129,28 @@ test("performance evidence does not claim render-graph scheduling or GPU filter 
   expect(profile.filterFusion).toBe(false);
   expect(evidence.scheduled).toBe(false);
   expect(evidence.filterFusion).toBe(false);
+});
+
+test("optional worker policy stays cold until a measured main-thread budget miss", () => {
+  expect(
+    createAdaptiveWorkerPolicy([2, 8, 49.99], { workerAvailable: true }),
+  ).toMatchObject({
+    budgetMs: 50,
+    thresholdMisses: 0,
+    workerAvailable: true,
+    useWorker: false,
+  });
+  expect(
+    createAdaptiveWorkerPolicy([2, 51, 49], { workerAvailable: true }),
+  ).toMatchObject({
+    thresholdMisses: 1,
+    useWorker: true,
+  });
+  expect(createAdaptiveWorkerPolicy([51], { workerAvailable: false }).useWorker).toBe(false);
+});
+
+test("optional worker policy rejects invalid observations", () => {
+  expect(() => createAdaptiveWorkerPolicy([-1])).toThrow("finite and non-negative");
+  expect(() => createAdaptiveWorkerPolicy([Number.NaN])).toThrow("finite and non-negative");
+  expect(() => createAdaptiveWorkerPolicy([], { budgetMs: 0 })).toThrow("positive");
 });

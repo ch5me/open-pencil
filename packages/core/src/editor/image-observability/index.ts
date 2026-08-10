@@ -1,5 +1,6 @@
 export { EvidenceCollector } from "./collector";
 export {
+  createAdaptiveWorkerPolicy,
   createBenchmarkResult,
   deterministicP95,
   EvidenceContractError,
@@ -8,6 +9,7 @@ export {
   validatePerformanceEvidence,
   validateTextureVersion,
   type BenchmarkResult,
+  type AdaptiveWorkerPolicy,
   type DirtyRect,
   type EvidenceEvent,
   type EvidencePhase,

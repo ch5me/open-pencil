@@ -61,6 +61,13 @@ export interface MainThreadBudgetEvidence {
   readonly withinBudget: boolean | "UNKNOWN";
 }
 
+export interface AdaptiveWorkerPolicy {
+  readonly budgetMs: number;
+  readonly thresholdMisses: number;
+  readonly workerAvailable: boolean;
+  readonly useWorker: boolean;
+}
+
 export interface TextureVersion {
   readonly textureId: string;
   readonly revisionId: string;
@@ -149,4 +156,31 @@ export function createBenchmarkResult(
   samples: readonly number[],
 ): BenchmarkResult {
   return { layerCount, samples: [...samples], p95: deterministicP95(samples) };
+}
+
+/**
+ * Keep optional worker offload dormant until a measured main-thread miss.
+ * This avoids claiming a worker improves work that has not exceeded budget.
+ */
+export function createAdaptiveWorkerPolicy(
+  observedMs: readonly number[],
+  options: { budgetMs?: number; workerAvailable?: boolean } = {},
+): AdaptiveWorkerPolicy {
+  const budgetMs = options.budgetMs ?? 50;
+  if (!Number.isFinite(budgetMs) || budgetMs <= 0) {
+    throw new RangeError("worker budget must be positive");
+  }
+  const thresholdMisses = observedMs.filter((duration) => {
+    if (!Number.isFinite(duration) || duration < 0) {
+      throw new RangeError("worker observations must be finite and non-negative");
+    }
+    return duration > budgetMs;
+  }).length;
+  const workerAvailable = options.workerAvailable ?? false;
+  return {
+    budgetMs,
+    thresholdMisses,
+    workerAvailable,
+    useWorker: workerAvailable && thresholdMisses > 0,
+  };
 }
