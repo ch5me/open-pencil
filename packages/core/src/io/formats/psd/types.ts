@@ -64,6 +64,29 @@ export interface PsdHeader {
   readonly width: number;
   readonly bitsPerChannel: number;
   readonly colorMode: number;
+  readonly dpi?: readonly [number, number];
+  readonly iccProfile?: PsdIccProfile;
+  readonly channelsMetadata?: readonly PsdChannelMetadata[];
+  readonly spotColors?: readonly PsdSpotColor[];
+  readonly metadata?: Readonly<Record<string, unknown>>;
+}
+
+export interface PsdChannelMetadata {
+  readonly id: number;
+  readonly name: string;
+  readonly kind: "color" | "alpha" | "spot";
+  readonly opacity?: number;
+}
+
+export interface PsdSpotColor {
+  readonly name: string;
+  readonly color: readonly [number, number, number];
+  readonly opacity?: number;
+}
+
+export interface PsdIccProfile {
+  readonly name: string;
+  readonly data: Uint8Array;
 }
 
 export interface PsdLayerMetadata {
@@ -163,6 +186,13 @@ export interface PsdExportInput {
   readonly width: number;
   readonly height: number;
   readonly layers: readonly PsdLayerMetadata[];
+  readonly channels?: readonly PsdChannelMetadata[];
+  readonly colorMode?: number;
+  readonly bitsPerChannel?: 8 | 16;
+  readonly dpi?: readonly [number, number];
+  readonly iccProfile?: PsdIccProfile;
+  readonly spotColors?: readonly PsdSpotColor[];
+  readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 export class PsdUnsupportedError extends Error {
