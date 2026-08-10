@@ -185,8 +185,14 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
   const first = adapter.render(plan, resolve);
   expect(first.textures).toHaveLength(1);
-  expect(first.textures[0]?.uploaded).toBe(true);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
+  expect(first.textures[0]).toMatchObject({
+    dirty: true,
+    uploaded: true,
+  });
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: false,
+    uploaded: false,
+  });
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
@@ -211,10 +217,22 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
 
 test("image render adapter uploads only textures affected by source or mask dirtiness", () => {
   const adapter = createImageRenderAdapter();
-  const plan = imagePlan([
-    imageNode("source", "asset:source"),
-    imageNode("mask", "asset:mask"),
-  ]);
+  const group = {
+    ...imageNode("group"),
+    type: "GROUP",
+    childIds: ["source", "mask"],
+    fills: [],
+  };
+  const source = { ...imageNode("source", "asset:source"), parentId: "group" };
+  const mask = { ...imageNode("mask", "asset:mask"), parentId: "group", isMask: true };
+  const plan = createCompositionPlan(
+    {
+      rootId: "group",
+      getNode: (id: string) =>
+        id === "group" ? group : id === "source" ? source : id === "mask" ? mask : undefined,
+    } as unknown as SceneGraph,
+    "group",
+  );
   const resolve: ImageRevisionResolver = {
     getAsset: (assetId) => ({ assetId, revisionId: `sha256:${assetId}` }),
     getRevision: (revisionId) => ({
