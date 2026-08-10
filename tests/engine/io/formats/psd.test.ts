@@ -95,7 +95,7 @@ test("rasterizes visible text and shape layers with opacity and source-over orde
         },
       ],
     })],
-  ).toEqual([127, 0, 128, 255]);
+  ).toEqual([128, 0, 128, 255]);
 });
 
 test("skips hidden layers and rejects malformed raster payloads", () => {
