@@ -18,6 +18,7 @@ import {
 } from "#core/editor/image-capabilities";
 import {
   assertEffectPixelAcceptance,
+  createRasterEffectAdjustment,
   EffectAccelerationUnavailableError,
   EffectPixelAcceptanceError,
   reorderEffectStack,
@@ -224,7 +225,7 @@ test("effects-bounds-v1 rejects invalid per-layer effect kinds and areas", () =>
   );
 });
 
-test("effects-gap-068 limits adjustment layers to brightness, contrast, and saturation", () => {
+test("effects-gap-069 validates all supported adjustment-layer kinds", () => {
   const base: EffectFilter = {
     id: "adjustment:one",
     kind: "brightness",
@@ -234,14 +235,27 @@ test("effects-gap-068 limits adjustment layers to brightness, contrast, and satu
     adjustments: { amount: 0.25 },
   };
 
-  for (const kind of ["brightness", "contrast", "saturation"] as const) {
+  for (const kind of [
+    "brightness",
+    "contrast",
+    "saturation",
+    "levels",
+    "curves",
+    "exposure",
+    "vibrance",
+    "hsl",
+    "color-balance",
+    "black-white",
+    "threshold",
+    "posterize",
+    "gradient-map",
+    "selective-color",
+  ] as const) {
     expect(() => validateAdjustmentLayerFilter({ ...base, kind })).not.toThrow();
   }
-  for (const kind of ["levels", "curves", "blur", "posterize"] as const) {
-    expect(() => validateAdjustmentLayerFilter({ ...base, kind })).toThrow(
-      "unsupported adjustment layer kind",
-    );
-  }
+  expect(() => validateAdjustmentLayerFilter({ ...base, kind: "blur" })).toThrow(
+    "unsupported adjustment layer kind",
+  );
 });
 
 test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouched by contract", () => {
@@ -258,6 +272,29 @@ test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouch
   expect(filter.affectedArea).not.toContain(99);
   expect(() => validateEffectFilter(filter)).not.toThrow();
   expect(new EffectAccelerationUnavailableError().code).toBe("E_EFFECT_ACCELERATION_UNAVAILABLE");
+});
+
+test("effects-gap-069 CPU reference applies typed adjustment kinds", () => {
+  const source = [180, 90, 30, 255] as const;
+  const cases = [
+    ["levels", { inputBlack: 0, inputWhite: 255, gamma: 2 }],
+    ["curves", { midpoint: 2 }],
+    ["exposure", { exposure: 1 }],
+    ["vibrance", { vibrance: 0.5 }],
+    ["hsl", { hue: 30, saturation: 0.1, lightness: 0.1 }],
+    ["color-balance", { midtones: 10 }],
+    ["black-white", {}],
+    ["threshold", { threshold: 100 }],
+    ["posterize", { levels: 3 }],
+    ["gradient-map", { startR: 0, startG: 0, startB: 0, endR: 255, endG: 0, endB: 0 }],
+    ["selective-color", { red: 10 }],
+  ] as const;
+  for (const [kind, adjustments] of cases) {
+    const result = createRasterEffectAdjustment(kind, adjustments)(source);
+    expect(result).toHaveLength(4);
+    expect(result[3]).toBe(255);
+    expect(result.slice(0, 3).every((value) => Number.isInteger(value) && value >= 0 && value <= 255)).toBe(true);
+  }
 });
 
 test("effects-v1 pixel acceptance preserves unrelated pixels and tolerates acceleration quantization", () => {

@@ -22,12 +22,37 @@ export type EffectKind =
   | "distortion"
   | "convolution";
 
-export type AdjustmentLayerKind = "brightness" | "contrast" | "saturation";
+export type AdjustmentLayerKind =
+  | "brightness"
+  | "contrast"
+  | "saturation"
+  | "levels"
+  | "curves"
+  | "exposure"
+  | "vibrance"
+  | "hsl"
+  | "color-balance"
+  | "black-white"
+  | "threshold"
+  | "posterize"
+  | "gradient-map"
+  | "selective-color";
 
 const ADJUSTMENT_LAYER_KINDS: ReadonlySet<AdjustmentLayerKind> = new Set([
   "brightness",
   "contrast",
   "saturation",
+  "levels",
+  "curves",
+  "exposure",
+  "vibrance",
+  "hsl",
+  "color-balance",
+  "black-white",
+  "threshold",
+  "posterize",
+  "gradient-map",
+  "selective-color",
 ]);
 
 const EFFECT_KINDS: ReadonlySet<string> = new Set<EffectKind>([
@@ -93,6 +118,165 @@ export class EffectPixelAcceptanceError extends Error {
 export interface EffectPixelAcceptanceOptions {
   readonly maxChannelDelta?: number;
   readonly maxMeanBias?: number;
+}
+
+export type EffectPixel = readonly [number, number, number, number];
+export type EffectPixelAdjustment = (pixel: EffectPixel) => EffectPixel;
+
+function clampByte(value: number): number {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function control(
+  adjustments: Readonly<Partial<Record<string, number>>>,
+  key: string,
+  fallback: number,
+): number {
+  const value = adjustments[key];
+  return value !== undefined && Number.isFinite(value) ? value : fallback;
+}
+
+function rgbToHsl(red: number, green: number, blue: number): [number, number, number] {
+  const r = red / 255;
+  const g = green / 255;
+  const b = blue / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) / 2;
+  if (max === min) return [0, 0, lightness];
+  const delta = max - min;
+  const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+  let hue = (r - g) / delta + 4;
+  if (max === r) hue = (g - b) / delta + (g < b ? 6 : 0);
+  else if (max === g) hue = (b - r) / delta + 2;
+  hue /= 6;
+  return [hue, saturation, lightness];
+}
+
+function hslToRgb(hue: number, saturation: number, lightness: number): [number, number, number] {
+  if (saturation === 0) {
+    const gray = clampByte(lightness * 255);
+    return [gray, gray, gray];
+  }
+  const hueToRgb = (p: number, q: number, t: number): number => {
+    let wrapped = t;
+    if (wrapped < 0) wrapped += 1;
+    else if (wrapped > 1) wrapped -= 1;
+    if (wrapped < 1 / 6) return p + (q - p) * 6 * wrapped;
+    if (wrapped < 1 / 2) return q;
+    if (wrapped < 2 / 3) return p + (q - p) * (2 / 3 - wrapped) * 6;
+    return p;
+  };
+  const q = lightness < 0.5 ? lightness * (1 + saturation) : lightness + saturation - lightness * saturation;
+  const p = 2 * lightness - q;
+  return [
+    clampByte(hueToRgb(p, q, hue + 1 / 3) * 255),
+    clampByte(hueToRgb(p, q, hue) * 255),
+    clampByte(hueToRgb(p, q, hue - 1 / 3) * 255),
+  ];
+}
+
+/**
+ * Builds the host-neutral CPU reference adjustment for a typed effect kind.
+ * Controls are normalized numeric values; missing controls use identity defaults.
+ */
+export function createRasterEffectAdjustment(
+  kind: EffectKind,
+  adjustments: Readonly<Record<string, number>> = {},
+): EffectPixelAdjustment {
+  switch (kind) {
+    case "levels": {
+      const inputBlack = control(adjustments, "inputBlack", 0);
+      const inputWhite = Math.max(inputBlack + 1, control(adjustments, "inputWhite", 255));
+      const gamma = Math.max(0.01, control(adjustments, "gamma", 1));
+      const outputBlack = control(adjustments, "outputBlack", 0);
+      const outputWhite = control(adjustments, "outputWhite", 255);
+      return ([r, g, b, a]) => {
+        const map = (value: number) => outputBlack + (((Math.max(inputBlack, Math.min(inputWhite, value)) - inputBlack) / (inputWhite - inputBlack)) ** (1 / gamma)) * (outputWhite - outputBlack);
+        return [clampByte(map(r)), clampByte(map(g)), clampByte(map(b)), a];
+      };
+    }
+    case "curves": {
+      const midpoint = Math.max(0.01, control(adjustments, "midpoint", 1));
+      return ([r, g, b, a]) => {
+        const map = (value: number) => 255 * (value / 255) ** (1 / midpoint);
+        return [clampByte(map(r)), clampByte(map(g)), clampByte(map(b)), a];
+      };
+    }
+    case "exposure": {
+      const scale = 2 ** control(adjustments, "exposure", 0);
+      return ([r, g, b, a]) => [clampByte(r * scale), clampByte(g * scale), clampByte(b * scale), a];
+    }
+    case "vibrance": {
+      const amount = control(adjustments, "vibrance", 0);
+      return ([r, g, b, a]) => {
+        const average = (r + g + b) / 3;
+        const max = Math.max(r, g, b);
+        const factor = 1 + amount * (1 - (max - average) / 255);
+        return [clampByte(average + (r - average) * factor), clampByte(average + (g - average) * factor), clampByte(average + (b - average) * factor), a];
+      };
+    }
+    case "hsl": {
+      const hueShift = control(adjustments, "hue", 0) / 360;
+      const saturationShift = control(adjustments, "saturation", 0);
+      const lightnessShift = control(adjustments, "lightness", 0);
+      return ([r, g, b, a]) => {
+        const [hue, saturation, lightness] = rgbToHsl(r, g, b);
+        return [...hslToRgb((hue + hueShift + 1) % 1, Math.max(0, Math.min(1, saturation + saturationShift)), Math.max(0, Math.min(1, lightness + lightnessShift))), a];
+      };
+    }
+    case "color-balance": {
+      const shadows = control(adjustments, "shadows", 0);
+      const midtones = control(adjustments, "midtones", 0);
+      const highlights = control(adjustments, "highlights", 0);
+      return ([r, g, b, a]) => {
+        const luminance = (r + g + b) / (255 * 3);
+        let amount = midtones;
+        if (luminance < 0.33) amount = shadows;
+        else if (luminance > 0.66) amount = highlights;
+        return [clampByte(r + amount), clampByte(g - amount / 2), clampByte(b - amount / 2), a];
+      };
+    }
+    case "black-white": {
+      const red = control(adjustments, "red", 0.299);
+      const green = control(adjustments, "green", 0.587);
+      const blue = control(adjustments, "blue", 0.114);
+      return ([r, g, b, a]) => {
+        const gray = clampByte(r * red + g * green + b * blue);
+        return [gray, gray, gray, a];
+      };
+    }
+    case "threshold": {
+      const threshold = control(adjustments, "threshold", 128);
+      return ([r, g, b, a]) => {
+        const gray = r * 0.299 + g * 0.587 + b * 0.114 >= threshold ? 255 : 0;
+        return [gray, gray, gray, a];
+      };
+    }
+    case "posterize": {
+      const levels = Math.max(2, Math.round(control(adjustments, "levels", 4)));
+      return ([r, g, b, a]) => {
+        const map = (value: number) => Math.round(Math.round((value / 255) * (levels - 1)) * (255 / (levels - 1)));
+        return [map(r), map(g), map(b), a];
+      };
+    }
+    case "gradient-map": {
+      const start: [number, number, number] = [control(adjustments, "startR", 0), control(adjustments, "startG", 0), control(adjustments, "startB", 0)];
+      const end: [number, number, number] = [control(adjustments, "endR", 255), control(adjustments, "endG", 255), control(adjustments, "endB", 255)];
+      return ([r, g, b, a]) => {
+        const amount = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+        return [clampByte(start[0] + (end[0] - start[0]) * amount), clampByte(start[1] + (end[1] - start[1]) * amount), clampByte(start[2] + (end[2] - start[2]) * amount), a];
+      };
+    }
+    case "selective-color": {
+      const red = control(adjustments, "red", 0);
+      const green = control(adjustments, "green", 0);
+      const blue = control(adjustments, "blue", 0);
+      return ([r, g, b, a]) => [clampByte(r + red), clampByte(g + green), clampByte(b + blue), a];
+    }
+    default:
+      return (pixel) => pixel;
+  }
 }
 
 function pixelIndex(width: number, x: number, y: number): number {
@@ -200,9 +384,6 @@ export function isAdjustmentLayerKind(kind: EffectKind): kind is AdjustmentLayer
   return ADJUSTMENT_LAYER_KINDS.has(kind as AdjustmentLayerKind);
 }
 
-/**
- * Adjustment layers intentionally expose only the three supported tonal controls.
- */
 export function validateAdjustmentLayerFilter(filter: EffectFilter): void {
   validateEffectFilter(filter);
   if (!isAdjustmentLayerKind(filter.kind)) {
@@ -253,7 +434,7 @@ export function updateEffectFilter(
   patch: EffectFilterPatch,
 ): EffectStack {
   const index = stack.filters.findIndex((filter) => filter.id === filterId);
-  if (index < 0) throw new RangeError("missing effect filter");
+  if (index === -1) throw new RangeError("missing effect filter");
   const filters = [...stack.filters];
   const current = filters[index];
   if (!current) throw new RangeError("missing effect filter");

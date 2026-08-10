@@ -380,6 +380,54 @@ test("effects-gap-068 consumes typed brightness, contrast, and saturation adjust
   expect([...result.pixels]).toEqual([11, 22, 33, 255, 41, 52, 63, 255, 71, 82, 93, 255]);
 });
 
+test("effects-gap-069 consumes typed effect filters with bounded areas", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    width: 2,
+    height: 1,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:typed-effect",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:typed-effect",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 2, height: 1 },
+    bytes: new Uint8Array([255, 255, 255, 255, 20, 20, 20, 255]),
+  } satisfies AssetRevision;
+  const plan = createCompositionPlan(
+    {
+      rootId: image.id,
+      getNode: (id: string) => (id === image.id ? image : undefined),
+    } as unknown as SceneGraph,
+    image.id,
+    { adjustmentHooks: ["threshold"] },
+  );
+  const result = composeRasterRGBA8(plan, resolver(revision), {
+    width: 2,
+    height: 1,
+    effectFilters: [
+      {
+        id: "effect:threshold",
+        kind: "threshold",
+        enabled: true,
+        affectedArea: [0, 0, 1, 1],
+        transactionId: "tx:threshold",
+        adjustments: { threshold: 100 },
+      },
+    ],
+  });
+
+  expect([...result.pixels]).toEqual([255, 255, 255, 255, 20, 20, 20, 255]);
+});
+
 test("RGBA8 group masks use accumulated bounds inside clipped groups", () => {
   const clip = node({
     id: "clip",

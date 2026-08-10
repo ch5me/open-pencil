@@ -1,6 +1,13 @@
 import type { CompositionNode, CompositionPlan } from "#core/canvas/composition";
 import type { AssetId, AssetRevision } from "#core/editor/assets";
-import { isAdjustmentLayerKind, type AdjustmentLayerKind, type EffectKind } from "#core/editor/image-capabilities/effects";
+import {
+  createRasterEffectAdjustment,
+  isAdjustmentLayerKind,
+  validateEffectFilter,
+  type AdjustmentLayerKind,
+  type EffectFilter,
+  type EffectKind,
+} from "#core/editor/image-capabilities/effects";
 
 export type RasterPixelFormat = "rgba8-srgb" | "rgba16f-linear-premultiplied";
 
@@ -71,12 +78,17 @@ export interface RasterCompositionOptions {
   readonly height: number;
   readonly adjustments?: Readonly<Record<string, RasterAdjustment>>;
   readonly adjustmentLayerAdjustments?: Readonly<Partial<Record<AdjustmentLayerKind, RasterAdjustment>>>;
+  /**
+   * Typed effect filters consumed by the CPU reference when no host callback
+   * is supplied. Areas are expressed in output pixels.
+   */
+  readonly effectFilters?: readonly EffectFilter[];
   readonly backend?: RasterBackend;
   readonly parity?: Partial<RasterParityThresholds>;
 }
 
 export class RasterCompositionError extends Error {
-  readonly code = "E_RASTER_COMPOSITION";
+  readonly code: string = "E_RASTER_COMPOSITION";
 }
 
 export class RasterBackendUnavailableError extends RasterCompositionError {
@@ -235,6 +247,11 @@ function sourcePixel(
   return [bytes[index] ?? 0, bytes[index + 1] ?? 0, bytes[index + 2] ?? 0, bytes[index + 3] ?? 0];
 }
 
+function effectContainsPixel(effect: EffectFilter, x: number, y: number): boolean {
+  const [effectX, effectY, width, height] = effect.affectedArea;
+  return x >= effectX && x < effectX + width && y >= effectY && y < effectY + height;
+}
+
 export function composeRasterRGBA8(
   plan: CompositionPlan,
   resolve: RasterCompositionAssetResolver,
@@ -248,6 +265,7 @@ export function composeRasterRGBA8(
   if (!Number.isInteger(options.width) || !Number.isInteger(options.height) || options.width <= 0 || options.height <= 0) {
     throw new RasterCompositionError("invalid RGBA8 output dimensions");
   }
+  for (const effect of options.effectFilters ?? []) validateEffectFilter(effect);
   const pixels = new Uint8Array(options.width * options.height * 4);
   const gaps: RasterUnsupportedGap[] = [];
   for (const node of plan.nodes.values()) {
@@ -278,10 +296,16 @@ export function composeRasterRGBA8(
         let pixel = sourcePixel(revision.bytes, sourceWidth, sourceHeight, (local.x / width) * sourceWidth, (local.y / height) * sourceHeight);
         for (const hook of node.adjustmentHooks) {
           const effectKind = hook as EffectKind;
-          const adjustment = isAdjustmentLayerKind(effectKind)
-            ? options.adjustmentLayerAdjustments?.[effectKind]
-            : options.adjustments?.[hook];
+          const adjustment =
+            options.adjustments?.[hook] ??
+            (isAdjustmentLayerKind(effectKind)
+              ? options.adjustmentLayerAdjustments?.[effectKind]
+              : undefined);
           if (adjustment) pixel = adjustment(pixel, node);
+          for (const effect of options.effectFilters ?? []) {
+            if (!effect.enabled || effect.kind !== effectKind || !effectContainsPixel(effect, outputX, outputY)) continue;
+            pixel = createRasterEffectAdjustment(effect.kind, effect.adjustments)(pixel);
+          }
         }
         const adjusted: readonly [number, number, number, number] = [pixel[0], pixel[1], pixel[2], Math.round(pixel[3] * alpha)];
         blendOver(pixels, (outputY * options.width + outputX) * 4, adjusted, node.inheritedOpacity);
