@@ -124,6 +124,16 @@ function headerWarnings(header: PsdHeader): PsdWarningCode[] {
   return warnings;
 }
 
+const PSD_SUPPORTED_BLEND_MODES = new Set(["NORMAL", "PASS_THROUGH", "MULTIPLY", "SCREEN", "OVERLAY"]);
+
+function blendModeWarning(layers: readonly PsdLayerMetadata[]): PsdWarningCode[] {
+  return layers.some(
+    (layer) => layer.blendMode !== undefined && !PSD_SUPPORTED_BLEND_MODES.has(layer.blendMode),
+  )
+    ? ["unsupported-blend-mode"]
+    : [];
+}
+
 function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits): PsdLayerMetadata[] {
   if (bytes.byteLength < offset + PSD_METADATA_MAGIC.byteLength) return [];
   if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value)) return [];
@@ -162,6 +172,7 @@ export function stagePsdImport(
   const header = parsePsdHeader(bytes, limits);
   const warnings = headerWarnings(header);
   const layers = readLayerMetadata(bytes, 26, limits);
+  warnings.push(...blendModeWarning(layers));
   return {
     header,
     layers,
@@ -223,7 +234,9 @@ export function stagePsdExport(
 export function layerMetadata(
   id: string,
   name: string,
-  options: Partial<Pick<PsdLayerMetadata, "visible" | "opacity" | "editable" | "text">> = {},
+  options: Partial<
+    Pick<PsdLayerMetadata, "visible" | "opacity" | "editable" | "text" | "blendMode">
+  > = {},
 ): PsdLayerMetadata {
   return {
     id,
@@ -231,6 +244,7 @@ export function layerMetadata(
     visible: options.visible ?? true,
     opacity: options.opacity ?? 1,
     editable: options.editable ?? true,
+    ...(options.blendMode ? { blendMode: options.blendMode } : {}),
     ...(options.text ? { text: options.text } : {}),
     warnings: [],
   };

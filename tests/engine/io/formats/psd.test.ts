@@ -98,6 +98,49 @@ test("rasterizes visible text and shape layers with opacity and source-over orde
   ).toEqual([128, 0, 128, 255]);
 });
 
+test("rasterizes supported PSD blend modes and rejects unsupported modes", () => {
+  const red = new Uint8Array([255, 0, 0, 255]);
+  const blue = new Uint8Array([0, 0, 255, 255]);
+  const blended = rasterizePsdLayers({
+    width: 1,
+    height: 1,
+    layers: [
+      { ...layerMetadata("base", "Base"), raster: { width: 1, height: 1, pixels: red } },
+      {
+        ...layerMetadata("screen", "Screen", { blendMode: "SCREEN" }),
+        raster: { width: 1, height: 1, pixels: blue },
+      },
+    ],
+  });
+  expect([...blended]).toEqual([255, 0, 255, 255]);
+
+  expect(() =>
+    rasterizePsdLayers({
+      width: 1,
+      height: 1,
+      layers: [
+        {
+          ...layerMetadata("unsupported", "Unsupported", { blendMode: "COLOR_DODGE" }),
+          raster: { width: 1, height: 1, pixels: blue },
+        },
+      ],
+    }),
+  ).toThrow("unsupported PSD blend mode: COLOR_DODGE");
+});
+
+test("reports unsupported PSD blend modes without mutating staged bytes", () => {
+  const bytes = stagePsdExport({
+    width: 1,
+    height: 1,
+    layers: [layerMetadata("unsupported", "Unsupported", { blendMode: "COLOR_DODGE" })],
+  });
+  const before = bytes.slice();
+  const result = stagePsdImport(bytes);
+  expect(result.warnings).toEqual(["unsupported-blend-mode"]);
+  expect(result.degraded).toBe(true);
+  expect(bytes).toEqual(before);
+});
+
 test("skips hidden layers and rejects malformed raster payloads", () => {
   expect(
     [...rasterizePsdLayers({
