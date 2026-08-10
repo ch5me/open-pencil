@@ -164,3 +164,58 @@ test("brush rejects invalid pointer samples and malformed masks", () => {
     ),
   ).toThrow("invalid raster mask");
 });
+
+test("brush validates every numeric control and keeps caller data detached", () => {
+  const config = {
+    size: 12,
+    hardness: 0.8,
+    opacity: 0.7,
+    flow: 0.6,
+    spacing: 0.2,
+    pressure: true,
+    smoothing: 0.15,
+  };
+  const samples = [{ x: 1, y: 2, pressure: 0.5, time: 1 }];
+  const stroke = createBrushStroke(mask, config, samples, "tx:detached");
+
+  config.size = 24;
+  config.hardness = 0;
+  config.opacity = 0;
+  config.flow = 0;
+  config.spacing = 1;
+  config.smoothing = 1;
+  samples[0] = { x: 9, y: 9, pressure: 1, time: 2 };
+
+  expect(stroke.config).toEqual({
+    size: 12,
+    hardness: 0.8,
+    opacity: 0.7,
+    flow: 0.6,
+    spacing: 0.2,
+    pressure: true,
+    smoothing: 0.15,
+  });
+  expect(stroke.samples).toEqual([{ x: 1, y: 2, pressure: 0.5, time: 1 }]);
+
+  for (const key of ["hardness", "opacity", "flow", "spacing", "smoothing"] as const) {
+    expect(() =>
+      createBrushStroke(
+        mask,
+        { ...config, [key]: -0.01 },
+        [],
+        `tx:invalid-${key}`,
+      ),
+    ).toThrow(`invalid brush ${key}`);
+    expect(() =>
+      createBrushStroke(
+        mask,
+        { ...config, [key]: 1.01 },
+        [],
+        `tx:invalid-${key}-high`,
+      ),
+    ).toThrow(`invalid brush ${key}`);
+  }
+  expect(() =>
+    createBrushStroke(mask, { ...config, size: 0 }, [], "tx:invalid-size"),
+  ).toThrow("invalid brush size");
+});
