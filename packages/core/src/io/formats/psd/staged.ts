@@ -29,30 +29,97 @@ const PSD_EXTERNAL_APPLICATIONS: readonly PsdExternalSource["application"][] = [
 
 export const PSD_EXTERNAL_SOURCE_CONTRACT: readonly PsdExternalSource[] =
   PSD_EXTERNAL_APPLICATIONS.map((application) => ({
-  application,
-  build: "UNKNOWN",
-  fixture: null,
-  sha256: null,
-  externalReopen: "UNKNOWN",
-  expected: {
-    hierarchy: "UNKNOWN",
-    appearance: "UNKNOWN",
-    editability: "UNKNOWN",
-  },
+    application,
+    build: "UNKNOWN",
+    fixture: null,
+    sha256: null,
+    externalReopen: "UNKNOWN",
+    expected: {
+      hierarchy: "UNKNOWN",
+      appearance: "UNKNOWN",
+      editability: "UNKNOWN",
+    },
   }));
+
+function assertSha256(value: string, label: string): void {
+  if (!/^[0-9a-f]{64}$/u.test(value)) {
+    throw new PsdUnsupportedError(`${label} must be a lowercase SHA-256 digest`);
+  }
+}
+
+function assertExternalSource(source: PsdExternalSource, index: number): void {
+  const label = `PSD external source ${index}`;
+  if (source.externalReopen === "UNKNOWN") {
+    if (
+      source.expected.hierarchy !== "UNKNOWN" ||
+      source.expected.appearance !== "UNKNOWN" ||
+      source.expected.editability !== "UNKNOWN"
+    ) {
+      throw new PsdUnsupportedError(`${label} has inferred external reopen expectations`);
+    }
+    return;
+  }
+  if (source.build === "UNKNOWN" || source.fixture === null || source.sha256 === null) {
+    throw new PsdUnsupportedError(`${label} lacks external reopen provenance`);
+  }
+  assertSha256(source.sha256, `${label}.sha256`);
+  if (
+    source.expected.hierarchy === "UNKNOWN" ||
+    source.expected.appearance === "UNKNOWN" ||
+    source.expected.editability === "UNKNOWN"
+  ) {
+    throw new PsdUnsupportedError(`${label} lacks declared hierarchy, appearance, and editability`);
+  }
+}
 
 export function createPsdCorpusManifest(
   cases: PsdCorpusManifest["cases"],
+  externalSources: PsdCorpusManifest["externalSources"] = PSD_EXTERNAL_SOURCE_CONTRACT,
 ): PsdCorpusManifest {
   if (cases.length === 0) {
     throw new PsdUnsupportedError("PSD external corpus manifest is empty");
   }
-  if (cases.some((entry) => entry.warning.length === 0)) {
-    throw new PsdUnsupportedError("PSD external corpus warning coverage is incomplete");
+  if (externalSources.length !== PSD_EXTERNAL_APPLICATIONS.length) {
+    throw new PsdUnsupportedError("PSD external source coverage is incomplete");
   }
+  if (
+    externalSources.some(
+      (source, index) =>
+        source.application !== PSD_EXTERNAL_APPLICATIONS[index] ||
+        !source.build ||
+        source.fixture === "" ||
+        (source.externalReopen === "UNKNOWN" &&
+          source.sha256 !== null &&
+          !/^[0-9a-f]{64}$/u.test(source.sha256)),
+    )
+  ) {
+    throw new PsdUnsupportedError("PSD external source contract is invalid");
+  }
+  externalSources.forEach(assertExternalSource);
+  cases.forEach((entry, index) => {
+    if (entry.warning.length === 0) {
+      throw new PsdUnsupportedError("PSD external corpus warning coverage is incomplete");
+    }
+    assertSha256(entry.sha256, `PSD corpus case ${index}.sha256`);
+    if (entry.source !== "external") {
+      throw new PsdUnsupportedError("PSD corpus case provenance is invalid");
+    }
+    assertSha256(
+      entry.selfGeneratedRoundTripSha256,
+      `PSD corpus case ${index}.selfGeneratedRoundTripSha256`,
+    );
+    if (
+      entry.externalReopen === "UNKNOWN" &&
+      (entry.expected.hierarchy !== "UNKNOWN" ||
+        entry.expected.appearance !== "UNKNOWN" ||
+        entry.expected.editability !== "UNKNOWN")
+    ) {
+      throw new PsdUnsupportedError("PSD corpus case has inferred external reopen expectations");
+    }
+  });
   return {
     version: "psd-corpus-v1",
-    externalSources: PSD_EXTERNAL_SOURCE_CONTRACT,
+    externalSources,
     cases,
     warningCoverage: 1,
     failedImportVisibleMutationCount: 0,
@@ -86,8 +153,7 @@ function parsePsdHeaderBytes(
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
   sourceByteLength = bytes.byteLength,
 ): PsdHeader {
-  if (sourceByteLength > limits.maxBytes)
-    throw new PsdHostileFileError("PSD exceeds byte limit");
+  if (sourceByteLength > limits.maxBytes) throw new PsdHostileFileError("PSD exceeds byte limit");
   if (bytes.byteLength < 26) throw new PsdUnsupportedError("PSD header is truncated");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (
@@ -150,7 +216,13 @@ function headerWarnings(header: PsdHeader): PsdWarningCode[] {
   return warnings;
 }
 
-const PSD_SUPPORTED_BLEND_MODES = new Set(["NORMAL", "PASS_THROUGH", "MULTIPLY", "SCREEN", "OVERLAY"]);
+const PSD_SUPPORTED_BLEND_MODES = new Set([
+  "NORMAL",
+  "PASS_THROUGH",
+  "MULTIPLY",
+  "SCREEN",
+  "OVERLAY",
+]);
 
 function blendModeWarning(layers: readonly PsdLayerMetadata[]): PsdWarningCode[] {
   return layers.some(
@@ -205,7 +277,11 @@ function advancedLayerFeatureWarning(layers: readonly PsdLayerMetadata[]): PsdWa
     : [];
 }
 
-function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits): PsdLayerMetadata[] {
+function readLayerMetadata(
+  bytes: Uint8Array,
+  offset: number,
+  limits: PsdLimits,
+): PsdLayerMetadata[] {
   if (bytes.byteLength < offset + PSD_METADATA_MAGIC.byteLength) return [];
   if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value)) return [];
 
@@ -234,10 +310,7 @@ function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits)
       ) {
         throw new PsdUnsupportedError("invalid PSD layer metadata");
       }
-      if (
-        layer.adjustmentType !== undefined &&
-        typeof layer.adjustmentType !== "string"
-      ) {
+      if (layer.adjustmentType !== undefined && typeof layer.adjustmentType !== "string") {
         throw new PsdUnsupportedError("invalid PSD adjustment metadata");
       }
       if (
@@ -265,7 +338,8 @@ function readDocumentMetadata(
   limits: PsdLimits,
 ): PsdDocumentMetadata | undefined {
   if (bytes.byteLength < offset + PSD_METADATA_MAGIC.byteLength) return undefined;
-  if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value)) return undefined;
+  if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value))
+    return undefined;
   const payload = new TextDecoder().decode(bytes.subarray(offset + PSD_METADATA_MAGIC.byteLength));
   try {
     const parsed = JSON.parse(payload) as unknown;
@@ -317,7 +391,9 @@ function readDocumentMetadata(
     }
     if (
       document.metadata !== undefined &&
-      (!document.metadata || typeof document.metadata !== "object" || Array.isArray(document.metadata))
+      (!document.metadata ||
+        typeof document.metadata !== "object" ||
+        Array.isArray(document.metadata))
     ) {
       throw new PsdUnsupportedError("invalid PSD document metadata");
     }
@@ -328,9 +404,7 @@ function readDocumentMetadata(
   }
 }
 
-function decodeIccProfile(
-  profile: PsdDocumentMetadata["iccProfile"],
-): PsdIccProfile | undefined {
+function decodeIccProfile(profile: PsdDocumentMetadata["iccProfile"]): PsdIccProfile | undefined {
   if (!profile) return undefined;
   if (typeof profile.name !== "string" || !Array.isArray(profile.data)) {
     throw new PsdUnsupportedError("invalid PSD ICC profile metadata");
@@ -379,9 +453,7 @@ export async function readPsdFile(
   if (file.size > limits.maxBytes) throw new PsdHostileFileError("PSD exceeds byte limit");
 
   // Read only the fixed header before allowing the full payload allocation.
-  const headerBytes = new Uint8Array(
-    await file.slice(0, 26).arrayBuffer(),
-  );
+  const headerBytes = new Uint8Array(await file.slice(0, 26).arrayBuffer());
   throwIfCancelled(signal);
   parsePsdHeaderBytes(headerBytes, limits, file.size);
 
@@ -488,17 +560,23 @@ export function layerMetadata(
   options: Partial<
     Pick<
       PsdLayerMetadata,
-      "visible" | "opacity" | "editable" | "text" | "blendMode" | "adjustmentType" | "adjustments"
-        | "smartObjectId"
-        | "smartObjectKind"
-        | "linkedAssetId"
-        | "linkedAssetRevisionId"
-        | "embeddedDocumentId"
-        | "embeddedDocumentVersion"
-        | "vector"
-        | "paths"
-        | "effects"
-        | "vectorMask"
+      | "visible"
+      | "opacity"
+      | "editable"
+      | "text"
+      | "blendMode"
+      | "adjustmentType"
+      | "adjustments"
+      | "smartObjectId"
+      | "smartObjectKind"
+      | "linkedAssetId"
+      | "linkedAssetRevisionId"
+      | "embeddedDocumentId"
+      | "embeddedDocumentVersion"
+      | "vector"
+      | "paths"
+      | "effects"
+      | "vectorMask"
     >
   > = {},
 ): PsdLayerMetadata {
