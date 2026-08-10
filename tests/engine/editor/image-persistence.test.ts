@@ -6,6 +6,8 @@ import {
   createTerminationInjector,
   detachPngDataUrls,
   estimateJsonOverhead,
+  migrateWorkingDocumentRecord,
+  PersistenceConflictError,
   PersistenceContractError,
   PersistenceMigrationError,
   PersistenceQuotaError,
@@ -17,8 +19,10 @@ import {
 } from "#core/editor/storage";
 
 const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgo=";
+const OTHER_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoA";
 const PRIOR_ROOT = "a".repeat(64);
 const NEXT_ROOT = "b".repeat(64);
+const THIRD_ROOT = "c".repeat(64);
 
 function record(
   contentRootHash: string,
@@ -125,8 +129,26 @@ test("persistence-v1 first-save termination recovers nothing or one complete new
       expect(recovered).toBeUndefined();
     } else {
       expect(recovered).toEqual(next);
-      expect(recovered.record.commitState).toBe("committed");
+      expect(recovered?.record.commitState).toBe("committed");
     }
+  }
+});
+
+test("persistence-v1 preserves ACK across same-content-root generation termination", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const next = await detached(PRIOR_ROOT, 2);
+  for (let seed = 0; seed < 4; seed++) {
+    let boundaryCount = 0;
+    const store = new AtomicWorkingDocumentPersistence({
+      onDurableBoundary: (boundary) => {
+        if (boundaryCount++ === 4 + seed) throw new PersistenceTerminationError(boundary, seed);
+      },
+    });
+    await store.save(prior.record, prior.assets);
+    await expect(store.save(next.record, next.assets)).rejects.toBeInstanceOf(
+      PersistenceTerminationError,
+    );
+    expect(store.recover("doc:one")).toEqual(seed < 3 ? prior : next);
   }
 });
 
@@ -167,9 +189,12 @@ test("persistence-v1 quota and migration failures preserve the acknowledged root
   expect(migrationStore.recover("doc:one")?.record.contentRootHash).toBe(PRIOR_ROOT);
 
   const digestMismatch = await detachPngDataUrls(
-    record(NEXT_ROOT, 2, { image: "data:image/png;base64,iVBORw0KGgoA" }),
+    record(NEXT_ROOT, 2, { image: OTHER_PNG_DATA_URL }),
   );
   if (digestMismatch.assets[0]) digestMismatch.assets[0].bytes[8] = 1;
+  await expect(
+    migrateWorkingDocumentRecord(digestMismatch.record, digestMismatch.assets),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
   await expect(
     migrationStore.save(digestMismatch.record, digestMismatch.assets),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
@@ -177,6 +202,92 @@ test("persistence-v1 quota and migration failures preserve the acknowledged root
   await expect(
     detachPngDataUrls(record(NEXT_ROOT, 2, { image: "data:image/png;base64,bm90LXBuZw==" })),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
+});
+
+test("persistence-v1 rejects surplus assets from mixed generations", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const next = await detached(NEXT_ROOT, 2);
+  const surplus = await detachPngDataUrls(record(THIRD_ROOT, 3, { image: OTHER_PNG_DATA_URL }));
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+  await expect(store.save(next.record, [...next.assets, ...surplus.assets])).rejects.toBeInstanceOf(
+    PersistenceMigrationError,
+  );
+  await expect(
+    store.save(
+      record(NEXT_ROOT, 2, {
+        image: { ...next.assets[0]?.reference, hidden: surplus.assets[0]?.reference },
+      }),
+      next.assets,
+    ),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  expect(store.recover("doc:one")).toEqual(prior);
+});
+
+test("persistence-v1 rejects stale sequences and stale-root CAS without regressing ACK", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const next = await detached(NEXT_ROOT, 2);
+  const third = await detachPngDataUrls(
+    record(THIRD_ROOT, 3, { title: "Third", image: OTHER_PNG_DATA_URL }),
+  );
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+  await store.save(next.record, next.assets, { expectedContentRootHash: PRIOR_ROOT });
+
+  await expect(store.save(prior.record, prior.assets)).rejects.toBeInstanceOf(
+    PersistenceConflictError,
+  );
+  await expect(
+    store.save(third.record, third.assets, { expectedContentRootHash: PRIOR_ROOT }),
+  ).rejects.toBeInstanceOf(PersistenceConflictError);
+  await expect(
+    store.save({ ...next.record, contentRootHash: THIRD_ROOT }, next.assets),
+  ).rejects.toBeInstanceOf(PersistenceConflictError);
+  expect(store.recover("doc:one")).toEqual(next);
+});
+
+test("persistence-v1 rejects non-JSON payload representations before serialization", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+  const sparse: unknown[] = [];
+  sparse.length = 1;
+  const accessor: unknown[] = [];
+  Object.defineProperty(accessor, 0, { enumerable: true, get: () => "value" });
+  const cyclic: Record<string, unknown> = {};
+  cyclic.self = cyclic;
+  const invalidValues: readonly unknown[] = [
+    undefined,
+    Number.NaN,
+    -0,
+    1n,
+    Symbol("value"),
+    () => "value",
+    new Date(0),
+    sparse,
+    accessor,
+    cyclic,
+  ];
+
+  for (const invalid of invalidValues) {
+    await expect(store.save(record(NEXT_ROOT, 2, { invalid }), [])).rejects.toBeInstanceOf(
+      PersistenceContractError,
+    );
+    expect(store.recover("doc:one")).toEqual(prior);
+  }
+});
+
+test("persistence-v1 detaches caller and recovery asset buffers", async () => {
+  const next = await detachPngDataUrls(record(NEXT_ROOT, 1, { image: OTHER_PNG_DATA_URL }));
+  const store = new AtomicWorkingDocumentPersistence();
+  const originalByte = next.assets[0]?.bytes[8];
+  const pendingSave = store.save(next.record, next.assets);
+  if (next.assets[0]) next.assets[0].bytes[8] = 1;
+  await pendingSave;
+  const firstRecovery = store.recover("doc:one");
+  expect(firstRecovery?.assets[0]?.bytes[8]).toBe(originalByte);
+  if (firstRecovery?.assets[0]) firstRecovery.assets[0].bytes[8] = 1;
+  expect(store.recover("doc:one")?.assets[0]?.bytes[8]).toBe(originalByte);
 });
 
 test("persistence-v1 preserves existing record and receipt APIs", () => {
@@ -200,6 +311,13 @@ test("persistence-v1 preserves existing record and receipt APIs", () => {
     2,
   );
   expect(recoverWorkingDocument([baseRecord], "doc:missing")).toBeUndefined();
+  const sourceSelection = ["layer:one"];
+  const recovered = recoverWorkingDocument(
+    [{ ...baseRecord, selectionIds: sourceSelection }],
+    "doc:one",
+  );
+  sourceSelection.splice(0);
+  expect(recovered?.selectionIds).toEqual(["layer:one"]);
   expect(() =>
     validateWorkingDocumentRecord({ ...baseRecord, viewport: { ...baseRecord.viewport, zoom: 0 } }),
   ).toThrow(PersistenceContractError);

@@ -1,3 +1,5 @@
+/* oxlint-disable max-lines */
+
 export type PersistenceState = "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
 
 export interface DetachedBinaryAssetReference {
@@ -62,6 +64,10 @@ export interface AtomicWorkingDocumentPersistenceOptions {
 
 export type AtomicPersistenceOptions = AtomicWorkingDocumentPersistenceOptions;
 
+export interface SaveWorkingDocumentOptions {
+  readonly expectedContentRootHash?: string;
+}
+
 export interface PersistenceContractReceipt {
   readonly version: "persistence-v1";
   readonly jsonOverheadBytes: number;
@@ -88,6 +94,11 @@ export class PersistenceQuotaError extends Error {
 export class PersistenceMigrationError extends Error {
   override readonly name = "PersistenceMigrationError";
   readonly code = "E_IMAGE_PERSISTENCE_MIGRATION";
+}
+
+export class PersistenceConflictError extends Error {
+  override readonly name = "PersistenceConflictError";
+  readonly code = "E_IMAGE_PERSISTENCE_CONFLICT";
 }
 
 export class PersistenceTerminationError extends Error {
@@ -120,6 +131,54 @@ function isDetachedReference(value: unknown): value is DetachedBinaryAssetRefere
   return isPlainRecord(value) && value.kind === "detached-binary-asset-v1";
 }
 
+// oxlint-disable-next-line complexity
+function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
+  const primitive =
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value) && !Object.is(value, -0));
+  if (primitive) return;
+  if (typeof value !== "object")
+    throw new PersistenceContractError("working-document payload must contain JSON values");
+  if (ancestors.has(value))
+    throw new PersistenceContractError("working-document payload must not contain cycles");
+  ancestors.add(value);
+  if (Array.isArray(value)) {
+    if (
+      Reflect.ownKeys(value).some(
+        (key) =>
+          key !== "length" &&
+          (typeof key !== "string" || !/^(0|[1-9]\d*)$/u.test(key) || Number(key) >= value.length),
+      ) ||
+      Array.from({ length: value.length }, (_, index) => index).some(
+        (index) => !Object.hasOwn(value, index),
+      )
+    ) {
+      throw new PersistenceContractError("working-document payload arrays must be dense");
+    }
+    for (let index = 0; index < value.length; index++) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, index);
+      if (!descriptor?.enumerable || !("value" in descriptor)) {
+        throw new PersistenceContractError("working-document payload has non-JSON properties");
+      }
+      assertJsonValue(descriptor.value, ancestors);
+    }
+    ancestors.delete(value);
+    return;
+  }
+  if (!isPlainRecord(value))
+    throw new PersistenceContractError("working-document payload must contain plain objects");
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (typeof key !== "string" || !descriptor?.enumerable || !("value" in descriptor)) {
+      throw new PersistenceContractError("working-document payload has non-JSON properties");
+    }
+    assertJsonValue(descriptor.value, ancestors);
+  }
+  ancestors.delete(value);
+}
+
 function containsPngDataUrl(value: unknown): boolean {
   if (typeof value === "string") return PNG_DATA_URL_PREFIX.test(value);
   if (Array.isArray(value)) return value.some(containsPngDataUrl);
@@ -145,7 +204,7 @@ function decodePngDataUrl(dataUrl: string): Uint8Array {
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer);
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -186,15 +245,22 @@ async function detachJsonValue(
   throw new PersistenceMigrationError("working-document payload must contain JSON values");
 }
 
-function assertDetachedReference(reference: DetachedBinaryAssetReference): void {
+function assertDetachedReference(
+  reference: unknown,
+): asserts reference is DetachedBinaryAssetReference {
   if (
+    !isPlainRecord(reference) ||
     reference.kind !== "detached-binary-asset-v1" ||
+    typeof reference.assetId !== "string" ||
     !/^asset:[0-9a-f]{64}$/u.test(reference.assetId) ||
+    typeof reference.revisionId !== "string" ||
     !/^sha256:[0-9a-f]{64}$/u.test(reference.revisionId) ||
     reference.assetId.slice("asset:".length) !== reference.revisionId.slice("sha256:".length) ||
     reference.mimeType !== "image/png" ||
+    typeof reference.byteLength !== "number" ||
     !Number.isSafeInteger(reference.byteLength) ||
-    reference.byteLength < PNG_SIGNATURE.length
+    reference.byteLength < PNG_SIGNATURE.length ||
+    Reflect.ownKeys(reference).length !== 5
   ) {
     throw new PersistenceMigrationError("invalid detached binary asset reference");
   }
@@ -206,11 +272,11 @@ export function createDetachedBinaryAssetReference(
   mimeType: string,
   byteLength: number,
 ): DetachedBinaryAssetReference {
-  const reference: DetachedBinaryAssetReference = {
+  const reference = {
     kind: "detached-binary-asset-v1",
-    assetId: assetId as DetachedBinaryAssetReference["assetId"],
-    revisionId: revisionId as DetachedBinaryAssetReference["revisionId"],
-    mimeType: mimeType as DetachedBinaryAssetReference["mimeType"],
+    assetId,
+    revisionId,
+    mimeType,
     byteLength,
   };
   assertDetachedReference(reference);
@@ -249,8 +315,12 @@ function cloneDetachedDocument(snapshot: DetachedWorkingDocument): DetachedWorki
   };
 }
 
-function durableRootKey(documentId: string, contentRootHash: string): string {
-  return `${documentId}\0${contentRootHash}`;
+function durableRootKey(
+  documentId: string,
+  contentSequence: number,
+  contentRootHash: string,
+): string {
+  return `${documentId}\0${contentSequence}\0${contentRootHash}`;
 }
 
 export async function detachPngDataUrls(
@@ -300,16 +370,19 @@ export function validateDetachedWorkingDocument(
 
   const references: DetachedBinaryAssetReference[] = [];
   collectDetachedReferences(record.payload, references);
+  const referencedRevisions = new Set(references.map(({ revisionId }) => revisionId));
   for (const reference of references) {
     const asset = assetsByRevision.get(reference.revisionId);
     if (
       !asset ||
       asset.reference.assetId !== reference.assetId ||
-      asset.reference.byteLength !== reference.byteLength ||
-      asset.reference.mimeType !== reference.mimeType
+      asset.reference.byteLength !== reference.byteLength
     ) {
       throw new PersistenceMigrationError(`missing detached binary asset: ${reference.revisionId}`);
     }
+  }
+  if (referencedRevisions.size !== assetsByRevision.size) {
+    throw new PersistenceMigrationError("detached binary asset set must exactly match references");
   }
 }
 
@@ -327,13 +400,11 @@ export async function verifyDetachedWorkingDocument(
   }
 }
 
-export const validateDetachedBinaryAssets = validateDetachedWorkingDocument;
-
-export function migrateWorkingDocumentRecord(
+export async function migrateWorkingDocumentRecord(
   record: WorkingDocumentRecord,
   assets: readonly DetachedBinaryAsset[] = [],
-): WorkingDocumentRecord {
-  validateDetachedWorkingDocument(record, assets);
+): Promise<WorkingDocumentRecord> {
+  await verifyDetachedWorkingDocument(record, assets);
   return structuredClone(record);
 }
 
@@ -359,7 +430,10 @@ export class AtomicWorkingDocumentPersistence {
   private readonly stagedAssets = new Map<string, readonly DetachedBinaryAsset[]>();
   private readonly stagedRecords = new Map<string, WorkingDocumentRecord>();
   private readonly committedRoots = new Map<string, DetachedWorkingDocument>();
-  private readonly acknowledgedRoots = new Map<string, string>();
+  private readonly acknowledgedRoots = new Map<
+    string,
+    { readonly rootKey: string; readonly contentRootHash: string }
+  >();
 
   constructor(private readonly options: AtomicWorkingDocumentPersistenceOptions = {}) {
     if (
@@ -370,9 +444,19 @@ export class AtomicWorkingDocumentPersistence {
     }
   }
 
-  async save(record: WorkingDocumentRecord, assets: readonly DetachedBinaryAsset[]): Promise<void> {
-    await verifyDetachedWorkingDocument(record, assets);
-    const candidate = cloneDetachedDocument({ record, assets });
+  async save(
+    record: WorkingDocumentRecord,
+    assets: readonly DetachedBinaryAsset[],
+    options: SaveWorkingDocumentOptions = {},
+  ): Promise<void> {
+    validateDetachedWorkingDocument(record, assets);
+    let candidate: DetachedWorkingDocument;
+    try {
+      candidate = cloneDetachedDocument({ record, assets });
+    } catch {
+      throw new PersistenceContractError("working document could not be detached");
+    }
+    await verifyDetachedWorkingDocument(candidate.record, candidate.assets);
     const byteLength =
       new TextEncoder().encode(JSON.stringify(candidate.record)).byteLength +
       candidate.assets.reduce((total, asset) => total + asset.bytes.byteLength, 0);
@@ -382,7 +466,33 @@ export class AtomicWorkingDocumentPersistence {
       );
     }
 
-    const rootKey = durableRootKey(candidate.record.documentId, candidate.record.contentRootHash);
+    const acknowledgedRoot = this.acknowledgedRoots.get(candidate.record.documentId);
+    const acknowledged = acknowledgedRoot && this.committedRoots.get(acknowledgedRoot.rootKey);
+    if (
+      options.expectedContentRootHash !== undefined &&
+      !/^[0-9a-f]{64}$/u.test(options.expectedContentRootHash)
+    ) {
+      throw new PersistenceContractError("expected content root hash must be a SHA-256 digest");
+    }
+    if (
+      options.expectedContentRootHash !== undefined &&
+      options.expectedContentRootHash !== acknowledgedRoot?.contentRootHash
+    ) {
+      throw new PersistenceConflictError(
+        `working document root changed from ${options.expectedContentRootHash} to ${acknowledgedRoot?.contentRootHash ?? "none"}`,
+      );
+    }
+    if (acknowledged && candidate.record.contentSequence <= acknowledged.record.contentSequence) {
+      throw new PersistenceConflictError(
+        `working document sequence ${candidate.record.contentSequence} conflicts with acknowledged sequence ${acknowledged.record.contentSequence}`,
+      );
+    }
+
+    const rootKey = durableRootKey(
+      candidate.record.documentId,
+      candidate.record.contentSequence,
+      candidate.record.contentRootHash,
+    );
     this.stagedAssets.set(rootKey, candidate.assets);
     this.afterBoundary("asset", candidate.record.contentRootHash);
     this.stagedRecords.set(rootKey, { ...candidate.record, commitState: "staged" });
@@ -402,14 +512,18 @@ export class AtomicWorkingDocumentPersistence {
     );
     this.afterBoundary("committed-record", candidate.record.contentRootHash);
 
-    this.acknowledgedRoots.set(candidate.record.documentId, candidate.record.contentRootHash);
+    this.acknowledgedRoots.set(candidate.record.documentId, {
+      rootKey,
+      contentRootHash: candidate.record.contentRootHash,
+    });
     this.afterBoundary("ack", candidate.record.contentRootHash);
   }
 
   recover(documentId: string): DetachedWorkingDocument | undefined {
     const acknowledgedRoot = this.acknowledgedRoots.get(documentId);
-    const acknowledged =
-      acknowledgedRoot && this.committedRoots.get(durableRootKey(documentId, acknowledgedRoot));
+    const acknowledged = acknowledgedRoot
+      ? this.committedRoots.get(acknowledgedRoot.rootKey)
+      : undefined;
     if (acknowledged?.record.documentId === documentId) {
       return cloneDetachedDocument(acknowledged);
     }
@@ -420,8 +534,9 @@ export class AtomicWorkingDocumentPersistence {
         (left, right) =>
           right.record.contentSequence - left.record.contentSequence ||
           right.record.updatedAt - left.record.updatedAt,
-      )[0];
-    return latest && cloneDetachedDocument(latest);
+      )
+      .at(0);
+    return latest ? cloneDetachedDocument(latest) : undefined;
   }
 
   private afterBoundary(boundary: PersistenceDurableBoundary, contentRootHash: string): void {
@@ -430,33 +545,65 @@ export class AtomicWorkingDocumentPersistence {
 }
 
 export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>): number {
+  assertJsonValue(payload);
   const jsonBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
   return jsonBytes - new TextEncoder().encode(JSON.stringify(Object.values(payload))).byteLength;
 }
 
-export function validateWorkingDocumentRecord(record: WorkingDocumentRecord): void {
+// Runtime validation intentionally checks untyped caller input.
+// oxlint-disable-next-line complexity
+export function validateWorkingDocumentRecord(
+  record: unknown,
+): asserts record is WorkingDocumentRecord {
   if (
+    !isPlainRecord(record) ||
     record.schema !== "openpencil-working-document-v1" ||
     record.schemaVersion !== 1 ||
+    typeof record.documentId !== "string" ||
     !record.documentId ||
+    typeof record.contentRootHash !== "string" ||
     !/^[0-9a-f]{64}$/u.test(record.contentRootHash)
   ) {
     throw new PersistenceContractError("invalid working-document identity");
   }
-  if (!Number.isSafeInteger(record.contentSequence) || record.contentSequence < 0) {
+  if (
+    typeof record.contentSequence !== "number" ||
+    !Number.isSafeInteger(record.contentSequence) ||
+    record.contentSequence < 0
+  ) {
     throw new PersistenceContractError("invalid content sequence");
   }
-  if (!Number.isSafeInteger(record.historySequence) || record.historySequence < 0) {
+  if (
+    typeof record.historySequence !== "number" ||
+    !Number.isSafeInteger(record.historySequence) ||
+    record.historySequence < 0
+  ) {
     throw new PersistenceContractError("invalid history sequence");
   }
-  assertFinite(record.viewport.panX, "viewport.panX");
-  assertFinite(record.viewport.panY, "viewport.panY");
-  if (!Number.isFinite(record.viewport.zoom) || record.viewport.zoom <= 0) {
+  const viewport = record.viewport;
+  if (
+    !isPlainRecord(viewport) ||
+    typeof viewport.panX !== "number" ||
+    typeof viewport.panY !== "number" ||
+    typeof viewport.zoom !== "number"
+  ) {
+    throw new PersistenceContractError("invalid viewport");
+  }
+  assertFinite(viewport.panX, "viewport.panX");
+  assertFinite(viewport.panY, "viewport.panY");
+  if (!Number.isFinite(viewport.zoom) || viewport.zoom <= 0)
     throw new PersistenceContractError("viewport.zoom must be positive");
-  }
-  if (!Number.isFinite(record.updatedAt)) {
+  if (typeof record.updatedAt !== "number" || !Number.isFinite(record.updatedAt))
     throw new PersistenceContractError("updatedAt must be finite");
+  if (
+    !Array.isArray(record.selectionIds) ||
+    record.selectionIds.some((selectionId) => typeof selectionId !== "string") ||
+    (record.commitState !== "staged" && record.commitState !== "committed") ||
+    !isPlainRecord(record.payload)
+  ) {
+    throw new PersistenceContractError("invalid working-document state");
   }
+  assertJsonValue(record.payload);
 }
 
 export function recoverWorkingDocument(
@@ -467,12 +614,14 @@ export function recoverWorkingDocument(
     (record) => record.documentId === documentId && record.commitState === "committed",
   );
   candidates.forEach(validateWorkingDocumentRecord);
-  return candidates
+  const recovered = candidates
     .slice()
     .sort(
       (left, right) =>
         right.contentSequence - left.contentSequence || right.updatedAt - left.updatedAt,
-    )[0];
+    )
+    .at(0);
+  return recovered ? structuredClone(recovered) : undefined;
 }
 
 export function createPersistenceContractReceipt(
