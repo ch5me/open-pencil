@@ -68,6 +68,12 @@ test("performance-d1-m1-v1 validates texture, dirty-rect, render-graph, memory, 
     gpuProfile: "UNKNOWN" as const,
   };
   expect(() => validateTextureVersion(evidence.textureVersion)).not.toThrow();
+  expect(() => validateTextureVersion({ ...evidence.textureVersion, textureId: "" })).toThrow(
+    "invalid texture version",
+  );
+  expect(() => validateTextureVersion({ ...evidence.textureVersion, revisionId: "" })).toThrow(
+    "invalid texture version",
+  );
   expect(() => validateDirtyRect(evidence.dirtyRect)).not.toThrow();
   expect(() => validatePerformanceEvidence(evidence)).not.toThrow();
   expect(() => validateDirtyRect({ x: 0, y: 0, width: -1, height: 1 })).toThrow(

@@ -386,6 +386,57 @@ test("image render adapter emits typed partial updates and unions repeated dirty
   expect(adapter.render(plan, resolve).textures[0]).not.toHaveProperty("update");
 });
 
+test("image render adapter uses a full upload when revision changes", () => {
+  const adapter = createImageRenderAdapter();
+  let revisionId = "sha256:hero-1";
+  const plan = imagePlan();
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId }),
+    getRevision: (id) => ({
+      revisionId: id,
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  };
+
+  adapter.render(plan, resolve);
+  adapter.markDirty("asset:hero", { x: 2, y: 3, width: 4, height: 5 });
+  revisionId = "sha256:hero-2";
+
+  expect(adapter.render(plan, resolve).textures[0]).toEqual({
+    assetId: "asset:hero",
+    revisionId,
+    byteLength: 3,
+    dirty: true,
+    uploaded: true,
+  });
+});
+
+test("image render adapter clears pending partial updates on restore", () => {
+  const adapter = createImageRenderAdapter();
+  const plan = imagePlan();
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId: "sha256:hero" }),
+    getRevision: (revisionId) => ({
+      revisionId,
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  };
+
+  adapter.render(plan, resolve);
+  adapter.markDirty("asset:hero", { x: 1, y: 2, width: 3, height: 4 });
+  adapter.restore();
+
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: true,
+    uploaded: true,
+  });
+  expect(adapter.render(plan, resolve).textures[0]).not.toHaveProperty("update");
+});
+
 test("image render adapter rejects invalid partial update rectangles", () => {
   const adapter = createImageRenderAdapter();
   expect(() => adapter.markDirty("asset:hero", { x: 0, y: 0, width: -1, height: 2 })).toThrow(
