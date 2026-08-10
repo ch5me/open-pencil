@@ -86,6 +86,30 @@ test("preserves PSD channels, spot colors, ICC profile, DPI, and document metada
   expect(reopened.warnings).toEqual(["unsupported-color-mode", "unsupported-bit-depth"]);
 });
 
+test("keeps document metadata export deterministic and caller-owned", () => {
+  const input = {
+    width: 32,
+    height: 16,
+    layers: [layerMetadata("background", "Background")],
+    channels: [{ id: 0, name: "Alpha", kind: "alpha" as const }],
+    colorMode: 3,
+    bitsPerChannel: 8 as const,
+    dpi: [144, 144] as const,
+    iccProfile: { name: "sRGB", data: new Uint8Array([1, 2, 3]) },
+    spotColors: [{ name: "Gold", color: [0.8, 0.5, 0.1] as const }],
+    metadata: { nested: { revision: 1 } },
+  };
+  const before = structuredClone(input);
+  const first = stagePsdExport(input);
+  const second = stagePsdExport(input);
+  const reopened = stagePsdImport(first);
+
+  expect(first).toEqual(second);
+  expect(input).toEqual(before);
+  expect(reopened.header.iccProfile).toEqual(input.iccProfile);
+  expect(reopened.header.metadata).toEqual(input.metadata);
+});
+
 test("preserves editable PSD text-layer metadata through producer staging", () => {
   const text = {
     sourceId: "text-1",
