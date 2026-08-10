@@ -79,6 +79,23 @@ export interface PsdRasterLayer {
   readonly width: number;
   readonly height: number;
   readonly pixels: Uint8Array;
+  /**
+   * Optional affine transform from raster-local coordinates to document
+   * coordinates: [a, b, c, d, e, f].
+   */
+  readonly transform?: readonly [number, number, number, number, number, number];
+  /** Rotation in degrees around the raster center. Used when no transform exists. */
+  readonly rotation?: number;
+  readonly mask?: PsdRasterMask;
+}
+
+export interface PsdRasterMask {
+  readonly width: number;
+  readonly height: number;
+  readonly pixels: Uint8Array;
+  readonly transform?: readonly [number, number, number, number, number, number];
+  readonly rotation?: number;
+  readonly inverted?: boolean;
 }
 
 export interface PsdRasterInput {

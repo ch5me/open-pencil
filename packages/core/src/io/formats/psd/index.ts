@@ -13,6 +13,7 @@ export {
   type PsdLimits,
   type PsdRasterInput,
   type PsdRasterLayer,
+  type PsdRasterMask,
   type PsdWarningCode,
 } from "./types";
 export {

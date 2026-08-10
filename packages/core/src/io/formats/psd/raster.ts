@@ -1,4 +1,9 @@
-import { PsdHostileFileError, type PsdRasterInput, type PsdRasterLayer } from "./types";
+import {
+  PsdHostileFileError,
+  type PsdRasterInput,
+  type PsdRasterLayer,
+  type PsdRasterMask,
+} from "./types";
 
 function assertRasterDimensions(raster: PsdRasterLayer, width: number, height: number): void {
   if (
@@ -14,6 +19,83 @@ function assertRasterDimensions(raster: PsdRasterLayer, width: number, height: n
 
 function clampByte(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+type Affine = readonly [number, number, number, number, number, number];
+
+function inverseMap(
+  transform: Affine,
+  x: number,
+  y: number,
+): { x: number; y: number } | undefined {
+  const [a, b, c, d, e, f] = transform;
+  const determinant = a * d - b * c;
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12) return undefined;
+  const translatedX = x - e;
+  const translatedY = y - f;
+  return {
+    x: (d * translatedX - c * translatedY) / determinant,
+    y: (-b * translatedX + a * translatedY) / determinant,
+  };
+}
+
+function rotationTransform(
+  rotation: number | undefined,
+  width: number,
+  height: number,
+): Affine | undefined {
+  if (rotation === undefined || rotation === 0) return undefined;
+  if (!Number.isFinite(rotation)) throw new PsdHostileFileError("PSD raster rotation is invalid");
+  const radians = (rotation * Math.PI) / 180;
+  const cosine = Math.cos(radians);
+  const sine = Math.sin(radians);
+  const centerX = width / 2;
+  const centerY = height / 2;
+  return [
+    cosine,
+    sine,
+    -sine,
+    cosine,
+    centerX - cosine * centerX + sine * centerY,
+    centerY - sine * centerX - cosine * centerY,
+  ];
+}
+
+function sourcePoint(
+  raster: Pick<PsdRasterLayer, "width" | "height" | "transform" | "rotation">,
+  x: number,
+  y: number,
+): { x: number; y: number } | undefined {
+  const transform = raster.transform ?? rotationTransform(raster.rotation, raster.width, raster.height);
+  return transform ? inverseMap(transform, x, y) : { x, y };
+}
+
+function sample(
+  raster: Pick<PsdRasterLayer, "width" | "height" | "pixels" | "transform" | "rotation">,
+  x: number,
+  y: number,
+): readonly [number, number, number, number] {
+  const point = sourcePoint(raster, x + 0.5, y + 0.5);
+  if (!point) return [0, 0, 0, 0];
+  const sourceX = Math.floor(point.x);
+  const sourceY = Math.floor(point.y);
+  if (sourceX < 0 || sourceY < 0 || sourceX >= raster.width || sourceY >= raster.height) {
+    return [0, 0, 0, 0];
+  }
+  const offset = (sourceY * raster.width + sourceX) * 4;
+  return [
+    raster.pixels[offset] ?? 0,
+    raster.pixels[offset + 1] ?? 0,
+    raster.pixels[offset + 2] ?? 0,
+    raster.pixels[offset + 3] ?? 0,
+  ];
+}
+
+function maskAlpha(mask: PsdRasterMask | undefined, x: number, y: number): number {
+  if (!mask) return 1;
+  const [red, green, blue, alpha] = sample(mask, x, y);
+  const value = (alpha / 255) * ((red + green + blue) / (3 * 255));
+  return mask.inverted ? 1 - value : value;
 }
 
 /**
@@ -36,29 +118,33 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
     assertRasterDimensions(layer.raster, input.width, input.height);
     const opacity = Math.max(0, Math.min(1, layer.opacity));
 
-    for (let offset = 0; offset < result.length; offset += 4) {
-      const sourceAlpha = (layer.raster.pixels[offset + 3] / 255) * opacity;
+    for (let y = 0; y < input.height; y += 1) {
+      for (let x = 0; x < input.width; x += 1) {
+        const offset = (y * input.width + x) * 4;
+        const [sourceRed, sourceGreen, sourceBlue, sourceByteAlpha] = sample(layer.raster, x, y);
+        const sourceAlpha = (sourceByteAlpha / 255) * opacity * maskAlpha(layer.raster.mask, x, y);
       if (sourceAlpha === 0) continue;
       const destinationAlpha = result[offset + 3] / 255;
       const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
       if (outputAlpha === 0) continue;
 
       result[offset] = clampByte(
-        (layer.raster.pixels[offset] * sourceAlpha +
+        (sourceRed * sourceAlpha +
           result[offset] * destinationAlpha * (1 - sourceAlpha)) /
           outputAlpha,
       );
       result[offset + 1] = clampByte(
-        (layer.raster.pixels[offset + 1] * sourceAlpha +
+        (sourceGreen * sourceAlpha +
           result[offset + 1] * destinationAlpha * (1 - sourceAlpha)) /
           outputAlpha,
       );
       result[offset + 2] = clampByte(
-        (layer.raster.pixels[offset + 2] * sourceAlpha +
+        (sourceBlue * sourceAlpha +
           result[offset + 2] * destinationAlpha * (1 - sourceAlpha)) /
           outputAlpha,
       );
       result[offset + 3] = clampByte(outputAlpha * 255);
+      }
     }
   }
   return result;
