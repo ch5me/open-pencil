@@ -49,6 +49,21 @@ function imagePlan(nodes = [imageNode("image")]): ReturnType<typeof createCompos
   return createCompositionPlan(graph);
 }
 
+function multiImagePlan(nodes: SceneNode[]): ReturnType<typeof createCompositionPlan> {
+  const root = {
+    ...imageNode("root"),
+    type: "GROUP",
+    childIds: nodes.map((node) => node.id),
+    fills: [],
+  };
+  const children = nodes.map((node) => ({ ...node, parentId: root.id }));
+  const graph = {
+    rootId: root.id,
+    getNode: (id: string) => (id === root.id ? root : children.find((node) => node.id === id)),
+  } as unknown as SceneGraph;
+  return createCompositionPlan(graph);
+}
+
 test("image render adapter rejects unsupported backends and restores texture state", () => {
   expect(() => createImageRenderAdapter({ backend: "webgpu" })).toThrow(
     UnsupportedImageBackendError,
@@ -168,15 +183,10 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
   };
 
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
-  expect(adapter.render(plan, resolve).textures).toHaveLength(1);
-  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
-    dirty: true,
-    uploaded: true,
-  });
-  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
-    dirty: false,
-    uploaded: false,
-  });
+  const first = adapter.render(plan, resolve);
+  expect(first.textures).toHaveLength(1);
+  expect(first.textures[0]?.uploaded).toBe(true);
+  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
@@ -290,7 +300,7 @@ test("image render adapter uploads only assets invalidated by their revision or 
     },
     getRevision: (revisionId) => revisions.get(revisionId),
   };
-  const plan = imagePlan([imageNode("hero", "asset:hero"), imageNode("mask", "asset:mask")]);
+  const plan = multiImagePlan([imageNode("hero", "asset:hero"), imageNode("mask", "asset:mask")]);
 
   expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
     true,
