@@ -12,12 +12,31 @@ import {
   type PsdLayerMetadata,
   type PsdWarningCode,
   type PsdCorpusManifest,
+  type PsdExternalSource,
   type PsdChannelMetadata,
   type PsdIccProfile,
   type PsdSpotColor,
 } from "./types";
 
 const PSD_METADATA_MAGIC = new TextEncoder().encode("OPPSD1");
+
+export const PSD_EXTERNAL_SOURCE_CONTRACT: readonly PsdExternalSource[] = [
+  "photoshop",
+  "affinity",
+  "krita",
+  "photopea",
+].map((application) => ({
+  application,
+  build: "UNKNOWN",
+  fixture: null,
+  sha256: null,
+  externalReopen: "UNKNOWN",
+  expected: {
+    hierarchy: "UNKNOWN",
+    appearance: "UNKNOWN",
+    editability: "UNKNOWN",
+  },
+}));
 
 export function createPsdCorpusManifest(
   cases: PsdCorpusManifest["cases"],
@@ -30,6 +49,7 @@ export function createPsdCorpusManifest(
   }
   return {
     version: "psd-corpus-v1",
+    externalSources: PSD_EXTERNAL_SOURCE_CONTRACT,
     cases,
     warningCoverage: 1,
     failedImportVisibleMutationCount: 0,

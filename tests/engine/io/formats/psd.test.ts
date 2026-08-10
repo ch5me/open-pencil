@@ -594,6 +594,24 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
   ).toThrow("warning coverage is incomplete");
   const manifest = createPsdCorpusManifest(externalCorpusCases);
   expect(manifest.version).toBe("psd-corpus-v1");
+  expect(externalCorpus.externalSources.map((entry) => entry.application)).toEqual([
+    "photoshop",
+    "affinity",
+    "krita",
+    "photopea",
+  ]);
+  expect(
+    externalCorpus.externalSources.every(
+      (entry) =>
+        entry.build === "UNKNOWN" &&
+        entry.fixture === null &&
+        entry.sha256 === null &&
+        entry.externalReopen === "UNKNOWN" &&
+        entry.expected.hierarchy === "UNKNOWN" &&
+        entry.expected.appearance === "UNKNOWN" &&
+        entry.expected.editability === "UNKNOWN",
+    ),
+  ).toBe(true);
   expect(manifest.cases.length).toBeGreaterThan(0);
   expect(manifest.warningCoverage).toBe(1);
   expect(manifest.failedImportVisibleMutationCount).toBe(0);

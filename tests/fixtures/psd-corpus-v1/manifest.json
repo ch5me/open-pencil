@@ -6,6 +6,56 @@
     "ref": "387049670cb89b88fb8fe1b7c01aeacf98dd2e3b",
     "license": "MIT"
   },
+  "externalSources": [
+    {
+      "application": "photoshop",
+      "build": "UNKNOWN",
+      "fixture": null,
+      "sha256": null,
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "application": "affinity",
+      "build": "UNKNOWN",
+      "fixture": null,
+      "sha256": null,
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "application": "krita",
+      "build": "UNKNOWN",
+      "fixture": null,
+      "sha256": null,
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "application": "photopea",
+      "build": "UNKNOWN",
+      "fixture": null,
+      "sha256": null,
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    }
+  ],
   "cases": [
     {
       "name": "test",

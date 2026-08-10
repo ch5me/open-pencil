@@ -27,6 +27,21 @@ export type PsdCapabilityCode =
   | "E_PSD_CAPABILITY_16_BIT"
   | "E_PSD_CAPABILITY_PSB";
 
+export type PsdExternalApplication = "photoshop" | "affinity" | "krita" | "photopea";
+
+export interface PsdExternalSource {
+  readonly application: PsdExternalApplication;
+  readonly build: string;
+  readonly fixture: string | null;
+  readonly sha256: string | null;
+  readonly externalReopen: "UNKNOWN" | "PASS" | "FAIL";
+  readonly expected: {
+    readonly hierarchy: "UNKNOWN" | "PASS" | "FAIL";
+    readonly appearance: "UNKNOWN" | "PASS" | "FAIL";
+    readonly editability: "UNKNOWN" | "PASS" | "FAIL";
+  };
+}
+
 export interface PsdCorpusCase {
   readonly name: string;
   readonly capability: PsdCapabilityCode;
@@ -46,6 +61,7 @@ export interface PsdCorpusCase {
 
 export interface PsdCorpusManifest {
   readonly version: "psd-corpus-v1";
+  readonly externalSources: readonly PsdExternalSource[];
   readonly cases: readonly PsdCorpusCase[];
   readonly warningCoverage: 1;
   readonly failedImportVisibleMutationCount: 0;
