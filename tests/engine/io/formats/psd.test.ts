@@ -76,6 +76,18 @@ test("preserves editable PSD text-layer metadata through producer staging", () =
   ]);
 });
 
+test("keeps PSD export deterministic and leaves layer input unchanged", () => {
+  const layers = [layerMetadata("layer-1", "Layer", { opacity: 0.5 })];
+  const before = structuredClone(layers);
+
+  const first = stagePsdExport({ width: 10, height: 20, layers });
+  const second = stagePsdExport({ width: 10, height: 20, layers });
+
+  expect(first).toEqual(second);
+  expect(layers).toEqual(before);
+  expect(stagePsdImport(first).layers).toEqual(before);
+});
+
 test("rejects hostile PSD dimensions before staging", () => {
   expect(() => stagePsdExport({ width: 100_000, height: 20, layers: [] })).toThrow(
     PsdHostileFileError,
