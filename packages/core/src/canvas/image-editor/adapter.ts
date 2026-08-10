@@ -79,7 +79,7 @@ export function createImageRenderAdapter(
               revisionId: binding.revisionId,
               byteLength: revision.bytes.byteLength,
               dirty: false,
-              uploaded: true,
+              uploaded: false,
             });
           } else {
             uploadedRevisions.set(assetId, binding.revisionId);
