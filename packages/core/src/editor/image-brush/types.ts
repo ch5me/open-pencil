@@ -238,6 +238,20 @@ function validateSamples(samples: readonly PointerSample[]): PointerSample[] {
   });
 }
 
+function cloneBrushStroke(stroke: BrushStroke): BrushStroke {
+  validateTransactionId(stroke.transactionId);
+  if (stroke.version !== "brush-mask-v1") throw new RangeError("invalid brush stroke history");
+  if (stroke.mode !== "erase" && stroke.mode !== "reveal") {
+    throw new RangeError("invalid brush mode");
+  }
+  return {
+    ...stroke,
+    maskTransform: [...stroke.maskTransform] as BrushMaskTransform,
+    samples: validateSamples(stroke.samples),
+    config: normalizeBrushConfig(stroke.config),
+  };
+}
+
 export function createBrushStroke(
   mask: RasterMask,
   config: BrushConfig,
@@ -312,22 +326,7 @@ export function replayBrushStroke(
   stroke: BrushStroke,
   applySample: (sample: PointerSample, index: number, stroke: BrushStroke) => void,
 ): void {
-  const replay = createBrushStroke(
-    {
-      maskId: stroke.maskId,
-      revisionId: `sha256:${"0".repeat(64)}`,
-      thumbnailId: stroke.thumbnailId,
-      enabled: true,
-      inverted: false,
-      displayMode: stroke.displayMode,
-      transform: stroke.maskTransform,
-    },
-    stroke.config,
-    stroke.samples,
-    stroke.transactionId,
-    true,
-    stroke.mode,
-  );
+  const replay = cloneBrushStroke(stroke);
   replay.samples.forEach((sample, index) => applySample(sample, index, replay));
 }
 
