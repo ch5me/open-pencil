@@ -206,4 +206,84 @@ describe("canvas render loop", () => {
       scheduler.restore();
     }
   });
+
+  test("marks a rendered loop dirty for one follow-up frame", () => {
+    const scheduler = createFrameScheduler();
+    try {
+      const { editor, emit } = createEditor();
+      let renders = 0;
+      const loop = createCanvasRenderLoop(editor, () => {
+        renders++;
+        loop.markRendered();
+      });
+
+      emit("repaint:requested");
+      scheduler.flush();
+      expect(renders).toBe(1);
+
+      loop.markDirty();
+      expect(scheduler.pendingCount).toBe(1);
+      scheduler.flush();
+      expect(renders).toBe(2);
+      expect(scheduler.pendingCount).toBe(0);
+    } finally {
+      scheduler.restore();
+    }
+  });
+
+  test("reschedules while loading, then renders once loading ends", () => {
+    const scheduler = createFrameScheduler();
+    try {
+      const { editor, emit } = createEditor();
+      let renders = 0;
+      createCanvasRenderLoop(editor, () => {
+        renders++;
+      });
+
+      editor.state.loading = true;
+      emit("repaint:requested");
+      scheduler.flush();
+      expect(renders).toBe(0);
+      expect(scheduler.pendingCount).toBe(1);
+
+      editor.state.loading = false;
+      scheduler.flush();
+      expect(renders).toBe(1);
+      expect(scheduler.pendingCount).toBe(0);
+    } finally {
+      scheduler.restore();
+    }
+  });
+
+  test("pausing one surface keeps a sibling surface scheduled", () => {
+    const scheduler = createFrameScheduler();
+    try {
+      const { editor, emit } = createEditor();
+      let sceneRenders = 0;
+      let overlayRenders = 0;
+      const scene = createCanvasRenderLoop(
+        editor,
+        () => {
+          sceneRenders++;
+        },
+        { layer: "scene" },
+      );
+      createCanvasRenderLoop(
+        editor,
+        () => {
+          overlayRenders++;
+        },
+        { layer: "overlays" },
+      );
+
+      emit("viewport:changed");
+      scene.pause();
+      expect(scheduler.pendingCount).toBe(1);
+      scheduler.flush();
+      expect(sceneRenders).toBe(0);
+      expect(overlayRenders).toBe(1);
+    } finally {
+      scheduler.restore();
+    }
+  });
 });

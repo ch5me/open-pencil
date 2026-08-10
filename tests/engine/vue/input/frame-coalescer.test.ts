@@ -97,4 +97,41 @@ describe("frame coalescer", () => {
 
     expect(values).toEqual([1, 2]);
   });
+
+  test("empty flush is a no-op and does not schedule work", () => {
+    const frames = scheduler();
+    const values: number[] = [];
+    const coalescer = createRafCoalescer(
+      (value: number) => values.push(value),
+      undefined,
+      frames.request,
+      frames.cancel,
+    );
+
+    coalescer.flush();
+    expect(values).toEqual([]);
+    expect(frames.pendingCount).toBe(0);
+  });
+
+  test("consuming a value can queue the next value for a later frame", () => {
+    const frames = scheduler();
+    const values: number[] = [];
+    const coalescer = createRafCoalescer(
+      (value: number) => {
+        values.push(value);
+        if (value === 1) coalescer.push(2);
+      },
+      undefined,
+      frames.request,
+      frames.cancel,
+    );
+
+    coalescer.push(1);
+    frames.flush();
+    expect(values).toEqual([1]);
+    expect(frames.pendingCount).toBe(1);
+
+    frames.flush();
+    expect(values).toEqual([1, 2]);
+  });
 });
