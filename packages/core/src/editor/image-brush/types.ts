@@ -1,4 +1,8 @@
-import { validateRasterMask, type RasterMask } from "#core/editor/image-raster";
+import {
+  validateRasterMask,
+  type RasterDisplayMode,
+  type RasterMask,
+} from "#core/editor/image-raster";
 
 export interface BrushConfig {
   readonly size: number;
@@ -27,6 +31,7 @@ export type BrushMaskControlOperation =
   | "delete"
   | "duplicate"
   | "transform"
+  | "display-mode"
   | "apply";
 
 export interface BrushStroke {
@@ -34,6 +39,7 @@ export interface BrushStroke {
   readonly maskId: string;
   readonly thumbnailId: string;
   readonly maskTransform: BrushMaskTransform;
+  readonly displayMode: RasterDisplayMode;
   readonly mode: BrushMode;
   readonly samples: readonly PointerSample[];
   readonly config: BrushConfig;
@@ -137,6 +143,21 @@ export function transformMask(
   );
 }
 
+export function setMaskDisplayMode(
+  mask: RasterMask,
+  displayMode: RasterDisplayMode,
+  transactionId: `tx:${string}`,
+): BrushMaskControl {
+  const validated = validateRasterMask(mask);
+  if (displayMode !== "overlay" && displayMode !== "grayscale" && displayMode !== "isolate") {
+    throw new RangeError("invalid brush mask display mode");
+  }
+  return createMaskControl("display-mode", validated, transactionId, {
+    ...validated,
+    displayMode,
+  });
+}
+
 export function applyMask(
   mask: RasterMask,
   transactionId: `tx:${string}`,
@@ -210,6 +231,7 @@ export function createBrushStroke(
     maskId: validatedMask.maskId,
     thumbnailId: validatedMask.thumbnailId,
     maskTransform: [...validatedMask.transform] as BrushMaskTransform,
+    displayMode: validatedMask.displayMode,
     mode,
     samples: validateSamples(samples),
     config: normalized,

@@ -10,6 +10,7 @@ export {
   duplicateMask,
   invertMask,
   normalizeBrushConfig,
+  setMaskDisplayMode,
   transformMask,
   type BrushMaskControl,
   type BrushMaskControlOperation,
