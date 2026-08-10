@@ -42,8 +42,8 @@ test("performance-d1-m1-v1 tracks deterministic p95 and unavailable GPU profile"
     tiled: true,
     mipmaps: true,
     proxyPreview: true,
-    renderGraphScheduling: true,
-    filterFusion: true,
+    renderGraphScheduling: false,
+    filterFusion: false,
     gpuProfile: "UNKNOWN" as const,
   };
   expect(profile.version).toBe("performance-d1-m1-v1");
@@ -58,9 +58,9 @@ test("performance-d1-m1-v1 validates texture, dirty-rect, render-graph, memory, 
     dirtyRect: { x: 0, y: 0, width: 64, height: 64 },
     renderGraph: {
       version: "render-graph-v1" as const,
-      scheduled: true,
+      scheduled: false,
       nodeCount: 100,
-      filterFusion: true,
+      filterFusion: false,
     },
     benchmark: createBenchmarkResult(100, [3, 1, 4, 2, 5]),
     memoryProfile: { profile: "UNKNOWN" as const, peakBytes: "UNKNOWN" as const, tiled: true, mipmaps: true },
@@ -82,4 +82,33 @@ test("performance-d1-m1-v1 validates texture, dirty-rect, render-graph, memory, 
   expect(() => validatePerformanceEvidence({ ...evidence, version: "wrong" })).toThrow(
     "performance evidence version",
   );
+  const scheduledEvidence = structuredClone(evidence);
+  scheduledEvidence.renderGraph.scheduled = true;
+  expect(() => validatePerformanceEvidence(scheduledEvidence)).toThrow(
+    "invalid render graph evidence",
+  );
+});
+
+test("performance evidence does not claim render-graph scheduling or GPU filter fusion", () => {
+  const profile = {
+    version: "performance-d1-m1-v1" as const,
+    memoryProfile: "UNKNOWN",
+    tiled: true,
+    mipmaps: true,
+    proxyPreview: true,
+    renderGraphScheduling: false as const,
+    filterFusion: false as const,
+    gpuProfile: "UNKNOWN" as const,
+  };
+  const evidence = {
+    version: "render-graph-v1" as const,
+    scheduled: false as const,
+    nodeCount: 0,
+    filterFusion: false as const,
+  };
+
+  expect(profile.renderGraphScheduling).toBe(false);
+  expect(profile.filterFusion).toBe(false);
+  expect(evidence.scheduled).toBe(false);
+  expect(evidence.filterFusion).toBe(false);
 });

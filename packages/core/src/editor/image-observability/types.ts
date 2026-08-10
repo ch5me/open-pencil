@@ -123,6 +123,8 @@ export function validatePerformanceEvidence(evidence: PerformanceEvidence): void
   validateDirtyRect(evidence.dirtyRect);
   if (
     evidence.renderGraph.version !== "render-graph-v1" ||
+    evidence.renderGraph.scheduled ||
+    evidence.renderGraph.filterFusion ||
     evidence.renderGraph.nodeCount < 0 ||
     !Number.isInteger(evidence.renderGraph.nodeCount)
   ) {
