@@ -5,6 +5,7 @@ import { assertPixelParity } from "#core/color/composition";
 import {
   composeRaster,
   composeRasterRGBA8,
+  createRasterCanvasPool,
   createRasterGroupCache,
   RasterBackendUnavailableError,
   RASTER_RGBA8_PARITY,
@@ -12,6 +13,62 @@ import {
 } from "#core/canvas/image-editor";
 import type { AssetRevision } from "#core/editor/assets";
 import type { SceneGraph, SceneNode } from "#core/scene-graph";
+
+test("canvas pool stays cold until a measured allocation miss", () => {
+  const pool = createRasterCanvasPool(10);
+  expect(pool.acquire(1, 1)).toBeUndefined();
+  const canvas = { pixels: new Uint8Array(4), present: new Uint8Array(1) };
+  pool.recordMiss(1, 1, 9, canvas);
+  expect(pool.acquire(1, 1)).toBeUndefined();
+  pool.recordMiss(1, 1, 10, canvas);
+  expect(pool.acquire(1, 1)).toBe(canvas);
+  pool.release(1, 1, canvas);
+  expect(pool.acquire(1, 1)).toBe(canvas);
+  pool.clear();
+  expect(pool.acquire(1, 1)).toBeUndefined();
+});
+
+test("canvas pool keeps composed output fresh across combined mask passes", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:pooled",
+      },
+    ],
+  });
+  const plan = planFor([image], image.id);
+  const red = {
+    revisionId: "sha256:pooled-red",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255]),
+  } satisfies AssetRevision;
+  const blue = {
+    revisionId: "sha256:pooled-blue",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([0, 0, 255, 255]),
+  } satisfies AssetRevision;
+  let revision: AssetRevision = red;
+  const pool = createRasterCanvasPool(0);
+  const first = composeRasterRGBA8(plan, {
+    getAsset: (assetId) => ({ assetId, revisionId: revision.revisionId }),
+    getRevision: () => revision,
+  }, { width: 1, height: 1, canvasPool: pool });
+  revision = blue;
+  const second = composeRasterRGBA8(plan, {
+    getAsset: (assetId) => ({ assetId, revisionId: revision.revisionId }),
+    getRevision: () => revision,
+  }, { width: 1, height: 1, canvasPool: pool });
+  expect([...first.pixels]).toEqual([255, 0, 0, 255]);
+  expect([...second.pixels]).toEqual([0, 0, 255, 255]);
+});
 
 test("group CPU cache stays cold until a measured threshold miss", () => {
   const cache = createRasterGroupCache(10);

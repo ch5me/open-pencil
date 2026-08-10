@@ -103,6 +103,11 @@ export interface RasterCompositionOptions {
    * The cache stores individual raster-node buffers, not group render passes.
    */
   readonly groupCache?: RasterGroupCache;
+  /**
+   * Optional threshold-gated scratch canvases for sequential raster nodes.
+   * The output canvas remains fresh for every composition.
+   */
+  readonly canvasPool?: RasterCanvasPool;
   readonly now?: () => number;
 }
 
@@ -116,9 +121,18 @@ export interface RasterGroupCache {
   clear(): void;
 }
 
-interface RasterCachedNode {
+export interface RasterCanvas {
   readonly pixels: Uint8Array;
   readonly present: Uint8Array;
+}
+
+type RasterCachedNode = RasterCanvas;
+
+export interface RasterCanvasPool {
+  acquire(width: number, height: number): RasterCanvas | undefined;
+  recordMiss(width: number, height: number, elapsedMs: number, value: RasterCanvas): void;
+  release(width: number, height: number, value: RasterCanvas): void;
+  clear(): void;
 }
 
 const adjustmentIds = new WeakMap<RasterAdjustment, number>();
@@ -161,6 +175,39 @@ export function createRasterGroupCache(thresholdMs = 50): RasterGroupCache {
     },
     clear() {
       entries.clear();
+      enabled.clear();
+    },
+  };
+}
+
+export function createRasterCanvasPool(thresholdMs = 50): RasterCanvasPool {
+  if (!Number.isFinite(thresholdMs) || thresholdMs < 0) {
+    throw new RangeError("canvas pool threshold must be a finite non-negative number");
+  }
+  const available = new Map<string, RasterCanvas>();
+  const enabled = new Set<string>();
+  const keyFor = (width: number, height: number) => `${width}x${height}`;
+  return {
+    acquire(width, height) {
+      const key = keyFor(width, height);
+      if (!enabled.has(key)) return undefined;
+      const value = available.get(key);
+      if (!value) return undefined;
+      available.delete(key);
+      return value;
+    },
+    recordMiss(width, height, elapsedMs, value) {
+      if (!Number.isFinite(elapsedMs) || elapsedMs < thresholdMs) return;
+      const key = keyFor(width, height);
+      enabled.add(key);
+      if (!available.has(key)) available.set(key, value);
+    },
+    release(width, height, value) {
+      const key = keyFor(width, height);
+      if (enabled.has(key) && !available.has(key)) available.set(key, value);
+    },
+    clear() {
+      available.clear();
       enabled.clear();
     },
   };
@@ -568,8 +615,9 @@ export function composeRasterRGBA8(
       continue;
     }
     const adjustmentCallbacks = rasterAdjustmentCallbacks(node, options);
+    const groupCache = options.groupCache;
     const cacheEnabled =
-      options.groupCache !== undefined &&
+      groupCache !== undefined &&
       (adjustmentCallbacks.length === 0 || options.adjustmentSignature !== undefined);
     const cacheKey = rasterNodeCacheKey(
       plan,
@@ -578,12 +626,18 @@ export function composeRasterRGBA8(
       options,
       adjustmentCallbacks.map(adjustmentId),
     );
-    let cached = cacheEnabled ? options.groupCache?.get(cacheKey) : undefined;
+    let cached = cacheEnabled ? groupCache.get(cacheKey) : undefined;
+    let scratch: RasterCanvas | undefined;
     if (!cached) {
       const startedAt = now();
       const { width, height } = node.bounds;
-      const present = new Uint8Array(options.width * options.height);
-      let nodePixels = createPixelBuffer(options.width * options.height * 4);
+      scratch = options.canvasPool?.acquire(options.width, options.height);
+      const present = scratch?.present ?? new Uint8Array(options.width * options.height);
+      let nodePixels = scratch?.pixels ?? createPixelBuffer(options.width * options.height * 4);
+      if (scratch) {
+        present.fill(0);
+        nodePixels.fill(0);
+      }
       for (let outputY = 0; outputY < options.height; outputY += 1) {
         for (let outputX = 0; outputX < options.width; outputX += 1) {
           const local = pointInRotatedNode(node, outputX + 0.5, outputY + 0.5);
@@ -629,9 +683,16 @@ export function composeRasterRGBA8(
         }
       }
       cached = { pixels: nodePixels, present };
+      const elapsedMs = now() - startedAt;
       if (cacheEnabled) {
-        options.groupCache?.recordMiss(cacheKey, now() - startedAt, cached);
+        groupCache.recordMiss(cacheKey, elapsedMs, cached);
       }
+      options.canvasPool?.recordMiss(
+        options.width,
+        options.height,
+        elapsedMs,
+        { pixels: nodePixels, present },
+      );
     }
     const { pixels: nodePixels, present } = cached;
     for (let outputY = 0; outputY < options.height; outputY += 1) {
@@ -645,6 +706,9 @@ export function composeRasterRGBA8(
           node.inheritedOpacity,
         );
       }
+    }
+    if (scratch) {
+      options.canvasPool?.release(options.width, options.height, scratch);
     }
   }
   const backend = options.backend ?? "canvas2d";
