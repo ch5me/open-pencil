@@ -186,6 +186,10 @@ export interface PsdExportInput {
   readonly width: number;
   readonly height: number;
   readonly layers: readonly PsdLayerMetadata[];
+  /** PSD 1 or PSB 2 document version. */
+  readonly version?: 1 | 2;
+  /** Convenience alias for callers that select the interchange format. */
+  readonly format?: "psd" | "psb";
   readonly channels?: readonly PsdChannelMetadata[];
   readonly colorMode?: number;
   readonly bitsPerChannel?: 8 | 16;
