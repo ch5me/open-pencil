@@ -419,7 +419,7 @@ export function layerMetadata(
     ...(options.blendMode ? { blendMode: options.blendMode } : {}),
     ...(options.adjustmentType ? { adjustmentType: options.adjustmentType } : {}),
     ...(options.adjustments ? { adjustments: structuredClone(options.adjustments) } : {}),
-    ...(options.text ? { text: options.text } : {}),
+    ...(options.text ? { text: structuredClone(options.text) } : {}),
     ...(options.smartObjectId ? { smartObjectId: options.smartObjectId } : {}),
     ...(options.smartObjectKind ? { smartObjectKind: options.smartObjectKind } : {}),
     ...(options.linkedAssetId ? { linkedAssetId: options.linkedAssetId } : {}),

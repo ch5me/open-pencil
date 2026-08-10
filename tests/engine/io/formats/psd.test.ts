@@ -112,6 +112,34 @@ test("preserves editable PSD text-layer metadata through producer staging", () =
   ]);
 });
 
+test("deterministically round-trips typed metadata without mutating caller data", () => {
+  const text = {
+    sourceId: "text-1",
+    editable: true,
+    originalContent: "Hello PSD",
+    content: "Hello PSD",
+    fontFamily: "Inter",
+    fontSize: 24,
+    fontWeight: 400,
+    alignment: "LEFT" as const,
+    color: [0, 0, 0, 1] as const,
+    letterSpacing: 0,
+    lineHeight: 28,
+    wrapping: "WORD" as const,
+  };
+  const layer = layerMetadata("text-1", "Headline", { text });
+  const before = structuredClone(layer);
+  const first = stagePsdExport({ width: 10, height: 20, layers: [layer] });
+  const second = stagePsdExport({ width: 10, height: 20, layers: [layer] });
+
+  expect(first).toEqual(second);
+  expect(layer).toEqual(before);
+  expect(stagePsdImport(first).layers).toEqual([layer]);
+  expect(createPsdCorpusManifest().cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(
+    true,
+  );
+});
+
 test("preserves advanced PSD layer metadata and reports typed degradation", () => {
   const advanced = layerMetadata("hero", "Hero", {
     smartObjectId: "so:hero",
