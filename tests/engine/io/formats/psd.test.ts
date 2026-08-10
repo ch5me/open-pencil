@@ -173,6 +173,19 @@ test("reports unsupported PSD blend modes without mutating staged bytes", () => 
   expect(bytes).toEqual(before);
 });
 
+test("failed PSD metadata import leaves caller bytes unchanged", () => {
+  const bytes = stagePsdExport({
+    width: 1,
+    height: 1,
+    layers: [layerMetadata("valid", "Valid")],
+  });
+  bytes.set(new TextEncoder().encode("OPPSD1{"), 26);
+  const before = bytes.slice();
+
+  expect(() => stagePsdImport(bytes)).toThrow("invalid PSD layer metadata");
+  expect(bytes).toEqual(before);
+});
+
 test("preserves supported adjustment metadata and warns on unsupported types", () => {
   const supported = layerMetadata("levels", "Levels", {
     adjustmentType: "levels",
