@@ -103,8 +103,8 @@ function sample(
 
 function maskAlpha(mask: PsdRasterMask | undefined, x: number, y: number): number {
   if (!mask) return 1;
-  const [red, green, blue, alpha] = sample(mask, x, y);
-  const value = (alpha / 255) * ((red + green + blue) / (3 * 255));
+  const [, , , alpha] = sample(mask, x, y);
+  const value = alpha / 255;
   return mask.inverted ? 1 - value : value;
 }
 
