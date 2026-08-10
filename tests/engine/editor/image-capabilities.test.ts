@@ -204,6 +204,25 @@ test("effects-v1 validates unique masks and supports non-destructive adjustment 
   );
 });
 
+test("effects-bounds-v1 rejects invalid per-layer effect kinds and areas", () => {
+  const filter: EffectFilter = {
+    id: "effect:invalid",
+    kind: "brightness",
+    enabled: true,
+    affectedArea: [0, 0, 10, 10],
+    transactionId: "tx:invalid-effect",
+  };
+  expect(() => validateEffectFilter({ ...filter, kind: "not-an-effect" as EffectFilter["kind"] })).toThrow(
+    "invalid effect identity",
+  );
+  expect(() => validateEffectFilter({ ...filter, affectedArea: [-1, 0, 1, 1] })).toThrow(
+    "invalid effect affected area",
+  );
+  expect(() => validateEffectFilter({ ...filter, affectedArea: [0, 0, 1.5, 1] })).toThrow(
+    "invalid effect affected area",
+  );
+});
+
 test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouched by contract", () => {
   const filter: EffectFilter = {
     id: "effect:bounded",

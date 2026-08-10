@@ -22,6 +22,35 @@ export type EffectKind =
   | "distortion"
   | "convolution";
 
+const EFFECT_KINDS: ReadonlySet<string> = new Set<EffectKind>([
+  "fill",
+  "gradient",
+  "dodge",
+  "burn",
+  "smudge",
+  "blur",
+  "sharpen",
+  "brightness",
+  "contrast",
+  "saturation",
+  "levels",
+  "curves",
+  "exposure",
+  "vibrance",
+  "hsl",
+  "color-balance",
+  "black-white",
+  "threshold",
+  "posterize",
+  "gradient-map",
+  "selective-color",
+  "noise",
+  "shadows-highlights",
+  "lens",
+  "distortion",
+  "convolution",
+]);
+
 export interface EffectFilter {
   readonly id: string;
   readonly kind: EffectKind;
@@ -45,10 +74,12 @@ export interface EffectStack {
 
 export class EffectAccelerationUnavailableError extends Error {
   readonly code = "E_EFFECT_ACCELERATION_UNAVAILABLE";
+  override readonly name = "EffectAccelerationUnavailableError";
 }
 
 export class EffectPixelAcceptanceError extends Error {
   readonly code = "E_EFFECT_PIXEL_ACCEPTANCE";
+  override readonly name = "EffectPixelAcceptanceError";
 }
 
 export interface EffectPixelAcceptanceOptions {
@@ -131,11 +162,22 @@ export function assertEffectPixelAcceptance(
 }
 
 export function validateEffectFilter(filter: EffectFilter): void {
-  if (!filter.id || typeof filter.enabled !== "boolean" || !filter.transactionId.startsWith("tx:")) {
+  if (
+    !filter.id ||
+    !EFFECT_KINDS.has(filter.kind) ||
+    typeof filter.enabled !== "boolean" ||
+    !filter.transactionId.startsWith("tx:")
+  ) {
     throw new RangeError("invalid effect identity");
   }
   const [x, y, width, height] = filter.affectedArea;
-  if (![x, y, width, height].every(Number.isFinite) || width < 0 || height < 0) {
+  if (
+    ![x, y, width, height].every(Number.isInteger) ||
+    x < 0 ||
+    y < 0 ||
+    width < 0 ||
+    height < 0
+  ) {
     throw new RangeError("invalid effect affected area");
   }
   if (
