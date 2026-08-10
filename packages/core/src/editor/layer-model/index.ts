@@ -546,9 +546,7 @@ export function isUnsupportedLayerBlendMode(
   return typeof mode === "object" && mode.kind === "unsupported";
 }
 
-function resolveMaskKind(
-  kind: LayerModelNodeInput["maskKind"],
-): LayerModelResolvedMaskKind | null {
+function resolveMaskKind(kind: LayerModelNodeInput["maskKind"]): LayerModelResolvedMaskKind | null {
   if (kind === null || kind === undefined) return null;
   if (kind === "group" || kind === "adjustment-layer") return kind;
   return {
@@ -694,9 +692,7 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
       (node.maskTransformMode === "independent" || node.maskTransform !== null) &&
       node.maskId === null
     ) {
-      throw new LayerModelMaskValidationError(
-        `mask transform requires mask reference: ${node.id}`,
-      );
+      throw new LayerModelMaskValidationError(`mask transform requires mask reference: ${node.id}`);
     }
     if (
       node.maskTransform !== null &&
@@ -735,7 +731,10 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
         throw new LayerModelValidationError(`empty ${label} reference: ${node.id}`);
       }
     }
-    if (node.smartObjectKind !== null && isUnsupportedLayerModelSmartObjectKind(node.smartObjectKind)) {
+    if (
+      node.smartObjectKind !== null &&
+      isUnsupportedLayerModelSmartObjectKind(node.smartObjectKind)
+    ) {
       continue;
     }
     if (node.smartObjectKind === "linked") {
@@ -795,7 +794,8 @@ function validateNodes(nodes: readonly LayerModelNode[]): void {
   const maskVisiting = new Set<string>();
   const maskVisited = new Set<string>();
   const visitMask = (id: string): void => {
-    if (maskVisiting.has(id)) throw new LayerModelMaskValidationError(`cyclic mask reference: ${id}`);
+    if (maskVisiting.has(id))
+      throw new LayerModelMaskValidationError(`cyclic mask reference: ${id}`);
     if (maskVisited.has(id)) return;
     maskVisiting.add(id);
     const maskId = byId.get(id)?.maskId;
