@@ -54,22 +54,22 @@ const node = (
   blendMode: overrides.blendMode ?? "NORMAL",
   maskId: overrides.maskId ?? null,
   maskKind: overrides.maskKind ?? null,
-    maskTransform: overrides.maskTransform ?? null,
-    maskTransformMode: overrides.maskTransformMode ?? null,
-    maskType: overrides.maskType ?? null,
-    maskDensity: overrides.maskDensity ?? null,
-    maskFeather: overrides.maskFeather ?? null,
-    edgeRefinement: overrides.edgeRefinement ?? null,
-    linkId: overrides.linkId ?? null,
-    linkedLayerIds: overrides.linkedLayerIds ?? null,
-    smartObjectId: overrides.smartObjectId ?? null,
-    smartObjectKind: overrides.smartObjectKind ?? null,
-    linkedAssetId: overrides.linkedAssetId ?? null,
-    linkedAssetRevisionId: overrides.linkedAssetRevisionId ?? null,
-    embeddedDocumentId: overrides.embeddedDocumentId ?? null,
-    embeddedDocumentVersion: overrides.embeddedDocumentVersion ?? null,
-    colorLabel: overrides.colorLabel ?? null,
-    effects: overrides.effects ?? null,
+  maskTransform: overrides.maskTransform ?? null,
+  maskTransformMode: overrides.maskTransformMode ?? null,
+  maskType: overrides.maskType ?? null,
+  maskDensity: overrides.maskDensity ?? null,
+  maskFeather: overrides.maskFeather ?? null,
+  edgeRefinement: overrides.edgeRefinement ?? null,
+  linkId: overrides.linkId ?? null,
+  linkedLayerIds: overrides.linkedLayerIds ?? null,
+  smartObjectId: overrides.smartObjectId ?? null,
+  smartObjectKind: overrides.smartObjectKind ?? null,
+  linkedAssetId: overrides.linkedAssetId ?? null,
+  linkedAssetRevisionId: overrides.linkedAssetRevisionId ?? null,
+  embeddedDocumentId: overrides.embeddedDocumentId ?? null,
+  embeddedDocumentVersion: overrides.embeddedDocumentVersion ?? null,
+  colorLabel: overrides.colorLabel ?? null,
+  effects: overrides.effects ?? null,
 });
 
 describe("layer-model-v1", () => {
@@ -486,9 +486,9 @@ describe("layer-model-v1", () => {
     await expect(migrateLayerModel([node("a", null, [], { maskId: "missing" })])).rejects.toThrow(
       "dangling mask reference",
     );
-    await expect(
-      migrateLayerModel([node("a", null, [], { maskKind: "group" })]),
-    ).rejects.toThrow(LayerModelMaskValidationError);
+    await expect(migrateLayerModel([node("a", null, [], { maskKind: "group" })])).rejects.toThrow(
+      LayerModelMaskValidationError,
+    );
     await expect(
       migrateLayerModel([node("a", null, [], { maskId: "a", maskKind: "group" })]),
     ).rejects.toThrow("self-referencing mask");
