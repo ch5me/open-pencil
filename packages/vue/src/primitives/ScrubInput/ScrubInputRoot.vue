@@ -4,10 +4,7 @@ import { onBeforeUnmount, ref, computed, toRef, watch } from "vue";
 
 import { provideScrubInput } from "#vue/primitives/ScrubInput/context";
 import { inputNumberValue } from "#vue/shared/dom-events";
-import {
-  createRafCoalescer,
-  createScrubAccumulator,
-} from "#vue/shared/input/raf-scheduler";
+import { createScrubSession } from "#vue/shared/input/raf-scheduler";
 
 const {
   modelValue,
@@ -51,40 +48,27 @@ function startScrub(e: PointerEvent) {
   let lastX = startX;
   const valueBeforeScrub = numericValue.value;
   let hasMoved = false;
-  const accumulator = createScrubAccumulator(
+  const session = createScrubSession(
     valueBeforeScrub,
     min,
     max,
     step * sensitivity,
     (value) => emit("update:modelValue", value),
-  );
-  const pendingDelta = createRafCoalescer(
-    (delta: number) => accumulator.add(delta),
-    (pending, next) => pending + next,
+    (value, previous) => emit("commit", value, previous),
   );
 
   function finish(commit: boolean) {
-    if (commit) pendingDelta.flush();
-    else {
-      pendingDelta.cancel();
-      if (hasMoved && accumulator.value() !== valueBeforeScrub) {
-        emit("update:modelValue", valueBeforeScrub);
-      }
-    }
+    if (commit) session.finish();
+    else session.cancel();
     stopMove?.();
     stopUp?.();
     stopCancel?.();
     stopMove = undefined;
     stopUp = undefined;
     stopCancel = undefined;
-    pendingDelta.cancel();
     scrubbing.value = false;
     document.body.style.cursor = "";
     cancelScrub = undefined;
-    const finalValue = accumulator.value();
-    if (commit && hasMoved && finalValue !== valueBeforeScrub) {
-      emit("commit", finalValue, valueBeforeScrub);
-    }
   }
 
   cancelScrub = () => finish(false);
@@ -96,7 +80,7 @@ function startScrub(e: PointerEvent) {
       scrubbing.value = true;
       document.body.style.cursor = "ew-resize";
     }
-    if (hasMoved) pendingDelta.push(dx);
+    if (hasMoved) session.move(dx);
   });
 
   stopUp = useEventListener(document, "pointerup", () => {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  createRafCoalescer,
+  createRafInputController,
   inputNumberValue,
   vTestId,
   type TestIdProps,
@@ -52,7 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const cls = usePickerSliderUI({ checkerboard, ui });
-const pendingValue = createRafCoalescer((value: number) => emit("update:modelValue", value));
+const pendingValue = createRafInputController((value: number) => emit("update:modelValue", value));
 
 function numberValue(): string | number {
   const value = display?.value ?? modelValue;
@@ -60,17 +60,17 @@ function numberValue(): string | number {
 }
 
 function handleNumberChange(value: number) {
-  pendingValue.flush();
+  pendingValue.change();
   pendingValue.cancel();
   emit("update:modelValue", display?.parse ? display.parse(value) : value);
 }
 
 function handleRangeInput(value: number) {
-  pendingValue.push(value);
+  pendingValue.input(value);
 }
 
 function handleRangeChange() {
-  pendingValue.flush();
+  pendingValue.change();
   pendingValue.cancel();
 }
 

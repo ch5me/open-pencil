@@ -50,6 +50,21 @@ export function createRafCoalescer<T>(
   };
 }
 
+export function createRafInputController<T>(
+  consume: (value: T) => void,
+  merge?: (pending: T, next: T) => T,
+  request?: (callback: () => void) => number,
+  cancel?: (id: number) => void,
+) {
+  const pending = createRafCoalescer(consume, merge, request, cancel);
+
+  return {
+    input: pending.push,
+    change: pending.flush,
+    cancel: pending.cancel,
+  };
+}
+
 export function createScrubAccumulator(
   initial: number,
   min: number,
@@ -72,6 +87,43 @@ export function createScrubAccumulator(
     },
     value() {
       return emittedValue;
+    },
+  };
+}
+
+export function createScrubSession(
+  initial: number,
+  min: number,
+  max: number,
+  scale: number,
+  update: (value: number) => void,
+  commit: (value: number, previous: number) => void,
+  request?: (callback: () => void) => number,
+  cancel?: (id: number) => void,
+) {
+  const accumulator = createScrubAccumulator(initial, min, max, scale, update);
+  const pending = createRafInputController(
+    (delta: number) => accumulator.add(delta),
+    (current, next) => current + next,
+    request,
+    cancel,
+  );
+  let moved = false;
+
+  return {
+    move(delta: number) {
+      moved = true;
+      pending.input(delta);
+    },
+    finish() {
+      pending.change();
+      const value = accumulator.value();
+      if (moved && value !== initial) commit(value, initial);
+      pending.cancel();
+    },
+    cancel() {
+      pending.cancel();
+      if (moved && accumulator.value() !== initial) update(initial);
     },
   };
 }

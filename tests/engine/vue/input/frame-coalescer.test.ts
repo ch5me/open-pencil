@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import {
   createRafCoalescer,
-  createScrubAccumulator,
+  createRafInputController,
+  createScrubSession,
 } from "#vue/shared/input/raf-scheduler";
 
 function scheduler() {
@@ -138,28 +139,112 @@ describe("frame coalescer", () => {
     expect(values).toEqual([1, 2]);
   });
 
-  test("scrub accumulator preserves fractional movement across frames", () => {
+  test("input change flushes synchronously and cancels the scheduled frame", () => {
+    const frames = scheduler();
     const values: number[] = [];
-    const accumulator = createScrubAccumulator(0, 0, 10, 0.25, (value) => values.push(value));
+    const input = createRafInputController(
+      (value: number) => values.push(value),
+      undefined,
+      frames.request,
+      frames.cancel,
+    );
 
-    accumulator.add(1);
-    accumulator.add(1);
-    accumulator.add(1);
-    accumulator.add(1);
-
-    expect(accumulator.value()).toBe(1);
-    expect(values).toEqual([1]);
+    input.input(4);
+    input.change();
+    expect(values).toEqual([4]);
+    expect(frames.pendingCount).toBe(0);
+    frames.flush();
+    expect(values).toEqual([4]);
   });
 
-  test("scrub accumulator suppresses duplicate clamped values", () => {
+  test("input cancellation prevents late work after unmount", () => {
+    const frames = scheduler();
     const values: number[] = [];
-    const accumulator = createScrubAccumulator(0, 0, 1, 1, (value) => values.push(value));
+    const input = createRafInputController(
+      (value: number) => values.push(value),
+      undefined,
+      frames.request,
+      frames.cancel,
+    );
 
-    accumulator.add(1);
-    accumulator.add(1);
-    accumulator.add(1);
+    input.input(4);
+    input.cancel();
+    frames.flush();
+    expect(values).toEqual([]);
+  });
 
-    expect(accumulator.value()).toBe(1);
-    expect(values).toEqual([1]);
+  test("scrub session preserves fractional movement across scheduled frames", () => {
+    const frames = scheduler();
+    const updates: number[] = [];
+    const commits: Array<[number, number]> = [];
+    const scrub = createScrubSession(
+      0,
+      0,
+      10,
+      0.25,
+      (value) => updates.push(value),
+      (value, previous) => commits.push([value, previous]),
+      frames.request,
+      frames.cancel,
+    );
+
+    for (let index = 0; index < 4; index++) {
+      scrub.move(1);
+      frames.flush();
+    }
+    scrub.finish();
+
+    expect(updates).toEqual([1]);
+    expect(commits).toEqual([[1, 0]]);
+    expect(frames.pendingCount).toBe(0);
+  });
+
+  test("scrub finish flushes final movement before commit", () => {
+    const frames = scheduler();
+    const updates: number[] = [];
+    const commits: Array<[number, number]> = [];
+    const scrub = createScrubSession(
+      0,
+      0,
+      10,
+      1,
+      (value) => updates.push(value),
+      (value, previous) => commits.push([value, previous]),
+      frames.request,
+      frames.cancel,
+    );
+
+    scrub.move(3);
+    scrub.finish();
+
+    expect(updates).toEqual([3]);
+    expect(commits).toEqual([[3, 0]]);
+    expect(frames.pendingCount).toBe(0);
+  });
+
+  test("scrub cancellation restores the initial value and prevents late work", () => {
+    const frames = scheduler();
+    const updates: number[] = [];
+    const commits: Array<[number, number]> = [];
+    const scrub = createScrubSession(
+      2,
+      0,
+      10,
+      1,
+      (value) => updates.push(value),
+      (value, previous) => commits.push([value, previous]),
+      frames.request,
+      frames.cancel,
+    );
+
+    scrub.move(3);
+    frames.flush();
+    scrub.move(2);
+    scrub.cancel();
+    frames.flush();
+
+    expect(updates).toEqual([5, 2]);
+    expect(commits).toEqual([]);
+    expect(frames.pendingCount).toBe(0);
   });
 });

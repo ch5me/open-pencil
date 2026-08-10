@@ -3,7 +3,7 @@ import type { GradientStop } from "@open-pencil/core/scene-graph";
 import { templateRef } from "@vueuse/core";
 import { onBeforeUnmount, ref } from "vue";
 
-import { createRafCoalescer } from "#vue/shared/input/raf-scheduler";
+import { createRafInputController } from "#vue/shared/input/raf-scheduler";
 
 const { stops, ui } = defineProps<{
   stops: GradientStop[];
@@ -21,7 +21,7 @@ const emit = defineEmits<{
 
 const barRef = templateRef<HTMLElement>("barRef");
 const draggingIndex = ref<number | null>(null);
-const pendingDrag = createRafCoalescer(
+const pendingDrag = createRafInputController(
   ({ index, position }: { index: number; position: number }) => emit("dragStop", index, position),
 );
 
@@ -36,11 +36,11 @@ function onPointerMove(e: PointerEvent) {
   if (!el || draggingIndex.value === null || !el.hasPointerCapture(e.pointerId)) return;
   const rect = el.getBoundingClientRect();
   const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  pendingDrag.push({ index: draggingIndex.value, position: pos });
+  pendingDrag.input({ index: draggingIndex.value, position: pos });
 }
 
 function onPointerUp() {
-  pendingDrag.flush();
+  pendingDrag.change();
   pendingDrag.cancel();
   draggingIndex.value = null;
 }
