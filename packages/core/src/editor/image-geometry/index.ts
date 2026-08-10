@@ -1,4 +1,9 @@
-export { pointInTransformedRect } from "./hit-test";
+export {
+  hitTestPixel,
+  hitTestRasterLayer,
+  pointInTransformedRect,
+  selectLayerAtPoint,
+} from "./hit-test";
 export { selectionBounds } from "./selection";
 export { flipTransform, resizeTransform, snapValue, updateNumericTransform } from "./operations";
 export {
@@ -14,6 +19,8 @@ export {
   type GeometrySelection,
   type GeometryTransform,
   type HitTestOptions,
+  type RasterLayer,
+  type RasterPixelSource,
   type ResizeHandle,
   type ResizeOptions,
 } from "./types";
