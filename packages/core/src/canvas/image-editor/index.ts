@@ -1,5 +1,13 @@
 export { createImageRenderAdapter, type ImageRenderAdapterOptions } from "./adapter";
 export {
+  chooseProxyScale,
+  createImageTilePlan,
+  mipmapLevelForScale,
+  type ImageTile,
+  type ImageTilePlan,
+  type ImageTilePlanOptions,
+} from "./tiling";
+export {
   UnsupportedImageBackendError,
   createRendererResilienceContract,
   RendererResilienceContractError,

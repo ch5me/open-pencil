@@ -126,6 +126,6 @@ export interface ImageRevisionResolver {
 export interface ImageRenderAdapter {
   readonly backend: ImageRenderBackend;
   render(plan: CompositionPlan, resolve: ImageRevisionResolver): ImageRenderFrame;
-  markDirty(assetId: AssetId): void;
+  markDirty(assetId: AssetId, dirtyRect?: ImageDirtyRect): void;
   restore(): void;
 }
