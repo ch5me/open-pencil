@@ -30,6 +30,7 @@ export function createImageRenderAdapter(
       const commands: ImageRenderCommand[] = [];
       const textures: ImageTexture[] = [];
       const gaps: ImageRenderGap[] = [];
+      const emittedAssets = new Set<AssetId>();
       for (const entry of plan.nodes.values()) {
         if (!entry.visible) continue;
         const assetId = entry.assetIds[0] ?? null;
@@ -71,6 +72,8 @@ export function createImageRenderAdapter(
             });
             continue;
           }
+          if (emittedAssets.has(assetId)) continue;
+          emittedAssets.add(assetId);
           const dirty =
             dirtyAssets.has(assetId) || uploadedRevisions.get(assetId) !== binding.revisionId;
           if (!dirty) {
