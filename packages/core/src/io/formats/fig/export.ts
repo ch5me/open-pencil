@@ -8,6 +8,7 @@ import type { SkiaRenderer } from "#core/canvas";
 import { CANVAS_BG_COLOR, IS_BROWSER, IS_TAURI } from "#core/constants";
 import { renderThumbnail } from "#core/io/formats/raster";
 import { populateAllLazyFigImportRoots } from "#core/kiwi/fig/lazy-import";
+import { createAdaptiveWorkerGate } from "#core/editor/image-observability";
 import { stringToGuid } from "#core/kiwi/fig/node-change/convert";
 import {
   sceneNodeToKiwi,
@@ -466,6 +467,8 @@ function canUseWorker(): boolean {
   return typeof Worker !== "undefined" && IS_BROWSER;
 }
 
+const compressionWorkerGate = createAdaptiveWorkerGate();
+
 function compressViaWorker(
   schemaDeflated: Uint8Array,
   kiwiData: Uint8Array,
@@ -511,7 +514,7 @@ export function compressFigData(
   imageEntries: Array<{ name: string; data: Uint8Array }>,
   figKiwiVersion?: number,
 ): Promise<Uint8Array> {
-  if (canUseWorker()) {
+  if (canUseWorker() && compressionWorkerGate.policy(true).useWorker) {
     return compressViaWorker(
       schemaDeflated,
       kiwiData,
@@ -521,14 +524,16 @@ export function compressFigData(
       figKiwiVersion,
     );
   }
-  return Promise.resolve(
-    compressFigDataSync(
-      schemaDeflated,
-      kiwiData,
-      thumbnailPng,
-      metaJson,
-      imageEntries,
-      figKiwiVersion,
-    ),
+  const start = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const result = compressFigDataSync(
+    schemaDeflated,
+    kiwiData,
+    thumbnailPng,
+    metaJson,
+    imageEntries,
+    figKiwiVersion,
   );
+  const end = typeof performance !== "undefined" ? performance.now() : Date.now();
+  compressionWorkerGate.record(end - start);
+  return Promise.resolve(result);
 }

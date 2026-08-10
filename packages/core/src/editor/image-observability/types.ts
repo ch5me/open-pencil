@@ -68,6 +68,11 @@ export interface AdaptiveWorkerPolicy {
   readonly useWorker: boolean;
 }
 
+export interface AdaptiveWorkerGate {
+  record(durationMs: number): void;
+  policy(workerAvailable: boolean): AdaptiveWorkerPolicy;
+}
+
 export interface TextureVersion {
   readonly textureId: string;
   readonly revisionId: string;
@@ -182,5 +187,23 @@ export function createAdaptiveWorkerPolicy(
     thresholdMisses,
     workerAvailable,
     useWorker: workerAvailable && thresholdMisses > 0,
+  };
+}
+
+export function createAdaptiveWorkerGate(
+  options: { budgetMs?: number } = {},
+): AdaptiveWorkerGate {
+  const budgetMs = options.budgetMs ?? 50;
+  const observations: number[] = [];
+  return {
+    record(durationMs) {
+      if (!Number.isFinite(durationMs) || durationMs < 0) {
+        throw new RangeError("worker observations must be finite and non-negative");
+      }
+      observations.push(durationMs);
+    },
+    policy(workerAvailable) {
+      return createAdaptiveWorkerPolicy(observations, { budgetMs, workerAvailable });
+    },
   };
 }

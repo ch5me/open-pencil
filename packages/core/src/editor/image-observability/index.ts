@@ -1,5 +1,6 @@
 export { EvidenceCollector } from "./collector";
 export {
+  createAdaptiveWorkerGate,
   createAdaptiveWorkerPolicy,
   createBenchmarkResult,
   deterministicP95,
@@ -10,6 +11,7 @@ export {
   validateTextureVersion,
   type BenchmarkResult,
   type AdaptiveWorkerPolicy,
+  type AdaptiveWorkerGate,
   type DirtyRect,
   type EvidenceEvent,
   type EvidencePhase,

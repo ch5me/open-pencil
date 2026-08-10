@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 
 import {
+  createAdaptiveWorkerGate,
   createAdaptiveWorkerPolicy,
   createBenchmarkResult,
   deterministicP95,
@@ -153,4 +154,14 @@ test("optional worker policy rejects invalid observations", () => {
   expect(() => createAdaptiveWorkerPolicy([-1])).toThrow("finite and non-negative");
   expect(() => createAdaptiveWorkerPolicy([Number.NaN])).toThrow("finite and non-negative");
   expect(() => createAdaptiveWorkerPolicy([], { budgetMs: 0 })).toThrow("positive");
+});
+
+test("worker gate records real task durations before enabling worker selection", () => {
+  const gate = createAdaptiveWorkerGate();
+  expect(gate.policy(true).useWorker).toBe(false);
+  gate.record(49);
+  expect(gate.policy(true).useWorker).toBe(false);
+  gate.record(51);
+  expect(gate.policy(true)).toMatchObject({ thresholdMisses: 1, useWorker: true });
+  expect(gate.policy(false).useWorker).toBe(false);
 });
