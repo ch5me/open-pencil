@@ -301,7 +301,11 @@ function effectVisible(value: unknown): boolean {
 }
 
 function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect {
-  if (effect.kind === "shadow") {
+  const kind = (effect as { readonly kind?: unknown }).kind;
+  if (typeof kind !== "string" || kind.length === 0) {
+    throw new LayerModelValidationError(`invalid effect kind: ${String(kind)}`);
+  }
+  if (kind === "shadow") {
     const shadow = effect as LayerModelShadowEffect;
     return {
       kind: "shadow",
@@ -313,7 +317,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       inset: effectVisible(shadow.inset),
     };
   }
-  if (effect.kind === "glow") {
+  if (kind === "glow") {
     const glow = effect as LayerModelGlowEffect;
     return {
       kind: "glow",
@@ -323,7 +327,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       visible: effectVisible(glow.visible),
     };
   }
-  if (effect.kind === "stroke") {
+  if (kind === "stroke") {
     const stroke = effect as LayerModelStrokeEffect;
     if (
       stroke.position !== "inside" &&
@@ -340,7 +344,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       visible: effectVisible(stroke.visible),
     };
   }
-  if (effect.kind === "overlay") {
+  if (kind === "overlay") {
     const overlay = effect as LayerModelOverlayEffect;
     return {
       kind: "overlay",
@@ -350,7 +354,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       visible: effectVisible(overlay.visible),
     };
   }
-  if (effect.kind === "bevel") {
+  if (kind === "bevel") {
     const bevel = effect as LayerModelBevelEffect;
     return {
       kind: "bevel",
@@ -361,7 +365,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       visible: effectVisible(bevel.visible),
     };
   }
-  if (effect.kind === "pattern") {
+  if (kind === "pattern") {
     const pattern = effect as LayerModelPatternEffect;
     if (typeof pattern.patternId !== "string" || pattern.patternId.length === 0) {
       throw new LayerModelValidationError("invalid pattern id");
@@ -378,7 +382,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
   return {
     kind: "unsupported",
     code: "layer-model-unsupported-effect",
-    value: effect.kind,
+    value: kind,
   };
 }
 
