@@ -437,6 +437,53 @@ test("effects-gap-069 consumes typed effect filters with bounded areas", () => {
   ]);
 });
 
+test("effects-gap-072 rerasterizes blur only inside the bounded affected area", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    width: 4,
+    height: 1,
+    fills: [{
+      type: "IMAGE",
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      opacity: 1,
+      visible: true,
+      imageHash: "asset:blur",
+    }],
+  });
+  const revision = {
+    revisionId: "sha256:blur",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 4, height: 1 },
+    bytes: new Uint8Array([
+      255, 0, 0, 255,
+      0, 255, 0, 255,
+      0, 0, 255, 255,
+      255, 255, 255, 255,
+    ]),
+  } satisfies AssetRevision;
+  const plan = planFor([image], image.id);
+  const result = composeRasterRGBA8(plan, resolver(revision), {
+    width: 4,
+    height: 1,
+    effectFilters: [{
+      id: "effect:blur",
+      kind: "blur",
+      enabled: true,
+      affectedArea: [0, 0, 1, 1],
+      transactionId: "tx:blur",
+      adjustments: { radius: 1 },
+    }],
+  });
+
+  expect([...result.pixels]).toEqual([
+    128, 128, 0, 255,
+    0, 255, 0, 255,
+    0, 0, 255, 255,
+    255, 255, 255, 255,
+  ]);
+});
+
 test("effects-gap-071 consumes ordered layer stacks and effect masks", () => {
   const group = node({
     id: "group",
