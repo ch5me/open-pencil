@@ -2,10 +2,16 @@ import { expect, test } from "bun:test";
 
 import { createContentRevisionId } from "#core/editor/history/journal";
 import {
+  applyMask,
   BrushDeviceUnavailableError,
+  BrushMaskCapabilityUnavailableError,
   createBrushStroke,
   createEraseBrushStroke,
   createRevealBrushStroke,
+  deleteMask,
+  disableMask,
+  duplicateMask,
+  invertMask,
 } from "#core/editor/image-brush";
 import type { RasterMask } from "#core/editor/image-raster";
 import { selectMask } from "#core/editor/image-selection";
@@ -221,4 +227,38 @@ test("brush validates every numeric control and keeps caller data detached", () 
   expect(() =>
     createBrushStroke(mask, { ...config, size: 0 }, [], "tx:invalid-size"),
   ).toThrow("invalid brush size");
+});
+
+test("mask controls are deterministic, transactional, and detached", () => {
+  const inverted = invertMask(mask, "tx:invert");
+  expect(inverted).toMatchObject({
+    version: "brush-mask-v1",
+    operation: "invert",
+    maskId: "mask:one",
+    transactionId: "tx:invert",
+    mask: { maskId: "mask:one", inverted: true, enabled: true },
+    deleted: false,
+    applied: false,
+  });
+  expect(disableMask(mask, "tx:disable").mask?.enabled).toBe(false);
+  expect(deleteMask(mask, "tx:delete")).toMatchObject({ deleted: true, mask: null });
+
+  const first = duplicateMask(mask, "tx:duplicate");
+  const replay = duplicateMask(mask, "tx:duplicate");
+  expect(replay).toEqual(first);
+  expect(first.mask).toMatchObject({
+    maskId: "mask:one:duplicate:duplicate",
+    thumbnailId: "thumb:one:duplicate:duplicate",
+  });
+  expect(first.mask).not.toBe(mask);
+});
+
+test("mask apply fails loud until a pixel consumer is available", () => {
+  expect(() => applyMask(mask, "tx:apply")).toThrow(BrushMaskCapabilityUnavailableError);
+  expect(applyMask(mask, "tx:apply", true)).toMatchObject({
+    operation: "apply",
+    deleted: true,
+    applied: true,
+    mask: null,
+  });
 });
