@@ -51,6 +51,23 @@ test("performance-d1-m1-v1 tracks deterministic p95 and unavailable GPU profile"
   expect(new GpuProfileUnavailableError().code).toBe("E_PERFORMANCE_GPU_PROFILE_UNAVAILABLE");
 });
 
+test("100-layer and 512-layer benchmark samples do not imply GPU measurements", () => {
+  const profile = {
+    version: "performance-d1-m1-v1" as const,
+    memoryProfile: "D1",
+    tiled: true,
+    mipmaps: true,
+    proxyPreview: true,
+    renderGraphScheduling: false,
+    filterFusion: false,
+    gpuProfile: "UNKNOWN" as const,
+  };
+  const samples = [createBenchmarkResult(100, [1, 2]), createBenchmarkResult(512, [3, 4])];
+
+  expect(samples.map((sample) => sample.layerCount)).toEqual([100, 512]);
+  expect(profile.gpuProfile).toBe("UNKNOWN");
+});
+
 test("performance-d1-m1-v1 validates texture, dirty-rect, render-graph, memory, and budget evidence", () => {
   const evidence = {
     version: "performance-d1-m1-v1" as const,

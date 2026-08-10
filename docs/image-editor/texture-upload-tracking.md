@@ -45,6 +45,18 @@ remain `UNKNOWN` in `renderer-resilience-v1`. A future implementation must
 carry an observed byte budget and pressure signal through the consuming
 renderer, then verify downgrade, recovery, and restoration on target devices.
 
+## G091 100/512-layer GPU benchmark boundary
+
+The `layer100` and `layer512` samples in the performance probe are synthetic
+CPU timings. They are not GPU timings, frame captures, or OpenPencil consuming
+renderer measurements. No measured 100-layer or 512-layer GPU benchmark exists
+in this revision, so both GPU benchmark results remain `UNKNOWN`.
+
+Do not infer GPU throughput, frame budget, device parity, or renderer
+acceptance from either sample set. A valid benchmark must observe the
+consuming renderer and record its GPU/device identity with the measured
+workload.
+
 ## Partial updates
 
 The adapter carries a typed `update.dirtyRect` and uses it to restrict the
