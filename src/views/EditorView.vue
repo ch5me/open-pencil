@@ -14,7 +14,11 @@ import { useEditorStore } from "@/app/editor/active-store";
 import { isHostedAuthEnabled, isHostedCollabEnabled } from "@/app/hosted/flags";
 import { isAuthenticated, refreshSession } from "@/app/hosted/session";
 import { useKeyboard } from "@/app/shell/keyboard/use";
-import { loadEditorLayout, saveEditorLayout } from "@/app/shell/layout-storage";
+import {
+  loadEditorWorkspace,
+  saveEditorWorkspace,
+  type EditorWorkspaceState,
+} from "@/app/shell/layout-storage";
 import { appMenuShortcut } from "@/app/shell/menu/shortcut";
 import { openFileFromPath, useMenu } from "@/app/shell/menu/use";
 import { createTab, activeTab, getActiveStore, tabCount } from "@/app/tabs";
@@ -86,7 +90,43 @@ useEventListener(
 const automationCleanup = ref<(() => void) | null>(null);
 const mcpCleanup = ref<(() => void) | null>(null);
 const fileAssociationCleanup = ref<(() => void) | null>(null);
-const initialEditorLayout = loadEditorLayout();
+const initialWorkspace = loadEditorWorkspace();
+const initialEditorLayout = initialWorkspace.layout;
+
+store.state.showUI = initialWorkspace.showUI;
+store.state.showRulers = initialWorkspace.showRulers;
+store.state.showRemoteCursors = initialWorkspace.showRemoteCursors;
+store.state.activeRibbonTab = initialWorkspace.activeRibbonTab;
+store.state.panelMode = initialWorkspace.panelMode;
+store.state.leftPanelMode = initialWorkspace.leftPanelMode;
+
+function currentWorkspace(layout = initialEditorLayout): EditorWorkspaceState {
+  return {
+    layout,
+    showUI: store.state.showUI,
+    showRulers: store.state.showRulers,
+    showRemoteCursors: store.state.showRemoteCursors,
+    activeRibbonTab: store.state.activeRibbonTab,
+    panelMode: store.state.panelMode,
+    leftPanelMode: store.state.leftPanelMode,
+  };
+}
+
+watch(
+  () => [
+    store.state.showUI,
+    store.state.showRulers,
+    store.state.showRemoteCursors,
+    store.state.activeRibbonTab,
+    store.state.panelMode,
+    store.state.leftPanelMode,
+  ],
+  () => saveEditorWorkspace(currentWorkspace()),
+);
+
+function saveWorkspaceLayout(layout: number[]) {
+  saveEditorWorkspace(currentWorkspace(layout));
+}
 
 type PendingOpenFile = {
   path: string;
@@ -154,7 +194,7 @@ onUnmounted(() => {
       :key="activeTab?.id"
       direction="horizontal"
       class="flex-1 overflow-hidden"
-      @layout="saveEditorLayout"
+      @layout="saveWorkspaceLayout"
     >
       <SplitterPanel
         id="layers"
