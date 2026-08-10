@@ -190,6 +190,13 @@ describe("layer-model-v1", () => {
         }),
       ]),
     ).rejects.toThrow("invalid effect visibility");
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], {
+          effects: [{ kind: "" }],
+        }),
+      ]),
+    ).rejects.toThrow("invalid effect kind");
   });
 
   test("hashes equivalent effect values independently of input property order", async () => {
