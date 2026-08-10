@@ -79,24 +79,39 @@ describe("image geometry", () => {
   });
 
   test("corner resize keeps the opposite anchor fixed", () => {
-    expect(resizeTransform(transform, "top-left", { x: 10, y: 5 })).toMatchObject({
+    const axisAligned = { ...transform, rotation: 0 };
+    expect(resizeTransform(axisAligned, "top-left", { x: 10, y: 5 })).toMatchObject({
       x: 20,
       y: 25,
       width: 90,
       height: 45,
     });
-    expect(resizeTransform(transform, "top-right", { x: 10, y: 5 })).toMatchObject({
+    expect(resizeTransform(axisAligned, "top-right", { x: 10, y: 5 })).toMatchObject({
       x: 10,
       y: 25,
       width: 110,
       height: 45,
     });
-    expect(resizeTransform(transform, "bottom-left", { x: 10, y: 5 })).toMatchObject({
+    expect(resizeTransform(axisAligned, "bottom-left", { x: 10, y: 5 })).toMatchObject({
       x: 20,
       y: 20,
       width: 90,
       height: 55,
     });
+  });
+
+  test("rotated resize applies screen-axis deltas and preserves the opposite anchor", () => {
+    const rotated = { ...transform, rotation: 30 };
+    const handle = mapForward(rotated, { x: rotated.width, y: rotated.height });
+    const anchor = mapForward(rotated, { x: 0, y: 0 });
+    const resized = resizeTransform(rotated, "bottom-right", { x: 12, y: 7 });
+    const nextHandle = mapForward(resized, { x: resized.width, y: resized.height });
+    const nextAnchor = mapForward(resized, { x: 0, y: 0 });
+
+    expect(nextHandle.x - handle.x).toBeCloseTo(12, 8);
+    expect(nextHandle.y - handle.y).toBeCloseTo(7, 8);
+    expect(nextAnchor.x).toBeCloseTo(anchor.x, 8);
+    expect(nextAnchor.y).toBeCloseTo(anchor.y, 8);
   });
 
   test("invalid resize inputs fail loudly", () => {
