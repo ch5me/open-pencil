@@ -1,7 +1,12 @@
 import { expect, test } from "bun:test";
 
 import { createContentRevisionId } from "#core/editor/history/journal";
-import { BrushDeviceUnavailableError, createBrushStroke } from "#core/editor/image-brush";
+import {
+  BrushDeviceUnavailableError,
+  createBrushStroke,
+  createEraseBrushStroke,
+  createRevealBrushStroke,
+} from "#core/editor/image-brush";
 import type { RasterMask } from "#core/editor/image-raster";
 import { selectMask } from "#core/editor/image-selection";
 
@@ -30,6 +35,8 @@ test("brush stroke preserves deterministic samples and one transaction", () => {
     [{ x: 1, y: 2, pressure: 0.5, time: 10 }],
     "tx:brush",
   );
+  expect(stroke.version).toBe("brush-mask-v1");
+  expect(stroke.mode).toBe("erase");
   expect(stroke.maskId).toBe(mask.maskId);
   expect(stroke.transactionId).toBe("tx:brush");
   expect(stroke.samples).toHaveLength(1);
@@ -96,6 +103,47 @@ test("non-pressure brush accepts unavailable pressure input", () => {
     false,
   );
   expect(stroke.transactionId).toBe("tx:mouse");
+});
+
+test("erase and reveal helpers preserve one transaction and mode", () => {
+  const config = {
+    size: 12,
+    hardness: 1,
+    opacity: 1,
+    flow: 1,
+    spacing: 0.1,
+    pressure: false,
+    smoothing: 0,
+  } as const;
+  const samples = [{ x: 1, y: 2, pressure: 1, time: 1 }] as const;
+  expect(createEraseBrushStroke(mask, config, samples, "tx:erase").mode).toBe("erase");
+  expect(createRevealBrushStroke(mask, config, samples, "tx:reveal").mode).toBe("reveal");
+});
+
+test("brush rejects invalid transaction ids and non-deterministic sample order", () => {
+  const config = {
+    size: 12,
+    hardness: 1,
+    opacity: 1,
+    flow: 1,
+    spacing: 0.1,
+    pressure: false,
+    smoothing: 0,
+  } as const;
+  expect(() => createBrushStroke(mask, config, [], "invalid" as `tx:${string}`)).toThrow(
+    "invalid brush transaction",
+  );
+  expect(() =>
+    createBrushStroke(
+      mask,
+      config,
+      [
+        { x: 1, y: 2, pressure: 1, time: 2 },
+        { x: 2, y: 3, pressure: 1, time: 1 },
+      ],
+      "tx:ordered",
+    ),
+  ).toThrow("pointer samples must be time ordered");
 });
 
 test("brush rejects invalid pointer samples and malformed masks", () => {
