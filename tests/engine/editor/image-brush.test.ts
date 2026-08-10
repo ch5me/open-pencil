@@ -38,6 +38,7 @@ test("brush stroke preserves deterministic samples and one transaction", () => {
   expect(stroke.version).toBe("brush-mask-v1");
   expect(stroke.mode).toBe("erase");
   expect(stroke.maskId).toBe(mask.maskId);
+  expect(stroke.thumbnailId).toBe(mask.thumbnailId);
   expect(stroke.transactionId).toBe("tx:brush");
   expect(stroke.samples).toHaveLength(1);
   expect(selectMask(mask).selectedThumbnailId).toBe("thumb:one");
@@ -76,6 +77,8 @@ test("brush-mask-v1 replay keeps parameters, selection, transaction, and revisio
   const replayRevision = await createContentRevisionId("brush-stroke", {}, encode(replay));
   expect(replayRevision).toBe(firstRevision);
   expect(first.transactionId).toBe("tx:brush");
+  expect(first.thumbnailId).toBe("thumb:one");
+  expect(replay.thumbnailId).toBe(first.thumbnailId);
   expect(selectMask(mask)).toEqual({
     selectedMaskId: "mask:one",
     selectedThumbnailId: "thumb:one",
