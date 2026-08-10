@@ -71,6 +71,7 @@ export interface PsdLayerMetadata {
   readonly visible: boolean;
   readonly opacity: number;
   readonly editable: boolean;
+  readonly text?: ImportedTextMetadata;
   readonly warnings: readonly PsdWarningCode[];
 }
 
@@ -99,3 +100,4 @@ export class PsdHostileFileError extends Error {
 export class PsdCancelledError extends Error {
   readonly code = "psd-import-cancelled";
 }
+import type { ImportedTextMetadata } from "#core/editor/image-capabilities/text";
