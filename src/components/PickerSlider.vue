@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { inputNumberValue, vTestId, type TestIdProps } from "@open-pencil/vue";
+import {
+  createRafCoalescer,
+  inputNumberValue,
+  vTestId,
+  type TestIdProps,
+} from "@open-pencil/vue";
+import { onBeforeUnmount } from "vue";
 
 import { usePickerSliderUI } from "./ui/picker-slider";
 
@@ -46,6 +52,7 @@ const emit = defineEmits<{
 }>();
 
 const cls = usePickerSliderUI({ checkerboard, ui });
+const pendingValue = createRafCoalescer((value: number) => emit("update:modelValue", value));
 
 function numberValue(): string | number {
   const value = display?.value ?? modelValue;
@@ -53,8 +60,21 @@ function numberValue(): string | number {
 }
 
 function handleNumberChange(value: number) {
+  pendingValue.flush();
+  pendingValue.cancel();
   emit("update:modelValue", display?.parse ? display.parse(value) : value);
 }
+
+function handleRangeInput(value: number) {
+  pendingValue.push(display?.parse ? display.parse(value) : value);
+}
+
+function handleRangeChange() {
+  pendingValue.flush();
+  pendingValue.cancel();
+}
+
+onBeforeUnmount(pendingValue.cancel);
 
 function thumbLeft(): string {
   const range = max - min;
@@ -76,7 +96,8 @@ function thumbLeft(): string {
         :max="max"
         :step="step"
         :value="modelValue"
-        @input="emit('update:modelValue', inputNumberValue($event))"
+        @input="handleRangeInput(inputNumberValue($event))"
+        @change="handleRangeChange"
       />
       <div :class="cls.thumb" :style="{ left: thumbLeft(), background: thumbFill }" />
     </div>

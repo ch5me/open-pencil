@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { GradientStop } from "@open-pencil/core/scene-graph";
 import { templateRef } from "@vueuse/core";
-import { ref } from "vue";
+import { onBeforeUnmount, ref } from "vue";
+
+import { createRafCoalescer } from "#vue/shared/input/raf-scheduler";
 
 const { stops, ui } = defineProps<{
   stops: GradientStop[];
@@ -19,6 +21,9 @@ const emit = defineEmits<{
 
 const barRef = templateRef<HTMLElement>("barRef");
 const draggingIndex = ref<number | null>(null);
+const pendingDrag = createRafCoalescer(
+  ({ index, position }: { index: number; position: number }) => emit("dragStop", index, position),
+);
 
 function stopPointerDown(index: number, e: PointerEvent) {
   emit("selectStop", index);
@@ -31,12 +36,21 @@ function onPointerMove(e: PointerEvent) {
   if (!el || draggingIndex.value === null || !el.hasPointerCapture(e.pointerId)) return;
   const rect = el.getBoundingClientRect();
   const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  emit("dragStop", draggingIndex.value, pos);
+  pendingDrag.push({ index: draggingIndex.value, position: pos });
 }
 
 function onPointerUp() {
+  pendingDrag.flush();
+  pendingDrag.cancel();
   draggingIndex.value = null;
 }
+
+function onPointerCancel() {
+  pendingDrag.cancel();
+  draggingIndex.value = null;
+}
+
+onBeforeUnmount(onPointerCancel);
 
 const actions = {
   stopPointerDown,
@@ -52,6 +66,7 @@ defineExpose({ barRef });
     :style="{ background: barBackground }"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
+    @pointercancel="onPointerCancel"
   >
     <slot
       :stops="stops"

@@ -50,6 +50,7 @@ export { useInlineRename } from "#vue/editor/inline-rename/use";
 export { useToolbarState } from "#vue/primitives/Toolbar/useToolbarState";
 export { useNodeFontStatus } from "#vue/shared/font-status/use";
 export { usePropScrub } from "#vue/controls/prop-scrub/use";
+export { createRafCoalescer } from "#vue/shared/input/raf-scheduler";
 export { toolCursor } from "#vue/editor/tool-cursor";
 export {
   acpPermissionOptionTestId,
