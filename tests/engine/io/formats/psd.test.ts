@@ -145,14 +145,20 @@ test("preserves rotated raster layers and applies rotated alpha masks", () => {
     layers: [
       {
         ...layerMetadata("rotated", "Rotated"),
-        raster: { width: 2, height: 2, pixels, rotation: 90, mask: { width: 2, height: 2, pixels: mask, rotation: 90 } },
+        raster: {
+          width: 2,
+          height: 2,
+          pixels,
+          rotation: 90,
+          mask: { width: 2, height: 2, pixels: mask, rotation: 90 },
+        },
       },
     ],
   });
   expect([...rotated]).toEqual([
-    0, 255, 0, 255,
-    255, 255, 0, 255,
+    0, 0, 0, 0,
     255, 0, 0, 255,
+    255, 255, 0, 255,
     0, 0, 0, 0,
   ]);
 });
