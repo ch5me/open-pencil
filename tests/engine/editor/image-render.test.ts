@@ -215,6 +215,28 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
   });
 });
 
+test("image render adapter rejects a revision returned under the wrong id", () => {
+  const frame = createImageRenderAdapter().render(imagePlan(), {
+    getAsset: (assetId) =>
+      assetId === "asset:hero" ? { assetId, revisionId: "sha256:requested" } : undefined,
+    getRevision: () => ({
+      revisionId: "sha256:wrong",
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  });
+
+  expect(frame.textures).toEqual([]);
+  expect(frame.gaps).toEqual([
+    {
+      code: "asset-revision-mismatch",
+      message: "asset revision does not match requested revision: sha256:requested",
+      assetId: "asset:hero",
+    },
+  ]);
+});
+
 test("image render adapter uploads only textures affected by source or mask dirtiness", () => {
   const adapter = createImageRenderAdapter();
   const group = {
