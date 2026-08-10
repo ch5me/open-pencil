@@ -1,5 +1,6 @@
 import {
   PsdHostileFileError,
+  PsdUnsupportedError,
   type PsdRasterInput,
   type PsdRasterLayer,
   type PsdRasterMask,
@@ -19,6 +20,26 @@ function assertRasterDimensions(raster: PsdRasterLayer, width: number, height: n
 
 function clampByte(value: number): number {
   return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+const PSD_SUPPORTED_BLEND_MODES = new Set(["NORMAL", "PASS_THROUGH", "MULTIPLY", "SCREEN", "OVERLAY"]);
+
+function blendChannel(mode: string | undefined, source: number, destination: number): number {
+  switch (mode ?? "NORMAL") {
+    case "NORMAL":
+    case "PASS_THROUGH":
+      return source;
+    case "MULTIPLY":
+      return source * destination;
+    case "SCREEN":
+      return 1 - (1 - source) * (1 - destination);
+    case "OVERLAY":
+      return destination <= 0.5
+        ? 2 * source * destination
+        : 1 - 2 * (1 - source) * (1 - destination);
+    default:
+      throw new PsdUnsupportedError(`unsupported PSD blend mode: ${mode}`);
+  }
 }
 
 type Affine = readonly [number, number, number, number, number, number];
@@ -125,6 +146,9 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
   const result = new Uint8Array(input.width * input.height * 4);
   for (const layer of input.layers) {
     if (!layer.raster || !layer.visible || layer.opacity <= 0) continue;
+    if (layer.blendMode !== undefined && !PSD_SUPPORTED_BLEND_MODES.has(layer.blendMode)) {
+      throw new PsdUnsupportedError(`unsupported PSD blend mode: ${layer.blendMode}`);
+    }
     assertRasterDimensions(layer.raster, input.width, input.height);
     assertTransform(layer.raster.transform);
     if (layer.raster.mask) {
@@ -143,21 +167,18 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
       const outputAlpha = sourceAlpha + destinationAlpha * (1 - sourceAlpha);
       if (outputAlpha === 0) continue;
 
-      result[offset] = clampByte(
-        (sourceRed * sourceAlpha +
-          result[offset] * destinationAlpha * (1 - sourceAlpha)) /
-          outputAlpha,
-      );
-      result[offset + 1] = clampByte(
-        (sourceGreen * sourceAlpha +
-          result[offset + 1] * destinationAlpha * (1 - sourceAlpha)) /
-          outputAlpha,
-      );
-      result[offset + 2] = clampByte(
-        (sourceBlue * sourceAlpha +
-          result[offset + 2] * destinationAlpha * (1 - sourceAlpha)) /
-          outputAlpha,
-      );
+      const source = [sourceRed, sourceGreen, sourceBlue];
+      for (let channel = 0; channel < 3; channel += 1) {
+        const sourceColor = (source[channel] ?? 0) / 255;
+        const destinationColor = result[offset + channel] / 255;
+        const blendedColor = blendChannel(layer.blendMode, sourceColor, destinationColor);
+        result[offset + channel] = clampByte(
+          ((1 - sourceAlpha) * destinationColor +
+            sourceAlpha * ((1 - destinationAlpha) * sourceColor + destinationAlpha * blendedColor)) /
+            outputAlpha *
+            255,
+        );
+      }
       result[offset + 3] = clampByte(outputAlpha * 255);
       }
     }

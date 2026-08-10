@@ -1,6 +1,7 @@
 export type PsdWarningCode =
   | "unsupported-color-mode"
   | "unsupported-bit-depth"
+  | "unsupported-blend-mode"
   | "unsupported-layer-feature"
   | "hostile-file-limit";
 
@@ -71,6 +72,8 @@ export interface PsdLayerMetadata {
   readonly visible: boolean;
   readonly opacity: number;
   readonly editable: boolean;
+  /** PSD blend mode name as supplied by the producer. */
+  readonly blendMode?: string;
   readonly text?: ImportedTextMetadata;
   readonly warnings: readonly PsdWarningCode[];
 }
