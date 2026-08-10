@@ -31,7 +31,15 @@ export interface PsdCorpusCase {
   readonly name: string;
   readonly capability: PsdCapabilityCode;
   readonly warning: PsdWarningCode;
-  readonly externalReopen: "UNKNOWN";
+  readonly source: "external";
+  readonly fixture: string;
+  readonly sha256: string;
+  readonly externalReopen: "UNKNOWN" | "PASS" | "FAIL";
+  readonly expected: {
+    readonly hierarchy: "UNKNOWN" | "PASS" | "FAIL";
+    readonly appearance: "UNKNOWN" | "PASS" | "FAIL";
+    readonly editability: "UNKNOWN" | "PASS" | "FAIL";
+  };
 }
 
 export interface PsdCorpusManifest {

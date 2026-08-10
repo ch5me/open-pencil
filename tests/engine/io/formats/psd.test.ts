@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 
 import {
   DEFAULT_PSD_LIMITS,
@@ -7,6 +8,7 @@ import {
   layerMetadata,
   PsdHostileFileError,
   PsdUnsupportedError,
+  type PsdCorpusCase,
   parsePsdHeader,
   rasterizePsdLayers,
   readPsdFile,
@@ -15,6 +17,9 @@ import {
   stagePsbExport,
   stagePsbImport,
 } from "#core/io/formats/psd";
+import externalCorpus from "#tests/fixtures/psd-corpus-v1/manifest.json";
+
+const externalCorpusCases = externalCorpus.cases as readonly PsdCorpusCase[];
 
 function stagedPsdWithMetadata(metadata: unknown): Uint8Array {
   const header = stagePsdExport({ width: 1, height: 1, layers: [] }).slice(0, 26);
@@ -245,7 +250,11 @@ test("deterministically round-trips typed metadata without mutating caller data"
   expect(first).toEqual(second);
   expect(layer).toEqual(before);
   expect(stagePsdImport(first).layers).toEqual([layer]);
-  expect(createPsdCorpusManifest().cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(
+  expect(
+    createPsdCorpusManifest(externalCorpusCases).cases.every(
+      (entry) => entry.externalReopen === "UNKNOWN",
+    ),
+  ).toBe(
     true,
   );
 });
@@ -578,14 +587,26 @@ test("rejects compressed expansion and render-buffer budgets", () => {
   );
 });
 
-test("psd-corpus-v1 covers capabilities with fail-loud external reopen status", () => {
-  const manifest = createPsdCorpusManifest();
+test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen status", async () => {
+  expect(() => createPsdCorpusManifest([])).toThrow("external corpus manifest is empty");
+  const manifest = createPsdCorpusManifest(externalCorpusCases);
   expect(manifest.version).toBe("psd-corpus-v1");
-  expect(manifest.cases).toHaveLength(16);
-  expect(new Set(manifest.cases.map((entry) => entry.capability)).size).toBe(16);
+  expect(manifest.cases.length).toBeGreaterThan(0);
   expect(manifest.warningCoverage).toBe(1);
   expect(manifest.failedImportVisibleMutationCount).toBe(0);
   expect(manifest.cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(true);
+  for (const entry of manifest.cases) {
+    const fixture = Bun.file(new URL(`../../../fixtures/psd-corpus-v1/${entry.fixture}`, import.meta.url));
+    const bytes = new Uint8Array(await fixture.arrayBuffer());
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(entry.sha256);
+    const header = parsePsdHeader(bytes);
+    expect(header.width).toBeGreaterThan(0);
+    expect(header.height).toBeGreaterThan(0);
+    expect(entry.source).toBe("external");
+    expect(entry.expected.hierarchy).toBe("UNKNOWN");
+    expect(entry.expected.appearance).toBe("UNKNOWN");
+    expect(entry.expected.editability).toBe("UNKNOWN");
+  }
 });
 
 test("rejects oversized PSD files before reading payload", async () => {
