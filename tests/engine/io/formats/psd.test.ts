@@ -126,6 +126,37 @@ test("skips hidden layers and rejects malformed raster payloads", () => {
   ).toThrow("raster layer dimensions do not match document");
 });
 
+test("preserves rotated raster layers and applies rotated alpha masks", () => {
+  const pixels = new Uint8Array([
+    255, 0, 0, 255,
+    0, 255, 0, 255,
+    0, 0, 255, 255,
+    255, 255, 0, 255,
+  ]);
+  const mask = new Uint8Array([
+    255, 255, 255, 255,
+    0, 0, 0, 255,
+    0, 0, 0, 255,
+    255, 255, 255, 255,
+  ]);
+  const rotated = rasterizePsdLayers({
+    width: 2,
+    height: 2,
+    layers: [
+      {
+        ...layerMetadata("rotated", "Rotated"),
+        raster: { width: 2, height: 2, pixels, rotation: 90, mask: { width: 2, height: 2, pixels: mask, rotation: 90 } },
+      },
+    ],
+  });
+  expect([...rotated]).toEqual([
+    0, 255, 0, 255,
+    255, 255, 0, 255,
+    255, 0, 0, 255,
+    0, 0, 0, 0,
+  ]);
+});
+
 test("keeps PSD export deterministic and leaves layer input unchanged", () => {
   const layers = [layerMetadata("layer-1", "Layer", { opacity: 0.5 })];
   const before = structuredClone(layers);
