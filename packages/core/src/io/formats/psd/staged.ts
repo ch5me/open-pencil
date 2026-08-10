@@ -161,6 +161,24 @@ function adjustmentWarning(layers: readonly PsdLayerMetadata[]): PsdWarningCode[
     : [];
 }
 
+function advancedLayerFeatureWarning(layers: readonly PsdLayerMetadata[]): PsdWarningCode[] {
+  return layers.some(
+    (layer) =>
+      layer.smartObjectId !== undefined ||
+      layer.smartObjectKind !== undefined ||
+      layer.linkedAssetId !== undefined ||
+      layer.linkedAssetRevisionId !== undefined ||
+      layer.embeddedDocumentId !== undefined ||
+      layer.embeddedDocumentVersion !== undefined ||
+      layer.vector !== undefined ||
+      layer.paths !== undefined ||
+      layer.effects !== undefined ||
+      layer.vectorMask !== undefined,
+  )
+    ? ["unsupported-layer-feature"]
+    : [];
+}
+
 function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits): PsdLayerMetadata[] {
   if (bytes.byteLength < offset + PSD_METADATA_MAGIC.byteLength) return [];
   if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value)) return [];
@@ -218,6 +236,7 @@ export function stagePsdImport(
   const layers = readLayerMetadata(bytes, 26, limits);
   warnings.push(...blendModeWarning(layers));
   warnings.push(...adjustmentWarning(layers));
+  warnings.push(...advancedLayerFeatureWarning(layers));
   return {
     header,
     layers,
@@ -283,6 +302,16 @@ export function layerMetadata(
     Pick<
       PsdLayerMetadata,
       "visible" | "opacity" | "editable" | "text" | "blendMode" | "adjustmentType" | "adjustments"
+        | "smartObjectId"
+        | "smartObjectKind"
+        | "linkedAssetId"
+        | "linkedAssetRevisionId"
+        | "embeddedDocumentId"
+        | "embeddedDocumentVersion"
+        | "vector"
+        | "paths"
+        | "effects"
+        | "vectorMask"
     >
   > = {},
 ): PsdLayerMetadata {
@@ -296,6 +325,20 @@ export function layerMetadata(
     ...(options.adjustmentType ? { adjustmentType: options.adjustmentType } : {}),
     ...(options.adjustments ? { adjustments: structuredClone(options.adjustments) } : {}),
     ...(options.text ? { text: options.text } : {}),
+    ...(options.smartObjectId ? { smartObjectId: options.smartObjectId } : {}),
+    ...(options.smartObjectKind ? { smartObjectKind: options.smartObjectKind } : {}),
+    ...(options.linkedAssetId ? { linkedAssetId: options.linkedAssetId } : {}),
+    ...(options.linkedAssetRevisionId
+      ? { linkedAssetRevisionId: options.linkedAssetRevisionId }
+      : {}),
+    ...(options.embeddedDocumentId ? { embeddedDocumentId: options.embeddedDocumentId } : {}),
+    ...(options.embeddedDocumentVersion
+      ? { embeddedDocumentVersion: options.embeddedDocumentVersion }
+      : {}),
+    ...(options.vector ? { vector: structuredClone(options.vector) } : {}),
+    ...(options.paths ? { paths: structuredClone(options.paths) } : {}),
+    ...(options.effects ? { effects: structuredClone(options.effects) } : {}),
+    ...(options.vectorMask ? { vectorMask: structuredClone(options.vectorMask) } : {}),
     warnings: [],
   };
 }
