@@ -25,6 +25,26 @@ GPU execution, external renderer parity, device performance, and filter-fusion
 measurements remain `UNKNOWN` until observed on the consuming surface. The
 synthetic benchmark probe is not OpenPencil render acceptance.
 
+## G089 texture-memory and adaptive-resolution boundary
+
+The current adapter has no measured texture-memory budget and no adaptive
+resolution controller. `maxTiles` is a deterministic tile-plan safety limit,
+not a byte budget; `proxyMaxDimension` is an explicit caller-selected scale,
+not automatic pressure response. `ImageTilePlan` therefore describes planned
+dimensions and tile count only. It does not report resident GPU bytes,
+allocation/reclamation behavior, eviction, or a resolution downgrade decision.
+
+The performance probe at
+`docs/image-editor/probes/performance-d1-m1-2026-08-09.json` records synthetic
+CPU timings and a process peak, but `memory.appPeakBytes`, `gpuProfile`, and M1
+measurements are `UNKNOWN`. Do not promote those values into a texture budget,
+GPU-memory claim, low-memory guarantee, or adaptive-resolution proof.
+
+Low-memory progressive open, resource recreation, and resolution downgrade
+remain `UNKNOWN` in `renderer-resilience-v1`. A future implementation must
+carry an observed byte budget and pressure signal through the consuming
+renderer, then verify downgrade, recovery, and restoration on target devices.
+
 ## Partial updates
 
 The current adapter invalidates and reports whole-asset work. `ImageTexture`
