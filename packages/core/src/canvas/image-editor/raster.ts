@@ -135,6 +135,26 @@ export interface RasterCanvasPool {
   clear(): void;
 }
 
+function rasterCanvasSize(width: number, height: number): number {
+  if (
+    !Number.isSafeInteger(width) ||
+    !Number.isSafeInteger(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    !Number.isSafeInteger(width * height)
+  ) {
+    throw new RangeError("canvas pool dimensions must be positive safe integers");
+  }
+  return width * height;
+}
+
+function validateRasterCanvas(width: number, height: number, value: RasterCanvas): void {
+  const size = rasterCanvasSize(width, height);
+  if (value.pixels.length !== size * 4 || value.present.length !== size) {
+    throw new RangeError("canvas pool buffers do not match their dimensions");
+  }
+}
+
 const adjustmentIds = new WeakMap<RasterAdjustment, number>();
 let nextAdjustmentId = 1;
 
@@ -189,6 +209,7 @@ export function createRasterCanvasPool(thresholdMs = 50): RasterCanvasPool {
   const keyFor = (width: number, height: number) => `${width}x${height}`;
   return {
     acquire(width, height) {
+      rasterCanvasSize(width, height);
       const key = keyFor(width, height);
       if (!enabled.has(key)) return undefined;
       const value = available.get(key);
@@ -197,12 +218,14 @@ export function createRasterCanvasPool(thresholdMs = 50): RasterCanvasPool {
       return value;
     },
     recordMiss(width, height, elapsedMs, value) {
+      validateRasterCanvas(width, height, value);
       if (!Number.isFinite(elapsedMs) || elapsedMs < thresholdMs) return;
       const key = keyFor(width, height);
       enabled.add(key);
       if (!available.has(key)) available.set(key, value);
     },
     release(width, height, value) {
+      validateRasterCanvas(width, height, value);
       const key = keyFor(width, height);
       if (enabled.has(key) && !available.has(key)) available.set(key, value);
     },
@@ -685,7 +708,10 @@ export function composeRasterRGBA8(
       cached = { pixels: nodePixels, present };
       const elapsedMs = now() - startedAt;
       if (cacheEnabled) {
-        groupCache.recordMiss(cacheKey, elapsedMs, cached);
+        const cacheValue = options.canvasPool
+          ? { pixels: nodePixels.slice(), present: present.slice() }
+          : cached;
+        groupCache.recordMiss(cacheKey, elapsedMs, cacheValue);
       }
       options.canvasPool?.recordMiss(
         options.width,

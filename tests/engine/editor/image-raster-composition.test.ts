@@ -70,6 +70,97 @@ test("canvas pool keeps composed output fresh across combined mask passes", () =
   expect([...second.pixels]).toEqual([0, 0, 255, 255]);
 });
 
+test("canvas pool rejects invalid dimensions and buffer lengths", () => {
+  const pool = createRasterCanvasPool(0);
+  expect(() => pool.acquire(0, 1)).toThrow(RangeError);
+  expect(() =>
+    pool.recordMiss(1, 1, 0, {
+      pixels: new Uint8Array(0),
+      present: new Uint8Array(0),
+    }),
+  ).toThrow(RangeError);
+  expect(() =>
+    pool.release(1, 1, {
+      pixels: new Uint8Array(4),
+      present: new Uint8Array(0),
+    }),
+  ).toThrow(RangeError);
+});
+
+test("canvas pool does not alias buffers retained by a custom raster cache", () => {
+  const group = node({ id: "group", type: "GROUP", width: 2, childIds: ["red", "blue"] });
+  const red = node({
+    id: "red",
+    type: "IMAGE",
+    parentId: group.id,
+    fills: [{
+      type: "IMAGE",
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      opacity: 1,
+      visible: true,
+      imageHash: "asset:red",
+    }],
+  });
+  const blue = node({
+    id: "blue",
+    type: "IMAGE",
+    parentId: group.id,
+    x: 1,
+    fills: [{
+      type: "IMAGE",
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      opacity: 1,
+      visible: true,
+      imageHash: "asset:blue",
+    }],
+  });
+  const revisions = new Map<string, AssetRevision>([
+    ["revision:red", {
+      revisionId: "revision:red",
+      kind: "image",
+      metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+      bytes: new Uint8Array([255, 0, 0, 255]),
+    }],
+    ["revision:blue", {
+      revisionId: "revision:blue",
+      kind: "image",
+      metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+      bytes: new Uint8Array([0, 0, 255, 255]),
+    }],
+  ]);
+  const retained = new Map<string, { pixels: Uint8Array; present: Uint8Array }>();
+  const groupCache = {
+    get: (key: string) => retained.get(key),
+    recordMiss: (
+      key: string,
+      _elapsedMs: number,
+      value: { pixels: Uint8Array; present: Uint8Array },
+    ) => {
+      retained.set(key, value);
+    },
+    clear: () => retained.clear(),
+  };
+  const resolve: RasterCompositionAssetResolver = {
+    getAsset: (assetId) => ({
+      assetId,
+      revisionId: assetId === "asset:red" ? "revision:red" : "revision:blue",
+    }),
+    getRevision: (revisionId) => revisions.get(revisionId),
+  };
+  const options = {
+    width: 2,
+    height: 1,
+    groupCache,
+    canvasPool: createRasterCanvasPool(0),
+    now: () => 100,
+  };
+  const plan = planFor([group, red, blue], group.id);
+  const first = composeRasterRGBA8(plan, resolve, options);
+  const second = composeRasterRGBA8(plan, resolve, options);
+  expect([...first.pixels]).toEqual([255, 0, 0, 255, 0, 0, 255, 255]);
+  expect([...second.pixels]).toEqual([...first.pixels]);
+});
+
 test("group CPU cache stays cold until a measured threshold miss", () => {
   const cache = createRasterGroupCache(10);
   const value = { pixels: new Uint8Array([1, 2, 3, 4]), present: new Uint8Array([1]) };
