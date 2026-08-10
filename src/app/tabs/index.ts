@@ -1,4 +1,5 @@
 import { BUILTIN_IO_FORMATS, IORegistry } from "@open-pencil/core/io";
+import { IS_BROWSER } from "@open-pencil/core/constants";
 import { readFigFile } from "@open-pencil/core/io/formats/fig";
 import { computeAllLayouts } from "@open-pencil/core/layout";
 import type { SceneGraph } from "@open-pencil/core/scene-graph";
@@ -138,7 +139,7 @@ export function closeTab(tabId: string) {
   const closingTab = tabsRef.value[idx];
   if (
     closingTab.store.isDirty() &&
-    typeof window !== "undefined" &&
+    IS_BROWSER &&
     !window.confirm(`Unsaved changes in "${closingTab.store.state.documentName}". Close anyway?`)
   ) {
     return;
