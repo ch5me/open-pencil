@@ -19,6 +19,8 @@ export interface PointerSample {
 
 export type BrushMode = "erase" | "reveal";
 
+export type BrushMaskControlOperation = "invert" | "disable" | "delete" | "duplicate" | "apply";
+
 export interface BrushStroke {
   readonly version: "brush-mask-v1";
   readonly maskId: string;
@@ -29,8 +31,91 @@ export interface BrushStroke {
   readonly transactionId: `tx:${string}`;
 }
 
+export interface BrushMaskControl {
+  readonly version: "brush-mask-v1";
+  readonly operation: BrushMaskControlOperation;
+  readonly maskId: string;
+  readonly transactionId: `tx:${string}`;
+  readonly mask: RasterMask | null;
+  readonly deleted: boolean;
+  readonly applied: boolean;
+}
+
 export class BrushDeviceUnavailableError extends Error {
   readonly code = "brush-device-unavailable";
+}
+
+export class BrushMaskCapabilityUnavailableError extends Error {
+  readonly code = "brush-mask-capability-unavailable";
+}
+
+function validateTransactionId(transactionId: `tx:${string}`): void {
+  if (!/^tx:.+/u.test(transactionId)) throw new RangeError("invalid brush transaction");
+}
+
+function createMaskControl(
+  operation: BrushMaskControlOperation,
+  mask: RasterMask,
+  transactionId: `tx:${string}`,
+  nextMask: RasterMask | null,
+  deleted = false,
+  applied = false,
+): BrushMaskControl {
+  const validatedMask = validateRasterMask(mask);
+  validateTransactionId(transactionId);
+  return {
+    version: "brush-mask-v1",
+    operation,
+    maskId: validatedMask.maskId,
+    transactionId,
+    mask: nextMask ? validateRasterMask(nextMask) : null,
+    deleted,
+    applied,
+  };
+}
+
+export function invertMask(mask: RasterMask, transactionId: `tx:${string}`): BrushMaskControl {
+  const validated = validateRasterMask(mask);
+  return createMaskControl(
+    "invert",
+    validated,
+    transactionId,
+    { ...validated, inverted: !validated.inverted },
+  );
+}
+
+export function disableMask(mask: RasterMask, transactionId: `tx:${string}`): BrushMaskControl {
+  const validated = validateRasterMask(mask);
+  return createMaskControl("disable", validated, transactionId, { ...validated, enabled: false });
+}
+
+export function deleteMask(mask: RasterMask, transactionId: `tx:${string}`): BrushMaskControl {
+  return createMaskControl("delete", mask, transactionId, null, true);
+}
+
+function duplicateId(id: string, transactionId: `tx:${string}`): string {
+  return `${id}:duplicate:${transactionId.slice(3)}`;
+}
+
+export function duplicateMask(mask: RasterMask, transactionId: `tx:${string}`): BrushMaskControl {
+  const validated = validateRasterMask(mask);
+  const duplicate = {
+    ...validated,
+    maskId: duplicateId(validated.maskId, transactionId),
+    thumbnailId: duplicateId(validated.thumbnailId, transactionId),
+  };
+  return createMaskControl("duplicate", validated, transactionId, duplicate);
+}
+
+export function applyMask(
+  mask: RasterMask,
+  transactionId: `tx:${string}`,
+  pixelApplyAvailable = false,
+): BrushMaskControl {
+  if (!pixelApplyAvailable) {
+    throw new BrushMaskCapabilityUnavailableError("mask pixel application unavailable");
+  }
+  return createMaskControl("apply", mask, transactionId, null, true, true);
 }
 
 export function normalizeBrushConfig(config: BrushConfig): BrushConfig {
@@ -85,7 +170,7 @@ export function createBrushStroke(
 ): BrushStroke {
   const validatedMask = validateRasterMask(mask);
   const normalized = normalizeBrushConfig(config);
-  if (!/^tx:.+/u.test(transactionId)) throw new RangeError("invalid brush transaction");
+  validateTransactionId(transactionId);
   if (mode !== "erase" && mode !== "reveal") throw new RangeError("invalid brush mode");
   if (normalized.pressure && !pressureAvailable) {
     throw new BrushDeviceUnavailableError("pressure input unavailable");
