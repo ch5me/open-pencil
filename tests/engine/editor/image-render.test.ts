@@ -82,7 +82,7 @@ test("image render adapter resolves the first bound image asset", () => {
     adjustmentHooks: [],
   });
   expect(frame.textures[0]?.revisionId).toBe("sha256:revision-1");
-  expect(frame.textures[0]?.uploaded).toBe(true);
+  expect(frame.textures[0]).toMatchObject({ dirty: true, uploaded: true });
 });
 
 test("image render adapter emits clipped raster bases from composition groups", () => {
@@ -150,7 +150,7 @@ test("image render adapter emits clipped raster bases from composition groups", 
       assetId: "asset:raster-base",
       revisionId: "sha256:raster-revision",
       byteLength: 4,
-      dirty: false,
+      dirty: true,
       uploaded: true,
     },
   ]);
@@ -169,19 +169,102 @@ test("image render adapter caches textures, deduplicates shared assets, and reup
 
   const plan = imagePlan([imageNode("image-a"), imageNode("image-b")]);
   expect(adapter.render(plan, resolve).textures).toHaveLength(1);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: true,
+    uploaded: true,
+  });
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: false,
+    uploaded: false,
+  });
 
   revisionId = "sha256:revision-2";
   const next = adapter.render(plan, resolve);
   expect(next.textures).toHaveLength(1);
-  expect(next.textures[0]).toMatchObject({ revisionId, uploaded: true });
+  expect(next.textures[0]).toMatchObject({ revisionId, dirty: true, uploaded: true });
 
   adapter.markDirty("asset:hero");
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(false);
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: true,
+    uploaded: true,
+  });
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: false,
+    uploaded: false,
+  });
   adapter.restore();
-  expect(adapter.render(plan, resolve).textures[0]?.uploaded).toBe(true);
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: true,
+    uploaded: true,
+  });
+});
+
+test("image render adapter uploads only textures affected by source or mask dirtiness", () => {
+  const adapter = createImageRenderAdapter();
+  const plan = imagePlan([
+    imageNode("source", "asset:source"),
+    imageNode("mask", "asset:mask"),
+  ]);
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId: `sha256:${assetId}` }),
+    getRevision: (revisionId) => ({
+      revisionId,
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  };
+
+  adapter.render(plan, resolve);
+  const unchanged = adapter.render(plan, resolve);
+  expect(unchanged.textures).toEqual([
+    {
+      assetId: "asset:source",
+      revisionId: "sha256:asset:source",
+      byteLength: 3,
+      dirty: false,
+      uploaded: false,
+    },
+    {
+      assetId: "asset:mask",
+      revisionId: "sha256:asset:mask",
+      byteLength: 3,
+      dirty: false,
+      uploaded: false,
+    },
+  ]);
+
+  adapter.markDirty("asset:mask");
+  const maskChanged = adapter.render(plan, resolve);
+  expect(maskChanged.textures).toEqual([
+    {
+      assetId: "asset:source",
+      revisionId: "sha256:asset:source",
+      byteLength: 3,
+      dirty: false,
+      uploaded: false,
+    },
+    {
+      assetId: "asset:mask",
+      revisionId: "sha256:asset:mask",
+      byteLength: 3,
+      dirty: true,
+      uploaded: true,
+    },
+  ]);
+
+  adapter.markDirty("asset:source");
+  const sourceChanged = adapter.render(plan, resolve);
+  expect(sourceChanged.textures[0]).toMatchObject({
+    assetId: "asset:source",
+    dirty: true,
+    uploaded: true,
+  });
+  expect(sourceChanged.textures[1]).toMatchObject({
+    assetId: "asset:mask",
+    dirty: false,
+    uploaded: false,
+  });
 });
 
 test("image render adapter uploads only assets invalidated by their revision or dirty mark", () => {
