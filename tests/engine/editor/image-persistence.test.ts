@@ -125,6 +125,7 @@ test("persistence-v1 first-save termination recovers nothing or one complete new
       expect(recovered).toBeUndefined();
     } else {
       expect(recovered).toEqual(next);
+      expect(recovered.record.commitState).toBe("committed");
     }
   }
 });

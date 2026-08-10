@@ -385,7 +385,7 @@ export class AtomicWorkingDocumentPersistence {
     const rootKey = durableRootKey(candidate.record.documentId, candidate.record.contentRootHash);
     this.stagedAssets.set(rootKey, candidate.assets);
     this.afterBoundary("asset", candidate.record.contentRootHash);
-    this.stagedRecords.set(rootKey, candidate.record);
+    this.stagedRecords.set(rootKey, { ...candidate.record, commitState: "staged" });
     this.afterBoundary("staged-record", candidate.record.contentRootHash);
 
     const stagedRecord = this.stagedRecords.get(rootKey);
@@ -395,7 +395,10 @@ export class AtomicWorkingDocumentPersistence {
     }
     this.committedRoots.set(
       rootKey,
-      cloneDetachedDocument({ record: stagedRecord, assets: stagedAssets }),
+      cloneDetachedDocument({
+        record: { ...stagedRecord, commitState: "committed" },
+        assets: stagedAssets,
+      }),
     );
     this.afterBoundary("committed-record", candidate.record.contentRootHash);
 
