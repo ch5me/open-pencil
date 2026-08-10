@@ -134,6 +134,33 @@ function blendModeWarning(layers: readonly PsdLayerMetadata[]): PsdWarningCode[]
     : [];
 }
 
+const PSD_SUPPORTED_ADJUSTMENT_TYPES = new Set([
+  "brightness",
+  "contrast",
+  "saturation",
+  "levels",
+  "curves",
+  "exposure",
+  "vibrance",
+  "hsl",
+  "color-balance",
+  "black-white",
+  "threshold",
+  "posterize",
+  "gradient-map",
+  "selective-color",
+]);
+
+function adjustmentWarning(layers: readonly PsdLayerMetadata[]): PsdWarningCode[] {
+  return layers.some(
+    (layer) =>
+      layer.adjustmentType !== undefined &&
+      !PSD_SUPPORTED_ADJUSTMENT_TYPES.has(layer.adjustmentType),
+  )
+    ? ["unsupported-layer-feature"]
+    : [];
+}
+
 function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits): PsdLayerMetadata[] {
   if (bytes.byteLength < offset + PSD_METADATA_MAGIC.byteLength) return [];
   if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value)) return [];
@@ -157,6 +184,22 @@ function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits)
       ) {
         throw new PsdUnsupportedError("invalid PSD layer metadata");
       }
+      if (
+        layer.adjustmentType !== undefined &&
+        typeof layer.adjustmentType !== "string"
+      ) {
+        throw new PsdUnsupportedError("invalid PSD adjustment metadata");
+      }
+      if (
+        layer.adjustments !== undefined &&
+        (!layer.adjustments ||
+          typeof layer.adjustments !== "object" ||
+          Object.values(layer.adjustments).some(
+            (value) => typeof value !== "number" || !Number.isFinite(value),
+          ))
+      ) {
+        throw new PsdUnsupportedError("invalid PSD adjustment metadata");
+      }
       return layer as PsdLayerMetadata;
     });
   } catch (error) {
@@ -173,6 +216,7 @@ export function stagePsdImport(
   const warnings = headerWarnings(header);
   const layers = readLayerMetadata(bytes, 26, limits);
   warnings.push(...blendModeWarning(layers));
+  warnings.push(...adjustmentWarning(layers));
   return {
     header,
     layers,
@@ -235,7 +279,10 @@ export function layerMetadata(
   id: string,
   name: string,
   options: Partial<
-    Pick<PsdLayerMetadata, "visible" | "opacity" | "editable" | "text" | "blendMode">
+    Pick<
+      PsdLayerMetadata,
+      "visible" | "opacity" | "editable" | "text" | "blendMode" | "adjustmentType" | "adjustments"
+    >
   > = {},
 ): PsdLayerMetadata {
   return {
@@ -245,6 +292,8 @@ export function layerMetadata(
     opacity: options.opacity ?? 1,
     editable: options.editable ?? true,
     ...(options.blendMode ? { blendMode: options.blendMode } : {}),
+    ...(options.adjustmentType ? { adjustmentType: options.adjustmentType } : {}),
+    ...(options.adjustments ? { adjustments: structuredClone(options.adjustments) } : {}),
     ...(options.text ? { text: options.text } : {}),
     warnings: [],
   };

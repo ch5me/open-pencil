@@ -141,6 +141,41 @@ test("reports unsupported PSD blend modes without mutating staged bytes", () => 
   expect(bytes).toEqual(before);
 });
 
+test("preserves supported adjustment metadata and warns on unsupported types", () => {
+  const supported = layerMetadata("levels", "Levels", {
+    adjustmentType: "levels",
+    adjustments: { inputBlack: 8, inputWhite: 240 },
+  });
+  const unsupported = layerMetadata("lookup", "Lookup", {
+    adjustmentType: "lookup",
+    adjustments: { amount: 0.5 },
+  });
+  const bytes = stagePsdExport({ width: 1, height: 1, layers: [supported, unsupported] });
+  const before = bytes.slice();
+  const result = stagePsdImport(bytes);
+
+  expect(result.layers).toEqual([supported, unsupported]);
+  expect(result.warnings).toEqual(["unsupported-layer-feature"]);
+  expect(result.degraded).toBe(true);
+  expect(bytes).toEqual(before);
+});
+
+test("rejects unsupported PSD adjustment types before raster mutation", () => {
+  const pixels = new Uint8Array([255, 0, 0, 255]);
+  expect(() =>
+    rasterizePsdLayers({
+      width: 1,
+      height: 1,
+      layers: [
+        {
+          ...layerMetadata("unsupported", "Unsupported", { adjustmentType: "lookup" }),
+          raster: { width: 1, height: 1, pixels },
+        },
+      ],
+    }),
+  ).toThrow("unsupported PSD adjustment type: lookup");
+});
+
 test("skips hidden layers and rejects malformed raster payloads", () => {
   expect(
     [...rasterizePsdLayers({

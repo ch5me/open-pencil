@@ -74,6 +74,9 @@ export interface PsdLayerMetadata {
   readonly editable: boolean;
   /** PSD blend mode name as supplied by the producer. */
   readonly blendMode?: string;
+  /** PSD adjustment kind; unknown producer kinds stay observable and degraded. */
+  readonly adjustmentType?: string;
+  readonly adjustments?: Readonly<Record<string, number>>;
   readonly text?: ImportedTextMetadata;
   readonly warnings: readonly PsdWarningCode[];
 }
