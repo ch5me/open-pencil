@@ -10,6 +10,7 @@ export function createInitialAppEditorState(pageId: string): AppEditorState {
     showRemoteCursors: true,
     activeRibbonTab: "panels",
     panelMode: "design",
+    leftPanelMode: "layers",
     actionToast: null,
     mobileDrawerSnap: "closed",
     clipboardHtml: "",
@@ -27,6 +28,7 @@ export type AppEditorState = EditorState & {
   showRemoteCursors: boolean;
   activeRibbonTab: "panels" | "code" | "ai";
   panelMode: "layers" | "design";
+  leftPanelMode: "layers" | "assets";
   actionToast: string | null;
   mobileDrawerSnap: "closed" | "half" | "full";
   clipboardHtml: string;

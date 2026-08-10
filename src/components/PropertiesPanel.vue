@@ -1,16 +1,36 @@
 <script setup lang="ts">
 import { useI18n } from "@open-pencil/vue";
 import { TabsContent, TabsList, TabsRoot, TabsTrigger } from "reka-ui";
+import { computed, watch } from "vue";
 
 import { useAIChat } from "@/app/ai/chat/use";
+import { useEditorStore } from "@/app/editor/active-store";
 
 import ChatPanel from "./ChatPanel.vue";
 import CodePanel from "./CodePanel.vue";
 import DesignPanel from "./DesignPanel.vue";
 import ZoomDropdown from "./ZoomDropdown.vue";
 
-const { activeTab } = useAIChat();
+const store = useEditorStore();
+const { activeTab: chatTab } = useAIChat();
 const { panels } = useI18n();
+
+const activeTab = computed({
+  get: () => {
+    if (store.state.activeRibbonTab === "code") return "code";
+    if (store.state.activeRibbonTab === "ai") return "ai";
+    return "design";
+  },
+  set: (value: "design" | "code" | "ai") => {
+    store.state.activeRibbonTab = value === "design" ? "panels" : value;
+    chatTab.value = value;
+  },
+});
+
+watch(chatTab, (value) => {
+  if (value === "design") store.state.activeRibbonTab = "panels";
+  else store.state.activeRibbonTab = value;
+});
 </script>
 
 <template>

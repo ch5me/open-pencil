@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from "@open-pencil/vue";
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from "reka-ui";
-import { ref } from "vue";
+
+import { useEditorStore } from "@/app/editor/active-store";
 
 import AppMenu from "./AppMenu.vue";
 import AssetsPanel from "./AssetsPanel.vue";
@@ -9,7 +10,7 @@ import LayerTree from "./LayerTree.vue";
 import PagesPanel from "./PagesPanel.vue";
 
 const { menu, panels } = useI18n();
-const activePanel = ref<"file" | "assets">("file");
+const store = useEditorStore();
 </script>
 
 <template>
@@ -23,8 +24,12 @@ const activePanel = ref<"file" | "assets">("file");
       <button
         data-test-id="left-panel-layers-tab"
         class="flex-1 rounded px-2 py-1 text-xs transition-colors"
-        :class="activePanel === 'file' ? 'bg-hover text-surface' : 'text-muted hover:text-surface'"
-        @click="activePanel = 'file'"
+        :class="
+          store.state.leftPanelMode === 'layers'
+            ? 'bg-hover text-surface'
+            : 'text-muted hover:text-surface'
+        "
+        @click="store.state.leftPanelMode = 'layers'"
       >
         {{ menu.file }}
       </button>
@@ -32,16 +37,18 @@ const activePanel = ref<"file" | "assets">("file");
         data-test-id="left-panel-assets-tab"
         class="flex-1 rounded px-2 py-1 text-xs transition-colors"
         :class="
-          activePanel === 'assets' ? 'bg-hover text-surface' : 'text-muted hover:text-surface'
+          store.state.leftPanelMode === 'assets'
+            ? 'bg-hover text-surface'
+            : 'text-muted hover:text-surface'
         "
-        @click="activePanel = 'assets'"
+        @click="store.state.leftPanelMode = 'assets'"
       >
         {{ panels.assets }}
       </button>
     </div>
-    <AssetsPanel v-if="activePanel === 'assets'" />
+    <AssetsPanel v-show="store.state.leftPanelMode === 'assets'" />
     <SplitterGroup
-      v-else
+      v-show="store.state.leftPanelMode === 'layers'"
       direction="vertical"
       auto-save-id="layers-layout"
       class="flex-1 overflow-hidden"
