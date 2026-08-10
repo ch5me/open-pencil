@@ -23,6 +23,22 @@ function clampByte(value: number): number {
 }
 
 const PSD_SUPPORTED_BLEND_MODES = new Set(["NORMAL", "PASS_THROUGH", "MULTIPLY", "SCREEN", "OVERLAY"]);
+const PSD_SUPPORTED_ADJUSTMENT_TYPES = new Set([
+  "brightness",
+  "contrast",
+  "saturation",
+  "levels",
+  "curves",
+  "exposure",
+  "vibrance",
+  "hsl",
+  "color-balance",
+  "black-white",
+  "threshold",
+  "posterize",
+  "gradient-map",
+  "selective-color",
+]);
 
 function blendChannel(mode: string | undefined, source: number, destination: number): number {
   switch (mode ?? "NORMAL") {
@@ -148,6 +164,12 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
     if (!layer.raster || !layer.visible || layer.opacity <= 0) continue;
     if (layer.blendMode !== undefined && !PSD_SUPPORTED_BLEND_MODES.has(layer.blendMode)) {
       throw new PsdUnsupportedError(`unsupported PSD blend mode: ${layer.blendMode}`);
+    }
+    if (
+      layer.adjustmentType !== undefined &&
+      !PSD_SUPPORTED_ADJUSTMENT_TYPES.has(layer.adjustmentType)
+    ) {
+      throw new PsdUnsupportedError(`unsupported PSD adjustment type: ${layer.adjustmentType}`);
     }
     assertRasterDimensions(layer.raster, input.width, input.height);
     assertTransform(layer.raster.transform);
