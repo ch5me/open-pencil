@@ -336,6 +336,41 @@ test("image render adapter uploads only assets invalidated by their revision or 
   ]);
 });
 
+test("image render adapter emits typed partial updates and unions repeated dirty rectangles", () => {
+  const adapter = createImageRenderAdapter();
+  const plan = imagePlan();
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId: "sha256:hero" }),
+    getRevision: (revisionId) => ({
+      revisionId,
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  };
+
+  adapter.render(plan, resolve);
+  adapter.markDirty("asset:hero", { x: 2, y: 3, width: 4, height: 5 });
+  adapter.markDirty("asset:hero", { x: 0, y: 5, width: 3, height: 2 });
+
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    dirty: true,
+    uploaded: true,
+    update: {
+      kind: "partial",
+      dirtyRect: { x: 0, y: 3, width: 6, height: 5 },
+    },
+  });
+  expect(adapter.render(plan, resolve).textures[0]).not.toHaveProperty("update");
+});
+
+test("image render adapter rejects invalid partial update rectangles", () => {
+  const adapter = createImageRenderAdapter();
+  expect(() => adapter.markDirty("asset:hero", { x: 0, y: 0, width: -1, height: 2 })).toThrow(
+    "invalid image texture dirty rectangle",
+  );
+});
+
 test("image render adapter tracks revisions independently and reports zero unchanged uploads", () => {
   const adapter = createImageRenderAdapter();
   const revisions = new Map<string, AssetRevision>([

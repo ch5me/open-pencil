@@ -83,6 +83,19 @@ export interface ImageTexture {
   readonly byteLength: number;
   readonly dirty: boolean;
   readonly uploaded: boolean;
+  readonly update?: ImageTextureUpdate;
+}
+
+export interface ImageTextureUpdate {
+  readonly kind: "partial";
+  readonly dirtyRect: ImageDirtyRect;
+}
+
+export interface ImageDirtyRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface ImageRenderCommand {

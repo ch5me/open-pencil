@@ -11,6 +11,8 @@ export {
   type ImageRenderGapCode,
   type ImageRevisionResolver,
   type ImageTexture,
+  type ImageTextureUpdate,
+  type ImageDirtyRect,
   type ImageRenderBackend,
   type RendererResilienceContract,
   type RendererResilienceState,

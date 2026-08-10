@@ -7,6 +7,7 @@ import {
   type ImageRenderCommand,
   type ImageRenderFrame,
   type ImageRenderGap,
+  type ImageDirtyRect,
   type ImageRevisionResolver,
   type ImageTexture,
 } from "./types";
@@ -22,6 +23,7 @@ export function createImageRenderAdapter(
     throw new UnsupportedImageBackendError(`unsupported image backend: ${options.backend}`);
   }
   const dirtyAssets = new Set<AssetId>();
+  const dirtyRects = new Map<AssetId, ImageDirtyRect>();
   const uploadedRevisions = new Map<AssetId, string>();
 
   return {
@@ -85,26 +87,56 @@ export function createImageRenderAdapter(
               uploaded: false,
             });
           } else {
+            const revisionChanged = uploadedRevisions.get(assetId) !== binding.revisionId;
+            const dirtyRect = dirtyRects.get(assetId);
             uploadedRevisions.set(assetId, binding.revisionId);
             dirtyAssets.delete(assetId);
+            dirtyRects.delete(assetId);
             textures.push({
               assetId,
               revisionId: binding.revisionId,
               byteLength: revision.bytes.byteLength,
               dirty: true,
               uploaded: true,
+              ...(dirtyRect && !revisionChanged
+                ? { update: { kind: "partial" as const, dirtyRect } }
+                : {}),
             });
           }
         }
       }
       return { backend: "skia", commands, textures, gaps };
     },
-    markDirty(assetId: AssetId): void {
+    markDirty(assetId: AssetId, dirtyRect?: ImageDirtyRect): void {
+      if (dirtyRect) {
+        validateDirtyRect(dirtyRect);
+        const previous = dirtyRects.get(assetId);
+        dirtyRects.set(assetId, previous ? unionDirtyRects(previous, dirtyRect) : { ...dirtyRect });
+      }
       dirtyAssets.add(assetId);
     },
     restore(): void {
       dirtyAssets.clear();
+      dirtyRects.clear();
       uploadedRevisions.clear();
     },
   };
+}
+
+function validateDirtyRect(rect: ImageDirtyRect): void {
+  if (
+    ![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) ||
+    rect.width < 0 ||
+    rect.height < 0
+  ) {
+    throw new RangeError("invalid image texture dirty rectangle");
+  }
+}
+
+function unionDirtyRects(left: ImageDirtyRect, right: ImageDirtyRect): ImageDirtyRect {
+  const x = Math.min(left.x, right.x);
+  const y = Math.min(left.y, right.y);
+  const rightEdge = Math.max(left.x + left.width, right.x + right.width);
+  const bottomEdge = Math.max(left.y + left.height, right.y + right.height);
+  return { x, y, width: rightEdge - x, height: bottomEdge - y };
 }
