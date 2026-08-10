@@ -69,8 +69,8 @@ export class UnsupportedImageBackendError extends Error {
 export type ImageRenderGapCode =
   | "missing-asset-binding"
   | "missing-asset-revision"
-  | "asset-revision-mismatch"
-  | "asset-binding-mismatch";
+  | "asset-binding-mismatch"
+  | "asset-revision-mismatch";
 
 export interface ImageRenderGap {
   readonly code: ImageRenderGapCode;
