@@ -4,6 +4,8 @@ import {
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdExportInput,
+  type PsdDocumentMetadata,
+  type PsdColorMode,
   type PsdHeader,
   type PsdImportResult,
   type PsdLimits,
@@ -58,6 +60,10 @@ function readUint32(view: DataView, offset: number): number {
   return view.getUint32(offset, false);
 }
 
+function isPsdColorMode(value: number): value is PsdColorMode {
+  return [0, 1, 2, 3, 4, 7, 8, 9].includes(value);
+}
+
 function assertDimension(value: number): void {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new PsdHostileFileError("PSD dimensions exceed limits");
@@ -86,13 +92,17 @@ function parsePsdHeaderBytes(
   const version = readUint16(view, 4);
   if (version !== 1 && version !== 2)
     throw new PsdUnsupportedError(`unsupported PSD version: ${version}`);
+  const colorMode = readUint16(view, 24);
+  if (!isPsdColorMode(colorMode)) {
+    throw new PsdUnsupportedError(`unsupported PSD color mode: ${colorMode}`);
+  }
   const header: PsdHeader = {
     version,
     channels: readUint16(view, 12),
     height: readUint32(view, 14),
     width: readUint32(view, 18),
     bitsPerChannel: readUint16(view, 22),
-    colorMode: readUint16(view, 24),
+    colorMode,
   };
   if (header.channels <= 0) throw new PsdUnsupportedError("PSD has no channels");
   if (header.width > limits.maxWidth || header.height > limits.maxHeight) {
@@ -236,15 +246,6 @@ function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits)
   }
 }
 
-interface PsdDocumentMetadata {
-  readonly layers: readonly PsdLayerMetadata[];
-  readonly dpi?: readonly [number, number];
-  readonly iccProfile?: { readonly name: string; readonly data: number[] };
-  readonly channels?: readonly PsdChannelMetadata[];
-  readonly spotColors?: readonly PsdSpotColor[];
-  readonly metadata?: Readonly<Record<string, unknown>>;
-}
-
 function readDocumentMetadata(
   bytes: Uint8Array,
   offset: number,
@@ -261,7 +262,53 @@ function readDocumentMetadata(
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.layers)) {
       throw new PsdUnsupportedError("invalid PSD layer metadata");
     }
-    return parsed as PsdDocumentMetadata;
+    const document = parsed as Record<string, unknown>;
+    if (
+      document.dpi !== undefined &&
+      (!Array.isArray(document.dpi) ||
+        document.dpi.length !== 2 ||
+        document.dpi.some(
+          (value) => typeof value !== "number" || !Number.isFinite(value) || value <= 0,
+        ))
+    ) {
+      throw new PsdUnsupportedError("invalid PSD DPI metadata");
+    }
+    if (
+      document.channels !== undefined &&
+      (!Array.isArray(document.channels) ||
+        document.channels.some(
+          (channel) =>
+            !channel ||
+            typeof channel !== "object" ||
+            !Number.isSafeInteger(channel.id) ||
+            typeof channel.name !== "string" ||
+            !["color", "alpha", "spot"].includes(channel.kind),
+        ))
+    ) {
+      throw new PsdUnsupportedError("invalid PSD channel metadata");
+    }
+    if (
+      document.spotColors !== undefined &&
+      (!Array.isArray(document.spotColors) ||
+        document.spotColors.some(
+          (spot) =>
+            !spot ||
+            typeof spot !== "object" ||
+            typeof spot.name !== "string" ||
+            !Array.isArray(spot.color) ||
+            spot.color.length !== 3 ||
+            spot.color.some((value) => typeof value !== "number" || value < 0 || value > 1),
+        ))
+    ) {
+      throw new PsdUnsupportedError("invalid PSD spot color metadata");
+    }
+    if (
+      document.metadata !== undefined &&
+      (!document.metadata || typeof document.metadata !== "object" || Array.isArray(document.metadata))
+    ) {
+      throw new PsdUnsupportedError("invalid PSD document metadata");
+    }
+    return document as PsdDocumentMetadata;
   } catch (error) {
     if (error instanceof PsdUnsupportedError) throw error;
     throw new PsdUnsupportedError("invalid PSD layer metadata");

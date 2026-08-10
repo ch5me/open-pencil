@@ -5,6 +5,10 @@ export type PsdWarningCode =
   | "unsupported-layer-feature"
   | "hostile-file-limit";
 
+/** Numeric values from the PSD file header. Unsupported modes stay observable. */
+export type PsdColorMode = 0 | 1 | 2 | 3 | 4 | 7 | 8 | 9;
+export type PsdBitDepth = 8 | 16;
+
 export type PsdCapabilityCode =
   | "E_PSD_CAPABILITY_EDITABLE_TEXT"
   | "E_PSD_CAPABILITY_SHAPES"
@@ -63,7 +67,7 @@ export interface PsdHeader {
   readonly height: number;
   readonly width: number;
   readonly bitsPerChannel: number;
-  readonly colorMode: number;
+  readonly colorMode: PsdColorMode;
   readonly dpi?: readonly [number, number];
   readonly iccProfile?: PsdIccProfile;
   readonly channelsMetadata?: readonly PsdChannelMetadata[];
@@ -87,6 +91,15 @@ export interface PsdSpotColor {
 export interface PsdIccProfile {
   readonly name: string;
   readonly data: Uint8Array;
+}
+
+export interface PsdDocumentMetadata {
+  readonly layers: readonly PsdLayerMetadata[];
+  readonly dpi?: readonly [number, number];
+  readonly iccProfile?: PsdIccProfile;
+  readonly channels?: readonly PsdChannelMetadata[];
+  readonly spotColors?: readonly PsdSpotColor[];
+  readonly metadata?: Readonly<Record<string, unknown>>;
 }
 
 export interface PsdLayerMetadata {
@@ -187,8 +200,8 @@ export interface PsdExportInput {
   readonly height: number;
   readonly layers: readonly PsdLayerMetadata[];
   readonly channels?: readonly PsdChannelMetadata[];
-  readonly colorMode?: number;
-  readonly bitsPerChannel?: 8 | 16;
+  readonly colorMode?: PsdColorMode;
+  readonly bitsPerChannel?: PsdBitDepth;
   readonly dpi?: readonly [number, number];
   readonly iccProfile?: PsdIccProfile;
   readonly spotColors?: readonly PsdSpotColor[];

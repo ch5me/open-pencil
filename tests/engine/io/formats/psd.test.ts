@@ -14,6 +14,17 @@ import {
   stagePsdImport,
 } from "#core/io/formats/psd";
 
+function stagedPsdWithMetadata(metadata: unknown): Uint8Array {
+  const header = stagePsdExport({ width: 1, height: 1, layers: [] }).slice(0, 26);
+  const marker = new TextEncoder().encode("OPPSD1");
+  const payload = new TextEncoder().encode(JSON.stringify(metadata));
+  const bytes = new Uint8Array(header.byteLength + marker.byteLength + payload.byteLength);
+  bytes.set(header);
+  bytes.set(marker, header.byteLength);
+  bytes.set(payload, header.byteLength + marker.byteLength);
+  return bytes;
+}
+
 test("stages PSD import without mutating caller state and reports typed warnings", () => {
   const bytes = stagePsdExport({
     width: 10,
@@ -108,6 +119,38 @@ test("keeps document metadata export deterministic and caller-owned", () => {
   expect(input).toEqual(before);
   expect(reopened.header.iccProfile).toEqual(input.iccProfile);
   expect(reopened.header.metadata).toEqual(input.metadata);
+});
+
+test("validates typed document metadata and preserves bytes on rejection", () => {
+  const cases = [
+    { dpi: [300] },
+    { channels: [{ id: 0, name: "bad", kind: "invalid" }] },
+    { spotColors: [{ name: "bad", color: [2, 0, 0] }] },
+    { metadata: [] },
+  ];
+
+  for (const metadata of cases) {
+    const bytes = stagedPsdWithMetadata({ layers: [], ...metadata });
+    const before = bytes.slice();
+    expect(() => stagePsdImport(bytes)).toThrow(PsdUnsupportedError);
+    expect(bytes).toEqual(before);
+  }
+});
+
+test("keeps unsupported color mode and bit depth observable without mutating input", () => {
+  const bytes = stagePsdExport({
+    width: 4,
+    height: 4,
+    layers: [],
+    colorMode: 4,
+    bitsPerChannel: 16,
+  });
+  const before = bytes.slice();
+  const result = stagePsdImport(bytes);
+
+  expect(result.warnings).toEqual(["unsupported-color-mode", "unsupported-bit-depth"]);
+  expect(result.degraded).toBe(true);
+  expect(bytes).toEqual(before);
 });
 
 test("preserves editable PSD text-layer metadata through producer staging", () => {
