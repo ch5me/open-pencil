@@ -35,6 +35,8 @@ export interface PsdCorpusCase {
   readonly fixture: string;
   readonly sha256: string;
   readonly externalReopen: "UNKNOWN" | "PASS" | "FAIL";
+  readonly selfGeneratedRoundTrip: "PASS" | "FAIL";
+  readonly selfGeneratedRoundTripSha256: string;
   readonly expected: {
     readonly hierarchy: "UNKNOWN" | "PASS" | "FAIL";
     readonly appearance: "UNKNOWN" | "PASS" | "FAIL";

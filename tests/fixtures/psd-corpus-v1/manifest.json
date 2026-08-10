@@ -19,7 +19,9 @@
         "hierarchy": "UNKNOWN",
         "appearance": "UNKNOWN",
         "editability": "UNKNOWN"
-      }
+      },
+      "selfGeneratedRoundTrip": "PASS",
+      "selfGeneratedRoundTripSha256": "16abd8af4df489892128b933286e41a40a94c2e59a7229b558b8f9d397d5bd1c"
     },
     {
       "name": "text-simple",
@@ -33,7 +35,9 @@
         "hierarchy": "UNKNOWN",
         "appearance": "UNKNOWN",
         "editability": "UNKNOWN"
-      }
+      },
+      "selfGeneratedRoundTrip": "PASS",
+      "selfGeneratedRoundTripSha256": "16abd8af4df489892128b933286e41a40a94c2e59a7229b558b8f9d397d5bd1c"
     },
     {
       "name": "text-test",
@@ -47,7 +51,9 @@
         "hierarchy": "UNKNOWN",
         "appearance": "UNKNOWN",
         "editability": "UNKNOWN"
-      }
+      },
+      "selfGeneratedRoundTrip": "PASS",
+      "selfGeneratedRoundTripSha256": "16abd8af4df489892128b933286e41a40a94c2e59a7229b558b8f9d397d5bd1c"
     },
     {
       "name": "vector-test",
@@ -61,7 +67,9 @@
         "hierarchy": "UNKNOWN",
         "appearance": "UNKNOWN",
         "editability": "UNKNOWN"
-      }
+      },
+      "selfGeneratedRoundTrip": "PASS",
+      "selfGeneratedRoundTripSha256": "16abd8af4df489892128b933286e41a40a94c2e59a7229b558b8f9d397d5bd1c"
     },
     {
       "name": "multiple-strokes-test",
@@ -75,7 +83,9 @@
         "hierarchy": "UNKNOWN",
         "appearance": "UNKNOWN",
         "editability": "UNKNOWN"
-      }
+      },
+      "selfGeneratedRoundTrip": "PASS",
+      "selfGeneratedRoundTripSha256": "d5caf7a46280b8e406c2e609a42aea9c13b18ea694a69fbfa2d4dcacdfcac828"
     },
     {
       "name": "timeline",
@@ -89,7 +99,9 @@
         "hierarchy": "UNKNOWN",
         "appearance": "UNKNOWN",
         "editability": "UNKNOWN"
-      }
+      },
+      "selfGeneratedRoundTrip": "PASS",
+      "selfGeneratedRoundTripSha256": "9db40496d7f26381a9d06bbca87e7d3f6ad0189c0538678d3228fdb2cd83b965"
     }
   ]
 }

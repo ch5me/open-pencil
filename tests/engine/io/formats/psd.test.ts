@@ -610,6 +610,19 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
     const header = parsePsdHeader(bytes);
     expect(header.width).toBeGreaterThan(0);
     expect(header.height).toBeGreaterThan(0);
+    const generated = stagePsdExport({
+      width: header.width,
+      height: header.height,
+      layers: [],
+    });
+    expect(stagePsdImport(generated).header).toMatchObject({
+      width: header.width,
+      height: header.height,
+    });
+    expect(entry.selfGeneratedRoundTrip).toBe("PASS");
+    expect(createHash("sha256").update(generated).digest("hex")).toBe(
+      entry.selfGeneratedRoundTripSha256,
+    );
     expect(entry.source).toBe("external");
     expect(entry.expected.hierarchy).toBe("UNKNOWN");
     expect(entry.expected.appearance).toBe("UNKNOWN");
