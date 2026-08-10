@@ -292,6 +292,77 @@ function validateEffectArea(effect: EffectFilter, width: number, height: number)
   }
 }
 
+function blurPixels(
+  source: Uint8Array,
+  present: Uint8Array,
+  width: number,
+  height: number,
+  effect: EffectFilter,
+): Uint8Array {
+  const output = source.slice();
+  const [x, y, areaWidth, areaHeight] = effect.affectedArea;
+  const radius = Math.max(0, Math.floor(effect.adjustments?.radius ?? 1));
+  if (radius === 0) return output;
+  for (let outputY = y; outputY < y + areaHeight; outputY += 1) {
+    for (let outputX = x; outputX < x + areaWidth; outputX += 1) {
+      const outputIndex = (outputY * width + outputX) * 4;
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+      let alpha = 0;
+      let samples = 0;
+      for (let sampleY = Math.max(0, outputY - radius); sampleY <= Math.min(height - 1, outputY + radius); sampleY += 1) {
+        for (let sampleX = Math.max(0, outputX - radius); sampleX <= Math.min(width - 1, outputX + radius); sampleX += 1) {
+          const sampleIndex = (sampleY * width + sampleX) * 4;
+          if (present[sampleY * width + sampleX] === 0) continue;
+          red += source[sampleIndex] ?? 0;
+          green += source[sampleIndex + 1] ?? 0;
+          blue += source[sampleIndex + 2] ?? 0;
+          alpha += source[sampleIndex + 3] ?? 0;
+          samples += 1;
+        }
+      }
+      if (samples > 0) {
+        output[outputIndex] = Math.round(red / samples);
+        output[outputIndex + 1] = Math.round(green / samples);
+        output[outputIndex + 2] = Math.round(blue / samples);
+        output[outputIndex + 3] = Math.round(alpha / samples);
+      }
+    }
+  }
+  return output;
+}
+
+function applyRasterEffect(
+  pixels: Uint8Array,
+  present: Uint8Array,
+  width: number,
+  height: number,
+  effect: EffectFilter,
+): Uint8Array {
+  if (effect.kind === "blur") return blurPixels(pixels, present, width, height, effect);
+  const output = pixels.slice();
+  const [x, y, areaWidth, areaHeight] = effect.affectedArea;
+  const adjustment = createRasterEffectAdjustment(effect.kind, effect.adjustments);
+  for (let outputY = y; outputY < y + areaHeight; outputY += 1) {
+    for (let outputX = x; outputX < x + areaWidth; outputX += 1) {
+      if (present[outputY * width + outputX] === 0) continue;
+      const index = (outputY * width + outputX) * 4;
+      const pixel = adjustment([
+        pixels[index] ?? 0,
+        pixels[index + 1] ?? 0,
+        pixels[index + 2] ?? 0,
+        pixels[index + 3] ?? 0,
+      ]);
+      output[index] = pixel[0];
+      output[index + 1] = pixel[1];
+      output[index + 2] = pixel[2];
+      output[index + 3] = pixel[3];
+    }
+  }
+  return output;
+}
+
 export function composeRasterRGBA8(
   plan: CompositionPlan,
   resolve: RasterCompositionAssetResolver,
