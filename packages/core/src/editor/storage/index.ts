@@ -9,12 +9,25 @@ export {
 } from "./store";
 export type { ContentCommit, StagedChunk } from "./types";
 export {
+  AtomicWorkingDocumentPersistence,
+  createDetachedBinaryAssetReference,
   createPersistenceContractReceipt,
   estimateJsonOverhead,
+  migrateWorkingDocumentRecord,
   PersistenceContractError,
+  PersistenceMigrationError,
+  PersistenceQuotaError,
+  PersistenceTerminationError,
   recoverWorkingDocument,
+  validateDetachedBinaryAssets,
   validateWorkingDocumentRecord,
+  type AtomicPersistenceOptions,
+  type DetachedBinaryAssetReference,
+  type DurableBinaryAsset,
+  type PersistenceBoundaryHook,
+  type PersistenceDurableBoundary,
   type PersistenceContractReceipt,
   type PersistenceState,
+  type RecoveredWorkingDocument,
   type WorkingDocumentRecord,
 } from "./persistence";
