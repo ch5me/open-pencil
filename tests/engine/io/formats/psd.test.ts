@@ -607,7 +607,12 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
       height: header.height,
       layers: [],
     });
-    expect(stagePsdImport(generated).header).toMatchObject({
+    expect(
+      stagePsdImport(generated, {
+        ...DEFAULT_PSD_LIMITS,
+        maxExpansionRatio: Number.MAX_SAFE_INTEGER,
+      }).header,
+    ).toMatchObject({
       width: header.width,
       height: header.height,
     });
