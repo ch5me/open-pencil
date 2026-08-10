@@ -49,3 +49,29 @@ export function createRafCoalescer<T>(
     },
   };
 }
+
+export function createScrubAccumulator(
+  initial: number,
+  min: number,
+  max: number,
+  scale: number,
+  consume: (value: number) => void,
+) {
+  let rawValue = Math.min(max, Math.max(min, initial));
+  let emittedValue = Math.round(rawValue);
+
+  return {
+    add(delta: number) {
+      rawValue = Math.min(max, Math.max(min, rawValue + delta * scale));
+      const nextValue = Math.round(rawValue);
+      if (nextValue !== emittedValue) {
+        emittedValue = nextValue;
+        consume(nextValue);
+      }
+      return emittedValue;
+    },
+    value() {
+      return emittedValue;
+    },
+  };
+}

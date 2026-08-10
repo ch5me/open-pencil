@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
-import { createRafCoalescer } from "#vue/shared/input/raf-scheduler";
+import {
+  createRafCoalescer,
+  createScrubAccumulator,
+} from "#vue/shared/input/raf-scheduler";
 
 function scheduler() {
   let nextId = 1;
@@ -133,5 +136,30 @@ describe("frame coalescer", () => {
 
     frames.flush();
     expect(values).toEqual([1, 2]);
+  });
+
+  test("scrub accumulator preserves fractional movement across frames", () => {
+    const values: number[] = [];
+    const accumulator = createScrubAccumulator(0, 0, 10, 0.25, (value) => values.push(value));
+
+    accumulator.add(1);
+    accumulator.add(1);
+    accumulator.add(1);
+    accumulator.add(1);
+
+    expect(accumulator.value()).toBe(1);
+    expect(values).toEqual([1]);
+  });
+
+  test("scrub accumulator suppresses duplicate clamped values", () => {
+    const values: number[] = [];
+    const accumulator = createScrubAccumulator(0, 0, 1, 1, (value) => values.push(value));
+
+    accumulator.add(1);
+    accumulator.add(1);
+    accumulator.add(1);
+
+    expect(accumulator.value()).toBe(1);
+    expect(values).toEqual([1]);
   });
 });

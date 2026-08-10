@@ -4,7 +4,10 @@ import { onBeforeUnmount, ref, computed, toRef, watch } from "vue";
 
 import { provideScrubInput } from "#vue/primitives/ScrubInput/context";
 import { inputNumberValue } from "#vue/shared/dom-events";
-import { createRafCoalescer } from "#vue/shared/input/raf-scheduler";
+import {
+  createRafCoalescer,
+  createScrubAccumulator,
+} from "#vue/shared/input/raf-scheduler";
 
 const {
   modelValue,
@@ -46,16 +49,17 @@ function startScrub(e: PointerEvent) {
   cancelScrub?.();
   const startX = e.clientX;
   let lastX = startX;
-  let currentValue = numericValue.value;
-  const valueBeforeScrub = currentValue;
+  const valueBeforeScrub = numericValue.value;
   let hasMoved = false;
+  const accumulator = createScrubAccumulator(
+    valueBeforeScrub,
+    min,
+    max,
+    step * sensitivity,
+    (value) => emit("update:modelValue", value),
+  );
   const pendingDelta = createRafCoalescer(
-    (delta: number) => {
-      currentValue += delta * step * sensitivity;
-      const clamped = Math.round(Math.min(max, Math.max(min, currentValue)));
-      if (clamped !== currentValue) currentValue = clamped;
-      if (clamped !== modelValue) emit("update:modelValue", clamped);
-    },
+    (delta: number) => accumulator.add(delta),
     (pending, next) => pending + next,
   );
 
@@ -63,10 +67,9 @@ function startScrub(e: PointerEvent) {
     if (commit) pendingDelta.flush();
     else {
       pendingDelta.cancel();
-      if (hasMoved && currentValue !== valueBeforeScrub) {
+      if (hasMoved && accumulator.value() !== valueBeforeScrub) {
         emit("update:modelValue", valueBeforeScrub);
       }
-      currentValue = valueBeforeScrub;
     }
     stopMove?.();
     stopUp?.();
@@ -78,8 +81,9 @@ function startScrub(e: PointerEvent) {
     scrubbing.value = false;
     document.body.style.cursor = "";
     cancelScrub = undefined;
-    if (commit && hasMoved && currentValue !== valueBeforeScrub) {
-      emit("commit", currentValue, valueBeforeScrub);
+    const finalValue = accumulator.value();
+    if (commit && hasMoved && finalValue !== valueBeforeScrub) {
+      emit("commit", finalValue, valueBeforeScrub);
     }
   }
 
