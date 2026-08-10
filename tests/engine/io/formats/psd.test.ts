@@ -176,6 +176,22 @@ test("rejects unsupported PSD adjustment types before raster mutation", () => {
   ).toThrow("unsupported PSD adjustment type: lookup");
 });
 
+test("applies supported PSD adjustment metadata during rasterization", () => {
+  expect(
+    [...rasterizePsdLayers({
+      width: 1,
+      height: 1,
+      layers: [{
+        ...layerMetadata("exposure", "Exposure", {
+          adjustmentType: "exposure",
+          adjustments: { exposure: 1 },
+        }),
+        raster: { width: 1, height: 1, pixels: new Uint8Array([32, 64, 96, 255]) },
+      }],
+    })],
+  ).toEqual([64, 128, 192, 255]);
+});
+
 test("skips hidden layers and rejects malformed raster payloads", () => {
   expect(
     [...rasterizePsdLayers({

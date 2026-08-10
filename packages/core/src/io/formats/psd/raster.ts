@@ -1,4 +1,8 @@
 import {
+  createRasterEffectAdjustment,
+  type AdjustmentLayerKind,
+} from "#core/editor/image-capabilities/effects";
+import {
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdRasterInput,
@@ -23,7 +27,7 @@ function clampByte(value: number): number {
 }
 
 const PSD_SUPPORTED_BLEND_MODES = new Set(["NORMAL", "PASS_THROUGH", "MULTIPLY", "SCREEN", "OVERLAY"]);
-const PSD_SUPPORTED_ADJUSTMENT_TYPES = new Set([
+const PSD_SUPPORTED_ADJUSTMENT_TYPES: ReadonlySet<AdjustmentLayerKind> = new Set([
   "brightness",
   "contrast",
   "saturation",
@@ -39,6 +43,10 @@ const PSD_SUPPORTED_ADJUSTMENT_TYPES = new Set([
   "gradient-map",
   "selective-color",
 ]);
+
+function isSupportedAdjustmentType(value: string): value is AdjustmentLayerKind {
+  return PSD_SUPPORTED_ADJUSTMENT_TYPES.has(value as AdjustmentLayerKind);
+}
 
 function blendChannel(mode: string | undefined, source: number, destination: number): number {
   switch (mode ?? "NORMAL") {
@@ -178,11 +186,18 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
       assertTransform(layer.raster.mask.transform);
     }
     const opacity = Math.max(0, Math.min(1, layer.opacity));
+    const adjustment =
+      layer.adjustmentType && isSupportedAdjustmentType(layer.adjustmentType)
+        ? createRasterEffectAdjustment(layer.adjustmentType, layer.adjustments)
+        : undefined;
 
     for (let y = 0; y < input.height; y += 1) {
       for (let x = 0; x < input.width; x += 1) {
         const offset = (y * input.width + x) * 4;
-        const [sourceRed, sourceGreen, sourceBlue, sourceByteAlpha] = sample(layer.raster, x, y);
+        const sourcePixel = sample(layer.raster, x, y);
+        const [sourceRed, sourceGreen, sourceBlue, sourceByteAlpha] = adjustment
+          ? adjustment(sourcePixel)
+          : sourcePixel;
         const sourceAlpha = (sourceByteAlpha / 255) * opacity * maskAlpha(layer.raster.mask, x, y);
       if (sourceAlpha === 0) continue;
       const destinationAlpha = result[offset + 3] / 255;

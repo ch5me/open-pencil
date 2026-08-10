@@ -193,6 +193,7 @@ function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits)
       if (
         layer.adjustments !== undefined &&
         (!layer.adjustments ||
+          Array.isArray(layer.adjustments) ||
           typeof layer.adjustments !== "object" ||
           Object.values(layer.adjustments).some(
             (value) => typeof value !== "number" || !Number.isFinite(value),
