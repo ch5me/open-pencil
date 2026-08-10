@@ -3,6 +3,7 @@ import {
   type RasterDisplayMode,
   type RasterMask,
 } from "#core/editor/image-raster";
+import type { ImageSelection, ImageSelectionMode } from "#core/editor/image-selection";
 import type { UndoEntry } from "#core/scene-graph/undo";
 
 export interface BrushConfig {
@@ -36,6 +37,17 @@ export type BrushMaskControlOperation =
   | "transform"
   | "display-mode"
   | "apply";
+
+export type BrushSelectionOperation = "selection-to-mask" | "mask-to-selection";
+
+export interface BrushSelectionControl {
+  readonly version: "brush-mask-v1";
+  readonly operation: BrushSelectionOperation;
+  readonly maskId: string;
+  readonly transactionId: `tx:${string}`;
+  readonly mask: RasterMask | null;
+  readonly selection: ImageSelection | null;
+}
 
 export interface BrushStroke {
   readonly version: "brush-mask-v1";
@@ -80,6 +92,10 @@ export class BrushPalmInputError extends Error {
   readonly code = "brush-palm-input-rejected";
 }
 
+export class BrushSelectionCapabilityUnavailableError extends Error {
+  readonly code = "brush-selection-capability-unavailable";
+}
+
 function validateTransactionId(transactionId: `tx:${string}`): void {
   if (!/^tx:.+/u.test(transactionId)) throw new RangeError("invalid brush transaction");
 }
@@ -103,6 +119,84 @@ function createMaskControl(
     deleted,
     applied,
   };
+}
+
+const IMAGE_SELECTION_MODES: ReadonlySet<ImageSelectionMode> = new Set([
+  "marquee",
+  "lasso",
+  "polygon",
+  "magic-wand",
+  "subject",
+  "background",
+]);
+
+function validateImageSelection(selection: ImageSelection): ImageSelection {
+  if (!IMAGE_SELECTION_MODES.has(selection.mode) || !/^tx:.+/u.test(selection.transactionId)) {
+    throw new RangeError("invalid image selection");
+  }
+  if (
+    selection.points.some(
+      (point) => !Number.isFinite(point.x) || !Number.isFinite(point.y),
+    )
+  ) {
+    throw new RangeError("invalid image selection point");
+  }
+  return structuredClone(selection);
+}
+
+function createSelectionControl(
+  operation: BrushSelectionOperation,
+  mask: RasterMask,
+  selection: ImageSelection,
+  transactionId: `tx:${string}`,
+  selectionToMaskAvailable: boolean,
+): BrushSelectionControl {
+  const validatedMask = validateRasterMask(mask);
+  const validatedSelection = validateImageSelection(selection);
+  validateTransactionId(transactionId);
+  if (!selectionToMaskAvailable) {
+    throw new BrushSelectionCapabilityUnavailableError(
+      `${operation} pixel consumer unavailable`,
+    );
+  }
+  return {
+    version: "brush-mask-v1",
+    operation,
+    maskId: validatedMask.maskId,
+    transactionId,
+    mask: operation === "selection-to-mask" ? validatedMask : null,
+    selection: operation === "mask-to-selection" ? validatedSelection : null,
+  };
+}
+
+export function selectionToMask(
+  mask: RasterMask,
+  selection: ImageSelection,
+  transactionId: `tx:${string}`,
+  pixelSelectionAvailable = false,
+): BrushSelectionControl {
+  return createSelectionControl(
+    "selection-to-mask",
+    mask,
+    selection,
+    transactionId,
+    pixelSelectionAvailable,
+  );
+}
+
+export function maskToSelection(
+  mask: RasterMask,
+  selection: ImageSelection,
+  transactionId: `tx:${string}`,
+  pixelSelectionAvailable = false,
+): BrushSelectionControl {
+  return createSelectionControl(
+    "mask-to-selection",
+    mask,
+    selection,
+    transactionId,
+    pixelSelectionAvailable,
+  );
 }
 
 export function invertMask(mask: RasterMask, transactionId: `tx:${string}`): BrushMaskControl {
