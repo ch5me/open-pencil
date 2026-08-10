@@ -252,7 +252,11 @@ test("deterministically round-trips typed metadata without mutating caller data"
   expect(stagePsdImport(first).layers).toEqual([layer]);
   expect(
     createPsdCorpusManifest(externalCorpusCases).cases.every(
-      (entry) => entry.externalReopen === "UNKNOWN",
+      (entry) =>
+        entry.externalReopen === "UNKNOWN" &&
+        entry.semanticRoundTrip === "PASS" &&
+        entry.byteRoundTrip === "UNKNOWN" &&
+        entry.byteRoundTripSha256 === null,
     ),
   ).toBe(
     true,
@@ -598,6 +602,17 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
     ]),
   ).toThrow("lowercase SHA-256 digest");
   expect(() =>
+    createPsdCorpusManifest([
+      {
+        ...externalCorpusCases[0]!,
+        byteRoundTrip: "PASS",
+        byteRoundTripSha256:
+          "0000000000000000000000000000000000000000000000000000000000000000",
+      },
+      ...externalCorpusCases.slice(1),
+    ]),
+  ).toThrow("does not match source bytes");
+  expect(() =>
     createPsdCorpusManifest(externalCorpusCases, [
       {
         application: "photoshop",
@@ -663,6 +678,9 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
     expect(createHash("sha256").update(generated).digest("hex")).toBe(
       entry.selfGeneratedRoundTripSha256,
     );
+    expect(entry.semanticRoundTrip).toBe("PASS");
+    expect(entry.byteRoundTrip).toBe("UNKNOWN");
+    expect(entry.byteRoundTripSha256).toBeNull();
     expect(entry.source).toBe("external");
     expect(entry.expected.hierarchy).toBe("UNKNOWN");
     expect(entry.expected.appearance).toBe("UNKNOWN");
