@@ -6,6 +6,7 @@ import {
   type ResizeHandle,
   type ResizeOptions,
 } from "./types";
+import { validateTransform } from "./transform";
 
 export function snapValue(value: number, grid: number): number {
   if (!Number.isFinite(value) || !Number.isFinite(grid) || grid <= 0) {
@@ -20,27 +21,38 @@ export function resizeTransform(
   delta: Vector,
   options: ResizeOptions = {},
 ): GeometryTransform {
+  validateTransform(transform);
+  if (!Number.isFinite(delta.x) || !Number.isFinite(delta.y)) {
+    throw new InvalidTransformError("resize delta must be finite");
+  }
+  if (options.snap !== undefined && (!Number.isFinite(options.snap) || options.snap <= 0)) {
+    throw new InvalidTransformError("snap grid must be positive and finite");
+  }
+
   const horizontal = handle.includes("right") ? 1 : handle.includes("left") ? -1 : 0;
   const vertical = handle.includes("bottom") ? 1 : handle.includes("top") ? -1 : 0;
-  const width = Math.max(1, transform.width + horizontal * delta.x);
-  const height = Math.max(1, transform.height + vertical * delta.y);
+  let width = Math.max(1, transform.width + horizontal * delta.x);
+  let height = Math.max(1, transform.height + vertical * delta.y);
   const ratio = transform.width / transform.height;
-  const lockedWidth =
-    options.lockAspect && vertical !== 0 && horizontal === 0 ? Math.max(1, height * ratio) : width;
-  const lockedHeight =
-    options.lockAspect && (horizontal !== 0 || vertical === 0)
-      ? Math.max(1, lockedWidth / ratio)
-      : height;
+  if (options.lockAspect) {
+    if (Math.abs(delta.x) >= Math.abs(delta.y)) {
+      height = Math.max(1, width / ratio);
+    } else {
+      width = Math.max(1, height * ratio);
+    }
+  }
   const next = {
     ...transform,
-    width: options.lockAspect ? lockedWidth : width,
-    height: options.lockAspect ? lockedHeight : height,
+    x: horizontal < 0 ? transform.x + transform.width - width : transform.x,
+    y: vertical < 0 ? transform.y + transform.height - height : transform.y,
+    width,
+    height,
   };
   if (options.snap) {
     return {
       ...next,
-      width: snapValue(next.width, options.snap),
-      height: snapValue(next.height, options.snap),
+      width: Math.max(1, snapValue(next.width, options.snap)),
+      height: Math.max(1, snapValue(next.height, options.snap)),
     };
   }
   return next;
@@ -50,12 +62,14 @@ export function updateNumericTransform(
   transform: GeometryTransform,
   updates: Partial<Pick<GeometryTransform, "x" | "y" | "width" | "height" | "rotation">>,
 ): GeometryTransform {
+  validateTransform(transform);
   const next = { ...transform, ...updates };
-  if (next.width < 0 || next.height < 0) throw new InvalidTransformError("size cannot be negative");
+  validateTransform(next);
   return next;
 }
 
 export function flipTransform(transform: GeometryTransform, axis: "x" | "y"): GeometryTransform {
+  validateTransform(transform);
   return axis === "x"
     ? { ...transform, scaleX: -(transform.scaleX ?? 1) }
     : { ...transform, scaleY: -(transform.scaleY ?? 1) };
