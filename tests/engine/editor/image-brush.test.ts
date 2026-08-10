@@ -12,6 +12,7 @@ import {
   disableMask,
   duplicateMask,
   invertMask,
+  transformMask,
 } from "#core/editor/image-brush";
 import type { RasterMask } from "#core/editor/image-raster";
 import { selectMask } from "#core/editor/image-selection";
@@ -45,6 +46,7 @@ test("brush stroke preserves deterministic samples and one transaction", () => {
   expect(stroke.mode).toBe("erase");
   expect(stroke.maskId).toBe(mask.maskId);
   expect(stroke.thumbnailId).toBe(mask.thumbnailId);
+  expect(stroke.maskTransform).toEqual(mask.transform);
   expect(stroke.transactionId).toBe("tx:brush");
   expect(stroke.samples).toHaveLength(1);
   expect(selectMask(mask).selectedThumbnailId).toBe("thumb:one");
@@ -251,6 +253,34 @@ test("mask controls are deterministic, transactional, and detached", () => {
     thumbnailId: "thumb:one:duplicate:duplicate",
   });
   expect(first.mask).not.toBe(mask);
+});
+
+test("independent mask transforms are transactional, detached, and replay-stable", () => {
+  const transform = [0.5, 0, 0, 0.5, 12, 18] as const;
+  const first = transformMask(mask, transform, "tx:transform");
+  const replay = transformMask(mask, transform, "tx:transform");
+
+  expect(first).toEqual(replay);
+  expect(first).toMatchObject({
+    version: "brush-mask-v1",
+    operation: "transform",
+    maskId: mask.maskId,
+    transactionId: "tx:transform",
+    mask: { transform },
+    deleted: false,
+    applied: false,
+  });
+  expect(first.mask).not.toBe(mask);
+  expect(first.mask?.transform).not.toBe(transform);
+});
+
+test("mask transform rejects non-finite or malformed matrices", () => {
+  expect(() => transformMask(mask, [1, 0, 0, 1, Number.NaN, 0], "tx:bad")).toThrow(
+    "invalid brush mask transform",
+  );
+  expect(() => transformMask(mask, [1, 0, 0, 1, 0] as never, "tx:bad")).toThrow(
+    "invalid brush mask transform",
+  );
 });
 
 test("mask apply fails loud until a pixel consumer is available", () => {
