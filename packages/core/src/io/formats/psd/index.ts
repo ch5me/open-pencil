@@ -5,9 +5,11 @@ export {
   PsdUnsupportedError,
   type PsdExportInput,
   type PsdCapabilityCode,
+  type PsdChannelMetadata,
   type PsdCorpusCase,
   type PsdCorpusManifest,
   type PsdHeader,
+  type PsdIccProfile,
   type PsdImportResult,
   type PsdLayerMetadata,
   type PsdLayerEffectMetadata,
@@ -18,6 +20,7 @@ export {
   type PsdRasterInput,
   type PsdRasterLayer,
   type PsdRasterMask,
+  type PsdSpotColor,
   type PsdWarningCode,
 } from "./types";
 export {

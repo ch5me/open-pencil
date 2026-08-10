@@ -10,6 +10,9 @@ import {
   type PsdLayerMetadata,
   type PsdWarningCode,
   type PsdCorpusManifest,
+  type PsdChannelMetadata,
+  type PsdIccProfile,
+  type PsdSpotColor,
 } from "./types";
 
 const PSD_METADATA_MAGIC = new TextEncoder().encode("OPPSD1");
@@ -185,7 +188,13 @@ function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits)
 
   const payload = new TextDecoder().decode(bytes.subarray(offset + PSD_METADATA_MAGIC.byteLength));
   try {
-    const layers = JSON.parse(payload) as unknown;
+    const parsed = JSON.parse(payload) as unknown;
+    const layers = Array.isArray(parsed)
+      ? parsed
+      : parsed && typeof parsed === "object" && Array.isArray(parsed.layers)
+        ? parsed.layers
+        : null;
+    if (!layers) throw new PsdUnsupportedError("invalid PSD layer metadata");
     if (!Array.isArray(layers) || layers.length > limits.maxLayers) {
       throw new PsdUnsupportedError("invalid PSD layer metadata");
     }
@@ -227,18 +236,73 @@ function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits)
   }
 }
 
+interface PsdDocumentMetadata {
+  readonly layers: readonly PsdLayerMetadata[];
+  readonly dpi?: readonly [number, number];
+  readonly iccProfile?: { readonly name: string; readonly data: number[] };
+  readonly channels?: readonly PsdChannelMetadata[];
+  readonly spotColors?: readonly PsdSpotColor[];
+  readonly metadata?: Readonly<Record<string, unknown>>;
+}
+
+function readDocumentMetadata(
+  bytes: Uint8Array,
+  offset: number,
+  limits: PsdLimits,
+): PsdDocumentMetadata | undefined {
+  if (bytes.byteLength < offset + PSD_METADATA_MAGIC.byteLength) return undefined;
+  if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value)) return undefined;
+  const payload = new TextDecoder().decode(bytes.subarray(offset + PSD_METADATA_MAGIC.byteLength));
+  try {
+    const parsed = JSON.parse(payload) as unknown;
+    if (Array.isArray(parsed)) {
+      return { layers: readLayerMetadata(bytes, offset, limits) };
+    }
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.layers)) {
+      throw new PsdUnsupportedError("invalid PSD layer metadata");
+    }
+    return parsed as PsdDocumentMetadata;
+  } catch (error) {
+    if (error instanceof PsdUnsupportedError) throw error;
+    throw new PsdUnsupportedError("invalid PSD layer metadata");
+  }
+}
+
+function decodeIccProfile(
+  profile: PsdDocumentMetadata["iccProfile"],
+): PsdIccProfile | undefined {
+  if (!profile) return undefined;
+  if (typeof profile.name !== "string" || !Array.isArray(profile.data)) {
+    throw new PsdUnsupportedError("invalid PSD ICC profile metadata");
+  }
+  if (profile.data.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) {
+    throw new PsdUnsupportedError("invalid PSD ICC profile metadata");
+  }
+  return { name: profile.name, data: Uint8Array.from(profile.data) };
+}
+
 export function stagePsdImport(
   bytes: Uint8Array,
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
 ): PsdImportResult {
   const header = parsePsdHeader(bytes, limits);
   const warnings = headerWarnings(header);
-  const layers = readLayerMetadata(bytes, 26, limits);
+  const document = readDocumentMetadata(bytes, 26, limits);
+  const layers = document?.layers ?? [];
+  const iccProfile = decodeIccProfile(document?.iccProfile);
+  const enrichedHeader: PsdHeader = {
+    ...header,
+    ...(document?.dpi ? { dpi: document.dpi } : {}),
+    ...(iccProfile ? { iccProfile } : {}),
+    ...(document?.channels ? { channelsMetadata: document.channels } : {}),
+    ...(document?.spotColors ? { spotColors: document.spotColors } : {}),
+    ...(document?.metadata ? { metadata: document.metadata } : {}),
+  };
   warnings.push(...blendModeWarning(layers));
   warnings.push(...adjustmentWarning(layers));
   warnings.push(...advancedLayerFeatureWarning(layers));
   return {
-    header,
+    header: enrichedHeader,
     layers,
     warnings,
     degraded: warnings.length > 0,
@@ -277,17 +341,48 @@ export function stagePsdExport(
   }
   if (input.layers.length > limits.maxLayers)
     throw new PsdHostileFileError("PSD layer count exceeds limits");
+  const channels = input.channels?.length ?? 4;
+  if (!Number.isSafeInteger(channels) || channels <= 0 || channels > 56) {
+    throw new PsdHostileFileError("PSD channel count exceeds limits");
+  }
+  const bitsPerChannel = input.bitsPerChannel ?? 8;
+  if (bitsPerChannel !== 8 && bitsPerChannel !== 16) {
+    throw new PsdUnsupportedError(`unsupported PSD bit depth: ${bitsPerChannel}`);
+  }
   const bytes = new Uint8Array(26);
   const view = new DataView(bytes.buffer);
   bytes.set([0x38, 0x42, 0x50, 0x53]);
   view.setUint16(4, 1, false);
-  view.setUint16(12, 4, false);
+  view.setUint16(12, channels, false);
   view.setUint32(14, input.height, false);
   view.setUint32(18, input.width, false);
-  view.setUint16(22, 8, false);
-  view.setUint16(24, 3, false);
+  view.setUint16(22, bitsPerChannel, false);
+  view.setUint16(24, input.colorMode ?? 3, false);
+  const hasDocumentMetadata =
+    input.channels !== undefined ||
+    input.dpi !== undefined ||
+    input.iccProfile !== undefined ||
+    input.spotColors !== undefined ||
+    input.metadata !== undefined;
+  const payload = hasDocumentMetadata
+    ? {
+        layers: input.layers,
+        ...(input.channels ? { channels: structuredClone(input.channels) } : {}),
+        ...(input.dpi ? { dpi: structuredClone(input.dpi) } : {}),
+        ...(input.iccProfile
+          ? {
+              iccProfile: {
+                name: input.iccProfile.name,
+                data: [...input.iccProfile.data],
+              },
+            }
+          : {}),
+        ...(input.spotColors ? { spotColors: structuredClone(input.spotColors) } : {}),
+        ...(input.metadata ? { metadata: structuredClone(input.metadata) } : {}),
+      }
+    : input.layers;
   const metadata = new TextEncoder().encode(
-    `${String.fromCharCode(...PSD_METADATA_MAGIC)}${JSON.stringify(input.layers)}`,
+    `${String.fromCharCode(...PSD_METADATA_MAGIC)}${JSON.stringify(payload)}`,
   );
   const result = new Uint8Array(bytes.byteLength + metadata.byteLength);
   result.set(bytes);

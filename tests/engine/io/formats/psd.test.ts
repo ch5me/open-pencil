@@ -51,6 +51,41 @@ test("reopens the staged PSD export with stable interchange header fields", () =
   expect(reopened.degraded).toBe(false);
 });
 
+test("preserves PSD channels, spot colors, ICC profile, DPI, and document metadata", () => {
+  const input = {
+    width: 32,
+    height: 16,
+    layers: [layerMetadata("background", "Background")],
+    channels: [
+      { id: 0, name: "Cyan", kind: "color" as const },
+      { id: 1, name: "Spot Gold", kind: "spot" as const, opacity: 0.75 },
+      { id: -1, name: "Transparency", kind: "alpha" as const },
+    ],
+    colorMode: 4,
+    bitsPerChannel: 16 as const,
+    dpi: [300, 299.5] as const,
+    iccProfile: { name: "Display P3", data: new Uint8Array([0, 1, 2, 255]) },
+    spotColors: [{ name: "Gold", color: [0.8, 0.5, 0.1] as const, opacity: 0.9 }],
+    metadata: { artist: "OpenPencil", proof: { version: 1 } },
+  };
+  const reopened = stagePsdImport(stagePsdExport(input));
+
+  expect(reopened.header).toMatchObject({
+    version: 1,
+    channels: 3,
+    height: 16,
+    width: 32,
+    bitsPerChannel: 16,
+    colorMode: 4,
+    dpi: [300, 299.5],
+    channelsMetadata: input.channels,
+    spotColors: input.spotColors,
+    metadata: input.metadata,
+  });
+  expect(reopened.header.iccProfile).toEqual(input.iccProfile);
+  expect(reopened.warnings).toEqual(["unsupported-color-mode", "unsupported-bit-depth"]);
+});
+
 test("preserves editable PSD text-layer metadata through producer staging", () => {
   const text = {
     sourceId: "text-1",
