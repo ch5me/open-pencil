@@ -12,6 +12,8 @@ import {
   readPsdFile,
   stagePsdExport,
   stagePsdImport,
+  stagePsbExport,
+  stagePsbImport,
 } from "#core/io/formats/psd";
 
 test("stages PSD import without mutating caller state and reports typed warnings", () => {
@@ -83,7 +85,45 @@ test("preserves PSD channels, spot colors, ICC profile, DPI, and document metada
     metadata: input.metadata,
   });
   expect(reopened.header.iccProfile).toEqual(input.iccProfile);
-  expect(reopened.warnings).toEqual(["unsupported-color-mode", "unsupported-bit-depth"]);
+  expect(reopened.warnings).toEqual([]);
+});
+
+test("stages CMYK 16-bit PSD documents without typed degradation", () => {
+  const bytes = stagePsdExport({
+    width: 32,
+    height: 16,
+    layers: [layerMetadata("background", "Background")],
+    channels: [
+      { id: 0, name: "Cyan", kind: "color" },
+      { id: 1, name: "Magenta", kind: "color" },
+      { id: 2, name: "Yellow", kind: "color" },
+      { id: 3, name: "Black", kind: "color" },
+    ],
+    colorMode: 4,
+    bitsPerChannel: 16,
+  });
+
+  expect(stagePsdImport(bytes)).toMatchObject({
+    header: { version: 1, colorMode: 4, bitsPerChannel: 16 },
+    warnings: [],
+    degraded: false,
+  });
+});
+
+test("stages PSB version 2 with the same CMYK and 16-bit contract", () => {
+  const bytes = stagePsbExport({
+    width: 32,
+    height: 16,
+    layers: [layerMetadata("background", "Background")],
+    colorMode: 4,
+    bitsPerChannel: 16,
+  });
+
+  expect(stagePsbImport(bytes)).toMatchObject({
+    header: { version: 2, colorMode: 4, bitsPerChannel: 16 },
+    warnings: [],
+    degraded: false,
+  });
 });
 
 test("keeps document metadata export deterministic and caller-owned", () => {
@@ -464,8 +504,8 @@ test("rejects malformed PSD headers with typed errors", () => {
 test("reports degraded import for unsupported header properties", () => {
   const bytes = stagePsdExport({ width: 10, height: 20, layers: [] });
   const view = new DataView(bytes.buffer);
-  view.setUint16(22, 16, false);
-  view.setUint16(24, 4, false);
+  view.setUint16(22, 32, false);
+  view.setUint16(24, 7, false);
 
   const result = stagePsdImport(bytes);
   expect(result.degraded).toBe(true);

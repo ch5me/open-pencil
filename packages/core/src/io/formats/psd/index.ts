@@ -30,5 +30,7 @@ export {
   readPsdFile,
   stagePsdExport,
   stagePsdImport,
+  stagePsbExport,
+  stagePsbImport,
 } from "./staged";
 export { rasterizePsdLayers } from "./raster";

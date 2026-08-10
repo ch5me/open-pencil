@@ -122,8 +122,14 @@ export function parsePsdHeader(
 
 function headerWarnings(header: PsdHeader): PsdWarningCode[] {
   const warnings: PsdWarningCode[] = [];
-  if (header.colorMode !== 3) warnings.push("unsupported-color-mode");
-  if (header.bitsPerChannel !== 8) warnings.push("unsupported-bit-depth");
+  // RGB and CMYK are both first-class producer formats; other PSD modes stay
+  // visible as typed degradation rather than being silently coerced.
+  if (header.colorMode !== 3 && header.colorMode !== 4) {
+    warnings.push("unsupported-color-mode");
+  }
+  if (header.bitsPerChannel !== 8 && header.bitsPerChannel !== 16) {
+    warnings.push("unsupported-bit-depth");
+  }
   return warnings;
 }
 
@@ -341,6 +347,18 @@ export function stagePsdExport(
   }
   if (input.layers.length > limits.maxLayers)
     throw new PsdHostileFileError("PSD layer count exceeds limits");
+  if (input.version !== undefined && input.version !== 1 && input.version !== 2) {
+    throw new PsdUnsupportedError(`unsupported PSD version: ${input.version}`);
+  }
+  if (input.format !== undefined && input.format !== "psd" && input.format !== "psb") {
+    throw new PsdUnsupportedError(`unsupported PSD format: ${input.format}`);
+  }
+  if (input.version === 1 && input.format === "psb") {
+    throw new PsdUnsupportedError("PSD version and format disagree");
+  }
+  if (input.version === 2 && input.format === "psd") {
+    throw new PsdUnsupportedError("PSD version and format disagree");
+  }
   const channels = input.channels?.length ?? 4;
   if (!Number.isSafeInteger(channels) || channels <= 0 || channels > 56) {
     throw new PsdHostileFileError("PSD channel count exceeds limits");
@@ -352,7 +370,7 @@ export function stagePsdExport(
   const bytes = new Uint8Array(26);
   const view = new DataView(bytes.buffer);
   bytes.set([0x38, 0x42, 0x50, 0x53]);
-  view.setUint16(4, 1, false);
+  view.setUint16(4, input.format === "psb" ? 2 : (input.version ?? 1), false);
   view.setUint16(12, channels, false);
   view.setUint32(14, input.height, false);
   view.setUint32(18, input.width, false);
@@ -387,6 +405,26 @@ export function stagePsdExport(
   const result = new Uint8Array(bytes.byteLength + metadata.byteLength);
   result.set(bytes);
   result.set(metadata, bytes.byteLength);
+  return result;
+}
+
+/** Stage a PSB document without requiring callers to know the PSD version bit. */
+export function stagePsbExport(
+  input: Omit<PsdExportInput, "format" | "version">,
+  limits: PsdLimits = DEFAULT_PSD_LIMITS,
+): Uint8Array {
+  return stagePsdExport({ ...input, format: "psb" }, limits);
+}
+
+/** Stage-import entrypoint for callers that already selected PSB. */
+export function stagePsbImport(
+  bytes: Uint8Array,
+  limits: PsdLimits = DEFAULT_PSD_LIMITS,
+): PsdImportResult {
+  const result = stagePsdImport(bytes, limits);
+  if (result.header.version !== 2) {
+    throw new PsdUnsupportedError(`unsupported PSB version: ${result.header.version}`);
+  }
   return result;
 }
 
