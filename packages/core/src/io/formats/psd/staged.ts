@@ -108,6 +108,26 @@ export function createPsdCorpusManifest(
       entry.selfGeneratedRoundTripSha256,
       `PSD corpus case ${index}.selfGeneratedRoundTripSha256`,
     );
+    if (entry.semanticRoundTrip !== entry.selfGeneratedRoundTrip) {
+      throw new PsdUnsupportedError(
+        "PSD corpus semantic round-trip status disagrees with self-generated evidence",
+      );
+    }
+    if (entry.byteRoundTrip === "PASS") {
+      if (entry.byteRoundTripSha256 === null) {
+        throw new PsdUnsupportedError("PSD corpus byte round-trip lacks an exact hash");
+      }
+      assertSha256(entry.byteRoundTripSha256, `PSD corpus case ${index}.byteRoundTripSha256`);
+      if (entry.byteRoundTripSha256 !== entry.sha256) {
+        throw new PsdUnsupportedError(
+          "PSD corpus byte round-trip hash does not match source bytes",
+        );
+      }
+    } else if (entry.byteRoundTripSha256 !== null) {
+      throw new PsdUnsupportedError(
+        "PSD corpus byte round-trip hash requires PASS exact-byte status",
+      );
+    }
     if (
       entry.externalReopen === "UNKNOWN" &&
       (entry.expected.hierarchy !== "UNKNOWN" ||

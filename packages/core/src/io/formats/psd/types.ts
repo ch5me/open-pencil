@@ -28,6 +28,7 @@ export type PsdCapabilityCode =
   | "E_PSD_CAPABILITY_PSB";
 
 export type PsdExternalApplication = "photoshop" | "affinity" | "krita" | "photopea";
+export type PsdRoundTripStatus = "UNKNOWN" | "PASS" | "FAIL";
 
 export interface PsdExternalSource {
   readonly application: PsdExternalApplication;
@@ -50,7 +51,13 @@ export interface PsdCorpusCase {
   readonly fixture: string;
   readonly sha256: string;
   readonly externalReopen: "UNKNOWN" | "PASS" | "FAIL";
-  readonly selfGeneratedRoundTrip: "PASS" | "FAIL";
+  /** Semantic import/export fidelity; does not claim source-byte identity. */
+  readonly semanticRoundTrip: PsdRoundTripStatus;
+  /** Exact source-byte identity; UNKNOWN until the emitted bytes hash matches. */
+  readonly byteRoundTrip: PsdRoundTripStatus;
+  /** Emitted-byte hash, present only when exact-byte evidence is observed. */
+  readonly byteRoundTripSha256: string | null;
+  readonly selfGeneratedRoundTrip: PsdRoundTripStatus;
   readonly selfGeneratedRoundTripSha256: string;
   readonly expected: {
     readonly hierarchy: "UNKNOWN" | "PASS" | "FAIL";
