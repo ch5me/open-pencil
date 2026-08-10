@@ -12,6 +12,7 @@ import {
   disableMask,
   duplicateMask,
   invertMask,
+  setMaskDisplayMode,
   transformMask,
 } from "#core/editor/image-brush";
 import type { RasterMask } from "#core/editor/image-raster";
@@ -47,6 +48,7 @@ test("brush stroke preserves deterministic samples and one transaction", () => {
   expect(stroke.maskId).toBe(mask.maskId);
   expect(stroke.thumbnailId).toBe(mask.thumbnailId);
   expect(stroke.maskTransform).toEqual(mask.transform);
+  expect(stroke.displayMode).toBe("overlay");
   expect(stroke.transactionId).toBe("tx:brush");
   expect(stroke.samples).toHaveLength(1);
   expect(selectMask(mask).selectedThumbnailId).toBe("thumb:one");
@@ -272,6 +274,30 @@ test("independent mask transforms are transactional, detached, and replay-stable
   });
   expect(first.mask).not.toBe(mask);
   expect(first.mask?.transform).not.toBe(transform);
+});
+
+test("mask display modes are transactional, detached, and replay-stable", () => {
+  for (const displayMode of ["overlay", "grayscale", "isolate"] as const) {
+    const first = setMaskDisplayMode(mask, displayMode, `tx:${displayMode}`);
+    const replay = setMaskDisplayMode(mask, displayMode, `tx:${displayMode}`);
+    expect(first).toEqual(replay);
+    expect(first).toMatchObject({
+      version: "brush-mask-v1",
+      operation: "display-mode",
+      maskId: mask.maskId,
+      transactionId: `tx:${displayMode}`,
+      mask: { displayMode },
+      deleted: false,
+      applied: false,
+    });
+    expect(first.mask).not.toBe(mask);
+  }
+});
+
+test("mask display mode rejects unsupported values", () => {
+  expect(() =>
+    setMaskDisplayMode(mask, "unsupported" as never, "tx:display-mode"),
+  ).toThrow("invalid brush mask display mode");
 });
 
 test("mask transform rejects non-finite or malformed matrices", () => {
