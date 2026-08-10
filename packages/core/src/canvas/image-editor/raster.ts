@@ -298,6 +298,7 @@ function blurPixels(
   width: number,
   height: number,
   effect: EffectFilter,
+  eligible: (x: number, y: number) => boolean = () => true,
 ): Uint8Array {
   const output = source.slice();
   const [x, y, areaWidth, areaHeight] = effect.affectedArea;
@@ -314,7 +315,7 @@ function blurPixels(
       for (let sampleY = Math.max(0, outputY - radius); sampleY <= Math.min(height - 1, outputY + radius); sampleY += 1) {
         for (let sampleX = Math.max(0, outputX - radius); sampleX <= Math.min(width - 1, outputX + radius); sampleX += 1) {
           const sampleIndex = (sampleY * width + sampleX) * 4;
-          if (present[sampleY * width + sampleX] === 0) continue;
+          if (present[sampleY * width + sampleX] === 0 || !eligible(sampleX, sampleY)) continue;
           red += source[sampleIndex] ?? 0;
           green += source[sampleIndex + 1] ?? 0;
           blue += source[sampleIndex + 2] ?? 0;
@@ -339,14 +340,15 @@ function applyRasterEffect(
   width: number,
   height: number,
   effect: EffectFilter,
+  eligible: (x: number, y: number) => boolean = () => true,
 ): Uint8Array {
-  if (effect.kind === "blur") return blurPixels(pixels, present, width, height, effect);
+  if (effect.kind === "blur") return blurPixels(pixels, present, width, height, effect, eligible);
   const output = pixels.slice();
   const [x, y, areaWidth, areaHeight] = effect.affectedArea;
   const adjustment = createRasterEffectAdjustment(effect.kind, effect.adjustments);
   for (let outputY = y; outputY < y + areaHeight; outputY += 1) {
     for (let outputX = x; outputX < x + areaWidth; outputX += 1) {
-      if (present[outputY * width + outputX] === 0) continue;
+      if (present[outputY * width + outputX] === 0 || !eligible(outputX, outputY)) continue;
       const index = (outputY * width + outputX) * 4;
       const pixel = adjustment([
         pixels[index] ?? 0,
@@ -405,6 +407,8 @@ export function composeRasterRGBA8(
       continue;
     }
     const { width, height } = node.bounds;
+    const present = new Uint8Array(options.width * options.height);
+    let nodePixels = new Uint8Array(options.width * options.height * 4);
     for (let outputY = 0; outputY < options.height; outputY += 1) {
       for (let outputX = 0; outputX < options.width; outputX += 1) {
         const local = pointInRotatedNode(node, outputX + 0.5, outputY + 0.5);
@@ -421,24 +425,44 @@ export function composeRasterRGBA8(
               : undefined);
           if (adjustment) pixel = adjustment(pixel, node);
         }
-        for (const effect of options.effectFilters ?? []) {
-          if (!effect.enabled || !effectContainsPixel(effect, outputX, outputY)) continue;
-          pixel = createRasterEffectAdjustment(effect.kind, effect.adjustments)(pixel);
+        const index = (outputY * options.width + outputX) * 4;
+        nodePixels[index] = pixel[0];
+        nodePixels[index + 1] = pixel[1];
+        nodePixels[index + 2] = pixel[2];
+        nodePixels[index + 3] = Math.round(pixel[3] * alpha);
+        present[outputY * options.width + outputX] = 1;
+      }
+    }
+    for (const effect of options.effectFilters ?? []) {
+      if (effect.enabled) {
+        nodePixels = applyRasterEffect(nodePixels, present, options.width, options.height, effect);
+      }
+    }
+    for (const stack of options.effectStacks ?? []) {
+      if (!isWithinNodeOrDescendant(plan, node, stack.layerId)) continue;
+      for (const effect of stack.filters) {
+        if (effect.enabled) {
+          nodePixels = applyRasterEffect(
+            nodePixels,
+            present,
+            options.width,
+            options.height,
+            effect,
+            (x, y) => effectMaskContainsPixel(plan, stack, x, y),
+          );
         }
-        for (const stack of options.effectStacks ?? []) {
-          if (
-            !isWithinNodeOrDescendant(plan, node, stack.layerId) ||
-            !effectMaskContainsPixel(plan, stack, outputX, outputY)
-          ) {
-            continue;
-          }
-          for (const effect of stack.filters) {
-            if (!effect.enabled || !effectContainsPixel(effect, outputX, outputY)) continue;
-            pixel = createRasterEffectAdjustment(effect.kind, effect.adjustments)(pixel);
-          }
-        }
-        const adjusted: readonly [number, number, number, number] = [pixel[0], pixel[1], pixel[2], Math.round(pixel[3] * alpha)];
-        blendOver(pixels, (outputY * options.width + outputX) * 4, adjusted, node.inheritedOpacity);
+      }
+    }
+    for (let outputY = 0; outputY < options.height; outputY += 1) {
+      for (let outputX = 0; outputX < options.width; outputX += 1) {
+        if (present[outputY * options.width + outputX] === 0) continue;
+        const index = (outputY * options.width + outputX) * 4;
+        blendOver(
+          pixels,
+          index,
+          [nodePixels[index] ?? 0, nodePixels[index + 1] ?? 0, nodePixels[index + 2] ?? 0, nodePixels[index + 3] ?? 0],
+          node.inheritedOpacity,
+        );
       }
     }
   }
