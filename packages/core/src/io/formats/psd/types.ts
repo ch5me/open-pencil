@@ -78,7 +78,48 @@ export interface PsdLayerMetadata {
   readonly adjustmentType?: string;
   readonly adjustments?: Readonly<Record<string, number>>;
   readonly text?: ImportedTextMetadata;
+  readonly smartObjectId?: string;
+  readonly smartObjectKind?: "linked" | "embedded" | string;
+  readonly linkedAssetId?: string;
+  readonly linkedAssetRevisionId?: string;
+  readonly embeddedDocumentId?: string;
+  readonly embeddedDocumentVersion?: string;
+  readonly vector?: PsdVectorMetadata;
+  readonly paths?: readonly PsdPathMetadata[];
+  readonly effects?: readonly PsdLayerEffectMetadata[];
+  readonly vectorMask?: PsdVectorMaskMetadata;
   readonly warnings: readonly PsdWarningCode[];
+}
+
+export interface PsdVectorMetadata {
+  readonly form: "rect" | "ellipse" | "polygon" | "path" | string;
+  readonly width: number;
+  readonly height: number;
+  readonly path: readonly string[];
+}
+
+export interface PsdPathMetadata {
+  readonly id: string;
+  readonly anchors: readonly {
+    readonly id: string;
+    readonly x: number;
+    readonly y: number;
+    readonly handleIn?: readonly [number, number];
+    readonly handleOut?: readonly [number, number];
+  }[];
+  readonly closed: boolean;
+}
+
+export interface PsdLayerEffectMetadata {
+  readonly kind: "shadow" | "glow" | "stroke" | "overlay" | "bevel" | "pattern" | string;
+  readonly [key: string]: unknown;
+}
+
+export interface PsdVectorMaskMetadata {
+  readonly type: "VECTOR";
+  readonly density: number;
+  readonly feather: number;
+  readonly paths: readonly PsdPathMetadata[];
 }
 
 export interface PsdRasterLayer {

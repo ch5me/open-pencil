@@ -77,6 +77,38 @@ test("preserves editable PSD text-layer metadata through producer staging", () =
   ]);
 });
 
+test("preserves advanced PSD layer metadata and reports typed degradation", () => {
+  const advanced = layerMetadata("hero", "Hero", {
+    smartObjectId: "so:hero",
+    smartObjectKind: "linked",
+    linkedAssetId: "asset:hero",
+    linkedAssetRevisionId: "rev:1",
+    vector: {
+      form: "path",
+      width: 100,
+      height: 80,
+      path: ["M 0 0", "L 100 80"],
+    },
+    paths: [{
+      id: "path:hero",
+      anchors: [{ id: "a", x: 0, y: 0, handleOut: [10, 10] }],
+      closed: false,
+    }],
+    effects: [{ kind: "shadow", visible: true, blur: 4 }],
+    vectorMask: {
+      type: "VECTOR",
+      density: 1,
+      feather: 0,
+      paths: [],
+    },
+  });
+  const bytes = stagePsdExport({ width: 10, height: 20, layers: [advanced] });
+
+  expect(stagePsdImport(bytes).layers).toEqual([advanced]);
+  expect(stagePsdImport(bytes).warnings).toEqual(["unsupported-layer-feature"]);
+  expect(stagePsdImport(bytes).degraded).toBe(true);
+});
+
 test("rasterizes visible text and shape layers with opacity and source-over order", () => {
   const redShape = new Uint8Array([255, 0, 0, 255]);
   const blueText = new Uint8Array([0, 0, 255, 255]);
