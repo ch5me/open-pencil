@@ -336,6 +336,48 @@ test("image render adapter uploads only assets invalidated by their revision or 
   ]);
 });
 
+test("image render adapter tracks revisions independently and reports zero unchanged uploads", () => {
+  const adapter = createImageRenderAdapter();
+  const revisions = new Map<string, AssetRevision>([
+    ["sha256:hero-1", { revisionId: "sha256:hero-1", kind: "image", metadata: {}, bytes: new Uint8Array([1]) }],
+    ["sha256:hero-2", { revisionId: "sha256:hero-2", kind: "image", metadata: {}, bytes: new Uint8Array([2]) }],
+    ["sha256:mask-1", { revisionId: "sha256:mask-1", kind: "image", metadata: {}, bytes: new Uint8Array([3]) }],
+  ]);
+  const bindings = new Map([
+    ["asset:hero", "sha256:hero-1"],
+    ["asset:mask", "sha256:mask-1"],
+  ]);
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => {
+      const revisionId = bindings.get(assetId);
+      return revisionId ? { assetId, revisionId } : undefined;
+    },
+    getRevision: (revisionId) => revisions.get(revisionId),
+  };
+  const plan = multiImagePlan([imageNode("hero", "asset:hero"), imageNode("mask", "asset:mask")]);
+
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    true,
+    true,
+  ]);
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    false,
+    false,
+  ]);
+
+  bindings.set("asset:hero", "sha256:hero-2");
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    true,
+    false,
+  ]);
+
+  bindings.set("asset:hero", "sha256:hero-1");
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    true,
+    false,
+  ]);
+});
+
 test("image render adapter emits commands for visible nodes but skips hidden or unresolved textures", () => {
   const adapter = createImageRenderAdapter();
   const plan = imagePlan([imageNode("visible"), imageNode("hidden", "asset:hidden", false)]);
