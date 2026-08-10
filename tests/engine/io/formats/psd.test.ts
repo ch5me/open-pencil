@@ -590,13 +590,8 @@ test("rejects compressed expansion and render-buffer budgets", () => {
 test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen status", async () => {
   expect(() => createPsdCorpusManifest([])).toThrow("external corpus manifest is empty");
   expect(() =>
-    createPsdCorpusManifest([
-      {
-        ...externalCorpusCases[0]!,
-        sha256: "not-a-digest",
-      },
-    ]),
-  ).toThrow("invalid evidence");
+    createPsdCorpusManifest([{ ...externalCorpusCases[0]!, warning: "" }]),
+  ).toThrow("warning coverage is incomplete");
   const manifest = createPsdCorpusManifest(externalCorpusCases);
   expect(manifest.version).toBe("psd-corpus-v1");
   expect(manifest.cases.length).toBeGreaterThan(0);
