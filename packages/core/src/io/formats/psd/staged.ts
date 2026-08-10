@@ -25,10 +25,13 @@ export function createPsdCorpusManifest(
   if (cases.length === 0) {
     throw new PsdUnsupportedError("PSD external corpus manifest is empty");
   }
+  if (cases.some((entry) => entry.warning.length === 0)) {
+    throw new PsdUnsupportedError("PSD external corpus warning coverage is incomplete");
+  }
   return {
     version: "psd-corpus-v1",
     cases,
-    warningCoverage: cases.every((entry) => entry.warning.length > 0) ? 1 : 0,
+    warningCoverage: 1,
     failedImportVisibleMutationCount: 0,
   };
 }
