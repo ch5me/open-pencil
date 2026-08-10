@@ -92,6 +92,56 @@ export interface RasterCompositionOptions {
   readonly effectStacks?: readonly EffectStack[];
   readonly backend?: RasterBackend;
   readonly parity?: Partial<RasterParityThresholds>;
+  /**
+   * Optional per-node CPU cache. It stays cold until a measured render miss
+   * crosses the threshold, avoiding cache overhead for small documents.
+   */
+  readonly groupCache?: RasterGroupCache;
+  readonly now?: () => number;
+}
+
+export interface RasterGroupCache {
+  get(key: string): RasterCachedNode | undefined;
+  recordMiss(key: string, elapsedMs: number, value: RasterCachedNode): void;
+  clear(): void;
+}
+
+interface RasterCachedNode {
+  readonly pixels: Uint8Array;
+  readonly present: Uint8Array;
+}
+
+function createPixelBuffer(size: number): Uint8Array {
+  return new Uint8Array(size);
+}
+
+export function createRasterGroupCache(thresholdMs = 50): RasterGroupCache {
+  if (!Number.isFinite(thresholdMs) || thresholdMs < 0) {
+    throw new RangeError("group cache threshold must be a finite non-negative number");
+  }
+  const entries = new Map<string, RasterCachedNode>();
+  const enabled = new Set<string>();
+  return {
+    get(key) {
+      if (!enabled.has(key)) return undefined;
+      const value = entries.get(key);
+      return value
+        ? { pixels: value.pixels.slice(), present: value.present.slice() }
+        : undefined;
+    },
+    recordMiss(key, elapsedMs, value) {
+      if (!Number.isFinite(elapsedMs) || elapsedMs < thresholdMs) return;
+      enabled.add(key);
+      entries.set(key, {
+        pixels: value.pixels.slice(),
+        present: value.present.slice(),
+      });
+    },
+    clear() {
+      entries.clear();
+      enabled.clear();
+    },
+  };
 }
 
 export class RasterCompositionError extends Error {
@@ -268,6 +318,59 @@ function isWithinNodeOrDescendant(plan: CompositionPlan, node: CompositionNode, 
   return false;
 }
 
+function rasterNodeCacheKey(
+  plan: CompositionPlan,
+  node: CompositionNode,
+  revisionId: string,
+  options: RasterCompositionOptions,
+): string {
+  const ancestors: Array<
+    Pick<
+      CompositionNode,
+      | "nodeId"
+      | "parentId"
+      | "childIds"
+      | "visible"
+      | "opacity"
+      | "inheritedOpacity"
+      | "blendMode"
+      | "clipsContent"
+      | "rotation"
+      | "bounds"
+      | "maskType"
+      | "maskIsOutline"
+    >
+  > = [];
+  let current: CompositionNode | undefined = node;
+  while (current) {
+    ancestors.push({
+      nodeId: current.nodeId,
+      parentId: current.parentId,
+      childIds: current.childIds,
+      visible: current.visible,
+      opacity: current.opacity,
+      inheritedOpacity: current.inheritedOpacity,
+      blendMode: current.blendMode,
+      clipsContent: current.clipsContent,
+      rotation: current.rotation,
+      bounds: current.bounds,
+      maskType: current.maskType,
+      maskIsOutline: current.maskIsOutline,
+    });
+    current = current.parentId ? plan.nodes.get(current.parentId) : undefined;
+  }
+  return JSON.stringify({
+    node: node.nodeId,
+    revisionId,
+    width: options.width,
+    height: options.height,
+    ancestors,
+    adjustmentHooks: node.adjustmentHooks,
+    effectFilters: options.effectFilters,
+    effectStacks: options.effectStacks,
+  });
+}
+
 function effectMaskContainsPixel(
   plan: CompositionPlan,
   stack: EffectStack,
@@ -388,6 +491,7 @@ export function composeRasterRGBA8(
   }
   const pixels = new Uint8Array(options.width * options.height * 4);
   const gaps: RasterUnsupportedGap[] = [];
+  const now = options.now ?? (() => performance.now());
   for (const node of plan.nodes.values()) {
     if (!node.visible || node.maskType || node.assetIds.length === 0) continue;
     const assetId = node.assetIds[0];
@@ -406,53 +510,61 @@ export function composeRasterRGBA8(
       gaps.push({ code: "malformed-rgba8", message: "RGBA8 asset metadata or byte length is invalid", assetId });
       continue;
     }
-    const { width, height } = node.bounds;
-    const present = new Uint8Array(options.width * options.height);
-    let nodePixels = new Uint8Array(options.width * options.height * 4);
-    for (let outputY = 0; outputY < options.height; outputY += 1) {
-      for (let outputX = 0; outputX < options.width; outputX += 1) {
-        const local = pointInRotatedNode(node, outputX + 0.5, outputY + 0.5);
-        if (!local || !withinClips(plan, node, outputX + 0.5, outputY + 0.5)) continue;
-        const alpha = maskAlpha(plan, node, outputX + 0.5, outputY + 0.5);
-        if (alpha === 0) continue;
-        let pixel = sourcePixel(revision.bytes, sourceWidth, sourceHeight, (local.x / width) * sourceWidth, (local.y / height) * sourceHeight);
-        for (const hook of node.adjustmentHooks) {
-          const effectKind = hook as EffectKind;
-          const adjustment =
-            options.adjustments?.[hook] ??
-            (isAdjustmentLayerKind(effectKind)
-              ? options.adjustmentLayerAdjustments?.[effectKind]
-              : undefined);
-          if (adjustment) pixel = adjustment(pixel, node);
+    const cacheKey = rasterNodeCacheKey(plan, node, binding.revisionId, options);
+    let cached = options.groupCache?.get(cacheKey);
+    if (!cached) {
+      const startedAt = now();
+      const { width, height } = node.bounds;
+      const present = new Uint8Array(options.width * options.height);
+      let nodePixels = createPixelBuffer(options.width * options.height * 4);
+      for (let outputY = 0; outputY < options.height; outputY += 1) {
+        for (let outputX = 0; outputX < options.width; outputX += 1) {
+          const local = pointInRotatedNode(node, outputX + 0.5, outputY + 0.5);
+          if (!local || !withinClips(plan, node, outputX + 0.5, outputY + 0.5)) continue;
+          const alpha = maskAlpha(plan, node, outputX + 0.5, outputY + 0.5);
+          if (alpha === 0) continue;
+          let pixel = sourcePixel(revision.bytes, sourceWidth, sourceHeight, (local.x / width) * sourceWidth, (local.y / height) * sourceHeight);
+          for (const hook of node.adjustmentHooks) {
+            const effectKind = hook as EffectKind;
+            const adjustment =
+              options.adjustments?.[hook] ??
+              (isAdjustmentLayerKind(effectKind)
+                ? options.adjustmentLayerAdjustments?.[effectKind]
+                : undefined);
+            if (adjustment) pixel = adjustment(pixel, node);
+          }
+          const index = (outputY * options.width + outputX) * 4;
+          nodePixels[index] = pixel[0];
+          nodePixels[index + 1] = pixel[1];
+          nodePixels[index + 2] = pixel[2];
+          nodePixels[index + 3] = Math.round(pixel[3] * alpha);
+          present[outputY * options.width + outputX] = 1;
         }
-        const index = (outputY * options.width + outputX) * 4;
-        nodePixels[index] = pixel[0];
-        nodePixels[index + 1] = pixel[1];
-        nodePixels[index + 2] = pixel[2];
-        nodePixels[index + 3] = Math.round(pixel[3] * alpha);
-        present[outputY * options.width + outputX] = 1;
       }
-    }
-    for (const effect of options.effectFilters ?? []) {
-      if (effect.enabled) {
-        nodePixels = applyRasterEffect(nodePixels, present, options.width, options.height, effect);
-      }
-    }
-    for (const stack of options.effectStacks ?? []) {
-      if (!isWithinNodeOrDescendant(plan, node, stack.layerId)) continue;
-      for (const effect of stack.filters) {
+      for (const effect of options.effectFilters ?? []) {
         if (effect.enabled) {
-          nodePixels = applyRasterEffect(
-            nodePixels,
-            present,
-            options.width,
-            options.height,
-            effect,
-            (x, y) => effectMaskContainsPixel(plan, stack, x, y),
-          );
+          nodePixels = applyRasterEffect(nodePixels, present, options.width, options.height, effect);
         }
       }
+      for (const stack of options.effectStacks ?? []) {
+        if (!isWithinNodeOrDescendant(plan, node, stack.layerId)) continue;
+        for (const effect of stack.filters) {
+          if (effect.enabled) {
+            nodePixels = applyRasterEffect(
+              nodePixels,
+              present,
+              options.width,
+              options.height,
+              effect,
+              (x, y) => effectMaskContainsPixel(plan, stack, x, y),
+            );
+          }
+        }
+      }
+      cached = { pixels: nodePixels, present };
+      options.groupCache?.recordMiss(cacheKey, now() - startedAt, cached);
     }
+    const { pixels: nodePixels, present } = cached;
     for (let outputY = 0; outputY < options.height; outputY += 1) {
       for (let outputX = 0; outputX < options.width; outputX += 1) {
         if (present[outputY * options.width + outputX] === 0) continue;

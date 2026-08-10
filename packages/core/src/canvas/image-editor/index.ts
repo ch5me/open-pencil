@@ -47,5 +47,7 @@ export {
   type RasterUnsupportedGap,
   type RasterUnsupportedGapCode,
   RASTER_RGBA8_PARITY,
+  createRasterGroupCache,
   validateRasterBackendCapability,
+  type RasterGroupCache,
 } from "./raster";

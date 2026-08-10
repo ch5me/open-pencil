@@ -5,12 +5,24 @@ import { assertPixelParity } from "#core/color/composition";
 import {
   composeRaster,
   composeRasterRGBA8,
+  createRasterGroupCache,
   RasterBackendUnavailableError,
   RASTER_RGBA8_PARITY,
   type RasterCompositionAssetResolver,
 } from "#core/canvas/image-editor";
 import type { AssetRevision } from "#core/editor/assets";
 import type { SceneGraph, SceneNode } from "#core/scene-graph";
+
+test("group CPU cache stays cold until a measured threshold miss", () => {
+  const cache = createRasterGroupCache(10);
+  const value = { pixels: new Uint8Array([1, 2, 3, 4]), present: new Uint8Array([1]) };
+  cache.recordMiss("fast", 9, value);
+  expect(cache.get("fast")).toBeUndefined();
+  cache.recordMiss("slow", 10, value);
+  expect([...cache.get("slow")?.pixels ?? []]).toEqual([1, 2, 3, 4]);
+  cache.clear();
+  expect(cache.get("slow")).toBeUndefined();
+});
 
 function node(overrides: Partial<SceneNode> & Pick<SceneNode, "id" | "type">): SceneNode {
   return {
