@@ -78,6 +78,39 @@ describe("image geometry", () => {
     expect(updateNumericTransform(transform, { x: 30, rotation: 90 }).rotation).toBe(90);
   });
 
+  test("corner resize keeps the opposite anchor fixed", () => {
+    expect(resizeTransform(transform, "top-left", { x: 10, y: 5 })).toMatchObject({
+      x: 20,
+      y: 25,
+      width: 90,
+      height: 45,
+    });
+    expect(resizeTransform(transform, "top-right", { x: 10, y: 5 })).toMatchObject({
+      x: 10,
+      y: 25,
+      width: 110,
+      height: 45,
+    });
+    expect(resizeTransform(transform, "bottom-left", { x: 10, y: 5 })).toMatchObject({
+      x: 20,
+      y: 20,
+      width: 90,
+      height: 55,
+    });
+  });
+
+  test("invalid resize inputs fail loudly", () => {
+    expect(() => resizeTransform(transform, "bottom-right", { x: Number.NaN, y: 0 })).toThrow(
+      InvalidTransformError,
+    );
+    expect(() => resizeTransform(transform, "bottom-right", { x: 0, y: 0 }, { snap: 0 })).toThrow(
+      InvalidTransformError,
+    );
+    expect(() => updateNumericTransform(transform, { width: Number.POSITIVE_INFINITY })).toThrow(
+      InvalidTransformError,
+    );
+  });
+
   test("geometry-v1 10,000-case metamorphic corpus has no hit-test errors", () => {
     let seed = 0x13579bdf;
     const next = (max: number) => {
