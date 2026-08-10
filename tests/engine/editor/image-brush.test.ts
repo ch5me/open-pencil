@@ -5,7 +5,10 @@ import {
   applyMask,
   BrushDeviceUnavailableError,
   BrushMaskCapabilityUnavailableError,
+  BrushPalmInputError,
   createBrushStroke,
+  createBrushStrokeHistoryEntry,
+  createBrushStrokeUndoEntry,
   createEraseBrushStroke,
   createRevealBrushStroke,
   deleteMask,
@@ -14,6 +17,7 @@ import {
   invertMask,
   setMaskDisplayMode,
   transformMask,
+  replayBrushStroke,
 } from "#core/editor/image-brush";
 import type { RasterMask } from "#core/editor/image-raster";
 import { selectMask } from "#core/editor/image-selection";
@@ -105,6 +109,68 @@ test("palm-touch-like unavailable pressure input creates no false stroke", () =>
       false,
     ),
   ).toThrow(BrushDeviceUnavailableError);
+});
+
+test("touch and non-primary pointer samples fail loud without creating a stroke", () => {
+  const config = {
+    size: 12,
+    hardness: 1,
+    opacity: 1,
+    flow: 1,
+    spacing: 0.1,
+    pressure: false,
+    smoothing: 0,
+  } as const;
+  expect(() =>
+    createBrushStroke(
+      mask,
+      config,
+      [{ x: 9, y: 9, pressure: 0, time: 4, pointerType: "touch" }],
+      "tx:palm-touch",
+    ),
+  ).toThrow(BrushPalmInputError);
+  expect(() =>
+    createBrushStroke(
+      mask,
+      config,
+      [{ x: 9, y: 9, pressure: 0, time: 4, pointerType: "pen", isPrimary: false }],
+      "tx:palm-secondary",
+    ),
+  ).toThrow(BrushPalmInputError);
+});
+
+test("one brush stroke creates one undoable history entry and deterministic replay", () => {
+  const config = {
+    size: 12,
+    hardness: 1,
+    opacity: 1,
+    flow: 1,
+    spacing: 0.1,
+    pressure: true,
+    smoothing: 0,
+  } as const;
+  const samples = [
+    { x: 1, y: 2, pressure: 0.25, time: 1, pointerType: "pen" as const },
+    { x: 4, y: 5, pressure: 0.75, time: 2, pointerType: "pen" as const },
+  ];
+  const stroke = createBrushStroke(mask, config, samples, "tx:history");
+  const after = { ...mask, revisionId: `sha256:${"b".repeat(64)}` as typeof mask.revisionId };
+  const history = createBrushStrokeHistoryEntry(stroke, mask, after);
+  const states: RasterMask[] = [];
+  const undo = createBrushStrokeUndoEntry(history, (next) => states.push(next));
+
+  undo.forward();
+  undo.inverse();
+  expect(states).toEqual([after, mask]);
+
+  const replayed: Array<{ sample: (typeof samples)[number]; index: number; tx: string }> = [];
+  replayBrushStroke(stroke, (sample, index, replay) => {
+    replayed.push({ sample, index, tx: replay.transactionId });
+  });
+  expect(replayed).toEqual([
+    { sample: samples[0], index: 0, tx: "tx:history" },
+    { sample: samples[1], index: 1, tx: "tx:history" },
+  ]);
 });
 
 test("non-pressure brush accepts unavailable pressure input", () => {

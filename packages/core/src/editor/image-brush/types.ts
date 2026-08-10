@@ -3,6 +3,7 @@ import {
   type RasterDisplayMode,
   type RasterMask,
 } from "#core/editor/image-raster";
+import type { UndoEntry } from "#core/scene-graph/undo";
 
 export interface BrushConfig {
   readonly size: number;
@@ -19,6 +20,8 @@ export interface PointerSample {
   readonly y: number;
   readonly pressure: number;
   readonly time: number;
+  readonly pointerType?: "mouse" | "pen" | "touch";
+  readonly isPrimary?: boolean;
 }
 
 export type BrushMode = "erase" | "reveal";
@@ -46,6 +49,15 @@ export interface BrushStroke {
   readonly transactionId: `tx:${string}`;
 }
 
+export interface BrushStrokeHistoryEntry {
+  readonly version: "brush-mask-v1";
+  readonly kind: "brush-stroke";
+  readonly transactionId: `tx:${string}`;
+  readonly stroke: BrushStroke;
+  readonly before: RasterMask;
+  readonly after: RasterMask;
+}
+
 export interface BrushMaskControl {
   readonly version: "brush-mask-v1";
   readonly operation: BrushMaskControlOperation;
@@ -62,6 +74,10 @@ export class BrushDeviceUnavailableError extends Error {
 
 export class BrushMaskCapabilityUnavailableError extends Error {
   readonly code = "brush-mask-capability-unavailable";
+}
+
+export class BrushPalmInputError extends Error {
+  readonly code = "brush-palm-input-rejected";
 }
 
 function validateTransactionId(transactionId: `tx:${string}`): void {
@@ -196,6 +212,17 @@ function validatePointerSample(sample: PointerSample): PointerSample {
   ) {
     throw new RangeError("invalid pointer sample");
   }
+  if (
+    sample.pointerType !== undefined &&
+    sample.pointerType !== "mouse" &&
+    sample.pointerType !== "pen" &&
+    sample.pointerType !== "touch"
+  ) {
+    throw new RangeError("invalid pointer type");
+  }
+  if (sample.isPrimary !== undefined && typeof sample.isPrimary !== "boolean") {
+    throw new RangeError("invalid pointer primary state");
+  }
   return { ...sample };
 }
 
@@ -226,6 +253,9 @@ export function createBrushStroke(
   if (normalized.pressure && !pressureAvailable) {
     throw new BrushDeviceUnavailableError("pressure input unavailable");
   }
+  if (samples.some((sample) => sample.pointerType === "touch" || sample.isPrimary === false)) {
+    throw new BrushPalmInputError("non-primary touch input cannot create a brush stroke");
+  }
   return {
     version: "brush-mask-v1",
     maskId: validatedMask.maskId,
@@ -237,6 +267,68 @@ export function createBrushStroke(
     config: normalized,
     transactionId,
   };
+}
+
+export function createBrushStrokeHistoryEntry(
+  stroke: BrushStroke,
+  before: RasterMask,
+  after: RasterMask,
+): BrushStrokeHistoryEntry {
+  const validatedBefore = validateRasterMask(before);
+  const validatedAfter = validateRasterMask(after);
+  if (stroke.version !== "brush-mask-v1" || stroke.transactionId.startsWith("tx:") === false) {
+    throw new RangeError("invalid brush stroke history");
+  }
+  if (
+    stroke.maskId !== validatedBefore.maskId ||
+    stroke.maskId !== validatedAfter.maskId ||
+    stroke.transactionId.length <= 3
+  ) {
+    throw new RangeError("brush stroke history mask mismatch");
+  }
+  return {
+    version: "brush-mask-v1",
+    kind: "brush-stroke",
+    transactionId: stroke.transactionId,
+    stroke: structuredClone(stroke),
+    before: validatedBefore,
+    after: validatedAfter,
+  };
+}
+
+export function createBrushStrokeUndoEntry(
+  history: BrushStrokeHistoryEntry,
+  applyMaskState: (mask: RasterMask) => void,
+): UndoEntry {
+  const entry = createBrushStrokeHistoryEntry(history.stroke, history.before, history.after);
+  return {
+    label: `Brush stroke ${entry.transactionId}`,
+    forward: () => applyMaskState(structuredClone(entry.after)),
+    inverse: () => applyMaskState(structuredClone(entry.before)),
+  };
+}
+
+export function replayBrushStroke(
+  stroke: BrushStroke,
+  applySample: (sample: PointerSample, index: number, stroke: BrushStroke) => void,
+): void {
+  const replay = createBrushStroke(
+    {
+      maskId: stroke.maskId,
+      revisionId: `sha256:${"0".repeat(64)}`,
+      thumbnailId: stroke.thumbnailId,
+      enabled: true,
+      inverted: false,
+      displayMode: stroke.displayMode,
+      transform: stroke.maskTransform,
+    },
+    stroke.config,
+    stroke.samples,
+    stroke.transactionId,
+    true,
+    stroke.mode,
+  );
+  replay.samples.forEach((sample, index) => applySample(sample, index, replay));
 }
 
 export function createEraseBrushStroke(
