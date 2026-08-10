@@ -121,6 +121,18 @@ interface RasterCachedNode {
   readonly present: Uint8Array;
 }
 
+const adjustmentIds = new WeakMap<RasterAdjustment, number>();
+let nextAdjustmentId = 1;
+
+function adjustmentId(adjustment: RasterAdjustment): number {
+  const existing = adjustmentIds.get(adjustment);
+  if (existing !== undefined) return existing;
+  const id = nextAdjustmentId;
+  nextAdjustmentId += 1;
+  adjustmentIds.set(adjustment, id);
+  return id;
+}
+
 function createPixelBuffer(size: number): Uint8Array {
   return new Uint8Array(size);
 }
@@ -290,7 +302,7 @@ function maskAlpha(plan: CompositionPlan, node: CompositionNode, x: number, y: n
         siblingMasks.push(sibling);
         maskIndex -= 1;
       }
-      if (siblingMasks.length > 0 && siblingMasks.some((mask) => !pointInRotatedNode(mask, x, y))) {
+      if (siblingMasks.some((mask) => !pointInRotatedNode(mask, x, y))) {
         return 0;
       }
     }
@@ -328,6 +340,7 @@ function rasterNodeCacheKey(
   node: CompositionNode,
   revisionId: string,
   options: RasterCompositionOptions,
+  adjustmentCallbacks: readonly number[],
 ): string {
   const ancestors: string[] = [];
   let current: CompositionNode | undefined = node;
@@ -376,8 +389,42 @@ function rasterNodeCacheKey(
     ancestors,
     adjustmentHooks: node.adjustmentHooks,
     adjustmentSignature: options.adjustmentSignature,
+    adjustmentCallbacks,
     effectFilters: options.effectFilters,
     effectStacks: options.effectStacks,
+    effectMasks: (options.effectStacks ?? [])
+      .filter((stack) => isWithinNodeOrDescendant(plan, node, stack.layerId))
+      .flatMap((stack) =>
+        stack.effectMaskIds.map((maskId) => {
+          const mask = plan.nodes.get(maskId);
+          return mask
+            ? [
+                mask.nodeId,
+                mask.parentId,
+                mask.visible,
+                mask.rotation,
+                mask.bounds,
+                mask.maskType,
+                mask.maskIsOutline,
+              ]
+            : [maskId, "missing"];
+        }),
+      ),
+  });
+}
+
+function rasterAdjustmentCallbacks(
+  node: CompositionNode,
+  options: RasterCompositionOptions,
+): readonly RasterAdjustment[] {
+  return node.adjustmentHooks.flatMap((hook) => {
+    const effectKind = hook as EffectKind;
+    const adjustment =
+      options.adjustments?.[hook] ??
+      (isAdjustmentLayerKind(effectKind)
+        ? options.adjustmentLayerAdjustments?.[effectKind]
+        : undefined);
+    return adjustment ? [adjustment] : [];
   });
 }
 
@@ -520,8 +567,18 @@ export function composeRasterRGBA8(
       gaps.push({ code: "malformed-rgba8", message: "RGBA8 asset metadata or byte length is invalid", assetId });
       continue;
     }
-    const cacheKey = rasterNodeCacheKey(plan, node, binding.revisionId, options);
-    let cached = options.groupCache?.get(cacheKey);
+    const adjustmentCallbacks = rasterAdjustmentCallbacks(node, options);
+    const cacheEnabled =
+      options.groupCache !== undefined &&
+      (adjustmentCallbacks.length === 0 || options.adjustmentSignature !== undefined);
+    const cacheKey = rasterNodeCacheKey(
+      plan,
+      node,
+      binding.revisionId,
+      options,
+      adjustmentCallbacks.map(adjustmentId),
+    );
+    let cached = cacheEnabled ? options.groupCache?.get(cacheKey) : undefined;
     if (!cached) {
       const startedAt = now();
       const { width, height } = node.bounds;
@@ -572,7 +629,9 @@ export function composeRasterRGBA8(
         }
       }
       cached = { pixels: nodePixels, present };
-      options.groupCache?.recordMiss(cacheKey, now() - startedAt, cached);
+      if (cacheEnabled) {
+        options.groupCache?.recordMiss(cacheKey, now() - startedAt, cached);
+      }
     }
     const { pixels: nodePixels, present } = cached;
     for (let outputY = 0; outputY < options.height; outputY += 1) {
