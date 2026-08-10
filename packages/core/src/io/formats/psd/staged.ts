@@ -12,6 +12,8 @@ import {
   type PsdCorpusManifest,
 } from "./types";
 
+const PSD_METADATA_MAGIC = new TextEncoder().encode("OPPSD1");
+
 const PSD_CORPUS_CASES = [
   ["editable-text", "E_PSD_CAPABILITY_EDITABLE_TEXT", "unsupported-layer-feature"],
   ["shapes", "E_PSD_CAPABILITY_SHAPES", "unsupported-layer-feature"],
@@ -122,15 +124,47 @@ function headerWarnings(header: PsdHeader): PsdWarningCode[] {
   return warnings;
 }
 
+function readLayerMetadata(bytes: Uint8Array, offset: number, limits: PsdLimits): PsdLayerMetadata[] {
+  if (bytes.byteLength < offset + PSD_METADATA_MAGIC.byteLength) return [];
+  if (!PSD_METADATA_MAGIC.every((value, index) => bytes[offset + index] === value)) return [];
+
+  const payload = new TextDecoder().decode(bytes.subarray(offset + PSD_METADATA_MAGIC.byteLength));
+  try {
+    const layers = JSON.parse(payload) as unknown;
+    if (!Array.isArray(layers) || layers.length > limits.maxLayers) {
+      throw new PsdUnsupportedError("invalid PSD layer metadata");
+    }
+    return layers.map((layer) => {
+      if (
+        !layer ||
+        typeof layer !== "object" ||
+        typeof layer.id !== "string" ||
+        typeof layer.name !== "string" ||
+        typeof layer.visible !== "boolean" ||
+        typeof layer.opacity !== "number" ||
+        typeof layer.editable !== "boolean" ||
+        !Array.isArray(layer.warnings)
+      ) {
+        throw new PsdUnsupportedError("invalid PSD layer metadata");
+      }
+      return layer as PsdLayerMetadata;
+    });
+  } catch (error) {
+    if (error instanceof PsdUnsupportedError) throw error;
+    throw new PsdUnsupportedError("invalid PSD layer metadata");
+  }
+}
+
 export function stagePsdImport(
   bytes: Uint8Array,
   limits: PsdLimits = DEFAULT_PSD_LIMITS,
 ): PsdImportResult {
   const header = parsePsdHeader(bytes, limits);
   const warnings = headerWarnings(header);
+  const layers = readLayerMetadata(bytes, 26, limits);
   return {
     header,
-    layers: [],
+    layers,
     warnings,
     degraded: warnings.length > 0,
     staged: true,
@@ -177,17 +211,27 @@ export function stagePsdExport(
   view.setUint32(18, input.width, false);
   view.setUint16(22, 8, false);
   view.setUint16(24, 3, false);
-  return bytes;
+  const metadata = new TextEncoder().encode(
+    `${String.fromCharCode(...PSD_METADATA_MAGIC)}${JSON.stringify(input.layers)}`,
+  );
+  const result = new Uint8Array(bytes.byteLength + metadata.byteLength);
+  result.set(bytes);
+  result.set(metadata, bytes.byteLength);
+  return result;
 }
 
 export function layerMetadata(
   id: string,
   name: string,
-  options: Pick<PsdLayerMetadata, "visible" | "opacity" | "editable"> = {
-    visible: true,
-    opacity: 1,
-    editable: true,
-  },
+  options: Partial<Pick<PsdLayerMetadata, "visible" | "opacity" | "editable" | "text">> = {},
 ): PsdLayerMetadata {
-  return { id, name, ...options, warnings: [] };
+  return {
+    id,
+    name,
+    visible: options.visible ?? true,
+    opacity: options.opacity ?? 1,
+    editable: options.editable ?? true,
+    ...(options.text ? { text: options.text } : {}),
+    warnings: [],
+  };
 }

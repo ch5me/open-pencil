@@ -43,9 +43,37 @@ test("reopens the staged PSD export with stable interchange header fields", () =
     bitsPerChannel: 8,
     colorMode: 3,
   });
-  expect(reopened.layers).toEqual([]);
+  expect(reopened.layers).toEqual([
+    layerMetadata("background", "Background"),
+  ]);
   expect(reopened.warnings).toEqual([]);
   expect(reopened.degraded).toBe(false);
+});
+
+test("preserves editable PSD text-layer metadata through producer staging", () => {
+  const text = {
+    sourceId: "text-1",
+    editable: true,
+    originalContent: "Hello PSD",
+    content: "Hello PSD",
+    fontFamily: "Inter",
+    fontSize: 24,
+    fontWeight: 400,
+    alignment: "LEFT" as const,
+    color: [0, 0, 0, 1] as const,
+    letterSpacing: 0,
+    lineHeight: 28,
+    wrapping: "WORD" as const,
+  };
+  const bytes = stagePsdExport({
+    width: 10,
+    height: 20,
+    layers: [layerMetadata("text-1", "Headline", { text })],
+  });
+
+  expect(stagePsdImport(bytes).layers).toEqual([
+    layerMetadata("text-1", "Headline", { text }),
+  ]);
 });
 
 test("rejects hostile PSD dimensions before staging", () => {
