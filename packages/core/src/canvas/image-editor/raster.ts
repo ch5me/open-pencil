@@ -1,5 +1,6 @@
 import type { CompositionNode, CompositionPlan } from "#core/canvas/composition";
 import type { AssetId, AssetRevision } from "#core/editor/assets";
+import { isAdjustmentLayerKind, type AdjustmentLayerKind, type EffectKind } from "#core/editor/image-capabilities/effects";
 
 export type RasterPixelFormat = "rgba8-srgb" | "rgba16f-linear-premultiplied";
 
@@ -69,6 +70,7 @@ export interface RasterCompositionOptions {
   readonly width: number;
   readonly height: number;
   readonly adjustments?: Readonly<Record<string, RasterAdjustment>>;
+  readonly adjustmentLayerAdjustments?: Readonly<Partial<Record<AdjustmentLayerKind, RasterAdjustment>>>;
   readonly backend?: RasterBackend;
   readonly parity?: Partial<RasterParityThresholds>;
 }
@@ -275,7 +277,10 @@ export function composeRasterRGBA8(
         if (alpha === 0) continue;
         let pixel = sourcePixel(revision.bytes, sourceWidth, sourceHeight, (local.x / width) * sourceWidth, (local.y / height) * sourceHeight);
         for (const hook of node.adjustmentHooks) {
-          const adjustment = options.adjustments?.[hook];
+          const effectKind = hook as EffectKind;
+          const adjustment = isAdjustmentLayerKind(effectKind)
+            ? options.adjustmentLayerAdjustments?.[effectKind]
+            : options.adjustments?.[hook];
           if (adjustment) pixel = adjustment(pixel, node);
         }
         const adjusted: readonly [number, number, number, number] = [pixel[0], pixel[1], pixel[2], Math.round(pixel[3] * alpha)];

@@ -22,6 +22,14 @@ export type EffectKind =
   | "distortion"
   | "convolution";
 
+export type AdjustmentLayerKind = "brightness" | "contrast" | "saturation";
+
+const ADJUSTMENT_LAYER_KINDS: ReadonlySet<AdjustmentLayerKind> = new Set([
+  "brightness",
+  "contrast",
+  "saturation",
+]);
+
 const EFFECT_KINDS: ReadonlySet<string> = new Set<EffectKind>([
   "fill",
   "gradient",
@@ -185,6 +193,20 @@ export function validateEffectFilter(filter: EffectFilter): void {
     Object.values(filter.adjustments).some((value) => !Number.isFinite(value))
   ) {
     throw new RangeError("invalid effect adjustments");
+  }
+}
+
+export function isAdjustmentLayerKind(kind: EffectKind): kind is AdjustmentLayerKind {
+  return ADJUSTMENT_LAYER_KINDS.has(kind as AdjustmentLayerKind);
+}
+
+/**
+ * Adjustment layers intentionally expose only the three supported tonal controls.
+ */
+export function validateAdjustmentLayerFilter(filter: EffectFilter): void {
+  validateEffectFilter(filter);
+  if (!isAdjustmentLayerKind(filter.kind)) {
+    throw new RangeError("unsupported adjustment layer kind");
   }
 }
 

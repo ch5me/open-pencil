@@ -337,6 +337,49 @@ test("composition-full-v1 applies adjustment hooks only inside clipped adjustmen
   );
 });
 
+test("effects-gap-068 consumes typed brightness, contrast, and saturation adjustment layers", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    width: 3,
+    height: 1,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:adjustment-kinds",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:adjustment-kinds",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 3, height: 1 },
+    bytes: new Uint8Array([10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255]),
+  } satisfies AssetRevision;
+  const plan = createCompositionPlan(
+    {
+      rootId: image.id,
+      getNode: (id: string) => (id === image.id ? image : undefined),
+    } as unknown as SceneGraph,
+    image.id,
+    { adjustmentHooks: ["brightness", "contrast", "saturation"] },
+  );
+  const result = composeRasterRGBA8(plan, resolver(revision), {
+    width: 3,
+    height: 1,
+    adjustmentLayerAdjustments: {
+      brightness: (pixel) => [pixel[0] + 1, pixel[1], pixel[2], pixel[3]],
+      contrast: (pixel) => [pixel[0], pixel[1] + 2, pixel[2], pixel[3]],
+      saturation: (pixel) => [pixel[0], pixel[1], pixel[2] + 3, pixel[3]],
+    },
+  });
+
+  expect([...result.pixels]).toEqual([11, 22, 33, 255, 41, 52, 63, 255, 71, 82, 93, 255]);
+});
+
 test("RGBA8 group masks use accumulated bounds inside clipped groups", () => {
   const clip = node({
     id: "clip",

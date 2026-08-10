@@ -23,6 +23,7 @@ import {
   reorderEffectStack,
   setEffectEnabled,
   updateEffectFilter,
+  validateAdjustmentLayerFilter,
   validateEffectStack,
   validateEffectFilter,
   type EffectFilter,
@@ -221,6 +222,26 @@ test("effects-bounds-v1 rejects invalid per-layer effect kinds and areas", () =>
   expect(() => validateEffectFilter({ ...filter, affectedArea: [0, 0, 1.5, 1] })).toThrow(
     "invalid effect affected area",
   );
+});
+
+test("effects-gap-068 limits adjustment layers to brightness, contrast, and saturation", () => {
+  const base: EffectFilter = {
+    id: "adjustment:one",
+    kind: "brightness",
+    enabled: true,
+    affectedArea: [0, 0, 10, 10],
+    transactionId: "tx:adjustment",
+    adjustments: { amount: 0.25 },
+  };
+
+  for (const kind of ["brightness", "contrast", "saturation"] as const) {
+    expect(() => validateAdjustmentLayerFilter({ ...base, kind })).not.toThrow();
+  }
+  for (const kind of ["levels", "curves", "blur", "posterize"] as const) {
+    expect(() => validateAdjustmentLayerFilter({ ...base, kind })).toThrow(
+      "unsupported adjustment layer kind",
+    );
+  }
 });
 
 test("effects-bounds-v1 keeps affected area bounded and unrelated pixels untouched by contract", () => {
