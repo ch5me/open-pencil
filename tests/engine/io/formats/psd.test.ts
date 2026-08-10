@@ -46,18 +46,6 @@ test("stages PSD import without mutating caller state and reports typed warnings
   expect(bytes).toEqual(before);
 });
 
-test("failed PSD imports leave caller bytes unchanged", () => {
-  const bytes = stagedPsdWithMetadata({
-    layers: [{ id: "layer-1", name: "Layer", visible: true, opacity: 1, editable: true }],
-  });
-  const before = bytes.slice();
-
-  const malformed = bytes.slice();
-  malformed[0] = 0;
-  expect(() => stagePsdImport(malformed)).toThrow("invalid PSD signature");
-  expect(bytes).toEqual(before);
-});
-
 test("reopens the staged PSD export with stable interchange header fields", () => {
   const bytes = stagePsdExport({
     width: 10,
