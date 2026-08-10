@@ -513,7 +513,7 @@ test("group CPU cache ignores unrelated sibling effect stacks", () => {
   expect(calls).toBe(4);
 });
 
-test("group CPU cache invalidates when an effect mask changes geometry", () => {
+test("group CPU cache reuses source when an effect mask changes geometry", () => {
   const group = node({ id: "group", type: "GROUP", childIds: ["image", "mask"] });
   const image = node({
     id: "image",
@@ -577,9 +577,86 @@ test("group CPU cache invalidates when an effect mask changes geometry", () => {
       }],
     }],
   };
-  composeRasterRGBA8(makePlan(1), resolver(revision), options);
-  composeRasterRGBA8(makePlan(2), resolver(revision), options);
-  expect(calls).toBe(8);
+  const first = composeRasterRGBA8(makePlan(1), resolver(revision), options);
+  const second = composeRasterRGBA8(makePlan(2), resolver(revision), options);
+  expect(calls).toBe(4);
+  const uncachedSecond = composeRasterRGBA8(makePlan(2), resolver(revision), {
+    ...options,
+    groupCache: undefined,
+  });
+  expect([...second.pixels]).toEqual([...uncachedSecond.pixels]);
+  expect([...first.pixels]).toEqual([...second.pixels]);
+});
+
+test("PERF-GAP-094 reuses source raster when blur parameters change", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    width: 4,
+    fills: [{
+      type: "IMAGE",
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      opacity: 1,
+      visible: true,
+      imageHash: "asset:blur-cache",
+    }],
+  });
+  const revision = {
+    revisionId: "sha256:blur-cache",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 4, height: 1 },
+    bytes: new Uint8Array([
+      255, 0, 0, 255,
+      0, 255, 0, 255,
+      0, 0, 255, 255,
+      255, 255, 255, 255,
+    ]),
+  } satisfies AssetRevision;
+  const plan = planFor([image], image.id, { adjustmentHooks: ["exposure"] });
+  let sourceSamples = 0;
+  const exposure = (pixel: readonly [number, number, number, number]) => {
+    sourceSamples += 1;
+    return pixel;
+  };
+  const cache = createRasterGroupCache(0);
+  const compose = (radius: number) => composeRasterRGBA8(plan, resolver(revision), {
+    width: 4,
+    height: 1,
+    groupCache: cache,
+    adjustmentSignature: "stable",
+    adjustments: { exposure },
+    effectFilters: [{
+      id: "effect:blur-cache",
+      kind: "blur",
+      enabled: true,
+      affectedArea: [0, 0, 1, 1],
+      transactionId: `tx:blur-cache-${radius}`,
+      adjustments: { radius },
+    }],
+    now: () => 100,
+  });
+
+  const first = compose(1);
+  const second = compose(2);
+  expect(sourceSamples).toBe(4);
+  const uncachedSecond = composeRasterRGBA8(plan, resolver(revision), {
+    width: 4,
+    height: 1,
+    adjustments: { exposure },
+    adjustmentSignature: "stable",
+    effectFilters: [{
+      id: "effect:blur-cache",
+      kind: "blur",
+      enabled: true,
+      affectedArea: [0, 0, 1, 1],
+      transactionId: "tx:blur-cache-uncached",
+      adjustments: { radius: 2 },
+    }],
+    now: () => 100,
+  });
+
+  expect([...first.pixels]).not.toEqual([...second.pixels]);
+  expect([...second.pixels]).toEqual([...uncachedSecond.pixels]);
 });
 
 function node(overrides: Partial<SceneNode> & Pick<SceneNode, "id" | "type">): SceneNode {

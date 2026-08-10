@@ -412,8 +412,6 @@ function rasterNodeCacheKey(
   options: RasterCompositionOptions,
   adjustmentCallbacks: readonly number[],
 ): string {
-  const relevantEffectStacks = (options.effectStacks ?? [])
-    .filter((stack) => isWithinNodeOrDescendant(plan, node, stack.layerId));
   const ancestors: string[] = [];
   let current: CompositionNode | undefined = node;
   while (current) {
@@ -462,24 +460,6 @@ function rasterNodeCacheKey(
     adjustmentHooks: node.adjustmentHooks,
     adjustmentSignature: options.adjustmentSignature,
     adjustmentCallbacks,
-    effectFilters: options.effectFilters,
-    effectStacks: relevantEffectStacks,
-    effectMasks: relevantEffectStacks.flatMap((stack) =>
-        stack.effectMaskIds.map((maskId) => {
-          const mask = plan.nodes.get(maskId);
-          return mask
-            ? [
-                mask.nodeId,
-                mask.parentId,
-                mask.visible,
-                mask.rotation,
-                mask.bounds,
-                mask.maskType,
-                mask.maskIsOutline,
-              ]
-            : [maskId, "missing"];
-        }),
-      ),
   });
 }
 
@@ -656,7 +636,7 @@ export function composeRasterRGBA8(
       const { width, height } = node.bounds;
       scratch = options.canvasPool?.acquire(options.width, options.height);
       const present = scratch?.present ?? new Uint8Array(options.width * options.height);
-      let nodePixels = scratch?.pixels ?? createPixelBuffer(options.width * options.height * 4);
+      const nodePixels = scratch?.pixels ?? createPixelBuffer(options.width * options.height * 4);
       if (scratch) {
         present.fill(0);
         nodePixels.fill(0);
@@ -685,26 +665,6 @@ export function composeRasterRGBA8(
           present[outputY * options.width + outputX] = 1;
         }
       }
-      for (const effect of options.effectFilters ?? []) {
-        if (effect.enabled) {
-          nodePixels = applyRasterEffect(nodePixels, present, options.width, options.height, effect);
-        }
-      }
-      for (const stack of options.effectStacks ?? []) {
-        if (!isWithinNodeOrDescendant(plan, node, stack.layerId)) continue;
-        for (const effect of stack.filters) {
-          if (effect.enabled) {
-            nodePixels = applyRasterEffect(
-              nodePixels,
-              present,
-              options.width,
-              options.height,
-              effect,
-              (x, y) => effectMaskContainsPixel(plan, stack, x, y),
-            );
-          }
-        }
-      }
       cached = { pixels: nodePixels, present };
       const elapsedMs = now() - startedAt;
       if (cacheEnabled) {
@@ -720,7 +680,30 @@ export function composeRasterRGBA8(
         { pixels: nodePixels, present },
       );
     }
-    const { pixels: nodePixels, present } = cached;
+    // Cache only the source raster. Effects stay outside the cache so blur or
+    // mask edits do not force source sampling across the full output surface.
+    const { pixels: sourcePixels, present } = cached;
+    let nodePixels = sourcePixels;
+    for (const effect of options.effectFilters ?? []) {
+      if (effect.enabled) {
+        nodePixels = applyRasterEffect(nodePixels, present, options.width, options.height, effect);
+      }
+    }
+    for (const stack of options.effectStacks ?? []) {
+      if (!isWithinNodeOrDescendant(plan, node, stack.layerId)) continue;
+      for (const effect of stack.filters) {
+        if (effect.enabled) {
+          nodePixels = applyRasterEffect(
+            nodePixels,
+            present,
+            options.width,
+            options.height,
+            effect,
+            (x, y) => effectMaskContainsPixel(plan, stack, x, y),
+          );
+        }
+      }
+    }
     for (let outputY = 0; outputY < options.height; outputY += 1) {
       for (let outputX = 0; outputX < options.width; outputX += 1) {
         if (present[outputY * options.width + outputX] === 0) continue;
