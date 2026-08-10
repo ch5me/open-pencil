@@ -93,13 +93,23 @@ export interface RasterCompositionOptions {
   readonly backend?: RasterBackend;
   readonly parity?: Partial<RasterParityThresholds>;
   /**
-   * Optional per-node CPU cache. It stays cold until a measured render miss
-   * crosses the threshold, avoiding cache overhead for small documents.
+   * Caller-owned revision for opaque adjustment callbacks. Callback identity
+   * cannot be serialized, so callers must advance this when behavior changes.
+   */
+  readonly adjustmentSignature?: string;
+  /**
+   * Optional per-raster-node CPU cache. It stays cold until a measured render
+   * miss crosses the threshold, avoiding cache overhead for small documents.
+   * The cache stores individual raster-node buffers, not group render passes.
    */
   readonly groupCache?: RasterGroupCache;
   readonly now?: () => number;
 }
 
+/**
+ * Cache for individual raster-node buffers. Despite the field's historical
+ * `groupCache` name, this is not a group-scoped render cache.
+ */
 export interface RasterGroupCache {
   get(key: string): RasterCachedNode | undefined;
   recordMiss(key: string, elapsedMs: number, value: RasterCachedNode): void;
@@ -304,11 +314,6 @@ function sourcePixel(
   return [bytes[index] ?? 0, bytes[index + 1] ?? 0, bytes[index + 2] ?? 0, bytes[index + 3] ?? 0];
 }
 
-function effectContainsPixel(effect: EffectFilter, x: number, y: number): boolean {
-  const [effectX, effectY, width, height] = effect.affectedArea;
-  return x >= effectX && x < effectX + width && y >= effectY && y < effectY + height;
-}
-
 function isWithinNodeOrDescendant(plan: CompositionPlan, node: CompositionNode, ancestorId: string): boolean {
   let current: CompositionNode | undefined = node;
   while (current) {
@@ -324,39 +329,43 @@ function rasterNodeCacheKey(
   revisionId: string,
   options: RasterCompositionOptions,
 ): string {
-  const ancestors: Array<
-    Pick<
-      CompositionNode,
-      | "nodeId"
-      | "parentId"
-      | "childIds"
-      | "visible"
-      | "opacity"
-      | "inheritedOpacity"
-      | "blendMode"
-      | "clipsContent"
-      | "rotation"
-      | "bounds"
-      | "maskType"
-      | "maskIsOutline"
-    >
-  > = [];
+  const ancestors: string[] = [];
   let current: CompositionNode | undefined = node;
   while (current) {
-    ancestors.push({
-      nodeId: current.nodeId,
-      parentId: current.parentId,
-      childIds: current.childIds,
-      visible: current.visible,
-      opacity: current.opacity,
-      inheritedOpacity: current.inheritedOpacity,
-      blendMode: current.blendMode,
-      clipsContent: current.clipsContent,
-      rotation: current.rotation,
-      bounds: current.bounds,
-      maskType: current.maskType,
-      maskIsOutline: current.maskIsOutline,
-    });
+    const parent = current.parentId ? plan.nodes.get(current.parentId) : undefined;
+    const childIndex = parent ? parent.childIds.indexOf(current.nodeId) : -1;
+    const precedingMasks: string[] = [];
+    for (let index = childIndex - 1; index >= 0; index -= 1) {
+      const siblingId = parent?.childIds[index];
+      const sibling = siblingId ? plan.nodes.get(siblingId) : undefined;
+      if (!sibling?.visible || !sibling.maskType) break;
+      precedingMasks.push(
+        JSON.stringify([
+          sibling.nodeId,
+          sibling.visible,
+          sibling.rotation,
+          sibling.bounds,
+          sibling.maskType,
+          sibling.maskIsOutline,
+        ]),
+      );
+    }
+    ancestors.push(
+      JSON.stringify([
+        current.nodeId,
+        current.parentId,
+        current.visible,
+        current.opacity,
+        current.inheritedOpacity,
+        current.blendMode,
+        current.clipsContent,
+        current.rotation,
+        current.bounds,
+        current.maskType,
+        current.maskIsOutline,
+        precedingMasks,
+      ]),
+    );
     current = current.parentId ? plan.nodes.get(current.parentId) : undefined;
   }
   return JSON.stringify({
@@ -366,6 +375,7 @@ function rasterNodeCacheKey(
     height: options.height,
     ancestors,
     adjustmentHooks: node.adjustmentHooks,
+    adjustmentSignature: options.adjustmentSignature,
     effectFilters: options.effectFilters,
     effectStacks: options.effectStacks,
   });

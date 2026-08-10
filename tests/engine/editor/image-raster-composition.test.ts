@@ -24,6 +24,194 @@ test("group CPU cache stays cold until a measured threshold miss", () => {
   expect(cache.get("slow")).toBeUndefined();
 });
 
+test("group CPU cache ignores unrelated siblings in the raster signature", () => {
+  const group = node({ id: "group", type: "GROUP", childIds: ["image", "noise"] });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: "group",
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:cached",
+      },
+    ],
+  });
+  const noise = node({ id: "noise", type: "RECTANGLE", parentId: "group" });
+  const extraNoise = node({ id: "noise-2", type: "RECTANGLE", parentId: "group" });
+  const revision = {
+    revisionId: "sha256:cached",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255]),
+  } satisfies AssetRevision;
+  const makePlan = (includeExtraNoise: boolean) => {
+    const nodes = includeExtraNoise
+      ? [group, image, noise, extraNoise]
+      : [group, image, noise];
+    const byId = new Map(nodes.map((entry) => [entry.id, entry]));
+    const root = {
+      ...group,
+      childIds: includeExtraNoise ? ["image", "noise", "noise-2"] : group.childIds,
+    };
+    byId.set(root.id, root);
+    return createCompositionPlan(
+      { rootId: root.id, getNode: (id: string) => byId.get(id) } as unknown as SceneGraph,
+      root.id,
+      { adjustmentHooks: ["exposure"] },
+    );
+  };
+  let adjustmentCalls = 0;
+  const adjustments = {
+    exposure: (pixel: readonly [number, number, number, number]) => {
+      adjustmentCalls += 1;
+      return pixel;
+    },
+  };
+  const cache = createRasterGroupCache(0);
+  const options = { width: 1, height: 1, adjustments, groupCache: cache, now: () => 100 };
+  composeRasterRGBA8(makePlan(false), resolver(revision), options);
+  composeRasterRGBA8(makePlan(true), resolver(revision), options);
+  expect(adjustmentCalls).toBe(1);
+});
+
+test("group CPU cache matches uncached pixels and honors adjustment revisions", () => {
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:revisioned",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:revisioned",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255]),
+  } satisfies AssetRevision;
+  const plan = createCompositionPlan(
+    { rootId: image.id, getNode: () => image } as unknown as SceneGraph,
+    image.id,
+    { adjustmentHooks: ["exposure"] },
+  );
+  const uncached = composeRasterRGBA8(plan, resolver(revision), {
+    width: 1,
+    height: 1,
+    adjustments: { exposure: (pixel) => [pixel[0], 64, pixel[2], pixel[3]] },
+  });
+  let adjustmentCalls = 0;
+  const cache = createRasterGroupCache(0);
+  const first = composeRasterRGBA8(plan, resolver(revision), {
+    width: 1,
+    height: 1,
+    groupCache: cache,
+    now: () => 100,
+    adjustmentSignature: "revision-a",
+    adjustments: {
+      exposure: (pixel) => {
+        adjustmentCalls += 1;
+        return [pixel[0], 64, pixel[2], pixel[3]];
+      },
+    },
+  });
+  const cached = composeRasterRGBA8(plan, resolver(revision), {
+    width: 1,
+    height: 1,
+    groupCache: cache,
+    now: () => 100,
+    adjustmentSignature: "revision-a",
+    adjustments: { exposure: (pixel) => [pixel[0], 192, pixel[2], pixel[3]] },
+  });
+  const revised = composeRasterRGBA8(plan, resolver(revision), {
+    width: 1,
+    height: 1,
+    groupCache: cache,
+    now: () => 100,
+    adjustmentSignature: "revision-b",
+    adjustments: {
+      exposure: (pixel) => {
+        adjustmentCalls += 1;
+        return [pixel[0], 192, pixel[2], pixel[3]];
+      },
+    },
+  });
+  expect([...first.pixels]).toEqual([...uncached.pixels]);
+  expect([...cached.pixels]).toEqual([...first.pixels]);
+  expect([...revised.pixels]).toEqual([255, 192, 0, 255]);
+  expect(adjustmentCalls).toBe(2);
+});
+
+test("group CPU cache invalidates when an ancestor mask changes geometry", () => {
+  const group = node({ id: "group", type: "GROUP", childIds: ["mask", "image"] });
+  const mask = node({
+    id: "mask",
+    type: "RECTANGLE",
+    parentId: group.id,
+    isMask: true,
+    width: 1,
+    height: 1,
+  });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: group.id,
+    fills: [
+      {
+        type: "IMAGE",
+        color: { r: 1, g: 1, b: 1, a: 1 },
+        opacity: 1,
+        visible: true,
+        imageHash: "asset:masked-cache",
+      },
+    ],
+  });
+  const revision = {
+    revisionId: "sha256:masked-cache",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 1, height: 1 },
+    bytes: new Uint8Array([255, 0, 0, 255]),
+  } satisfies AssetRevision;
+  const makePlan = (maskWidth: number) => {
+    const nextMask = { ...mask, width: maskWidth };
+    const byId = new Map([
+      [group.id, group],
+      [nextMask.id, nextMask],
+      [image.id, image],
+    ]);
+    return createCompositionPlan(
+      { rootId: group.id, getNode: (id: string) => byId.get(id) } as unknown as SceneGraph,
+      group.id,
+      { adjustmentHooks: ["exposure"] },
+    );
+  };
+  let adjustmentCalls = 0;
+  const cache = createRasterGroupCache(0);
+  const options = {
+    width: 1,
+    height: 1,
+    groupCache: cache,
+    now: () => 100,
+    adjustments: {
+      exposure: (pixel: readonly [number, number, number, number]) => {
+        adjustmentCalls += 1;
+        return pixel;
+      },
+    },
+  };
+  composeRasterRGBA8(makePlan(1), resolver(revision), options);
+  composeRasterRGBA8(makePlan(2), resolver(revision), options);
+  expect(adjustmentCalls).toBe(2);
+});
+
 function node(overrides: Partial<SceneNode> & Pick<SceneNode, "id" | "type">): SceneNode {
   return {
     id: overrides.id,
