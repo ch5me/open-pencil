@@ -37,6 +37,12 @@ const node = (
     } | null;
     linkId: string | null;
     linkedLayerIds: readonly string[] | null;
+    smartObjectId: string | null;
+    smartObjectKind: "linked" | "embedded" | string | null;
+    linkedAssetId: string | null;
+    linkedAssetRevisionId: string | null;
+    embeddedDocumentId: string | null;
+    embeddedDocumentVersion: string | null;
     colorLabel: string | null;
     effects: readonly LayerModelEffectInput[] | null;
   }> = {},
@@ -56,6 +62,12 @@ const node = (
     edgeRefinement: overrides.edgeRefinement ?? null,
     linkId: overrides.linkId ?? null,
     linkedLayerIds: overrides.linkedLayerIds ?? null,
+    smartObjectId: overrides.smartObjectId ?? null,
+    smartObjectKind: overrides.smartObjectKind ?? null,
+    linkedAssetId: overrides.linkedAssetId ?? null,
+    linkedAssetRevisionId: overrides.linkedAssetRevisionId ?? null,
+    embeddedDocumentId: overrides.embeddedDocumentId ?? null,
+    embeddedDocumentVersion: overrides.embeddedDocumentVersion ?? null,
     colorLabel: overrides.colorLabel ?? null,
     effects: overrides.effects ?? null,
 });
@@ -287,6 +299,69 @@ describe("layer-model-v1", () => {
     });
     if (label === null || label === undefined) throw new Error("missing color label");
     expect(isUnsupportedLayerColorLabel(label)).toBe(true);
+  });
+
+  test("models linked and embedded smart objects with deterministic references", async () => {
+    const migrated = await migrateLayerModel([
+      node("linked", null, [], {
+        smartObjectId: "so:hero",
+        smartObjectKind: "linked",
+        linkedAssetId: "asset:hero",
+        linkedAssetRevisionId: "sha256:hero-1",
+      }),
+      node("embedded", null, [], {
+        smartObjectId: "so:badge",
+        smartObjectKind: "embedded",
+        embeddedDocumentId: "doc:badge",
+        embeddedDocumentVersion: "content:3",
+      }),
+    ]);
+
+    expect(migrated.model.nodes.get("linked")).toMatchObject({
+      smartObjectId: "so:hero",
+      smartObjectKind: "linked",
+      linkedAssetId: "asset:hero",
+      linkedAssetRevisionId: "sha256:hero-1",
+      embeddedDocumentId: null,
+    });
+    expect(migrated.model.nodes.get("embedded")).toMatchObject({
+      smartObjectId: "so:badge",
+      smartObjectKind: "embedded",
+      embeddedDocumentId: "doc:badge",
+      embeddedDocumentVersion: "content:3",
+      linkedAssetId: null,
+    });
+  });
+
+  test("preserves unsupported smart-object kinds and rejects incomplete references", async () => {
+    const migrated = await migrateLayerModel([
+      node("future", null, [], {
+        smartObjectId: "so:future",
+        smartObjectKind: "package",
+      }),
+    ]);
+    expect(migrated.model.nodes.get("future")?.smartObjectKind).toEqual({
+      kind: "unsupported",
+      code: "layer-model-unsupported-smart-object-kind",
+      value: "package",
+    });
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], {
+          smartObjectKind: "linked",
+          linkedAssetId: "asset:hero",
+        }),
+      ]),
+    ).rejects.toThrow("linked smart object requires object and asset references");
+    await expect(
+      migrateLayerModel([
+        node("invalid", null, [], {
+          smartObjectKind: "embedded",
+          smartObjectId: "so:doc",
+          embeddedDocumentId: "doc:1",
+        }),
+      ]),
+    ).rejects.toThrow("embedded smart object requires object and document references");
   });
 
   test("rejects dangling and self-linked layers", async () => {
