@@ -20,12 +20,15 @@ import {
 
 const PSD_METADATA_MAGIC = new TextEncoder().encode("OPPSD1");
 
-export const PSD_EXTERNAL_SOURCE_CONTRACT: readonly PsdExternalSource[] = [
+const PSD_EXTERNAL_APPLICATIONS: readonly PsdExternalSource["application"][] = [
   "photoshop",
   "affinity",
   "krita",
   "photopea",
-].map((application) => ({
+];
+
+export const PSD_EXTERNAL_SOURCE_CONTRACT: readonly PsdExternalSource[] =
+  PSD_EXTERNAL_APPLICATIONS.map((application) => ({
   application,
   build: "UNKNOWN",
   fixture: null,
@@ -36,7 +39,7 @@ export const PSD_EXTERNAL_SOURCE_CONTRACT: readonly PsdExternalSource[] = [
     appearance: "UNKNOWN",
     editability: "UNKNOWN",
   },
-}));
+  }));
 
 export function createPsdCorpusManifest(
   cases: PsdCorpusManifest["cases"],
