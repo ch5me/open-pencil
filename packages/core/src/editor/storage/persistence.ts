@@ -64,7 +64,13 @@ export interface AtomicWorkingDocumentPersistenceOptions {
 
 export type AtomicPersistenceOptions = AtomicWorkingDocumentPersistenceOptions;
 
+export interface AcknowledgedWorkingDocumentIdentity {
+  readonly contentSequence: number;
+  readonly contentRootHash: string;
+}
+
 export interface SaveWorkingDocumentOptions {
+  readonly expectedAcknowledgement?: AcknowledgedWorkingDocumentIdentity;
   readonly expectedContentRootHash?: string;
 }
 
@@ -146,6 +152,7 @@ function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
   ancestors.add(value);
   if (Array.isArray(value)) {
     if (
+      Object.getPrototypeOf(value) !== Array.prototype ||
       Reflect.ownKeys(value).some(
         (key) =>
           key !== "length" &&
@@ -323,6 +330,59 @@ function durableRootKey(
   return `${documentId}\0${contentSequence}\0${contentRootHash}`;
 }
 
+type AcknowledgedRoot = AcknowledgedWorkingDocumentIdentity & { readonly rootKey: string };
+
+function assertExpectedAcknowledgement(
+  documentId: string,
+  expectedAcknowledgement: AcknowledgedWorkingDocumentIdentity | undefined,
+  acknowledgedRoot: AcknowledgedRoot | undefined,
+): void {
+  if (expectedAcknowledgement === undefined) return;
+  assertJsonValue(expectedAcknowledgement);
+  if (
+    !isPlainRecord(expectedAcknowledgement) ||
+    Reflect.ownKeys(expectedAcknowledgement).length !== 2 ||
+    !Number.isSafeInteger(expectedAcknowledgement.contentSequence) ||
+    expectedAcknowledgement.contentSequence < 0 ||
+    typeof expectedAcknowledgement.contentRootHash !== "string" ||
+    !/^[0-9a-f]{64}$/u.test(expectedAcknowledgement.contentRootHash)
+  ) {
+    throw new PersistenceContractError("expected acknowledgement identity is invalid");
+  }
+  const expectedRootKey = durableRootKey(
+    documentId,
+    expectedAcknowledgement.contentSequence,
+    expectedAcknowledgement.contentRootHash,
+  );
+  if (
+    !acknowledgedRoot ||
+    expectedAcknowledgement.contentSequence !== acknowledgedRoot.contentSequence ||
+    expectedAcknowledgement.contentRootHash !== acknowledgedRoot.contentRootHash ||
+    expectedRootKey !== acknowledgedRoot.rootKey
+  ) {
+    throw new PersistenceConflictError(
+      `working document acknowledgement changed from sequence ${expectedAcknowledgement.contentSequence} root ${expectedAcknowledgement.contentRootHash} to sequence ${acknowledgedRoot?.contentSequence ?? "none"} root ${acknowledgedRoot?.contentRootHash ?? "none"}`,
+    );
+  }
+}
+
+function assertExpectedContentRootHash(
+  expectedContentRootHash: string | undefined,
+  acknowledgedRoot: AcknowledgedRoot | undefined,
+): void {
+  if (expectedContentRootHash !== undefined && !/^[0-9a-f]{64}$/u.test(expectedContentRootHash)) {
+    throw new PersistenceContractError("expected content root hash must be a SHA-256 digest");
+  }
+  if (
+    expectedContentRootHash !== undefined &&
+    expectedContentRootHash !== acknowledgedRoot?.contentRootHash
+  ) {
+    throw new PersistenceConflictError(
+      `working document root changed from ${expectedContentRootHash} to ${acknowledgedRoot?.contentRootHash ?? "none"}`,
+    );
+  }
+}
+
 export async function detachPngDataUrls(
   record: WorkingDocumentRecord,
 ): Promise<DetachedWorkingDocument> {
@@ -430,10 +490,7 @@ export class AtomicWorkingDocumentPersistence {
   private readonly stagedAssets = new Map<string, readonly DetachedBinaryAsset[]>();
   private readonly stagedRecords = new Map<string, WorkingDocumentRecord>();
   private readonly committedRoots = new Map<string, DetachedWorkingDocument>();
-  private readonly acknowledgedRoots = new Map<
-    string,
-    { readonly rootKey: string; readonly contentRootHash: string }
-  >();
+  private readonly acknowledgedRoots = new Map<string, AcknowledgedRoot>();
 
   constructor(private readonly options: AtomicWorkingDocumentPersistenceOptions = {}) {
     if (
@@ -468,20 +525,12 @@ export class AtomicWorkingDocumentPersistence {
 
     const acknowledgedRoot = this.acknowledgedRoots.get(candidate.record.documentId);
     const acknowledged = acknowledgedRoot && this.committedRoots.get(acknowledgedRoot.rootKey);
-    if (
-      options.expectedContentRootHash !== undefined &&
-      !/^[0-9a-f]{64}$/u.test(options.expectedContentRootHash)
-    ) {
-      throw new PersistenceContractError("expected content root hash must be a SHA-256 digest");
-    }
-    if (
-      options.expectedContentRootHash !== undefined &&
-      options.expectedContentRootHash !== acknowledgedRoot?.contentRootHash
-    ) {
-      throw new PersistenceConflictError(
-        `working document root changed from ${options.expectedContentRootHash} to ${acknowledgedRoot?.contentRootHash ?? "none"}`,
-      );
-    }
+    assertExpectedAcknowledgement(
+      candidate.record.documentId,
+      options.expectedAcknowledgement,
+      acknowledgedRoot,
+    );
+    assertExpectedContentRootHash(options.expectedContentRootHash, acknowledgedRoot);
     if (acknowledged && candidate.record.contentSequence <= acknowledged.record.contentSequence) {
       throw new PersistenceConflictError(
         `working document sequence ${candidate.record.contentSequence} conflicts with acknowledged sequence ${acknowledged.record.contentSequence}`,
@@ -514,6 +563,7 @@ export class AtomicWorkingDocumentPersistence {
 
     this.acknowledgedRoots.set(candidate.record.documentId, {
       rootKey,
+      contentSequence: candidate.record.contentSequence,
       contentRootHash: candidate.record.contentRootHash,
     });
     this.afterBoundary("ack", candidate.record.contentRootHash);
@@ -555,6 +605,7 @@ export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>)
 export function validateWorkingDocumentRecord(
   record: unknown,
 ): asserts record is WorkingDocumentRecord {
+  assertJsonValue(record);
   if (
     !isPlainRecord(record) ||
     record.schema !== "openpencil-working-document-v1" ||
@@ -603,7 +654,6 @@ export function validateWorkingDocumentRecord(
   ) {
     throw new PersistenceContractError("invalid working-document state");
   }
-  assertJsonValue(record.payload);
 }
 
 export function recoverWorkingDocument(

@@ -26,6 +26,7 @@ export {
   validateDetachedWorkingDocument,
   validateWorkingDocumentRecord,
   verifyDetachedWorkingDocument,
+  type AcknowledgedWorkingDocumentIdentity,
   type AtomicPersistenceOptions,
   type AtomicWorkingDocumentPersistenceOptions,
   type DetachedBinaryAsset,

@@ -232,18 +232,67 @@ test("persistence-v1 rejects stale sequences and stale-root CAS without regressi
   );
   const store = new AtomicWorkingDocumentPersistence();
   await store.save(prior.record, prior.assets);
-  await store.save(next.record, next.assets, { expectedContentRootHash: PRIOR_ROOT });
+  await store.save(next.record, next.assets, {
+    expectedAcknowledgement: {
+      contentSequence: prior.record.contentSequence,
+      contentRootHash: prior.record.contentRootHash,
+    },
+  });
 
   await expect(store.save(prior.record, prior.assets)).rejects.toBeInstanceOf(
     PersistenceConflictError,
   );
   await expect(
-    store.save(third.record, third.assets, { expectedContentRootHash: PRIOR_ROOT }),
+    store.save(third.record, third.assets, {
+      expectedAcknowledgement: {
+        contentSequence: prior.record.contentSequence,
+        contentRootHash: prior.record.contentRootHash,
+      },
+    }),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
   await expect(
     store.save({ ...next.record, contentRootHash: THIRD_ROOT }, next.assets),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
   expect(store.recover("doc:one")).toEqual(next);
+
+  const legacyStore = new AtomicWorkingDocumentPersistence();
+  await legacyStore.save(prior.record, prior.assets);
+  await legacyStore.save(next.record, next.assets, { expectedContentRootHash: PRIOR_ROOT });
+  await expect(
+    legacyStore.save(third.record, third.assets, { expectedContentRootHash: PRIOR_ROOT }),
+  ).rejects.toBeInstanceOf(PersistenceConflictError);
+  expect(legacyStore.recover("doc:one")).toEqual(next);
+});
+
+test("persistence-v1 rejects same-root ABA against the acknowledged generation", async () => {
+  const first = await detached(PRIOR_ROOT, 1);
+  const middle = await detached(NEXT_ROOT, 2);
+  const latest = await detached(PRIOR_ROOT, 3);
+  const candidate = await detached(THIRD_ROOT, 4);
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(first.record, first.assets);
+  await store.save(middle.record, middle.assets, {
+    expectedAcknowledgement: {
+      contentSequence: first.record.contentSequence,
+      contentRootHash: first.record.contentRootHash,
+    },
+  });
+  await store.save(latest.record, latest.assets, {
+    expectedAcknowledgement: {
+      contentSequence: middle.record.contentSequence,
+      contentRootHash: middle.record.contentRootHash,
+    },
+  });
+
+  await expect(
+    store.save(candidate.record, candidate.assets, {
+      expectedAcknowledgement: {
+        contentSequence: first.record.contentSequence,
+        contentRootHash: first.record.contentRootHash,
+      },
+    }),
+  ).rejects.toBeInstanceOf(PersistenceConflictError);
+  expect(store.recover("doc:one")).toEqual(latest);
 });
 
 test("persistence-v1 rejects non-JSON payload representations before serialization", async () => {
@@ -274,6 +323,38 @@ test("persistence-v1 rejects non-JSON payload representations before serializati
       PersistenceContractError,
     );
     expect(store.recover("doc:one")).toEqual(prior);
+  }
+});
+
+test("persistence-v1 rejects non-JSON whole-record representations before serialization", async () => {
+  const base = record(NEXT_ROOT, 1, {});
+  const invalidRecords: WorkingDocumentRecord[] = [
+    Object.assign({ ...base }, { extra: 1n }),
+    Object.assign({ ...base }, { extra: undefined }),
+    Object.assign({ ...base }, { extra: () => "value" }),
+    Object.assign({ ...base }, { extra: Symbol("value") }),
+  ];
+
+  const sparseSelection = [...base.selectionIds];
+  sparseSelection.length = 2;
+  invalidRecords.push({ ...base, selectionIds: sparseSelection });
+
+  const accessorSelection: string[] = [];
+  Object.defineProperty(accessorSelection, 0, {
+    enumerable: true,
+    get: () => "layer:one",
+  });
+  accessorSelection.length = 1;
+  invalidRecords.push({ ...base, selectionIds: accessorSelection });
+
+  const prototypeSelection = [...base.selectionIds];
+  Object.setPrototypeOf(prototypeSelection, null);
+  invalidRecords.push({ ...base, selectionIds: prototypeSelection });
+
+  for (const invalidRecord of invalidRecords) {
+    await expect(
+      new AtomicWorkingDocumentPersistence().save(invalidRecord, []),
+    ).rejects.toBeInstanceOf(PersistenceContractError);
   }
 });
 
