@@ -581,8 +581,8 @@ test("rejects compressed expansion and render-buffer budgets", () => {
 test("psd-corpus-v1 covers capabilities with fail-loud external reopen status", () => {
   const manifest = createPsdCorpusManifest();
   expect(manifest.version).toBe("psd-corpus-v1");
-  expect(manifest.cases).toHaveLength(14);
-  expect(new Set(manifest.cases.map((entry) => entry.capability)).size).toBe(14);
+  expect(manifest.cases).toHaveLength(16);
+  expect(new Set(manifest.cases.map((entry) => entry.capability)).size).toBe(16);
   expect(manifest.warningCoverage).toBe(1);
   expect(manifest.failedImportVisibleMutationCount).toBe(0);
   expect(manifest.cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(true);
