@@ -22,6 +22,14 @@ export function resizeTransform(
   options: ResizeOptions = {},
 ): GeometryTransform {
   validateTransform(transform);
+  if (
+    handle !== "top-left" &&
+    handle !== "top-right" &&
+    handle !== "bottom-right" &&
+    handle !== "bottom-left"
+  ) {
+    throw new InvalidTransformError("resize handle must be a corner");
+  }
   if (!Number.isFinite(delta.x) || !Number.isFinite(delta.y)) {
     throw new InvalidTransformError("resize delta must be finite");
   }
@@ -41,21 +49,17 @@ export function resizeTransform(
       width = Math.max(1, height * ratio);
     }
   }
-  const next = {
+  if (options.snap) {
+    width = Math.max(1, snapValue(width, options.snap));
+    height = Math.max(1, snapValue(height, options.snap));
+  }
+  return {
     ...transform,
     x: horizontal < 0 ? transform.x + transform.width - width : transform.x,
     y: vertical < 0 ? transform.y + transform.height - height : transform.y,
     width,
     height,
   };
-  if (options.snap) {
-    return {
-      ...next,
-      width: Math.max(1, snapValue(next.width, options.snap)),
-      height: Math.max(1, snapValue(next.height, options.snap)),
-    };
-  }
-  return next;
 }
 
 export function updateNumericTransform(
