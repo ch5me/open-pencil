@@ -274,7 +274,7 @@ function effectColor(value: unknown, label: string): Color {
   if (![color.r, color.g, color.b, color.a].every(Number.isFinite)) {
     throw new LayerModelValidationError(`invalid ${label}`);
   }
-  return { ...color };
+  return { r: color.r, g: color.g, b: color.b, a: color.a };
 }
 
 function effectOffset(value: unknown): Vector {
@@ -290,7 +290,7 @@ function effectOffset(value: unknown): Vector {
   if (![offset.x, offset.y].every(Number.isFinite)) {
     throw new LayerModelValidationError("invalid shadow offset");
   }
-  return { ...offset };
+  return { x: offset.x, y: offset.y };
 }
 
 function effectVisible(value: unknown): boolean {
@@ -310,7 +310,7 @@ function resolveEffect(effect: LayerModelEffectInput): LayerModelResolvedEffect 
       blur: finiteEffectNumber(shadow.blur, "shadow blur"),
       spread: finiteEffectNumber(shadow.spread, "shadow spread"),
       visible: effectVisible(shadow.visible),
-      inset: shadow.inset,
+      inset: effectVisible(shadow.inset),
     };
   }
   if (effect.kind === "glow") {
@@ -816,9 +816,14 @@ export async function migrateLayerModel(
     nodes: new Map(ordered.map((node) => [node.id, node])),
   };
   const invalidatedNodeIds = previous
-    ? ordered
-        .filter((node) => JSON.stringify(node) !== JSON.stringify(previous.nodes.get(node.id)))
-        .map((node) => node.id)
+    ? [
+        ...ordered
+          .filter((node) => JSON.stringify(node) !== JSON.stringify(previous.nodes.get(node.id)))
+          .map((node) => node.id),
+        ...[...previous.nodes.keys()]
+          .filter((id) => !model.nodes.has(id))
+          .sort((left, right) => left.localeCompare(right)),
+      ]
     : ordered.map((node) => node.id);
   return { model, cycles: 0, danglingRefs: 0, invalidatedNodeIds };
 }
