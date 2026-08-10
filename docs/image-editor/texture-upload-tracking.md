@@ -47,11 +47,10 @@ renderer, then verify downgrade, recovery, and restoration on target devices.
 
 ## Partial updates
 
-The current adapter invalidates and reports whole-asset work. `ImageTexture`
-does not carry a dirty rectangle or subresource range, so partial pixel-region
-uploads are not implemented or proven. Do not infer partial-update behavior
-from `uploaded: true`; keep that capability `UNKNOWN` until a typed region is
-carried through the consuming renderer and verified there.
+The adapter carries a typed `update.dirtyRect` and uses it to restrict the
+reported tile plan. This proves deterministic region planning only. The adapter
+does not execute a Skia or GPU subresource upload, so physical partial-upload
+behavior remains `UNKNOWN` until verified in the consuming renderer.
 
 ## Revision contract
 

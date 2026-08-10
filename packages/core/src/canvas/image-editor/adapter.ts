@@ -34,6 +34,9 @@ export function createImageRenderAdapter(
   return {
     backend: "skia",
     render(plan: CompositionPlan, resolve: ImageRevisionResolver): ImageRenderFrame {
+      const nextDirtyAssets = new Set(dirtyAssets);
+      const nextDirtyRects = new Map(dirtyRects);
+      const nextUploadedRevisions = new Map(uploadedRevisions);
       const commands: ImageRenderCommand[] = [];
       const textures: ImageTexture[] = [];
       const gaps: ImageRenderGap[] = [];
@@ -90,7 +93,8 @@ export function createImageRenderAdapter(
           if (emittedAssets.has(assetId)) continue;
           emittedAssets.add(assetId);
           const dirty =
-            dirtyAssets.has(assetId) || uploadedRevisions.get(assetId) !== binding.revisionId;
+            nextDirtyAssets.has(assetId) ||
+            nextUploadedRevisions.get(assetId) !== binding.revisionId;
           if (!dirty) {
             textures.push({
               assetId,
@@ -100,12 +104,13 @@ export function createImageRenderAdapter(
               uploaded: false,
             });
           } else {
-            const revisionChanged = uploadedRevisions.get(assetId) !== binding.revisionId;
-            const dirtyRect = dirtyRects.get(assetId);
+            const revisionChanged =
+              nextUploadedRevisions.get(assetId) !== binding.revisionId;
+            const dirtyRect = nextDirtyRects.get(assetId);
             const tilePlan = createTextureTilePlan(revision.metadata, dirtyRect, options);
-            uploadedRevisions.set(assetId, binding.revisionId);
-            dirtyAssets.delete(assetId);
-            dirtyRects.delete(assetId);
+            nextUploadedRevisions.set(assetId, binding.revisionId);
+            nextDirtyAssets.delete(assetId);
+            nextDirtyRects.delete(assetId);
             textures.push({
               assetId,
               revisionId: binding.revisionId,
@@ -120,6 +125,9 @@ export function createImageRenderAdapter(
           }
         }
       }
+      replaceSet(dirtyAssets, nextDirtyAssets);
+      replaceMap(dirtyRects, nextDirtyRects);
+      replaceMap(uploadedRevisions, nextUploadedRevisions);
       return { backend: "skia", commands, textures, gaps };
     },
     markDirty(assetId: AssetId, dirtyRect?: ImageDirtyRect): void {
@@ -136,6 +144,16 @@ export function createImageRenderAdapter(
       uploadedRevisions.clear();
     },
   };
+}
+
+function replaceSet<T>(target: Set<T>, source: ReadonlySet<T>): void {
+  target.clear();
+  for (const value of source) target.add(value);
+}
+
+function replaceMap<K, V>(target: Map<K, V>, source: ReadonlyMap<K, V>): void {
+  target.clear();
+  for (const [key, value] of source) target.set(key, value);
 }
 
 function createTextureTilePlan(

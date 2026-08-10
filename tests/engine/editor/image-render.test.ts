@@ -463,6 +463,38 @@ test("image render adapter preserves dirty state when tile planning fails", () =
   expect(() => adapter.render(plan, resolve)).toThrow(ImageTilePlanLimitError);
 });
 
+test("image render adapter commits cache state only after the whole frame succeeds", () => {
+  const adapter = createImageRenderAdapter({ tileSize: 1, maxTiles: 1 });
+  const plan = multiImagePlan([
+    imageNode("first", "asset:first"),
+    imageNode("second", "asset:second"),
+  ]);
+  let secondSize = 2;
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({
+      assetId,
+      revisionId: `sha256:${assetId}` as AssetRevision["revisionId"],
+    }),
+    getRevision: (revisionId) => ({
+      revisionId: revisionId as AssetRevision["revisionId"],
+      kind: "image",
+      metadata: {
+        width: revisionId.endsWith("second") ? secondSize : 1,
+        height: revisionId.endsWith("second") ? secondSize : 1,
+        format: "rgba8-srgb",
+      },
+      bytes: new Uint8Array(4),
+    }),
+  };
+
+  expect(() => adapter.render(plan, resolve)).toThrow(ImageTilePlanLimitError);
+  secondSize = 1;
+  expect(adapter.render(plan, resolve).textures.map((texture) => texture.uploaded)).toEqual([
+    true,
+    true,
+  ]);
+});
+
 test("image render adapter uses a full upload when revision changes", () => {
   const adapter = createImageRenderAdapter();
   let revisionId = "sha256:hero-1";
