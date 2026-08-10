@@ -12,6 +12,7 @@ type DocumentIOState = EditorState & {
   documentName: string;
   loading: boolean;
   autosaveEnabled: boolean;
+  documentSavedVersion: number;
 };
 
 export function createDocumentIOActions(
@@ -28,7 +29,10 @@ export function createDocumentIOActions(
     state,
     getFilePath: sourceState.getFilePath,
     getFileHandle: sourceState.getFileHandle,
-    setSavedVersion: sourceState.setSavedVersion,
+    setSavedVersion: (version) => {
+      sourceState.setSavedVersion(version);
+      state.documentSavedVersion = version;
+    },
   });
   const { startWatchingFile, stopWatchingFile } = createFileWatcher({
     getFilePath: sourceState.getFilePath,
@@ -78,5 +82,6 @@ export function createDocumentIOActions(
     importDOMText,
     saveFigFile: sourceActions.saveFigFile,
     saveFigFileAs: sourceActions.saveFigFileAs,
+    isDirty: sourceActions.isDirty,
   };
 }

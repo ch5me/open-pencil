@@ -19,6 +19,7 @@ import { createDocumentSourceState } from "@/app/document/io/source-state";
 type DocumentSourceState = EditorState & {
   documentName: string;
   autosaveEnabled: boolean;
+  documentSavedVersion: number;
 };
 
 export type BackendChoice =
@@ -106,6 +107,11 @@ export function createDocumentSourceActions({
 
   const documentBackend: DocumentBackend = resolveBackend(backendChoice, localOptions);
 
+  function markSaved() {
+    setSavedVersion(state.sceneVersion);
+    state.documentSavedVersion = state.sceneVersion;
+  }
+
   const { disposeAutosave } = createAutosave({
     state,
     getSavedVersion,
@@ -116,10 +122,16 @@ export function createDocumentSourceActions({
 
   async function saveFigFile() {
     await documentBackend.save(await buildFigFile());
+    markSaved();
   }
 
   async function saveFigFileAs() {
     await documentBackend.saveAs(await buildFigFile());
+    markSaved();
+  }
+
+  function isDirty() {
+    return state.sceneVersion !== state.documentSavedVersion;
   }
 
   function setDocumentSource(
@@ -133,7 +145,7 @@ export function createDocumentSourceActions({
     setFileHandle(isFig ? (handle ?? null) : null);
     setFilePath(isFig ? (path ?? null) : null);
     setDownloadName(figDownloadName(fileName, sourceFormat));
-    setSavedVersion(state.sceneVersion);
+    markSaved();
     if (isFig && (handle || path)) {
       void startWatchingFile();
     }
@@ -165,5 +177,6 @@ export function createDocumentSourceActions({
     documentBackend,
     saveFigFile,
     saveFigFileAs,
+    isDirty,
   };
 }

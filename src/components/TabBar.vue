@@ -45,6 +45,12 @@ function onClose(e: MouseEvent, tabId: string) {
         @mousedown="onMiddleClick($event, tab.id)"
       >
         <icon-lucide-file class="size-3 shrink-0 opacity-50" />
+        <icon-lucide-circle
+          v-if="tab.isDirty"
+          data-test-id="tabbar-dirty"
+          class="size-1.5 shrink-0 fill-current text-accent"
+          aria-label="Unsaved changes"
+        />
         <span class="min-w-0 flex-1 truncate">{{ tab.name }}</span>
         <Tip :label="dialogs.closeTab({ name: tab.name })">
           <button

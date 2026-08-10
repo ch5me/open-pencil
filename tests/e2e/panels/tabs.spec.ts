@@ -71,6 +71,7 @@ test("document tabs isolate scene state and keep one tab after closing the last 
 
   await tabs.nth(0).click();
   expect((await getDocumentSnapshot()).childCount).toBe(1);
+  await expect(tabs.nth(0).getByTestId("tabbar-dirty")).toBeVisible();
 
   await tabs.nth(1).click();
   await expect(editor.page.getByTestId("tabbar-close").nth(1)).toBeVisible();
@@ -78,7 +79,9 @@ test("document tabs isolate scene state and keep one tab after closing the last 
   await expect(tabs).toHaveCount(1);
   expect((await getDocumentSnapshot()).childCount).toBe(1);
 
+  const closeDialog = editor.page.waitForEvent("dialog");
   await editor.page.getByTestId("tabbar-close").click();
+  await (await closeDialog).accept();
   await expect(tabs).toHaveCount(1);
   expect((await getDocumentSnapshot()).childCount).toBe(0);
   editor.canvas.assertNoErrors();

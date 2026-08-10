@@ -39,6 +39,7 @@ export const allTabs = computed(() =>
   tabsRef.value.map((t) => ({
     id: t.id,
     name: t.store.state.documentName,
+    isDirty: t.store.isDirty(),
     isActive: t.id === activeTabId.value,
   })),
 );
@@ -135,6 +136,13 @@ export function closeTab(tabId: string) {
   if (idx === -1) return;
 
   const closingTab = tabsRef.value[idx];
+  if (
+    closingTab.store.isDirty() &&
+    typeof window !== "undefined" &&
+    !window.confirm(`Unsaved changes in "${closingTab.store.state.documentName}". Close anyway?`)
+  ) {
+    return;
+  }
   const wasActive = activeTabId.value === tabId;
   tabsRef.value = tabsRef.value.filter((t) => t.id !== tabId);
 
