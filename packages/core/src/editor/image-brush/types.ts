@@ -19,12 +19,21 @@ export interface PointerSample {
 
 export type BrushMode = "erase" | "reveal";
 
-export type BrushMaskControlOperation = "invert" | "disable" | "delete" | "duplicate" | "apply";
+export type BrushMaskTransform = RasterMask["transform"];
+
+export type BrushMaskControlOperation =
+  | "invert"
+  | "disable"
+  | "delete"
+  | "duplicate"
+  | "transform"
+  | "apply";
 
 export interface BrushStroke {
   readonly version: "brush-mask-v1";
   readonly maskId: string;
   readonly thumbnailId: string;
+  readonly maskTransform: BrushMaskTransform;
   readonly mode: BrushMode;
   readonly samples: readonly PointerSample[];
   readonly config: BrushConfig;
@@ -107,6 +116,27 @@ export function duplicateMask(mask: RasterMask, transactionId: `tx:${string}`): 
   return createMaskControl("duplicate", validated, transactionId, duplicate);
 }
 
+export function transformMask(
+  mask: RasterMask,
+  transform: BrushMaskTransform,
+  transactionId: `tx:${string}`,
+): BrushMaskControl {
+  const validated = validateRasterMask(mask);
+  if (
+    !Array.isArray(transform) ||
+    transform.length !== 6 ||
+    transform.some((value) => !Number.isFinite(value))
+  ) {
+    throw new RangeError("invalid brush mask transform");
+  }
+  return createMaskControl(
+    "transform",
+    validated,
+    transactionId,
+    { ...validated, transform: [...transform] as BrushMaskTransform },
+  );
+}
+
 export function applyMask(
   mask: RasterMask,
   transactionId: `tx:${string}`,
@@ -179,6 +209,7 @@ export function createBrushStroke(
     version: "brush-mask-v1",
     maskId: validatedMask.maskId,
     thumbnailId: validatedMask.thumbnailId,
+    maskTransform: [...validatedMask.transform] as BrushMaskTransform,
     mode,
     samples: validateSamples(samples),
     config: normalized,
