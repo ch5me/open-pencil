@@ -290,6 +290,7 @@ test("group CPU cache invalidates when an ancestor mask changes geometry", () =>
     height: 1,
     groupCache: cache,
     now: () => 100,
+    adjustmentSignature: "stable",
     adjustments: {
       exposure: (pixel: readonly [number, number, number, number]) => {
         adjustmentCalls += 1;
@@ -300,6 +301,137 @@ test("group CPU cache invalidates when an ancestor mask changes geometry", () =>
   composeRasterRGBA8(makePlan(1), resolver(revision), options);
   composeRasterRGBA8(makePlan(2), resolver(revision), options);
   expect(adjustmentCalls).toBe(2);
+});
+
+test("group CPU cache ignores unrelated sibling effect stacks", () => {
+  const group = node({ id: "group", type: "GROUP", childIds: ["image", "other"] });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: group.id,
+    width: 4,
+    fills: [{
+      type: "IMAGE",
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      opacity: 1,
+      visible: true,
+      imageHash: "asset:unrelated-stack",
+    }],
+  });
+  const other = node({ id: "other", type: "RECTANGLE", parentId: group.id });
+  const plan = planFor([group, image, other], group.id, { adjustmentHooks: ["exposure"] });
+  const revision = {
+    revisionId: "sha256:unrelated-stack",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 4, height: 1 },
+    bytes: new Uint8Array([
+      255, 0, 0, 255,
+      255, 0, 0, 255,
+      255, 0, 0, 255,
+      255, 0, 0, 255,
+    ]),
+  } satisfies AssetRevision;
+  let calls = 0;
+  const exposure = (pixel: readonly [number, number, number, number]) => {
+    calls += 1;
+    return pixel;
+  };
+  const cache = createRasterGroupCache(0);
+  const compose = (amount: number) =>
+    composeRasterRGBA8(plan, resolver(revision), {
+      width: 4,
+      height: 1,
+      groupCache: cache,
+      now: () => 100,
+      adjustmentSignature: "stable",
+      adjustments: { exposure },
+      effectStacks: [{
+        layerId: other.id,
+        adjustmentScope: "layer",
+        smart: true,
+        effectMaskIds: [],
+        filters: [{
+          id: "effect:unrelated",
+          kind: "exposure",
+          enabled: true,
+          affectedArea: [0, 0, 1, 1],
+          transactionId: "tx:unrelated",
+          adjustments: { exposure: amount },
+        }],
+      }],
+    });
+  compose(1);
+  compose(2);
+  expect(calls).toBe(4);
+});
+
+test("group CPU cache invalidates when an effect mask changes geometry", () => {
+  const group = node({ id: "group", type: "GROUP", childIds: ["image", "mask"] });
+  const image = node({
+    id: "image",
+    type: "IMAGE",
+    parentId: group.id,
+    width: 4,
+    fills: [{
+      type: "IMAGE",
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      opacity: 1,
+      visible: true,
+      imageHash: "asset:effect-mask-cache",
+    }],
+  });
+  const mask = node({
+    id: "mask",
+    type: "RECTANGLE",
+    parentId: group.id,
+    isMask: true,
+  });
+  const revision = {
+    revisionId: "sha256:effect-mask-cache",
+    kind: "image",
+    metadata: { format: "rgba8-srgb", width: 4, height: 1 },
+    bytes: new Uint8Array([
+      255, 0, 0, 255,
+      255, 0, 0, 255,
+      255, 0, 0, 255,
+      255, 0, 0, 255,
+    ]),
+  } satisfies AssetRevision;
+  const makePlan = (maskWidth: number) =>
+    planFor([group, image, { ...mask, width: maskWidth }], group.id, {
+      adjustmentHooks: ["exposure"],
+    });
+  let calls = 0;
+  const exposure = (pixel: readonly [number, number, number, number]) => {
+    calls += 1;
+    return pixel;
+  };
+  const cache = createRasterGroupCache(0);
+  const options = {
+    width: 4,
+    height: 1,
+    groupCache: cache,
+    now: () => 100,
+    adjustmentSignature: "stable",
+    adjustments: { exposure },
+    effectStacks: [{
+      layerId: image.id,
+      adjustmentScope: "layer" as const,
+      smart: true,
+      effectMaskIds: [mask.id],
+      filters: [{
+        id: "effect:masked",
+        kind: "exposure" as const,
+        enabled: true,
+        affectedArea: [0, 0, 1, 1] as const,
+        transactionId: "tx:masked",
+        adjustments: { exposure: 1 },
+      }],
+    }],
+  };
+  composeRasterRGBA8(makePlan(1), resolver(revision), options);
+  composeRasterRGBA8(makePlan(2), resolver(revision), options);
+  expect(calls).toBe(8);
 });
 
 function node(overrides: Partial<SceneNode> & Pick<SceneNode, "id" | "type">): SceneNode {
@@ -342,7 +474,11 @@ function resolver(revision: AssetRevision): RasterCompositionAssetResolver {
   };
 }
 
-function planFor(nodes: SceneNode[], rootId: string) {
+function planFor(
+  nodes: SceneNode[],
+  rootId: string,
+  options?: Parameters<typeof createCompositionPlan>[2],
+) {
   const byId = new Map(nodes.map((entry) => [entry.id, entry]));
   return createCompositionPlan(
     {
@@ -350,6 +486,7 @@ function planFor(nodes: SceneNode[], rootId: string) {
       getNode: (id: string) => byId.get(id),
     } as unknown as SceneGraph,
     rootId,
+    options,
   );
 }
 

@@ -342,6 +342,8 @@ function rasterNodeCacheKey(
   options: RasterCompositionOptions,
   adjustmentCallbacks: readonly number[],
 ): string {
+  const relevantEffectStacks = (options.effectStacks ?? [])
+    .filter((stack) => isWithinNodeOrDescendant(plan, node, stack.layerId));
   const ancestors: string[] = [];
   let current: CompositionNode | undefined = node;
   while (current) {
@@ -391,10 +393,8 @@ function rasterNodeCacheKey(
     adjustmentSignature: options.adjustmentSignature,
     adjustmentCallbacks,
     effectFilters: options.effectFilters,
-    effectStacks: options.effectStacks,
-    effectMasks: (options.effectStacks ?? [])
-      .filter((stack) => isWithinNodeOrDescendant(plan, node, stack.layerId))
-      .flatMap((stack) =>
+    effectStacks: relevantEffectStacks,
+    effectMasks: relevantEffectStacks.flatMap((stack) =>
         stack.effectMaskIds.map((maskId) => {
           const mask = plan.nodes.get(maskId);
           return mask
