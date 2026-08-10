@@ -14,7 +14,14 @@ export interface Tab {
   store: EditorStore;
 }
 
+export interface RecentDocument {
+  name: string;
+  path: string;
+}
+
 const io = new IORegistry(BUILTIN_IO_FORMATS);
+const RECENT_DOCUMENTS_KEY = "open-pencil.recent-documents";
+const RECENT_DOCUMENT_LIMIT = 10;
 
 let nextTabId = 1;
 
@@ -24,6 +31,7 @@ function generateTabId(): string {
 
 const tabsRef = shallowRef<Tab[]>([]);
 const activeTabId = shallowRef("");
+const recentDocumentsRef = shallowRef<RecentDocument[]>(loadRecentDocuments());
 
 export const activeTab = computed(() => tabsRef.value.find((t) => t.id === activeTabId.value));
 
@@ -34,6 +42,50 @@ export const allTabs = computed(() =>
     isActive: t.id === activeTabId.value,
   })),
 );
+
+export const recentDocuments = computed(() => recentDocumentsRef.value);
+
+function loadRecentDocuments(): RecentDocument[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(RECENT_DOCUMENTS_KEY) ?? "[]");
+    if (!Array.isArray(value)) return [];
+    return value.filter(
+      (entry): entry is RecentDocument =>
+        typeof entry === "object" &&
+        entry !== null &&
+        typeof entry.name === "string" &&
+        typeof entry.path === "string" &&
+        entry.path.length > 0,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function persistRecentDocuments() {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(RECENT_DOCUMENTS_KEY, JSON.stringify(recentDocumentsRef.value));
+}
+
+export function recordRecentDocument(name: string, path: string): void {
+  if (!path) return;
+  const entry = { name, path };
+  recentDocumentsRef.value = [
+    entry,
+    ...recentDocumentsRef.value.filter((recent) => recent.path !== path),
+  ].slice(0, RECENT_DOCUMENT_LIMIT);
+  persistRecentDocuments();
+}
+
+export function getRecentDocuments(): RecentDocument[] {
+  return [...recentDocumentsRef.value];
+}
+
+export function clearRecentDocuments(): void {
+  recentDocumentsRef.value = [];
+  persistRecentDocuments();
+}
 
 export function getActiveStore(): EditorStore {
   const tab = tabsRef.value.find((t) => t.id === activeTabId.value);
@@ -145,6 +197,7 @@ export async function openFileInNewTab(
     store.replaceGraph(imported);
     store.undo.clear();
     store.setDocumentSource(file.name, sourceFormat, handle, path);
+    if (path) recordRecentDocument(file.name, path);
     store.clearSelection();
     const pageId = store.graph.getPages()[0]?.id ?? store.graph.rootId;
     await store.switchPage(pageId);
@@ -172,5 +225,8 @@ export function useTabsStore() {
     openFileInNewTab,
     getActiveStore,
     tabCount,
+    recentDocuments,
+    getRecentDocuments,
+    clearRecentDocuments,
   };
 }

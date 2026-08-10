@@ -1,12 +1,13 @@
 import { useEditorStore } from "@/app/editor/active-store";
 import { pasteClipboardToReplace } from "@/app/editor/clipboard/paste-to-replace";
 import { createSharedEditorMenuActions } from "@/app/shell/menu/editor-actions";
-import { openFileDialog } from "@/app/shell/menu/files";
-import { closeTab, createTab, activeTab } from "@/app/tabs";
+import { openFileDialog, openFileFromPath } from "@/app/shell/menu/files";
+import { closeTab, createTab, activeTab, getRecentDocuments } from "@/app/tabs";
 
 export const APP_MENU_ACTION_IDS = [
   "new",
   "open",
+  "recent",
   "close",
   "save",
   "save-as",
@@ -46,6 +47,10 @@ export function createAppMenuActions(setTheme: (theme: "light" | "dark" | "auto"
   return {
     new: () => void createTab(),
     open: () => void openFileDialog(),
+    recent: () => {
+      const recent = getRecentDocuments()[0];
+      if (recent) void openFileFromPath(recent.path);
+    },
     close: () => {
       if (activeTab.value) closeTab(activeTab.value.id);
     },
