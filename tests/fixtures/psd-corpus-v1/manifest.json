@@ -1,0 +1,95 @@
+{
+  "version": "psd-corpus-v1",
+  "source": {
+    "kind": "external",
+    "repository": "Agamnentzar/ag-psd",
+    "ref": "387049670cb89b88fb8fe1b7c01aeacf98dd2e3b",
+    "license": "MIT"
+  },
+  "cases": [
+    {
+      "name": "test",
+      "capability": "E_PSD_CAPABILITY_CHANNELS",
+      "warning": "unsupported-layer-feature",
+      "source": "external",
+      "fixture": "test.psd",
+      "sha256": "85716cc2a63ab024471f583c3c22f3662e47d224615b239845290007a8accd48",
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "name": "text-simple",
+      "capability": "E_PSD_CAPABILITY_EDITABLE_TEXT",
+      "warning": "unsupported-layer-feature",
+      "source": "external",
+      "fixture": "text-simple.psd",
+      "sha256": "f36ed3cf74804826eb8aad951475bbeff4f24ec150e760b0cee0b36f71bfdea1",
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "name": "text-test",
+      "capability": "E_PSD_CAPABILITY_EDITABLE_TEXT",
+      "warning": "unsupported-layer-feature",
+      "source": "external",
+      "fixture": "text-test.psd",
+      "sha256": "a5886fffd61870bb5503b9cd35b94de4505f6544317e7eb0a2ac47e14955f6fa",
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "name": "vector-test",
+      "capability": "E_PSD_CAPABILITY_VECTORS",
+      "warning": "unsupported-layer-feature",
+      "source": "external",
+      "fixture": "vector-test.psd",
+      "sha256": "efdcb65c51e6f52d45c672c2daea8f19dad728ec753cdce7b9e096fa15d75e45",
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "name": "multiple-strokes-test",
+      "capability": "E_PSD_CAPABILITY_EFFECTS",
+      "warning": "unsupported-layer-feature",
+      "source": "external",
+      "fixture": "multiple-strokes-test.psd",
+      "sha256": "b329cc9b04e5b9b308bda7557961e4c21186d385606f04af105b46ad073e44a8",
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    },
+    {
+      "name": "timeline",
+      "capability": "E_PSD_CAPABILITY_ADJUSTMENTS",
+      "warning": "unsupported-layer-feature",
+      "source": "external",
+      "fixture": "timeline.psd",
+      "sha256": "1478aed0e0ff69d64d278d2858ae75a76725fc8c34904c9a2aa2f6c24b07789c",
+      "externalReopen": "UNKNOWN",
+      "expected": {
+        "hierarchy": "UNKNOWN",
+        "appearance": "UNKNOWN",
+        "editability": "UNKNOWN"
+      }
+    }
+  ]
+}

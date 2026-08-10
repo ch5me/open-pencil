@@ -19,35 +19,16 @@ import {
 
 const PSD_METADATA_MAGIC = new TextEncoder().encode("OPPSD1");
 
-const PSD_CORPUS_CASES = [
-  ["editable-text", "E_PSD_CAPABILITY_EDITABLE_TEXT", "unsupported-layer-feature"],
-  ["shapes", "E_PSD_CAPABILITY_SHAPES", "unsupported-layer-feature"],
-  ["rotated-masks", "E_PSD_CAPABILITY_ROTATED_MASKS", "unsupported-layer-feature"],
-  ["blend-modes", "E_PSD_CAPABILITY_BLEND_MODES", "unsupported-layer-feature"],
-  ["adjustments", "E_PSD_CAPABILITY_ADJUSTMENTS", "unsupported-layer-feature"],
-  ["smart-objects", "E_PSD_CAPABILITY_SMART_OBJECTS", "unsupported-layer-feature"],
-  ["vectors", "E_PSD_CAPABILITY_VECTORS", "unsupported-layer-feature"],
-  ["paths", "E_PSD_CAPABILITY_PATHS", "unsupported-layer-feature"],
-  ["effects", "E_PSD_CAPABILITY_EFFECTS", "unsupported-layer-feature"],
-  ["vector-masks", "E_PSD_CAPABILITY_VECTOR_MASKS", "unsupported-layer-feature"],
-  ["channels", "E_PSD_CAPABILITY_CHANNELS", "unsupported-layer-feature"],
-  ["icc", "E_PSD_CAPABILITY_ICC", "unsupported-color-mode"],
-  ["dpi", "E_PSD_CAPABILITY_DPI", "unsupported-layer-feature"],
-  ["cmyk", "E_PSD_CAPABILITY_CMYK", "unsupported-color-mode"],
-  ["16-bit", "E_PSD_CAPABILITY_16_BIT", "unsupported-bit-depth"],
-  ["psb", "E_PSD_CAPABILITY_PSB", "unsupported-layer-feature"],
-] as const;
-
-export function createPsdCorpusManifest(): PsdCorpusManifest {
+export function createPsdCorpusManifest(
+  cases: PsdCorpusManifest["cases"],
+): PsdCorpusManifest {
+  if (cases.length === 0) {
+    throw new PsdUnsupportedError("PSD external corpus manifest is empty");
+  }
   return {
     version: "psd-corpus-v1",
-    cases: PSD_CORPUS_CASES.map(([name, capability, warning]) => ({
-      name,
-      capability,
-      warning,
-      externalReopen: "UNKNOWN",
-    })),
-    warningCoverage: 1,
+    cases,
+    warningCoverage: cases.every((entry) => entry.warning.length > 0) ? 1 : 0,
     failedImportVisibleMutationCount: 0,
   };
 }
