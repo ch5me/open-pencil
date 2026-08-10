@@ -74,6 +74,14 @@ export function createImageRenderAdapter(
             });
             continue;
           }
+          if (revision.revisionId !== binding.revisionId) {
+            gaps.push({
+              code: "asset-revision-mismatch",
+              message: `asset revision does not match requested revision: ${binding.revisionId}`,
+              assetId,
+            });
+            continue;
+          }
           if (emittedAssets.has(assetId)) continue;
           emittedAssets.add(assetId);
           const dirty =
