@@ -45,3 +45,41 @@ test("Properties tabs switch views while keeping all panel content mounted", asy
   await expect(designPanel).toBeVisible();
   editor.canvas.assertNoErrors();
 });
+
+function getDocumentSnapshot() {
+  return editor.page.evaluate(() => {
+    const store = window.openPencil?.getStore?.();
+    if (!store) throw new Error("OpenPencil store not initialized");
+    return {
+      documentName: store.state.documentName,
+      childCount: store.graph.getChildren(store.state.currentPageId).length,
+    };
+  });
+}
+
+test("document tabs isolate scene state and keep one tab after closing the last tab", async () => {
+  await editor.canvas.clearCanvas();
+  await editor.canvas.drawRect(120, 120, 80, 80);
+  const firstDocument = await getDocumentSnapshot();
+  expect(firstDocument.childCount).toBe(1);
+
+  await editor.page.getByTestId("tabbar-new").click();
+  const tabs = editor.page.getByTestId("tabbar-tab");
+  await expect(tabs).toHaveCount(2);
+  const secondDocument = await getDocumentSnapshot();
+  expect(secondDocument.childCount).toBe(0);
+
+  await tabs.nth(0).click();
+  expect((await getDocumentSnapshot()).childCount).toBe(1);
+
+  await tabs.nth(1).click();
+  await expect(editor.page.getByTestId("tabbar-close").nth(1)).toBeVisible();
+  await editor.page.getByTestId("tabbar-close").nth(1).click();
+  await expect(tabs).toHaveCount(1);
+  expect((await getDocumentSnapshot()).childCount).toBe(1);
+
+  await editor.page.getByTestId("tabbar-close").click();
+  await expect(tabs).toHaveCount(1);
+  expect((await getDocumentSnapshot()).childCount).toBe(0);
+  editor.canvas.assertNoErrors();
+});
