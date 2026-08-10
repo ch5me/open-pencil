@@ -4,6 +4,7 @@ import { createCompositionPlan } from "#core/canvas/composition";
 import {
   createImageRenderAdapter,
   createRendererResilienceContract,
+  ImageTilePlanLimitError,
   RendererResilienceContractError,
   UnsupportedImageBackendError,
   validateRendererResilienceContract,
@@ -384,6 +385,60 @@ test("image render adapter emits typed partial updates and unions repeated dirty
     },
   });
   expect(adapter.render(plan, resolve).textures[0]).not.toHaveProperty("update");
+});
+
+test("image render adapter emits bounded tile and proxy upload plans", () => {
+  const adapter = createImageRenderAdapter({
+    tileSize: 2,
+    proxyMaxDimension: 2,
+    maxTiles: 4,
+  });
+  const plan = imagePlan();
+  const revisionId = "sha256:hero" as const;
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId }),
+    getRevision: (requestedRevisionId) => ({
+      revisionId: requestedRevisionId as AssetRevision["revisionId"],
+      kind: "image",
+      metadata: { width: 4, height: 2, format: "rgba8-srgb" },
+      bytes: new Uint8Array(4 * 2 * 4),
+    }),
+  };
+
+  const texture = adapter.render(plan, resolve).textures[0];
+  expect(texture?.tilePlan).toMatchObject({
+    sourceWidth: 4,
+    sourceHeight: 2,
+    renderWidth: 2,
+    renderHeight: 1,
+    scale: 0.5,
+    proxy: true,
+    mipmapLevel: 1,
+    tiles: [{ column: 0, row: 0, x: 0, y: 0, width: 2, height: 1 }],
+  });
+  expect(adapter.render(plan, resolve).textures[0]).not.toHaveProperty("tilePlan");
+
+  adapter.markDirty("asset:hero", { x: 2, y: 0, width: 2, height: 2 });
+  expect(adapter.render(plan, resolve).textures[0]?.tilePlan?.tiles).toEqual([
+    { column: 0, row: 0, x: 0, y: 0, width: 2, height: 1 },
+  ]);
+});
+
+test("image render adapter preserves dirty state when tile planning fails", () => {
+  const adapter = createImageRenderAdapter({ tileSize: 1, maxTiles: 1 });
+  const plan = imagePlan();
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId: "sha256:large" }),
+    getRevision: (revisionId) => ({
+      revisionId: revisionId as AssetRevision["revisionId"],
+      kind: "image",
+      metadata: { width: 2, height: 2, format: "rgba8-srgb" },
+      bytes: new Uint8Array(2 * 2 * 4),
+    }),
+  };
+
+  expect(() => adapter.render(plan, resolve)).toThrow(ImageTilePlanLimitError);
+  expect(() => adapter.render(plan, resolve)).toThrow(ImageTilePlanLimitError);
 });
 
 test("image render adapter uses a full upload when revision changes", () => {

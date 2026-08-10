@@ -12,6 +12,8 @@ export interface ImageTile {
 export interface ImageTilePlan {
   readonly sourceWidth: number;
   readonly sourceHeight: number;
+  readonly renderWidth: number;
+  readonly renderHeight: number;
   readonly tileSize: number;
   readonly mipmapLevel: number;
   readonly scale: number;
@@ -26,14 +28,21 @@ export interface ImageTilePlanOptions {
   readonly dirtyRect?: ImageDirtyRect;
   readonly scale?: number;
   readonly proxyMaxDimension?: number;
+  readonly maxTiles?: number;
 }
 
 const DEFAULT_TILE_SIZE = 256;
+const DEFAULT_MAX_TILES = 4096;
+
+export class ImageTilePlanLimitError extends Error {
+  readonly code = "E_IMAGE_TILE_PLAN_LIMIT";
+}
 
 export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePlan {
   const sourceWidth = positiveFinite(options.sourceWidth, "source width");
   const sourceHeight = positiveFinite(options.sourceHeight, "source height");
   const tileSize = positiveInteger(options.tileSize ?? DEFAULT_TILE_SIZE, "tile size");
+  const maxTiles = positiveInteger(options.maxTiles ?? DEFAULT_MAX_TILES, "max tiles");
   const requestedScale = positiveFinite(options.scale ?? 1, "scale");
   const proxyMaxDimension =
     options.proxyMaxDimension === undefined
@@ -42,9 +51,16 @@ export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePla
   const scale = proxyMaxDimension
     ? chooseProxyScale(sourceWidth, sourceHeight, requestedScale, proxyMaxDimension)
     : requestedScale;
+  const renderWidth = Math.max(1, Math.ceil(sourceWidth * scale));
+  const renderHeight = Math.max(1, Math.ceil(sourceHeight * scale));
   const dirtyRect = options.dirtyRect
-    ? intersectDirtyRect(options.dirtyRect, sourceWidth, sourceHeight)
-    : { x: 0, y: 0, width: sourceWidth, height: sourceHeight };
+    ? scaleDirtyRect(
+        intersectDirtyRect(options.dirtyRect, sourceWidth, sourceHeight),
+        scale,
+        renderWidth,
+        renderHeight,
+      )
+    : { x: 0, y: 0, width: renderWidth, height: renderHeight };
   const tiles: ImageTile[] = [];
 
   if (dirtyRect.width > 0 && dirtyRect.height > 0) {
@@ -52,8 +68,15 @@ export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePla
     const lastColumn = Math.ceil((dirtyRect.x + dirtyRect.width) / tileSize) - 1;
     const firstRow = Math.floor(dirtyRect.y / tileSize);
     const lastRow = Math.ceil((dirtyRect.y + dirtyRect.height) / tileSize) - 1;
-    const columns = Math.ceil(sourceWidth / tileSize);
-    const rows = Math.ceil(sourceHeight / tileSize);
+    const columns = Math.ceil(renderWidth / tileSize);
+    const rows = Math.ceil(renderHeight / tileSize);
+    const tileCount =
+      Math.max(0, lastColumn - firstColumn + 1) * Math.max(0, lastRow - firstRow + 1);
+    if (tileCount > maxTiles) {
+      throw new ImageTilePlanLimitError(
+        `image tile plan exceeds limit: ${tileCount} > ${maxTiles}`,
+      );
+    }
 
     for (let row = firstRow; row <= lastRow; row += 1) {
       for (let column = firstColumn; column <= lastColumn; column += 1) {
@@ -65,8 +88,8 @@ export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePla
           row,
           x,
           y,
-          width: Math.min(tileSize, sourceWidth - x),
-          height: Math.min(tileSize, sourceHeight - y),
+          width: Math.min(tileSize, renderWidth - x),
+          height: Math.min(tileSize, renderHeight - y),
         });
       }
     }
@@ -75,6 +98,8 @@ export function createImageTilePlan(options: ImageTilePlanOptions): ImageTilePla
   return {
     sourceWidth,
     sourceHeight,
+    renderWidth,
+    renderHeight,
     tileSize,
     mipmapLevel: mipmapLevelForScale(scale),
     scale,
@@ -113,6 +138,19 @@ function intersectDirtyRect(rect: ImageDirtyRect, width: number, height: number)
   const y = Math.max(0, Math.min(height, rect.y));
   const right = Math.max(x, Math.min(width, rect.x + rect.width));
   const bottom = Math.max(y, Math.min(height, rect.y + rect.height));
+  return { x, y, width: right - x, height: bottom - y };
+}
+
+function scaleDirtyRect(
+  rect: ImageDirtyRect,
+  scale: number,
+  width: number,
+  height: number,
+): ImageDirtyRect {
+  const x = Math.max(0, Math.min(width, Math.floor(rect.x * scale)));
+  const y = Math.max(0, Math.min(height, Math.floor(rect.y * scale)));
+  const right = Math.max(x, Math.min(width, Math.ceil((rect.x + rect.width) * scale)));
+  const bottom = Math.max(y, Math.min(height, Math.ceil((rect.y + rect.height) * scale)));
   return { x, y, width: right - x, height: bottom - y };
 }
 

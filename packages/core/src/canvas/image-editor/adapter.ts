@@ -1,6 +1,7 @@
 import type { CompositionPlan } from "#core/canvas/composition";
 import type { AssetId } from "#core/editor/assets";
 
+import { createImageTilePlan } from "./tiling";
 import {
   UnsupportedImageBackendError,
   type ImageRenderAdapter,
@@ -14,6 +15,9 @@ import {
 
 export interface ImageRenderAdapterOptions {
   readonly backend?: string;
+  readonly tileSize?: number;
+  readonly proxyMaxDimension?: number;
+  readonly maxTiles?: number;
 }
 
 export function createImageRenderAdapter(
@@ -97,6 +101,7 @@ export function createImageRenderAdapter(
           } else {
             const revisionChanged = uploadedRevisions.get(assetId) !== binding.revisionId;
             const dirtyRect = dirtyRects.get(assetId);
+            const tilePlan = createTextureTilePlan(revision.metadata, dirtyRect, options);
             uploadedRevisions.set(assetId, binding.revisionId);
             dirtyAssets.delete(assetId);
             dirtyRects.delete(assetId);
@@ -106,6 +111,7 @@ export function createImageRenderAdapter(
               byteLength: revision.bytes.byteLength,
               dirty: true,
               uploaded: true,
+              ...tilePlan,
               ...(dirtyRect && !revisionChanged
                 ? { update: { kind: "partial" as const, dirtyRect } }
                 : {}),
@@ -128,6 +134,35 @@ export function createImageRenderAdapter(
       dirtyRects.clear();
       uploadedRevisions.clear();
     },
+  };
+}
+
+function createTextureTilePlan(
+  metadata: Readonly<Record<string, unknown>>,
+  dirtyRect: ImageDirtyRect | undefined,
+  options: ImageRenderAdapterOptions,
+): Pick<ImageTexture, "tilePlan"> {
+  const width = metadata.width;
+  const height = metadata.height;
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    (width as number) <= 0 ||
+    (height as number) <= 0
+  ) {
+    return {};
+  }
+  return {
+    tilePlan: createImageTilePlan({
+      sourceWidth: width as number,
+      sourceHeight: height as number,
+      ...(dirtyRect ? { dirtyRect } : {}),
+      ...(options.tileSize === undefined ? {} : { tileSize: options.tileSize }),
+      ...(options.proxyMaxDimension === undefined
+        ? {}
+        : { proxyMaxDimension: options.proxyMaxDimension }),
+      ...(options.maxTiles === undefined ? {} : { maxTiles: options.maxTiles }),
+    }),
   };
 }
 

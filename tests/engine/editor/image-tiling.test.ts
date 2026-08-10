@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   chooseProxyScale,
   createImageTilePlan,
+  ImageTilePlanLimitError,
   mipmapLevelForScale,
 } from "#core/canvas/image-editor";
 
@@ -57,15 +58,43 @@ describe("image tile planning", () => {
         tileSize: 512,
         proxyMaxDimension: 1024,
       }),
-    ).toMatchObject({ scale: 0.25, proxy: true, mipmapLevel: 2 });
+    ).toMatchObject({
+      renderWidth: 1024,
+      renderHeight: 512,
+      scale: 0.25,
+      proxy: true,
+      mipmapLevel: 2,
+    });
   });
 
-  test("rejects invalid dimensions and tile size", () => {
+  test("scales dirty rectangles into proxy tile coordinates", () => {
+    const plan = createImageTilePlan({
+      sourceWidth: 1024,
+      sourceHeight: 1024,
+      tileSize: 128,
+      proxyMaxDimension: 256,
+      dirtyRect: { x: 512, y: 0, width: 512, height: 512 },
+    });
+
+    expect(plan.tiles).toEqual([
+      { column: 1, row: 0, x: 128, y: 0, width: 128, height: 128 },
+    ]);
+  });
+
+  test("rejects invalid dimensions and unbounded tile plans", () => {
     expect(() => createImageTilePlan({ sourceWidth: 0, sourceHeight: 1 })).toThrow(
       "invalid source width",
     );
     expect(() =>
       createImageTilePlan({ sourceWidth: 1, sourceHeight: 1, tileSize: 1.5 }),
     ).toThrow("invalid tile size");
+    expect(() =>
+      createImageTilePlan({
+        sourceWidth: 100,
+        sourceHeight: 100,
+        tileSize: 1,
+        maxTiles: 100,
+      }),
+    ).toThrow(ImageTilePlanLimitError);
   });
 });

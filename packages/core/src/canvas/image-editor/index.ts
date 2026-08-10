@@ -2,6 +2,7 @@ export { createImageRenderAdapter, type ImageRenderAdapterOptions } from "./adap
 export {
   chooseProxyScale,
   createImageTilePlan,
+  ImageTilePlanLimitError,
   mipmapLevelForScale,
   type ImageTile,
   type ImageTilePlan,

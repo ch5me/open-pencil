@@ -1,5 +1,6 @@
 import type { CompositionPlan } from "#core/canvas/composition";
 import type { AssetId, AssetRevision } from "#core/editor/assets";
+import type { ImageTilePlan } from "./tiling";
 
 export type ImageRenderBackend = "skia";
 export type RendererResilienceState = "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
@@ -85,6 +86,7 @@ export interface ImageTexture {
   readonly dirty: boolean;
   readonly uploaded: boolean;
   readonly update?: ImageTextureUpdate;
+  readonly tilePlan?: ImageTilePlan;
 }
 
 export interface ImageTextureUpdate {
