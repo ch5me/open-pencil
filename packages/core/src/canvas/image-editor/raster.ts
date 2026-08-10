@@ -302,10 +302,10 @@ export function composeRasterRGBA8(
               ? options.adjustmentLayerAdjustments?.[effectKind]
               : undefined);
           if (adjustment) pixel = adjustment(pixel, node);
-          for (const effect of options.effectFilters ?? []) {
-            if (!effect.enabled || effect.kind !== effectKind || !effectContainsPixel(effect, outputX, outputY)) continue;
-            pixel = createRasterEffectAdjustment(effect.kind, effect.adjustments)(pixel);
-          }
+        }
+        for (const effect of options.effectFilters ?? []) {
+          if (!effect.enabled || !effectContainsPixel(effect, outputX, outputY)) continue;
+          pixel = createRasterEffectAdjustment(effect.kind, effect.adjustments)(pixel);
         }
         const adjusted: readonly [number, number, number, number] = [pixel[0], pixel[1], pixel[2], Math.round(pixel[3] * alpha)];
         blendOver(pixels, (outputY * options.width + outputX) * 4, adjusted, node.inheritedOpacity);

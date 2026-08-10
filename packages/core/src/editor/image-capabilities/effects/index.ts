@@ -176,6 +176,14 @@ function hslToRgb(hue: number, saturation: number, lightness: number): [number, 
   ];
 }
 
+function seededNoise(pixel: EffectPixel): number {
+  let value =
+    (pixel[0] * 374761393 + pixel[1] * 668265263 + pixel[2] * 2147483647 + pixel[3]) |
+    0;
+  value = (value ^ (value >>> 13)) * 1274126177;
+  return ((value ^ (value >>> 16)) >>> 0) / 4294967295 * 2 - 1;
+}
+
 /**
  * Builds the host-neutral CPU reference adjustment for a typed effect kind.
  * Controls are normalized numeric values; missing controls use identity defaults.
@@ -273,6 +281,67 @@ export function createRasterEffectAdjustment(
       const green = control(adjustments, "green", 0);
       const blue = control(adjustments, "blue", 0);
       return ([r, g, b, a]) => [clampByte(r + red), clampByte(g + green), clampByte(b + blue), a];
+    }
+    case "sharpen": {
+      const amount = control(adjustments, "amount", 1);
+      return ([r, g, b, a]) => {
+        const average = (r + g + b) / 3;
+        return [
+          clampByte(r + (r - average) * amount),
+          clampByte(g + (g - average) * amount),
+          clampByte(b + (b - average) * amount),
+          a,
+        ];
+      };
+    }
+    case "noise": {
+      const amount = control(adjustments, "amount", 0.1) * 255;
+      return (pixel) => {
+        const offset = seededNoise(pixel) * amount;
+        return [
+          clampByte(pixel[0] + offset),
+          clampByte(pixel[1] + offset),
+          clampByte(pixel[2] + offset),
+          pixel[3],
+        ];
+      };
+    }
+    case "shadows-highlights": {
+      const shadows = control(adjustments, "shadows", 0);
+      const highlights = control(adjustments, "highlights", 0);
+      return ([r, g, b, a]) => {
+        const luminance = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+        const amount = luminance < 0.5 ? shadows * (1 - luminance * 2) : highlights * ((luminance - 0.5) * 2);
+        return [clampByte(r + amount * 255), clampByte(g + amount * 255), clampByte(b + amount * 255), a];
+      };
+    }
+    case "lens": {
+      const amount = control(adjustments, "amount", 0);
+      return ([r, g, b, a]) => [
+        clampByte(128 + (r - 128) * (1 + amount)),
+        clampByte(128 + (g - 128) * (1 + amount)),
+        clampByte(128 + (b - 128) * (1 + amount)),
+        a,
+      ];
+    }
+    case "distortion": {
+      const amount = control(adjustments, "amount", 0);
+      return ([r, g, b, a]) => [
+        clampByte(r + (g - b) * amount),
+        clampByte(g + (b - r) * amount),
+        clampByte(b + (r - g) * amount),
+        a,
+      ];
+    }
+    case "convolution": {
+      const amount = control(adjustments, "amount", 1);
+      const center = control(adjustments, "center", 1);
+      return ([r, g, b, a]) => [
+        clampByte(r * center + (r - 128) * amount),
+        clampByte(g * center + (g - 128) * amount),
+        clampByte(b * center + (b - 128) * amount),
+        a,
+      ];
     }
     default:
       return (pixel) => pixel;

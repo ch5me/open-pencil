@@ -408,7 +408,6 @@ test("effects-gap-069 consumes typed effect filters with bounded areas", () => {
       getNode: (id: string) => (id === image.id ? image : undefined),
     } as unknown as SceneGraph,
     image.id,
-    { adjustmentHooks: ["threshold"] },
   );
   const result = composeRasterRGBA8(plan, resolver(revision), {
     width: 2,
