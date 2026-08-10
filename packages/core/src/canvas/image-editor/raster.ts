@@ -285,9 +285,10 @@ function validateEffectArea(effect: EffectFilter, width: number, height: number)
   const [x, y, areaWidth, areaHeight] = effect.affectedArea;
   if (
     x + areaWidth > width ||
-    y + areaHeight > height
+    y + areaHeight > height ||
+    (areaWidth * areaHeight) / (width * height) > 0.25
   ) {
-    throw new RasterCompositionError("effect area exceeds raster bounds");
+    throw new RasterCompositionError("effect area exceeds bounded pixel contract");
   }
 }
 
