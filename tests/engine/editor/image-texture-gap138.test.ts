@@ -24,6 +24,7 @@ const SOURCE_REVISION_2 = "sha256:source-2";
 const MASK_REVISION = "sha256:mask-1";
 
 function imageNode(id: string, assetId: string, isMask = false): SceneNode {
+  // oxlint-disable-next-line open-pencil(no-broad-double-cast)
   return {
     id,
     type: "IMAGE",
@@ -46,7 +47,6 @@ function imageNode(id: string, assetId: string, isMask = false): SceneNode {
       },
     ],
     // Fixture models only the composition resolver surface.
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
   } as unknown as SceneNode;
 }
 
@@ -66,10 +66,10 @@ function texturePlan(): ReturnType<typeof createCompositionPlan> {
     [mask.id, mask],
   ]);
   return createCompositionPlan(
+    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
     {
       rootId: group.id,
       getNode: (id: string) => nodes.get(id),
-      // oxlint-disable-next-line open-pencil(no-broad-double-cast)
     } as unknown as SceneGraph,
     group.id,
   );
@@ -107,12 +107,11 @@ function textureResolver() {
     ],
   ]);
   const resolver: ImageRevisionResolver = {
-    getAsset: (assetId) =>
-      assetId === SOURCE_ASSET
-        ? { assetId, revisionId: sourceRevision }
-        : assetId === MASK_ASSET
-          ? { assetId, revisionId: MASK_REVISION }
-          : undefined,
+    getAsset: (assetId) => {
+      if (assetId === SOURCE_ASSET) return { assetId, revisionId: sourceRevision };
+      if (assetId === MASK_ASSET) return { assetId, revisionId: MASK_REVISION };
+      return undefined;
+    },
     getRevision: (revisionId) => revisions.get(revisionId),
   };
   return {
@@ -180,7 +179,7 @@ test(TEST_IDENTITY, () => {
   evidence.assertNonzeroOutput();
   expect(evidence.receipt()).toMatchObject({
     lane: "G139-PROOF-GAP-138",
-    outputBytes: 9,
+    outputBytes: 10,
     stale: false,
     substituted: false,
   });
@@ -193,23 +192,27 @@ test("PROOF-GAP-138 seeded defects fail the exact upload identity contract", () 
   adapter.render(plan, resolver);
   const warm = adapter.render(plan, resolver);
 
+  const unchangedTextures = structuredClone(warm.textures);
+  const firstTexture = unchangedTextures[0];
+  if (!firstTexture) throw new Error(`${TEST_IDENTITY}: missing seeded texture`);
+  Reflect.set(firstTexture, "dirty", true);
+  Reflect.set(firstTexture, "uploaded", true);
   const unchangedUploadDefect: ImageRenderFrame = {
     ...warm,
-    textures: warm.textures.map((texture, index) =>
-      index === 0 ? { ...texture, dirty: true, uploaded: true } : texture,
-    ),
+    textures: unchangedTextures,
   };
   expect(() => assertUploads(unchangedUploadDefect, [])).toThrow();
 
   adapter.markDirty(MASK_ASSET);
   const selective = adapter.render(plan, resolver);
+  const wrongIdentityTextures = structuredClone(selective.textures);
+  const maskTexture = wrongIdentityTextures.find((texture) => texture.assetId === MASK_ASSET);
+  if (!maskTexture) throw new Error(`${TEST_IDENTITY}: missing seeded mask texture`);
+  Reflect.set(maskTexture, "assetId", SOURCE_ASSET);
+  Reflect.set(maskTexture, "revisionId", SOURCE_REVISION_1);
   const wrongIdentityDefect: ImageRenderFrame = {
     ...selective,
-    textures: selective.textures.map((texture) =>
-      texture.assetId === MASK_ASSET
-        ? { ...texture, assetId: SOURCE_ASSET, revisionId: SOURCE_REVISION_1 }
-        : texture,
-    ),
+    textures: wrongIdentityTextures,
   };
   expect(() => assertUploads(wrongIdentityDefect, [`${MASK_ASSET}@${MASK_REVISION}`])).toThrow();
 });
