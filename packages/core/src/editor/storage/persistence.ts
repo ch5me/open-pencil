@@ -119,6 +119,32 @@ export class PersistenceTerminationError extends Error {
   }
 }
 
+type PersistenceError =
+  | PersistenceConflictError
+  | PersistenceContractError
+  | PersistenceMigrationError
+  | PersistenceQuotaError
+  | PersistenceTerminationError;
+
+function isPersistenceError(error: unknown): error is PersistenceError {
+  try {
+    return (
+      error instanceof PersistenceContractError ||
+      error instanceof PersistenceQuotaError ||
+      error instanceof PersistenceMigrationError ||
+      error instanceof PersistenceConflictError ||
+      error instanceof PersistenceTerminationError
+    );
+  } catch {
+    return false;
+  }
+}
+
+function normalizePersistenceError(error: unknown, fallback: () => PersistenceError): never {
+  if (isPersistenceError(error)) throw error;
+  throw fallback();
+}
+
 const IMAGE_DATA_URL_PREFIX = /^data:image\//iu;
 const PNG_DATA_URL_PREFIX = /^data:image\/png(?:;[^,]*)?,/iu;
 const BASE64_PNG_DATA_URL = /^data:image\/png;base64,([a-z\d+/]*={0,2})$/iu;
@@ -363,15 +389,22 @@ export function createDetachedBinaryAssetReference(
   mimeType: string,
   byteLength: number,
 ): DetachedBinaryAssetReference {
-  const reference = {
-    kind: "detached-binary-asset-v1",
-    assetId,
-    revisionId,
-    mimeType,
-    byteLength,
-  };
-  assertDetachedReference(reference);
-  return reference;
+  try {
+    const reference = {
+      kind: "detached-binary-asset-v1",
+      assetId,
+      revisionId,
+      mimeType,
+      byteLength,
+    };
+    assertDetachedReference(reference);
+    return reference;
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceMigrationError("detached binary asset reference is invalid"),
+    );
+  }
 }
 
 function collectDetachedReferences(
@@ -496,6 +529,20 @@ function snapshotDetachedDocument(record: unknown, assets: unknown): DetachedWor
   };
 }
 
+function snapshotWorkingDocumentRecord(record: unknown): WorkingDocumentRecord {
+  let snapshot: unknown;
+  try {
+    snapshot = snapshotValue(record);
+  } catch (error) {
+    normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("working document could not be snapshotted"),
+    );
+  }
+  validateWorkingDocumentRecord(snapshot);
+  return snapshot;
+}
+
 function durableRootKey(
   documentId: string,
   contentSequence: number,
@@ -508,18 +555,22 @@ type AcknowledgedRoot = AcknowledgedWorkingDocumentIdentity;
 
 function assertAcknowledgementIdentity(
   documentId: string,
-  identity: AcknowledgedWorkingDocumentIdentity,
-): void {
+  identity: unknown,
+): asserts identity is AcknowledgedWorkingDocumentIdentity {
   assertJsonValue(identity);
+  if (!isPlainRecord(identity)) {
+    throw new PersistenceContractError("expected acknowledgement identity is invalid");
+  }
+  const contentSequence = identity.contentSequence;
+  const contentRootHash = identity.contentRootHash;
   if (
-    !isPlainRecord(identity) ||
     Reflect.ownKeys(identity).length !== 3 ||
-    !Number.isSafeInteger(identity.contentSequence) ||
-    identity.contentSequence < 0 ||
-    typeof identity.contentRootHash !== "string" ||
-    !/^[0-9a-f]{64}$/u.test(identity.contentRootHash) ||
-    identity.rootKey !==
-      durableRootKey(documentId, identity.contentSequence, identity.contentRootHash)
+    typeof contentSequence !== "number" ||
+    !Number.isSafeInteger(contentSequence) ||
+    contentSequence < 0 ||
+    typeof contentRootHash !== "string" ||
+    !/^[0-9a-f]{64}$/u.test(contentRootHash) ||
+    identity.rootKey !== durableRootKey(documentId, contentSequence, contentRootHash)
   ) {
     throw new PersistenceContractError("expected acknowledgement identity is invalid");
   }
@@ -530,13 +581,20 @@ export function createAcknowledgedWorkingDocumentIdentity(
   contentSequence: number,
   contentRootHash: string,
 ): AcknowledgedWorkingDocumentIdentity {
-  const identity = {
-    contentSequence,
-    contentRootHash,
-    rootKey: durableRootKey(documentId, contentSequence, contentRootHash),
-  };
-  assertAcknowledgementIdentity(documentId, identity);
-  return identity;
+  try {
+    const identity = {
+      contentSequence,
+      contentRootHash,
+      rootKey: durableRootKey(documentId, contentSequence, contentRootHash),
+    };
+    assertAcknowledgementIdentity(documentId, identity);
+    return identity;
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("acknowledgement identity is invalid"),
+    );
+  }
 }
 
 function assertExpectedAcknowledgement(
@@ -565,77 +623,115 @@ function assertExpectedAcknowledgement(
   }
 }
 
+function snapshotSaveOptions(
+  documentId: string,
+  options: SaveWorkingDocumentOptions,
+): AcknowledgedWorkingDocumentIdentity | undefined {
+  try {
+    if (!isPlainRecord(options)) {
+      throw new PersistenceContractError("save options must be a plain object");
+    }
+    const expectedAcknowledgement = options.expectedAcknowledgement;
+    if (expectedAcknowledgement === undefined) return undefined;
+    const snapshot = snapshotValue(expectedAcknowledgement);
+    assertAcknowledgementIdentity(documentId, snapshot);
+    return snapshot;
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("save options are invalid"),
+    );
+  }
+}
+
 export async function detachPngDataUrls(
   record: WorkingDocumentRecord,
 ): Promise<DetachedWorkingDocument> {
-  validateWorkingDocumentRecord(record);
-  const assets = new Map<string, DetachedBinaryAsset>();
-  const payload = await detachJsonValue(record.payload, assets);
-  if (!isPlainRecord(payload)) {
-    throw new PersistenceMigrationError("working-document payload must be a JSON object");
+  try {
+    const snapshot = snapshotWorkingDocumentRecord(record);
+    const assets = new Map<string, DetachedBinaryAsset>();
+    const payload = await detachJsonValue(snapshot.payload, assets);
+    if (!isPlainRecord(payload)) {
+      throw new PersistenceMigrationError("working-document payload must be a JSON object");
+    }
+    const detached = {
+      record: { ...snapshot, payload },
+      assets: [...assets.values()].map(cloneDetachedAsset),
+    };
+    await verifyDetachedWorkingDocumentSnapshot(detached);
+    return cloneDetachedDocument(detached);
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("working document could not be detached"),
+    );
   }
-  const detached = {
-    record: { ...structuredClone(record), payload },
-    assets: [...assets.values()].map(cloneDetachedAsset),
-  };
-  await verifyDetachedWorkingDocument(detached.record, detached.assets);
-  return detached;
 }
 
 export function validateDetachedWorkingDocument(
   record: WorkingDocumentRecord,
   assets: readonly DetachedBinaryAsset[],
 ): void {
-  validateWorkingDocumentRecord(record);
-  assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
-  if (containsImageDataUrl(record.payload)) {
-    throw new PersistenceMigrationError("working document contains an embedded image data URL");
-  }
+  try {
+    validateWorkingDocumentRecord(record);
+    assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
+    if (containsImageDataUrl(record.payload)) {
+      throw new PersistenceMigrationError("working document contains an embedded image data URL");
+    }
 
-  const assetsByRevision = new Map<string, DetachedBinaryAsset>();
-  for (const asset of assets) {
-    assertDetachedReference(asset.reference);
-    if (
-      !isUint8ArrayView(asset.bytes) ||
-      asset.bytes.byteLength !== asset.reference.byteLength ||
-      PNG_SIGNATURE.some((byte, index) => asset.bytes[index] !== byte)
-    ) {
+    const assetsByRevision = new Map<string, DetachedBinaryAsset>();
+    for (const asset of assets) {
+      assertDetachedReference(asset.reference);
+      if (
+        !isUint8ArrayView(asset.bytes) ||
+        asset.bytes.byteLength !== asset.reference.byteLength ||
+        PNG_SIGNATURE.some((byte, index) => asset.bytes[index] !== byte)
+      ) {
+        throw new PersistenceMigrationError(
+          `detached binary asset bytes do not match reference: ${asset.reference.assetId}`,
+        );
+      }
+      if (assetsByRevision.has(asset.reference.revisionId)) {
+        throw new PersistenceMigrationError(
+          `duplicate detached binary asset revision: ${asset.reference.revisionId}`,
+        );
+      }
+      assetsByRevision.set(asset.reference.revisionId, asset);
+    }
+
+    const references: DetachedBinaryAssetReference[] = [];
+    collectDetachedReferences(record.payload, references);
+    const referencedRevisions = new Set(references.map(({ revisionId }) => revisionId));
+    for (const reference of references) {
+      const asset = assetsByRevision.get(reference.revisionId);
+      if (
+        !asset ||
+        asset.reference.assetId !== reference.assetId ||
+        asset.reference.byteLength !== reference.byteLength
+      ) {
+        throw new PersistenceMigrationError(
+          `missing detached binary asset: ${reference.revisionId}`,
+        );
+      }
+    }
+    if (referencedRevisions.size !== assetsByRevision.size) {
       throw new PersistenceMigrationError(
-        `detached binary asset bytes do not match reference: ${asset.reference.assetId}`,
+        "detached binary asset set must exactly match references",
       );
     }
-    if (assetsByRevision.has(asset.reference.revisionId)) {
-      throw new PersistenceMigrationError(
-        `duplicate detached binary asset revision: ${asset.reference.revisionId}`,
-      );
-    }
-    assetsByRevision.set(asset.reference.revisionId, asset);
-  }
-
-  const references: DetachedBinaryAssetReference[] = [];
-  collectDetachedReferences(record.payload, references);
-  const referencedRevisions = new Set(references.map(({ revisionId }) => revisionId));
-  for (const reference of references) {
-    const asset = assetsByRevision.get(reference.revisionId);
-    if (
-      !asset ||
-      asset.reference.assetId !== reference.assetId ||
-      asset.reference.byteLength !== reference.byteLength
-    ) {
-      throw new PersistenceMigrationError(`missing detached binary asset: ${reference.revisionId}`);
-    }
-  }
-  if (referencedRevisions.size !== assetsByRevision.size) {
-    throw new PersistenceMigrationError("detached binary asset set must exactly match references");
+  } catch (error) {
+    normalizePersistenceError(
+      error,
+      () => new PersistenceMigrationError("detached working document is invalid"),
+    );
   }
 }
 
-export async function verifyDetachedWorkingDocument(
-  record: WorkingDocumentRecord,
-  assets: readonly DetachedBinaryAsset[],
+async function verifyDetachedWorkingDocumentSnapshot(
+  snapshot: DetachedWorkingDocument,
 ): Promise<void> {
-  validateDetachedWorkingDocument(record, assets);
-  for (const asset of assets) {
+  validateDetachedWorkingDocument(snapshot.record, snapshot.assets);
+  for (const asset of snapshot.assets) {
     if (`sha256:${await sha256(asset.bytes)}` !== asset.reference.revisionId) {
       throw new PersistenceMigrationError(
         `detached binary asset digest does not match reference: ${asset.reference.assetId}`,
@@ -644,13 +740,35 @@ export async function verifyDetachedWorkingDocument(
   }
 }
 
+export async function verifyDetachedWorkingDocument(
+  record: WorkingDocumentRecord,
+  assets: readonly DetachedBinaryAsset[],
+): Promise<void> {
+  try {
+    const snapshot = snapshotDetachedDocument(record, assets);
+    await verifyDetachedWorkingDocumentSnapshot(snapshot);
+  } catch (error) {
+    normalizePersistenceError(
+      error,
+      () => new PersistenceMigrationError("detached working document could not be verified"),
+    );
+  }
+}
+
 export async function migrateWorkingDocumentRecord(
   record: WorkingDocumentRecord,
   assets: readonly DetachedBinaryAsset[] = [],
 ): Promise<WorkingDocumentRecord> {
-  const snapshot = snapshotDetachedDocument(record, assets);
-  await verifyDetachedWorkingDocument(snapshot.record, snapshot.assets);
-  return snapshot.record;
+  try {
+    const snapshot = snapshotDetachedDocument(record, assets);
+    await verifyDetachedWorkingDocumentSnapshot(snapshot);
+    return structuredClone(snapshot.record);
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceMigrationError("working document could not be migrated"),
+    );
+  }
 }
 
 export function createTerminationInjector(
@@ -676,13 +794,28 @@ export class AtomicWorkingDocumentPersistence {
   private readonly stagedRecords = new Map<string, WorkingDocumentRecord>();
   private readonly committedRoots = new Map<string, DetachedWorkingDocument>();
   private readonly acknowledgedRoots = new Map<string, AcknowledgedRoot>();
+  private readonly options: AtomicWorkingDocumentPersistenceOptions;
 
-  constructor(private readonly options: AtomicWorkingDocumentPersistenceOptions = {}) {
-    if (
-      options.maxBytes !== undefined &&
-      (!Number.isSafeInteger(options.maxBytes) || options.maxBytes < 0)
-    ) {
-      throw new PersistenceQuotaError("maxBytes must be a non-negative safe integer");
+  constructor(options: AtomicWorkingDocumentPersistenceOptions = {}) {
+    try {
+      const maxBytes = options.maxBytes;
+      const onDurableBoundary = options.onDurableBoundary;
+      const onBoundary = options.onBoundary;
+      if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 0)) {
+        throw new PersistenceQuotaError("maxBytes must be a non-negative safe integer");
+      }
+      if (
+        (onDurableBoundary !== undefined && typeof onDurableBoundary !== "function") ||
+        (onBoundary !== undefined && typeof onBoundary !== "function")
+      ) {
+        throw new PersistenceContractError("persistence boundary hooks must be functions");
+      }
+      this.options = { maxBytes, onDurableBoundary, onBoundary };
+    } catch (error) {
+      normalizePersistenceError(
+        error,
+        () => new PersistenceContractError("persistence options are invalid"),
+      );
     }
   }
 
@@ -691,60 +824,68 @@ export class AtomicWorkingDocumentPersistence {
     assets: readonly DetachedBinaryAsset[],
     options: SaveWorkingDocumentOptions = {},
   ): Promise<void> {
-    const candidate = snapshotDetachedDocument(record, assets);
-    await verifyDetachedWorkingDocument(candidate.record, candidate.assets);
-    const byteLength =
-      new TextEncoder().encode(JSON.stringify(candidate.record)).byteLength +
-      candidate.assets.reduce((total, asset) => total + asset.bytes.byteLength, 0);
-    if (this.options.maxBytes !== undefined && byteLength > this.options.maxBytes) {
-      throw new PersistenceQuotaError(
-        `working document requires ${byteLength} bytes; quota is ${this.options.maxBytes}`,
+    try {
+      const candidate = snapshotDetachedDocument(record, assets);
+      const expectedAcknowledgement = snapshotSaveOptions(candidate.record.documentId, options);
+      await verifyDetachedWorkingDocumentSnapshot(candidate);
+      const byteLength =
+        new TextEncoder().encode(JSON.stringify(candidate.record)).byteLength +
+        candidate.assets.reduce((total, asset) => total + asset.bytes.byteLength, 0);
+      if (this.options.maxBytes !== undefined && byteLength > this.options.maxBytes) {
+        throw new PersistenceQuotaError(
+          `working document requires ${byteLength} bytes; quota is ${this.options.maxBytes}`,
+        );
+      }
+
+      const acknowledgedRoot = this.acknowledgedRoots.get(candidate.record.documentId);
+      const acknowledged = acknowledgedRoot && this.committedRoots.get(acknowledgedRoot.rootKey);
+      assertExpectedAcknowledgement(
+        candidate.record.documentId,
+        expectedAcknowledgement,
+        acknowledgedRoot,
+      );
+      if (acknowledged && candidate.record.contentSequence <= acknowledged.record.contentSequence) {
+        throw new PersistenceConflictError(
+          `working document sequence ${candidate.record.contentSequence} conflicts with acknowledged sequence ${acknowledged.record.contentSequence}`,
+        );
+      }
+
+      const rootKey = durableRootKey(
+        candidate.record.documentId,
+        candidate.record.contentSequence,
+        candidate.record.contentRootHash,
+      );
+      this.stagedAssets.set(rootKey, candidate.assets);
+      this.afterBoundary("asset", candidate.record.contentRootHash);
+      this.stagedRecords.set(rootKey, { ...candidate.record, commitState: "staged" });
+      this.afterBoundary("staged-record", candidate.record.contentRootHash);
+
+      const stagedRecord = this.stagedRecords.get(rootKey);
+      const stagedAssets = this.stagedAssets.get(rootKey);
+      if (!stagedRecord || !stagedAssets) {
+        throw new PersistenceContractError("staged persistence root is incomplete");
+      }
+      this.committedRoots.set(
+        rootKey,
+        cloneDetachedDocument({
+          record: { ...stagedRecord, commitState: "committed" },
+          assets: stagedAssets,
+        }),
+      );
+      this.afterBoundary("committed-record", candidate.record.contentRootHash);
+
+      this.acknowledgedRoots.set(candidate.record.documentId, {
+        rootKey,
+        contentSequence: candidate.record.contentSequence,
+        contentRootHash: candidate.record.contentRootHash,
+      });
+      this.afterBoundary("ack", candidate.record.contentRootHash);
+    } catch (error) {
+      normalizePersistenceError(
+        error,
+        () => new PersistenceContractError("working document could not be saved"),
       );
     }
-
-    const acknowledgedRoot = this.acknowledgedRoots.get(candidate.record.documentId);
-    const acknowledged = acknowledgedRoot && this.committedRoots.get(acknowledgedRoot.rootKey);
-    assertExpectedAcknowledgement(
-      candidate.record.documentId,
-      options.expectedAcknowledgement,
-      acknowledgedRoot,
-    );
-    if (acknowledged && candidate.record.contentSequence <= acknowledged.record.contentSequence) {
-      throw new PersistenceConflictError(
-        `working document sequence ${candidate.record.contentSequence} conflicts with acknowledged sequence ${acknowledged.record.contentSequence}`,
-      );
-    }
-
-    const rootKey = durableRootKey(
-      candidate.record.documentId,
-      candidate.record.contentSequence,
-      candidate.record.contentRootHash,
-    );
-    this.stagedAssets.set(rootKey, candidate.assets);
-    this.afterBoundary("asset", candidate.record.contentRootHash);
-    this.stagedRecords.set(rootKey, { ...candidate.record, commitState: "staged" });
-    this.afterBoundary("staged-record", candidate.record.contentRootHash);
-
-    const stagedRecord = this.stagedRecords.get(rootKey);
-    const stagedAssets = this.stagedAssets.get(rootKey);
-    if (!stagedRecord || !stagedAssets) {
-      throw new PersistenceContractError("staged persistence root is incomplete");
-    }
-    this.committedRoots.set(
-      rootKey,
-      cloneDetachedDocument({
-        record: { ...stagedRecord, commitState: "committed" },
-        assets: stagedAssets,
-      }),
-    );
-    this.afterBoundary("committed-record", candidate.record.contentRootHash);
-
-    this.acknowledgedRoots.set(candidate.record.documentId, {
-      rootKey,
-      contentSequence: candidate.record.contentSequence,
-      contentRootHash: candidate.record.contentRootHash,
-    });
-    this.afterBoundary("ack", candidate.record.contentRootHash);
   }
 
   recover(documentId: string): DetachedWorkingDocument | undefined {
@@ -773,9 +914,16 @@ export class AtomicWorkingDocumentPersistence {
 }
 
 export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>): number {
-  assertJsonValue(payload);
-  const jsonBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
-  return jsonBytes - new TextEncoder().encode(JSON.stringify(Object.values(payload))).byteLength;
+  try {
+    assertJsonValue(payload);
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
+    return jsonBytes - new TextEncoder().encode(JSON.stringify(Object.values(payload))).byteLength;
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("json overhead could not be estimated"),
+    );
+  }
 }
 
 // Runtime validation intentionally checks untyped caller input.
@@ -783,64 +931,73 @@ export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>)
 export function validateWorkingDocumentRecord(
   record: unknown,
 ): asserts record is WorkingDocumentRecord {
-  if (!isPlainRecord(record) || !hasExactKeys(record, WORKING_DOCUMENT_RECORD_KEYS)) {
-    throw new PersistenceContractError("working document has unknown record keys");
-  }
-  assertJsonValue(record);
-  if (
-    Object.entries(record).some(([key, value]) => key !== "payload" && containsImageDataUrl(value))
-  ) {
-    throw new PersistenceContractError(
-      "working document metadata must not contain image data URLs",
+  try {
+    if (!isPlainRecord(record) || !hasExactKeys(record, WORKING_DOCUMENT_RECORD_KEYS)) {
+      throw new PersistenceContractError("working document has unknown record keys");
+    }
+    assertJsonValue(record);
+    if (
+      Object.entries(record).some(
+        ([key, value]) => key !== "payload" && containsImageDataUrl(value),
+      )
+    ) {
+      throw new PersistenceContractError(
+        "working document metadata must not contain image data URLs",
+      );
+    }
+    if (
+      record.schema !== "openpencil-working-document-v1" ||
+      record.schemaVersion !== 1 ||
+      typeof record.documentId !== "string" ||
+      !record.documentId ||
+      typeof record.contentRootHash !== "string" ||
+      !/^[0-9a-f]{64}$/u.test(record.contentRootHash)
+    ) {
+      throw new PersistenceContractError("invalid working-document identity");
+    }
+    if (
+      typeof record.contentSequence !== "number" ||
+      !Number.isSafeInteger(record.contentSequence) ||
+      record.contentSequence < 0
+    ) {
+      throw new PersistenceContractError("invalid content sequence");
+    }
+    if (
+      typeof record.historySequence !== "number" ||
+      !Number.isSafeInteger(record.historySequence) ||
+      record.historySequence < 0
+    ) {
+      throw new PersistenceContractError("invalid history sequence");
+    }
+    const viewport = record.viewport;
+    if (
+      !isPlainRecord(viewport) ||
+      !hasExactKeys(viewport, WORKING_DOCUMENT_VIEWPORT_KEYS) ||
+      typeof viewport.panX !== "number" ||
+      typeof viewport.panY !== "number" ||
+      typeof viewport.zoom !== "number"
+    ) {
+      throw new PersistenceContractError("invalid viewport");
+    }
+    assertFinite(viewport.panX, "viewport.panX");
+    assertFinite(viewport.panY, "viewport.panY");
+    if (!Number.isFinite(viewport.zoom) || viewport.zoom <= 0)
+      throw new PersistenceContractError("viewport.zoom must be positive");
+    if (typeof record.updatedAt !== "number" || !Number.isFinite(record.updatedAt))
+      throw new PersistenceContractError("updatedAt must be finite");
+    if (
+      !Array.isArray(record.selectionIds) ||
+      record.selectionIds.some((selectionId) => typeof selectionId !== "string") ||
+      (record.commitState !== "staged" && record.commitState !== "committed") ||
+      !isPlainRecord(record.payload)
+    ) {
+      throw new PersistenceContractError("invalid working-document state");
+    }
+  } catch (error) {
+    normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("working document is invalid"),
     );
-  }
-  if (
-    record.schema !== "openpencil-working-document-v1" ||
-    record.schemaVersion !== 1 ||
-    typeof record.documentId !== "string" ||
-    !record.documentId ||
-    typeof record.contentRootHash !== "string" ||
-    !/^[0-9a-f]{64}$/u.test(record.contentRootHash)
-  ) {
-    throw new PersistenceContractError("invalid working-document identity");
-  }
-  if (
-    typeof record.contentSequence !== "number" ||
-    !Number.isSafeInteger(record.contentSequence) ||
-    record.contentSequence < 0
-  ) {
-    throw new PersistenceContractError("invalid content sequence");
-  }
-  if (
-    typeof record.historySequence !== "number" ||
-    !Number.isSafeInteger(record.historySequence) ||
-    record.historySequence < 0
-  ) {
-    throw new PersistenceContractError("invalid history sequence");
-  }
-  const viewport = record.viewport;
-  if (
-    !isPlainRecord(viewport) ||
-    !hasExactKeys(viewport, WORKING_DOCUMENT_VIEWPORT_KEYS) ||
-    typeof viewport.panX !== "number" ||
-    typeof viewport.panY !== "number" ||
-    typeof viewport.zoom !== "number"
-  ) {
-    throw new PersistenceContractError("invalid viewport");
-  }
-  assertFinite(viewport.panX, "viewport.panX");
-  assertFinite(viewport.panY, "viewport.panY");
-  if (!Number.isFinite(viewport.zoom) || viewport.zoom <= 0)
-    throw new PersistenceContractError("viewport.zoom must be positive");
-  if (typeof record.updatedAt !== "number" || !Number.isFinite(record.updatedAt))
-    throw new PersistenceContractError("updatedAt must be finite");
-  if (
-    !Array.isArray(record.selectionIds) ||
-    record.selectionIds.some((selectionId) => typeof selectionId !== "string") ||
-    (record.commitState !== "staged" && record.commitState !== "committed") ||
-    !isPlainRecord(record.payload)
-  ) {
-    throw new PersistenceContractError("invalid working-document state");
   }
 }
 
@@ -853,46 +1010,61 @@ export function recoverWorkingDocument(
   documentId: string,
   acknowledgedIdentity: AcknowledgedWorkingDocumentIdentity,
 ): WorkingDocumentRecord | undefined {
-  assertDensePlainRecordArray(records, WORKING_DOCUMENT_RECORD_KEYS, "working document records");
-  records.forEach(validateWorkingDocumentRecord);
-  assertAcknowledgementIdentity(documentId, acknowledgedIdentity);
-  const candidates = records.filter(
-    (record) =>
-      record.documentId === documentId &&
-      record.commitState === "committed" &&
-      record.contentSequence === acknowledgedIdentity.contentSequence &&
-      record.contentRootHash === acknowledgedIdentity.contentRootHash,
-  );
-  if (candidates.some(({ payload }) => containsImageDataUrl(payload))) {
-    throw new PersistenceMigrationError(
-      "record-only recovery cannot recover embedded image data URLs",
+  try {
+    assertDensePlainRecordArray(records, WORKING_DOCUMENT_RECORD_KEYS, "working document records");
+    const recordSnapshots = records.map((record) => snapshotWorkingDocumentRecord(record));
+    const identitySnapshot = snapshotValue(acknowledgedIdentity);
+    assertAcknowledgementIdentity(documentId, identitySnapshot);
+    const candidates = recordSnapshots.filter(
+      (record) =>
+        record.documentId === documentId &&
+        record.commitState === "committed" &&
+        record.contentSequence === identitySnapshot.contentSequence &&
+        record.contentRootHash === identitySnapshot.contentRootHash,
+    );
+    if (candidates.some(({ payload }) => containsImageDataUrl(payload))) {
+      throw new PersistenceMigrationError(
+        "record-only recovery cannot recover embedded image data URLs",
+      );
+    }
+    const recovered = candidates
+      .slice()
+      .sort((left, right) => right.updatedAt - left.updatedAt)
+      .at(0);
+    return recovered ? structuredClone(recovered) : undefined;
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("working document could not be recovered"),
     );
   }
-  const recovered = candidates
-    .slice()
-    .sort((left, right) => right.updatedAt - left.updatedAt)
-    .at(0);
-  return recovered ? structuredClone(recovered) : undefined;
 }
 
 export function createPersistenceContractReceipt(
   overrides: Partial<Omit<PersistenceContractReceipt, "version" | "jsonOverheadBytes">> = {},
   jsonOverheadBytes = 0,
 ): PersistenceContractReceipt {
-  if (!Number.isSafeInteger(jsonOverheadBytes) || jsonOverheadBytes < 0) {
-    throw new PersistenceContractError("json overhead must be a non-negative safe integer");
+  try {
+    if (!Number.isSafeInteger(jsonOverheadBytes) || jsonOverheadBytes < 0) {
+      throw new PersistenceContractError("json overhead must be a non-negative safe integer");
+    }
+    return {
+      version: "persistence-v1",
+      jsonOverheadBytes,
+      streamingArchive: "UNKNOWN",
+      schemaMigration: "UNKNOWN",
+      indexedDbWorkingDocument: "UNKNOWN",
+      atomicSave: "UNKNOWN",
+      deduplication: "UNKNOWN",
+      viewportPersistence: "UNKNOWN",
+      selectionHistorySeparation: "UNKNOWN",
+      crashRecovery: "UNKNOWN",
+      ...overrides,
+    };
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("persistence receipt could not be created"),
+    );
   }
-  return {
-    version: "persistence-v1",
-    jsonOverheadBytes,
-    streamingArchive: "UNKNOWN",
-    schemaMigration: "UNKNOWN",
-    indexedDbWorkingDocument: "UNKNOWN",
-    atomicSave: "UNKNOWN",
-    deduplication: "UNKNOWN",
-    viewportPersistence: "UNKNOWN",
-    selectionHistorySeparation: "UNKNOWN",
-    crashRecovery: "UNKNOWN",
-    ...overrides,
-  };
 }

@@ -17,7 +17,9 @@ import {
   PersistenceQuotaError,
   PersistenceTerminationError,
   recoverWorkingDocument,
+  validateDetachedWorkingDocument,
   validateWorkingDocumentRecord,
+  verifyDetachedWorkingDocument,
   type DetachedWorkingDocument,
   type SaveWorkingDocumentOptions,
   type WorkingDocumentRecord,
@@ -589,6 +591,139 @@ test("persistence-v1 migration snapshots record and assets before async digest",
   await expect(migration).resolves.toEqual(originalRecord);
 });
 
+test("public async persistence helpers snapshot complete inputs before digest awaits", async () => {
+  const source = record(NEXT_ROOT, 2, {
+    first: PNG_DATA_URL,
+    second: OTHER_PNG_DATA_URL,
+    title: "Original",
+  });
+  const original = structuredClone(source);
+  const detachment = detachPngDataUrls(source);
+
+  Reflect.set(source, "documentId", "doc:mutated");
+  Reflect.set(source, "contentRootHash", THIRD_ROOT);
+  Reflect.set(source.viewport, "panX", 999);
+  Reflect.apply(Array.prototype.splice, source.selectionIds, [0]);
+  Reflect.set(source.payload, "title", "Mutated");
+
+  const detachedSnapshot = await detachment;
+  expect(detachedSnapshot.record.documentId).toBe(original.documentId);
+  expect(detachedSnapshot.record.contentRootHash).toBe(original.contentRootHash);
+  expect(detachedSnapshot.record.viewport).toEqual(original.viewport);
+  expect(detachedSnapshot.record.selectionIds).toEqual(original.selectionIds);
+  expect(detachedSnapshot.record.payload.title).toBe("Original");
+
+  const verification = verifyDetachedWorkingDocument(
+    detachedSnapshot.record,
+    detachedSnapshot.assets,
+  );
+  Reflect.set(detachedSnapshot.record, "documentId", "doc:changed-after-verify");
+  if (detachedSnapshot.assets[0]) {
+    Reflect.set(detachedSnapshot.assets[0].reference, "revisionId", `sha256:${THIRD_ROOT}`);
+    detachedSnapshot.assets[0].bytes[0] = 0;
+  }
+  if (detachedSnapshot.assets[1]) detachedSnapshot.assets[1].bytes[1] = 0;
+  await expect(verification).resolves.toBeUndefined();
+});
+
+test("public save snapshots acknowledgement options before digest awaits", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const next = await detached(NEXT_ROOT, 2);
+  const expectedAcknowledgement = acknowledgement(prior.record);
+  const options = { expectedAcknowledgement };
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+
+  const save = store.save(next.record, next.assets, options);
+  Reflect.set(expectedAcknowledgement, "contentRootHash", THIRD_ROOT);
+  Reflect.set(options, "expectedAcknowledgement", acknowledgement(next.record));
+
+  await expect(save).resolves.toBeUndefined();
+  expect(store.recover(prior.record.documentId)).toEqual(next);
+});
+
+test("public persistence boundaries normalize access traps without double-wrapping", async () => {
+  const base = record(PRIOR_ROOT, 1, {});
+  const rawTrap = () => {
+    throw new TypeError("hostile public getter");
+  };
+  const hostileRecord = new Proxy(base, { ownKeys: rawTrap });
+  const hostilePayload = new Proxy({}, { ownKeys: rawTrap });
+  const hostileRecords = new Proxy([base], { ownKeys: rawTrap });
+  const hostileAssets = new Proxy([], { ownKeys: rawTrap });
+  const hostileReceipt = new Proxy({}, { ownKeys: rawTrap });
+  const hostileSaveOptions = Object.defineProperty({}, "expectedAcknowledgement", {
+    enumerable: true,
+    get: rawTrap,
+  });
+
+  const syncCalls = [
+    () => validateWorkingDocumentRecord(hostileRecord),
+    () => validateDetachedWorkingDocument(base, hostileAssets),
+    () => recoverWorkingDocument(hostileRecords, base.documentId, acknowledgement(base)),
+    () => estimateJsonOverhead(hostilePayload),
+    () => createPersistenceContractReceipt(hostileReceipt),
+  ];
+  for (const call of syncCalls) {
+    try {
+      call();
+      throw new Error("expected persistence boundary failure");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toMatchObject({ code: expect.stringMatching(/^E_IMAGE_PERSISTENCE_/u) });
+    }
+  }
+
+  await expect(detachPngDataUrls(hostileRecord)).rejects.toMatchObject({
+    code: "E_IMAGE_PERSISTENCE_CONTRACT",
+  });
+  await expect(
+    Reflect.apply(verifyDetachedWorkingDocument, undefined, [base, hostileAssets]),
+  ).rejects.toMatchObject({ code: "E_IMAGE_PERSISTENCE_MIGRATION" });
+  const hostileOptionsStore = new AtomicWorkingDocumentPersistence();
+  await expect(hostileOptionsStore.save(base, [], hostileSaveOptions)).rejects.toMatchObject({
+    code: "E_IMAGE_PERSISTENCE_CONTRACT",
+  });
+  expect(() =>
+    Reflect.construct(AtomicWorkingDocumentPersistence, [{ onBoundary: "not-a-function" }]),
+  ).toThrow(PersistenceContractError);
+
+  const typed = new PersistenceContractError("preserve identity");
+  const typedTrap = new Proxy(
+    {},
+    {
+      ownKeys() {
+        throw typed;
+      },
+    },
+  );
+  try {
+    estimateJsonOverhead(typedTrap);
+    throw new Error("expected typed persistence failure");
+  } catch (error) {
+    expect(error).toBe(typed);
+  }
+
+  const asyncTyped = new PersistenceConflictError("preserve async identity");
+  const asyncTypedRecord = new Proxy(base, {
+    ownKeys() {
+      throw asyncTyped;
+    },
+  });
+  await expect(detachPngDataUrls(asyncTypedRecord)).rejects.toBe(asyncTyped);
+
+  const saveTyped = new PersistenceQuotaError("preserve save identity");
+  const typedSaveOptions = Object.defineProperty({}, "expectedAcknowledgement", {
+    enumerable: true,
+    get() {
+      throw saveTyped;
+    },
+  });
+  await expect(
+    new AtomicWorkingDocumentPersistence().save(base, [], typedSaveOptions),
+  ).rejects.toBe(saveTyped);
+});
+
 test("persistence-v1 rejects unsupported image data URLs everywhere persisted", async () => {
   const jpegDataUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
   const svgDataUrl = "data:image/svg+xml,%3Csvg%3E%3C/svg%3E";
@@ -634,7 +769,7 @@ test("public editor API wraps detached asset buffers before persistence mutation
   const candidate = await detached(NEXT_ROOT, 2);
   const bytes = candidate.assets[0]?.bytes;
   expect(bytes).toBeDefined();
-  structuredClone(bytes?.buffer, { transfer: bytes ? [bytes.buffer] : [] });
+  structuredClone(bytes.buffer, { transfer: [bytes.buffer] });
   const store = new AtomicWorkingDocumentPersistence();
   await store.save(prior.record, prior.assets);
 
@@ -665,11 +800,9 @@ test("public editor API wraps hostile byte proxies before persistence mutation",
     Reflect.apply(migrateWorkingDocumentRecord, undefined, [candidate.record, assets]),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
   await expect(
-    Reflect.apply(store.save, store, [
-      candidate.record,
-      assets,
-      { expectedAcknowledgement: acknowledgement(prior.record) },
-    ]),
+    store.save(candidate.record, assets, {
+      expectedAcknowledgement: acknowledgement(prior.record),
+    }),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
   expect(store.recover(prior.record.documentId)).toEqual(prior);
 });
