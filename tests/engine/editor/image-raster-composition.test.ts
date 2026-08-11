@@ -1306,6 +1306,18 @@ test("RGBA16F and Skia oracle paths emit typed unsupported gaps", () => {
     },
     gaps: [{ code: "rgba16f-unavailable" }],
   });
+  const float32Revision = {
+    revisionId: "sha256:hdr32",
+    kind: "image",
+    metadata: { format: "rgba32f-linear-premultiplied", width: 1, height: 1 },
+    bytes: new Uint8Array(16),
+  } satisfies AssetRevision;
+  expect(composeRaster(plan, resolver(float32Revision), { width: 1, height: 1 })).toMatchObject({
+    status: "SUPPORTED",
+    capability: { state: "UNKNOWN" },
+    gaps: [{ code: "rgba32f-unavailable" }],
+  });
+
   expect(composeRaster(plan, resolver(revision), { width: 1, height: 1, backend: "skia" })).toMatchObject({
     status: "UNSUPPORTED",
     backend: "skia",

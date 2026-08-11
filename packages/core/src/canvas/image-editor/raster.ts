@@ -11,7 +11,10 @@ import {
   type EffectStack,
 } from "#core/editor/image-capabilities/effects";
 
-export type RasterPixelFormat = "rgba8-srgb" | "rgba16f-linear-premultiplied";
+export type RasterPixelFormat =
+  | "rgba8-srgb"
+  | "rgba16f-linear-premultiplied"
+  | "rgba32f-linear-premultiplied";
 
 export type RasterBackend = "canvas2d" | "webgl2" | "webgpu" | "skia";
 export type RasterCapabilityState = "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
@@ -287,9 +290,13 @@ function numberMetadata(revision: AssetRevision, key: string): number | undefine
 }
 
 function formatMetadata(revision: AssetRevision): RasterPixelFormat {
-  return revision.metadata.format === "rgba16f-linear-premultiplied"
-    ? "rgba16f-linear-premultiplied"
-    : "rgba8-srgb";
+  if (revision.metadata.format === "rgba16f-linear-premultiplied") {
+    return "rgba16f-linear-premultiplied";
+  }
+  if (revision.metadata.format === "rgba32f-linear-premultiplied") {
+    return "rgba32f-linear-premultiplied";
+  }
+  return "rgba8-srgb";
 }
 
 function srgbToLinear(value: number): number {
@@ -607,8 +614,12 @@ export function composeRasterRGBA8(
     const revision = binding && resolve.getRevision(binding.revisionId);
     if (!binding || !revision) continue;
     const format = formatMetadata(revision);
-    if (format !== "rgba8-srgb") {
+    if (format === "rgba16f-linear-premultiplied") {
       gaps.push({ code: "rgba16f-unavailable", message: "RGBA16F composition is unavailable", assetId });
+      continue;
+    }
+    if (format === "rgba32f-linear-premultiplied") {
+      gaps.push({ code: "rgba32f-unavailable", message: "RGBA32F composition is unavailable", assetId });
       continue;
     }
     const sourceWidth = numberMetadata(revision, "width");
