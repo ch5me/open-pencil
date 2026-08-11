@@ -64,7 +64,7 @@ test("IORegistry rejects declared input limit before adapter dispatch", async ()
 
 function hostileZip(...decodedSizes: number[]): ArrayBuffer {
   const names = decodedSizes.map((_, index) =>
-    new TextEncoder().encode(index === 0 ? "canvas" : `images/${index}.png`)
+    new TextEncoder().encode(index === 0 ? "canvas" : `images/${index}.png`),
   );
   const localSizes = names.map((name) => 30 + name.length + 1);
   const centralSizes = names.map((name) => 46 + name.length);
@@ -104,9 +104,7 @@ function hostileZip(...decodedSizes: number[]): ArrayBuffer {
 }
 
 test("hostile-io-v1 rejects decoded JSON before graph allocation", () => {
-  expect(() =>
-    parsePenFile("{}", { maxDecodedBytes: 0 }),
-  ).toThrow(IOHostileInputError);
+  expect(() => parsePenFile("{}", { maxDecodedBytes: 0 })).toThrow(IOHostileInputError);
 });
 
 test("hostile-io-v1 rejects archive expansion before unzip allocation", async () => {

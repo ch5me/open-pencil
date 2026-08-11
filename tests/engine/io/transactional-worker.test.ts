@@ -201,12 +201,12 @@ describe("transactional IO and worker contracts", () => {
       taskCount: 1,
       overBudgetCount: 0,
     });
-    expect(() => new WorkerStateMachine({ memoryProfile: "unknown", maxResidentBytes: 128 })).toThrow(
-      "unsupported memory profile",
-    );
-    expect(() => new WorkerStateMachine({ memoryProfile: "D1", maxResidentBytes: 128, maxTaskMs: 51 })).toThrow(
-      "maxTaskMs exceeds 50ms budget",
-    );
+    expect(
+      () => new WorkerStateMachine({ memoryProfile: "unknown", maxResidentBytes: 128 }),
+    ).toThrow("unsupported memory profile");
+    expect(
+      () => new WorkerStateMachine({ memoryProfile: "D1", maxResidentBytes: 128, maxTaskMs: 51 }),
+    ).toThrow("maxTaskMs exceeds 50ms budget");
   });
 
   test("render buffer admission has its own bound within resident memory", () => {
@@ -350,9 +350,9 @@ describe("transactional IO and worker contracts", () => {
     expect(released).toMatchObject({ residentBytes: 28, peakResidentBytes: 68 });
 
     const m1 = new WorkerStateMachine(createWorkerAdmissionOptions("M1"));
-    expect(() =>
-      m1.admitMemory({ renderBytes: 128 * 1024 * 1024 + 1 }),
-    ).toThrow(WorkerMemoryPressureError);
+    expect(() => m1.admitMemory({ renderBytes: 128 * 1024 * 1024 + 1 })).toThrow(
+      WorkerMemoryPressureError,
+    );
     expect(m1.memoryAccounting()).toEqual({ residentBytes: 0, peakResidentBytes: 0 });
   });
 
