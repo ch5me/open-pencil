@@ -16,14 +16,16 @@ and make future merges worse.
 ## Strategy
 
 1. Freeze the current CH5 main and upstream `v0.14.0` identities.
-2. Start a merge from CH5 main so shared history is not rewritten.
-3. Build the resolved tree from upstream's current architecture, then port
-   surviving CH5 intent by domain.
-4. Keep CH5 operations additive: `.ch5`, `.forgejo`, Hush, deployment scripts,
+2. Start merge state from CH5 main so shared history is not rewritten.
+3. Replace the candidate tree with exact upstream using
+   `upstream:replay-start`, then seed only config-declared additive CH5 paths.
+4. Port surviving CH5 capabilities against upstream's current architecture.
+5. Keep CH5 operations additive: `.ch5`, `.forgejo`, Hush, deployment scripts,
    and `docs/ch5`.
-5. Delete CH5 implementations where upstream now provides the same feature.
-6. Add or retain regression tests for every surviving CH5 contract.
-7. Run the full configured verification, commit the merge, push private main,
+6. Delete CH5 implementations where upstream now provides the same feature.
+7. Add or retain regression tests for every surviving CH5 contract.
+8. Run the full configured verification, commit the merge, review the candidate,
+   then push private main,
    then prove staging separately. Promote production only after operator review.
 
 ## Domain order
@@ -36,8 +38,8 @@ and make future merges worse.
 6. CLI, MCP, automation, and review tooling.
 7. Tests, docs, desktop packaging, and deployment.
 
-Each domain gets one owner and one independent reviewer. Shared generated files
-have a single owner.
+`docs/ch5/upstream-capabilities.md` is the decision inventory. Shared generated
+files have a single owner.
 
 ## Acceptance
 

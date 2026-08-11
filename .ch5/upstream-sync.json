@@ -36,5 +36,30 @@
     "messagePrefix": "chore(upstream): merge"
   },
   "lockFile": ".ch5/upstream-sync.lock.json",
+  "replay": {
+    "stateFile": ".ch5/upstream-replay-state.json",
+    "additivePaths": [
+      ".agents/skills/open-pencil-upstream-sync",
+      ".ch5",
+      ".forgejo",
+      ".hush",
+      ".mcp.json",
+      ".mise.toml",
+      ".npmrc",
+      ".opencode",
+      ".sops.yaml",
+      "api",
+      "config/hosted-topology.json",
+      "docs/ch5",
+      "pitchfork.toml",
+      "scripts/build-candidate.mjs",
+      "scripts/ci-setup-hush.sh",
+      "scripts/hosted-proof.ts",
+      "scripts/preview-proof.ts",
+      "scripts/promote.mjs",
+      "scripts/upstream-sync.ts",
+      "scripts/validate-hosted-flags.ts"
+    ]
+  },
   "requireManagedWorktree": true
 }

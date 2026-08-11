@@ -17,6 +17,10 @@ interface SyncConfig {
   commit: { messagePrefix: string };
   lockFile: string;
   requireManagedWorktree: boolean;
+  replay?: {
+    additivePaths: string[];
+    stateFile: string;
+  };
 }
 
 interface CommandResult {
@@ -49,6 +53,21 @@ interface SyncReport {
   criticalFiles: string[];
   conflictLines: string[];
   conflictLinesTruncated: boolean;
+}
+
+interface ReplayReport {
+  schema: "ch5.upstream-replay.report.v1";
+  generatedAt: string;
+  repository: string;
+  refs: SyncReport["refs"];
+  counts: {
+    additiveFiles: number;
+    forkAddedFiles: number;
+    forkDeletedFiles: number;
+    forkModifiedFiles: number;
+  };
+  additivePaths: string[];
+  additiveFiles: string[];
 }
 
 const CONFIG_PATH = ".ch5/upstream-sync.json";
@@ -227,6 +246,56 @@ function printReport(report: SyncReport, json: boolean): void {
   for (const reason of report.reasons) console.log(`- ${reason}`);
 }
 
+function pathMatches(file: string, configuredPath: string): boolean {
+  return configuredPath.endsWith("/")
+    ? file.startsWith(configuredPath)
+    : file === configuredPath || file.startsWith(`${configuredPath}/`);
+}
+
+function replayPlan(root: string, config: SyncConfig, fetch = true): ReplayReport {
+  if (!config.replay) throw new Error("UPSTREAM_REPLAY_CONFIG_REQUIRED");
+  const sync = inspect(root, config, fetch);
+  const forkDelta = git(
+    ["diff", "--name-status", `${sync.refs.upstream}...${sync.refs.head}`],
+    root,
+  )
+    .stdout.split("\n")
+    .filter(Boolean);
+  const forkFiles = forkDelta.map((line) => line.split("\t").at(-1) ?? "").filter(Boolean);
+  const additiveFiles = forkFiles.filter((file) =>
+    config.replay?.additivePaths.some((path) => pathMatches(file, path)),
+  );
+  const countStatus = (status: string) =>
+    forkDelta.filter((line) => line.startsWith(`${status}\t`)).length;
+  return {
+    additiveFiles,
+    additivePaths: config.replay.additivePaths,
+    counts: {
+      additiveFiles: additiveFiles.length,
+      forkAddedFiles: countStatus("A"),
+      forkDeletedFiles: countStatus("D"),
+      forkModifiedFiles: forkDelta.length - countStatus("A") - countStatus("D"),
+    },
+    generatedAt: new Date().toISOString(),
+    refs: sync.refs,
+    repository: root,
+    schema: "ch5.upstream-replay.report.v1",
+  };
+}
+
+function printReplayReport(report: ReplayReport, json: boolean): void {
+  if (json) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  console.log(`upstream-first replay: ${report.refs.upstream}`);
+  console.log(`private base: ${report.refs.head}`);
+  console.log(
+    `fork delta: ${report.counts.forkAddedFiles} added, ${report.counts.forkModifiedFiles} modified, ${report.counts.forkDeletedFiles} deleted`,
+  );
+  console.log(`additive seed: ${report.counts.additiveFiles} file(s)`);
+}
+
 function writeJson(path: string, value: unknown): void {
   const absolute = isAbsolute(path) ? path : resolve(process.cwd(), path);
   mkdirSync(dirname(absolute), { recursive: true });
@@ -265,6 +334,47 @@ function startMerge(root: string, config: SyncConfig, allowProgram: boolean): Sy
       "UPSTREAM_SYNC_CONFLICTS_PRESENT: merge state preserved for intent-aware resolution",
     );
   }
+  return report;
+}
+
+function startReplay(
+  workspace: string,
+  config: SyncConfig,
+  allowProgram: boolean,
+  confirmUpstreamFirst: boolean,
+): ReplayReport {
+  if (!config.replay) throw new Error("UPSTREAM_REPLAY_CONFIG_REQUIRED");
+  if (!allowProgram || !confirmUpstreamFirst) {
+    throw new Error(
+      "UPSTREAM_REPLAY_CONFIRMATION_REQUIRED: pass --allow-program --confirm-upstream-first",
+    );
+  }
+  requireManagedWorktree(workspace, config);
+  requireClean(workspace);
+  const report = replayPlan(workspace, config);
+  const privateHead = git(["rev-parse", "HEAD"], workspace).stdout;
+  const merge = git(["merge", "--no-ff", "--no-commit", report.refs.upstream], workspace, true);
+  if (!mergeInProgress(workspace)) {
+    throw new Error(
+      `UPSTREAM_REPLAY_MERGE_STATE_MISSING: merge exited ${merge.code} without MERGE_HEAD`,
+    );
+  }
+
+  // The replay candidate deliberately starts from upstream's complete tree.
+  git(["read-tree", "--reset", "-u", report.refs.upstream], workspace);
+  for (const path of config.replay.additivePaths) {
+    const existsAtPrivateHead = git(["cat-file", "-e", `${privateHead}:${path}`], workspace, true);
+    if (existsAtPrivateHead.code === 0) git(["checkout", privateHead, "--", path], workspace);
+  }
+
+  writeJson(resolve(workspace, config.replay.stateFile), {
+    schema: "ch5.upstream-replay.state.v1",
+    additivePaths: config.replay.additivePaths,
+    privateHead,
+    startedAt: new Date().toISOString(),
+    upstream: report.refs.upstream,
+  });
+  git(["add", "-A"], workspace);
   return report;
 }
 
@@ -307,6 +417,7 @@ function finishMerge(root: string, config: SyncConfig, push: boolean): void {
 
 function parseOptions(args: string[]): {
   allowProgram: boolean;
+  confirmUpstreamFirst: boolean;
   json: boolean;
   push: boolean;
   report?: string;
@@ -314,6 +425,7 @@ function parseOptions(args: string[]): {
   const reportIndex = args.indexOf("--report");
   return {
     allowProgram: args.includes("--allow-program"),
+    confirmUpstreamFirst: args.includes("--confirm-upstream-first"),
     json: args.includes("--json"),
     push: args.includes("--push"),
     report: reportIndex !== -1 ? args[reportIndex + 1] : undefined,
@@ -335,6 +447,18 @@ function main(): void {
     const report = startMerge(root, config, options.allowProgram);
     if (options.report) writeJson(options.report, report);
     printReport(report, options.json);
+    return;
+  }
+  if (command === "replay-plan") {
+    const report = replayPlan(root, config);
+    if (options.report) writeJson(options.report, report);
+    printReplayReport(report, options.json);
+    return;
+  }
+  if (command === "replay-start") {
+    const report = startReplay(root, config, options.allowProgram, options.confirmUpstreamFirst);
+    if (options.report) writeJson(options.report, report);
+    printReplayReport(report, options.json);
     return;
   }
   if (command === "verify") {

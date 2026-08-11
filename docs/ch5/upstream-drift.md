@@ -6,10 +6,11 @@ either side's diff.
 
 ## Current status
 
-`UNKNOWN`: the historical ledger is incomplete. The fork has 715 fork-only
-commits after the May 26, 2026 fork point, and the predicted upstream merge has
-953 conflicts. Treat the repository as a hard fork until the one-time
-reconciliation reconstructs this ledger and restores a small maintained delta.
+`UNKNOWN`: the historical ledger is incomplete. The fork has more than 700
+fork-only commits after the May 26, 2026 fork point, and the predicted upstream
+merge has hundreds of conflicts. Treat the repository as a hard fork until the
+one-time reconciliation reconstructs this ledger and restores a small
+maintained delta. `docs/ch5/upstream-capabilities.md` is the replay inventory.
 
 ## Known CH5 intent
 

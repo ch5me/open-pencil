@@ -26,16 +26,19 @@ bun run upstream:sync -- --push
 The push triggers normal Forgejo CI and staging deployment. Production promotion
 remains the repository's explicit promotion workflow.
 
-## Conflict flow
+## Upstream-first replay
 
-1. Run `bun run upstream:merge -- --allow-program` only inside the approved
-   reconciliation lane.
-2. Read each ledger row relevant to conflicted files.
-3. Re-apply intent against the upstream shape; delete duplicated CH5 code.
-4. Add focused regression tests for changed contracts.
-5. Run `bun run upstream:finish -- --push`.
+Use for `program`, unclear historical intent, or hard-fork-scale drift.
+
+1. Read `docs/ch5/upstream-capabilities.md` and the drift ledger.
+2. Run `bun run upstream:replay-plan -- --json`.
+3. In the dedicated candidate Tree, run
+   `bun run upstream:replay-start -- --allow-program --confirm-upstream-first`.
+4. Port one capability and its focused tests at a time. Delete code upstream
+   now supplies.
+5. Run `bun run upstream:finish` without push and stop for review.
 
 ## Proof
 
-Keep the JSON inspection report. Report upstream SHA, fork point, conflict count,
-tests, pushed commit, staging run, and any production promotion separately.
+Keep JSON inspection/replay reports. Report upstream SHA, fork point, candidate
+merge parents, tests, pushed commit, staging run, and production separately.

@@ -62,6 +62,10 @@ function fixture(conflict = false) {
     verification: { commands: ["true"] },
     commit: { messagePrefix: "chore(upstream): merge" },
     lockFile: ".ch5/upstream-sync.lock.json",
+    replay: {
+      additivePaths: [".ch5", "fork.txt"],
+      stateFile: ".ch5/upstream-replay-state.json",
+    },
     requireManagedWorktree: true,
   };
   mkdirSync(join(worktree, ".ch5"), { recursive: true });
@@ -93,5 +97,28 @@ describe("upstream sync", () => {
     expect(mergeResult.stderr).toContain("UPSTREAM_SYNC_PROGRAM_REQUIRED");
     expect(readFileSync(join(cwd, "shared.txt"), "utf8")).toBe("fork\n");
     expect(git(cwd, "status", "--porcelain").stdout).toBe("");
+  });
+
+  test("starts an upstream-first replay and retains only additive seed paths", () => {
+    const cwd = fixture(true);
+    writeFileSync(join(cwd, "fork-only.txt"), "drop until deliberately replayed\n");
+    commit(cwd, "add non-additive fork file");
+
+    const denied = command(["bun", script, "replay-start", "--allow-program"], cwd, true);
+    expect(denied.stderr).toContain("UPSTREAM_REPLAY_CONFIRMATION_REQUIRED");
+    expect(readFileSync(join(cwd, "shared.txt"), "utf8")).toBe("fork\n");
+
+    const result = command(
+      ["bun", script, "replay-start", "--allow-program", "--confirm-upstream-first", "--json"],
+      cwd,
+    );
+    const report = JSON.parse(result.stdout);
+    expect(report.schema).toBe("ch5.upstream-replay.report.v1");
+    expect(readFileSync(join(cwd, "shared.txt"), "utf8")).toBe("upstream\n");
+    expect(Bun.file(join(cwd, "fork-only.txt")).exists()).resolves.toBe(false);
+    expect(Bun.file(join(cwd, ".ch5/upstream-sync.json")).exists()).resolves.toBe(true);
+    expect(Bun.file(join(cwd, ".ch5/upstream-replay-state.json")).exists()).resolves.toBe(true);
+    expect(git(cwd, "rev-parse", "MERGE_HEAD").stdout.trim()).not.toBe("");
+    expect(git(cwd, "diff", "--name-only", "--diff-filter=U").stdout).toBe("");
   });
 });

@@ -107,6 +107,8 @@
 
 ### Added
 
+- Added separate routine-merge and upstream-first replay workflows for maintaining the private fork.
+
 - Allow OpenRouter users to enter any model ID from provider settings with cached autocomplete suggestions for tool-capable models, while keeping the curated dropdown as the default when no custom model is set.
 
 ### Changed

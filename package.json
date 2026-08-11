@@ -46,6 +46,8 @@
     "proof:all": "bun run proof:flags && bun run proof:hosted",
     "upstream:inspect": "bun scripts/upstream-sync.ts inspect",
     "upstream:merge": "bun scripts/upstream-sync.ts merge",
+    "upstream:replay-plan": "bun scripts/upstream-sync.ts replay-plan",
+    "upstream:replay-start": "bun scripts/upstream-sync.ts replay-start",
     "upstream:verify": "bun scripts/upstream-sync.ts verify",
     "upstream:finish": "bun scripts/upstream-sync.ts finish",
     "upstream:sync": "bun scripts/upstream-sync.ts sync",
