@@ -129,9 +129,9 @@ function assertUploads(
 ): number {
   expect(frame.gaps).toEqual([]);
   expect(
-    frame.textures.filter((texture) => texture.uploaded).map(
-      (texture) => `${texture.assetId}@${texture.revisionId}`,
-    ),
+    frame.textures
+      .filter((texture) => texture.uploaded)
+      .map((texture) => `${texture.assetId}@${texture.revisionId}`),
   ).toEqual(expected);
   const outputBytes = frame.textures
     .filter((texture) => texture.uploaded)
@@ -211,9 +211,7 @@ test("PROOF-GAP-138 seeded defects fail the exact upload identity contract", () 
         : texture,
     ),
   };
-  expect(() =>
-    assertUploads(wrongIdentityDefect, [`${MASK_ASSET}@${MASK_REVISION}`]),
-  ).toThrow();
+  expect(() => assertUploads(wrongIdentityDefect, [`${MASK_ASSET}@${MASK_REVISION}`])).toThrow();
 });
 
 test("PROOF-GAP-138 restores logical resources while consuming surfaces remain UNKNOWN", () => {
