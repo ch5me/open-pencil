@@ -283,6 +283,130 @@ export function observeContextLossCycles(
   };
 }
 
+export interface ResolutionDowngradeOptions {
+  readonly sourceWidth: number;
+  readonly sourceHeight: number;
+  readonly budget: ImageMemoryBudget;
+  /** Measured resident bytes at the moment of the decision, never an assumed value. */
+  readonly observedResidentBytes: number;
+  readonly requestedScale?: number;
+  readonly tileSize?: number;
+}
+
+export interface ResolutionDowngradeDecision {
+  readonly requestedScale: number;
+  readonly plan: ImageTilePlan;
+  readonly downgraded: boolean;
+  /** Texture bytes still available under the resident budget after the observed load. */
+  readonly availableTextureBytes: number;
+}
+
+/**
+ * Chooses the largest render resolution that still fits the texture budget left
+ * over after the observed resident load. Downgrade is derived from the measured
+ * headroom, so a caller that never measures never silently gets full resolution.
+ */
+export function planResolutionDowngrade(
+  options: ResolutionDowngradeOptions,
+): ResolutionDowngradeDecision {
+  const observed = options.observedResidentBytes;
+  if (!Number.isFinite(observed) || observed < 0) {
+    throw new RangeError("observed resident bytes must be a non-negative finite number");
+  }
+  const headroomBytes = options.budget.maxResidentBytes - observed;
+  const availableTextureBytes = Math.min(options.budget.maxTextureBytes, headroomBytes);
+  if (availableTextureBytes < 4) {
+    throw new ImageTextureMemoryBudgetError(
+      `no texture headroom for a downgrade: ${availableTextureBytes} bytes available under the ${options.budget.profile} resident budget`,
+    );
+  }
+  const requestedScale = options.requestedScale ?? 1;
+  const plan = createImageTilePlan({
+    sourceWidth: options.sourceWidth,
+    sourceHeight: options.sourceHeight,
+    scale: requestedScale,
+    maxTextureBytes: Math.floor(availableTextureBytes),
+    ...(options.tileSize === undefined ? {} : { tileSize: options.tileSize }),
+  });
+  return {
+    requestedScale,
+    plan,
+    downgraded: plan.scale < requestedScale,
+    availableTextureBytes: Math.floor(availableTextureBytes),
+  };
+}
+
+export interface ResolutionDowngradeReport {
+  readonly samples: number;
+  readonly downgrades: number;
+  readonly recoveries: number;
+  /** Pressure that should have downgraded and did not, or a plan that overran its budget. */
+  readonly silentFailures: number;
+  readonly decisions: readonly ResolutionDowngradeDecision[];
+  readonly contract: RendererResilienceContract;
+}
+
+/**
+ * Drives the downgrade path across measured pressure samples and derives the
+ * resilience contract from what was observed. `SUPPORTED` is never asserted:
+ * it only appears when every sampled decision behaved.
+ */
+export function observeResolutionDowngrade(
+  options: Omit<ResolutionDowngradeOptions, "observedResidentBytes">,
+  observedResidentByteSamples: readonly number[],
+): ResolutionDowngradeReport {
+  if (observedResidentByteSamples.length === 0) {
+    throw new RangeError("resolution downgrade observation requires at least one sample");
+  }
+  const requestedScale = options.requestedScale ?? 1;
+  const decisions: ResolutionDowngradeDecision[] = [];
+  let downgrades = 0;
+  let recoveries = 0;
+  let silentFailures = 0;
+  let previousScale: number | undefined;
+
+  for (const observedResidentBytes of observedResidentByteSamples) {
+    const decision = planResolutionDowngrade({ ...options, observedResidentBytes });
+    decisions.push(decision);
+
+    const fullResolutionBytes = fullResolutionByteCost(
+      options.sourceWidth,
+      options.sourceHeight,
+      requestedScale,
+    );
+    // Pressure that leaves less headroom than full resolution needs must downgrade.
+    if (fullResolutionBytes > decision.availableTextureBytes && !decision.downgraded) {
+      silentFailures += 1;
+    }
+    if (decision.plan.estimatedBytes > decision.availableTextureBytes) silentFailures += 1;
+    if (decision.downgraded) downgrades += 1;
+    if (previousScale !== undefined && decision.plan.scale > previousScale) recoveries += 1;
+    previousScale = decision.plan.scale;
+  }
+
+  const healthy = silentFailures === 0 && downgrades > 0;
+  return {
+    samples: observedResidentByteSamples.length,
+    downgrades,
+    recoveries,
+    silentFailures,
+    decisions,
+    contract: createRendererResilienceContract({
+      resolutionDowngrade: healthy ? "SUPPORTED" : "UNSUPPORTED",
+    }),
+  };
+}
+
+function fullResolutionByteCost(
+  sourceWidth: number,
+  sourceHeight: number,
+  scale: number,
+): number {
+  return (
+    Math.max(1, Math.ceil(sourceWidth * scale)) * Math.max(1, Math.ceil(sourceHeight * scale)) * 4
+  );
+}
+
 function tryTilePlan(options: {
   sourceWidth: number;
   sourceHeight: number;
