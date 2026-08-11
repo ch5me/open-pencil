@@ -1,5 +1,7 @@
 /* oxlint-disable max-lines */
 
+import { Unzlib } from "fflate";
+
 export type PersistenceState = "SUPPORTED" | "UNKNOWN" | "UNSUPPORTED";
 
 export interface DetachedBinaryAssetReference {
@@ -58,11 +60,22 @@ export type PersistenceBoundaryHook = (
 
 export interface AtomicWorkingDocumentPersistenceOptions {
   readonly maxBytes?: number;
+  readonly maxEncodedAssetBytes?: number;
+  readonly maxDecodedAssetBytes?: number;
+  readonly maxAggregateEncodedBytes?: number;
+  readonly maxAggregateDecodedBytes?: number;
   readonly onDurableBoundary?: PersistenceBoundaryHook;
   readonly onBoundary?: PersistenceBoundaryHook;
 }
 
 export type AtomicPersistenceOptions = AtomicWorkingDocumentPersistenceOptions;
+
+export interface PersistenceAdmissionOptions {
+  readonly maxEncodedAssetBytes?: number;
+  readonly maxDecodedAssetBytes?: number;
+  readonly maxAggregateEncodedBytes?: number;
+  readonly maxAggregateDecodedBytes?: number;
+}
 
 export interface AcknowledgedWorkingDocumentIdentity {
   readonly contentSequence: number;
@@ -151,6 +164,13 @@ const PNG_MIN_BYTE_LENGTH =
   PNG_IHDR_LENGTH +
   PNG_CHUNK_OVERHEAD +
   PNG_CHUNK_OVERHEAD;
+const MEBIBYTE = 1024 * 1024;
+const DEFAULT_PERSISTENCE_ADMISSION_LIMITS = {
+  maxEncodedAssetBytes: 96 * MEBIBYTE,
+  maxDecodedAssetBytes: 64 * MEBIBYTE,
+  maxAggregateEncodedBytes: 384 * MEBIBYTE,
+  maxAggregateDecodedBytes: 256 * MEBIBYTE,
+} as const;
 const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
   let crc = value;
   for (let bit = 0; bit < 8; bit++) {
@@ -174,6 +194,18 @@ const PERSISTENCE_RECEIPT_STATE_KEYS = new Set([
   "crashRecovery",
 ]);
 const SAVE_WORKING_DOCUMENT_OPTION_KEYS = new Set(["expectedAcknowledgement"]);
+const PERSISTENCE_ADMISSION_OPTION_KEYS = new Set([
+  "maxEncodedAssetBytes",
+  "maxDecodedAssetBytes",
+  "maxAggregateEncodedBytes",
+  "maxAggregateDecodedBytes",
+]);
+const ATOMIC_PERSISTENCE_OPTION_KEYS = new Set([
+  "maxBytes",
+  ...PERSISTENCE_ADMISSION_OPTION_KEYS,
+  "onDurableBoundary",
+  "onBoundary",
+]);
 const WORKING_DOCUMENT_RECORD_KEYS = new Set([
   "schema",
   "schemaVersion",
@@ -243,6 +275,52 @@ function assertAllowedDataProperties(
       throw new PersistenceContractError(`${label} has unknown or unsafe keys`);
     }
   }
+}
+
+type PersistenceAdmissionLimits = Required<PersistenceAdmissionOptions>;
+
+function normalizeAdmissionOptions(
+  options: PersistenceAdmissionOptions,
+  exact = true,
+): PersistenceAdmissionLimits {
+  if (!isPlainRecord(options)) {
+    throw new PersistenceContractError("persistence admission options must be a plain object");
+  }
+  if (exact) {
+    assertAllowedDataProperties(
+      options,
+      PERSISTENCE_ADMISSION_OPTION_KEYS,
+      "persistence admission options",
+    );
+  }
+  const limits = { ...DEFAULT_PERSISTENCE_ADMISSION_LIMITS };
+  for (const key of PERSISTENCE_ADMISSION_OPTION_KEYS) {
+    const value = Object.getOwnPropertyDescriptor(options, key)?.value;
+    if (value === undefined) continue;
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new PersistenceQuotaError(`${key} must be a non-negative safe integer`);
+    }
+    limits[key] = value;
+  }
+  return limits;
+}
+
+interface PersistenceAdmissionState {
+  encodedBytes: number;
+  decodedBytes: number;
+}
+
+function addAdmissionBytes(
+  state: PersistenceAdmissionState,
+  key: keyof PersistenceAdmissionState,
+  bytes: number,
+  limit: number,
+  label: string,
+): void {
+  if (bytes > limit || state[key] > limit - bytes) {
+    throw new PersistenceQuotaError(`${label} exceeds ${limit} bytes`);
+  }
+  state[key] += bytes;
 }
 
 function assertDensePlainRecordArray(
@@ -379,11 +457,20 @@ function assertPngChunkType(bytes: Uint8Array, offset: number, type: string): vo
   }
 }
 
-function assertPngIhdr(bytes: Uint8Array, dataOffset: number): number {
+interface PngImageHeader {
+  width: number;
+  height: number;
+  bitDepth: number;
+  colorType: number;
+  interlace: number;
+}
+
+function assertPngIhdr(bytes: Uint8Array, dataOffset: number): PngImageHeader {
   const width = readPngUint32(bytes, dataOffset);
   const height = readPngUint32(bytes, dataOffset + 4);
   const bitDepth = bytes[dataOffset + 8] ?? 0;
   const colorType = bytes[dataOffset + 9] ?? 0;
+  const interlace = bytes[dataOffset + 12] ?? 2;
   const validDepths: Readonly<Record<number, readonly number[]>> = {
     0: [1, 2, 4, 8, 16],
     2: [8, 16],
@@ -399,66 +486,408 @@ function assertPngIhdr(bytes: Uint8Array, dataOffset: number): number {
     !validDepths[colorType]?.includes(bitDepth) ||
     bytes[dataOffset + 10] !== 0 ||
     bytes[dataOffset + 11] !== 0 ||
-    ((bytes[dataOffset + 12] ?? 2) !== 0 && bytes[dataOffset + 12] !== 1)
+    (interlace !== 0 && interlace !== 1)
   ) {
     throw new PersistenceMigrationError("PNG IHDR fields are invalid");
   }
-  return colorType;
+  return { width, height, bitDepth, colorType, interlace };
 }
 
 interface PngChunkState {
-  colorType: number;
+  header: PngImageHeader | undefined;
   sawPlte: boolean;
+  paletteEntries: number;
+  sawTrns: boolean;
   sawIdat: boolean;
+  idatBytes: number;
   idatEnded: boolean;
+  idatParts: Uint8Array[];
 }
 
 function assertPngPlte(length: number, state: PngChunkState): void {
+  const header = state.header;
   if (
+    !header ||
     state.sawPlte ||
+    state.sawTrns ||
     state.sawIdat ||
-    state.colorType === 0 ||
-    state.colorType === 4 ||
+    header.colorType === 0 ||
+    header.colorType === 4 ||
     length === 0 ||
     length > 768 ||
-    length % 3 !== 0
+    length % 3 !== 0 ||
+    (header.colorType === 3 && length / 3 > 2 ** header.bitDepth)
   ) {
     throw new PersistenceMigrationError("PNG PLTE chunk is invalid or misordered");
   }
   state.sawPlte = true;
+  state.paletteEntries = length / 3;
+}
+
+function assertPngTrns(length: number, state: PngChunkState): void {
+  const colorType = state.header?.colorType;
+  if (
+    state.sawTrns ||
+    state.sawIdat ||
+    colorType === undefined ||
+    colorType === 4 ||
+    colorType === 6 ||
+    (colorType === 0 && length !== 2) ||
+    (colorType === 2 && length !== 6) ||
+    (colorType === 3 && (!state.sawPlte || length === 0 || length > state.paletteEntries))
+  ) {
+    throw new PersistenceMigrationError("PNG tRNS chunk is invalid or misordered");
+  }
+  state.sawTrns = true;
+}
+
+function pngScanlineByteLength(header: PngImageHeader, limit: number): number {
+  const channels: Readonly<Record<number, number>> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+  const bitsPerPixel = header.bitDepth * (channels[header.colorType] ?? 0);
+  const scanlineBytes = (width: number) => 1n + (BigInt(width) * BigInt(bitsPerPixel) + 7n) / 8n;
+  let total = 0n;
+  if (header.interlace === 0) {
+    total = BigInt(header.height) * scanlineBytes(header.width);
+  } else {
+    const starts = [
+      [0, 0, 8, 8],
+      [4, 0, 8, 8],
+      [0, 4, 4, 8],
+      [2, 0, 4, 4],
+      [0, 2, 2, 4],
+      [1, 0, 2, 2],
+      [0, 1, 1, 2],
+    ] as const;
+    for (const [startX, startY, stepX, stepY] of starts) {
+      const width = header.width <= startX ? 0 : Math.ceil((header.width - startX) / stepX);
+      const height = header.height <= startY ? 0 : Math.ceil((header.height - startY) / stepY);
+      if (width > 0 && height > 0) total += BigInt(height) * scanlineBytes(width);
+    }
+  }
+  if (total > BigInt(limit)) {
+    throw new PersistenceQuotaError(`decoded PNG scanlines exceed ${limit} bytes`);
+  }
+  return Number(total);
+}
+
+function readPngAdler32(bytes: Uint8Array): number {
+  return readPngUint32(bytes, bytes.byteLength - 4);
+}
+
+class DeflateBitReader {
+  private bitOffset = 16;
+  private readonly limit: number;
+
+  constructor(private readonly bytes: Uint8Array) {
+    this.limit = (bytes.byteLength - 4) * 8;
+  }
+
+  read(bitCount: number): number {
+    if (this.bitOffset + bitCount > this.limit) {
+      throw new PersistenceMigrationError("PNG IDAT deflate stream is truncated");
+    }
+    let value = 0;
+    for (let bit = 0; bit < bitCount; bit++) {
+      const byte = this.bytes[this.bitOffset >> 3] ?? 0;
+      value |= ((byte >> (this.bitOffset & 7)) & 1) << bit;
+      this.bitOffset++;
+    }
+    return value;
+  }
+
+  alignToByte(): void {
+    this.bitOffset = (this.bitOffset + 7) & ~7;
+  }
+
+  assertAtTrailer(): void {
+    if (Math.ceil(this.bitOffset / 8) !== this.bytes.byteLength - 4) {
+      throw new PersistenceMigrationError("PNG IDAT zlib stream has trailing deflate bytes");
+    }
+  }
+}
+
+interface DeflateHuffman {
+  readonly maxBits: number;
+  readonly symbols: ReadonlyMap<number, number>;
+}
+
+function reverseDeflateBits(value: number, bitCount: number): number {
+  let reversed = 0;
+  for (let bit = 0; bit < bitCount; bit++) {
+    reversed = (reversed << 1) | ((value >> bit) & 1);
+  }
+  return reversed;
+}
+
+function createDeflateHuffman(lengths: readonly number[]): DeflateHuffman | undefined {
+  const maxBits = Math.max(...lengths);
+  if (maxBits === 0) return undefined;
+  const counts = Array.from({ length: maxBits + 1 }, () => 0);
+  for (const length of lengths) {
+    if (length < 0 || length > 15) {
+      throw new PersistenceMigrationError("PNG IDAT Huffman code length is invalid");
+    }
+    if (length > 0) counts[length] = (counts[length] ?? 0) + 1;
+  }
+  let available = 1;
+  for (let bits = 1; bits <= maxBits; bits++) {
+    available = available * 2 - (counts[bits] ?? 0);
+    if (available < 0) {
+      throw new PersistenceMigrationError("PNG IDAT Huffman tree is oversubscribed");
+    }
+  }
+
+  const nextCode = Array.from({ length: maxBits + 1 }, () => 0);
+  let code = 0;
+  for (let bits = 1; bits <= maxBits; bits++) {
+    code = (code + (counts[bits - 1] ?? 0)) << 1;
+    nextCode[bits] = code;
+  }
+  const symbols = new Map<number, number>();
+  lengths.forEach((length, symbol) => {
+    if (length === 0) return;
+    const canonical = nextCode[length] ?? 0;
+    nextCode[length] = canonical + 1;
+    symbols.set(length * 0x10000 + reverseDeflateBits(canonical, length), symbol);
+  });
+  return { maxBits, symbols };
+}
+
+function readDeflateSymbol(reader: DeflateBitReader, huffman: DeflateHuffman | undefined): number {
+  if (!huffman) throw new PersistenceMigrationError("PNG IDAT Huffman tree is empty");
+  let code = 0;
+  for (let bits = 1; bits <= huffman.maxBits; bits++) {
+    code |= reader.read(1) << (bits - 1);
+    const symbol = huffman.symbols.get(bits * 0x10000 + code);
+    if (symbol !== undefined) return symbol;
+  }
+  throw new PersistenceMigrationError("PNG IDAT Huffman code is invalid");
+}
+
+function readDynamicDeflateTrees(
+  reader: DeflateBitReader,
+): readonly [DeflateHuffman, DeflateHuffman | undefined] {
+  const literalCount = reader.read(5) + 257;
+  const distanceCount = reader.read(5) + 1;
+  const codeLengthCount = reader.read(4) + 4;
+  const order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+  const codeLengths = Array.from({ length: 19 }, () => 0);
+  for (let index = 0; index < codeLengthCount; index++) {
+    codeLengths[order[index] ?? 0] = reader.read(3);
+  }
+  const codeLengthTree = createDeflateHuffman(codeLengths);
+  const lengths: number[] = [];
+  while (lengths.length < literalCount + distanceCount) {
+    const symbol = readDeflateSymbol(reader, codeLengthTree);
+    if (symbol <= 15) {
+      lengths.push(symbol);
+      continue;
+    }
+    let repeat = 0;
+    let value: number | undefined;
+    if (symbol === 16) {
+      repeat = reader.read(2) + 3;
+      value = lengths.at(-1);
+    } else if (symbol === 17) {
+      repeat = reader.read(3) + 3;
+      value = 0;
+    } else if (symbol === 18) {
+      repeat = reader.read(7) + 11;
+      value = 0;
+    }
+    if (
+      repeat === 0 ||
+      value === undefined ||
+      lengths.length + repeat > literalCount + distanceCount
+    ) {
+      throw new PersistenceMigrationError("PNG IDAT Huffman repeat is invalid");
+    }
+    lengths.push(...Array.from({ length: repeat }, () => value));
+  }
+  const literalTree = createDeflateHuffman(lengths.slice(0, literalCount));
+  if (!literalTree) throw new PersistenceMigrationError("PNG IDAT literal tree is empty");
+  return [literalTree, createDeflateHuffman(lengths.slice(literalCount))];
+}
+
+function fixedDeflateTrees(): readonly [DeflateHuffman, DeflateHuffman] {
+  const literalLengths = Array.from({ length: 288 }, (_, symbol) => {
+    if (symbol <= 143) return 8;
+    if (symbol <= 255) return 9;
+    return symbol <= 279 ? 7 : 8;
+  });
+  const literalTree = createDeflateHuffman(literalLengths);
+  const distanceTree = createDeflateHuffman(Array.from({ length: 32 }, () => 5));
+  if (!literalTree || !distanceTree) {
+    throw new PersistenceMigrationError("PNG IDAT fixed Huffman trees are invalid");
+  }
+  return [literalTree, distanceTree];
+}
+
+function assertExactDeflateFraming(compressed: Uint8Array, expectedBytes: number): void {
+  const reader = new DeflateBitReader(compressed);
+  const lengthBases = [
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131,
+    163, 195, 227, 258,
+  ];
+  const lengthExtras = [
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0,
+  ];
+  const distanceBases = [
+    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049,
+    3073, 4097, 6145, 8193, 12_289, 16_385, 24_577,
+  ];
+  const distanceExtras = [
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13,
+    13,
+  ];
+  let decodedBytes = 0;
+  let finalBlock = false;
+  while (!finalBlock) {
+    finalBlock = reader.read(1) === 1;
+    const blockType = reader.read(2);
+    if (blockType === 0) {
+      reader.alignToByte();
+      const length = reader.read(16);
+      if ((length ^ 0xffff) !== reader.read(16)) {
+        throw new PersistenceMigrationError("PNG IDAT stored block length is invalid");
+      }
+      for (let index = 0; index < length; index++) reader.read(8);
+      decodedBytes += length;
+    } else {
+      if (blockType === 3) {
+        throw new PersistenceMigrationError("PNG IDAT deflate block type is invalid");
+      }
+      const [literalTree, distanceTree] =
+        blockType === 1 ? fixedDeflateTrees() : readDynamicDeflateTrees(reader);
+      while (true) {
+        const symbol = readDeflateSymbol(reader, literalTree);
+        if (symbol < 256) {
+          decodedBytes++;
+        } else if (symbol === 256) {
+          break;
+        } else {
+          const lengthIndex = symbol - 257;
+          const lengthBase = lengthBases[lengthIndex];
+          const lengthExtra = lengthExtras[lengthIndex];
+          if (lengthBase === undefined || lengthExtra === undefined) {
+            throw new PersistenceMigrationError("PNG IDAT length code is invalid");
+          }
+          const length = lengthBase + reader.read(lengthExtra);
+          const distanceSymbol = readDeflateSymbol(reader, distanceTree);
+          const distanceBase = distanceBases[distanceSymbol];
+          const distanceExtra = distanceExtras[distanceSymbol];
+          if (distanceBase === undefined || distanceExtra === undefined) {
+            throw new PersistenceMigrationError("PNG IDAT distance code is invalid");
+          }
+          const distance = distanceBase + reader.read(distanceExtra);
+          if (distance > decodedBytes) {
+            throw new PersistenceMigrationError("PNG IDAT distance exceeds decoded data");
+          }
+          decodedBytes += length;
+        }
+        if (decodedBytes > expectedBytes) {
+          throw new PersistenceMigrationError("PNG decoded scanline size is invalid");
+        }
+      }
+    }
+    if (decodedBytes > expectedBytes) {
+      throw new PersistenceMigrationError("PNG decoded scanline size is invalid");
+    }
+  }
+  reader.assertAtTrailer();
+  if (decodedBytes !== expectedBytes) {
+    throw new PersistenceMigrationError("PNG decoded scanline size is invalid");
+  }
+}
+
+function assertPngImageData(state: PngChunkState, limit: number): void {
+  const header = state.header;
+  if (!header || state.idatBytes === 0) {
+    throw new PersistenceMigrationError("PNG IDAT stream must be non-empty");
+  }
+  const expectedBytes = pngScanlineByteLength(header, limit);
+  const compressed = new Uint8Array(state.idatBytes);
+  let offset = 0;
+  for (const part of state.idatParts) {
+    compressed.set(part, offset);
+    offset += part.byteLength;
+  }
+  if (
+    compressed.byteLength < 6 ||
+    (compressed[0] ?? 0) % 16 !== 8 ||
+    (compressed[0] ?? 0) >> 4 > 7 ||
+    (((compressed[0] ?? 0) << 8) | (compressed[1] ?? 0)) % 31 !== 0 ||
+    ((compressed[1] ?? 0) & 0x20) !== 0
+  ) {
+    throw new PersistenceMigrationError("PNG IDAT zlib framing is invalid");
+  }
+  assertExactDeflateFraming(compressed, expectedBytes);
+
+  let decodedBytes = 0;
+  let adlerA = 1;
+  let adlerB = 0;
+  try {
+    const inflater = new Unzlib((chunk) => {
+      decodedBytes += chunk.byteLength;
+      if (decodedBytes > expectedBytes) {
+        throw new PersistenceMigrationError("PNG decoded scanline size is invalid");
+      }
+      for (const byte of chunk) {
+        adlerA = (adlerA + byte) % 65521;
+        adlerB = (adlerB + adlerA) % 65521;
+      }
+    });
+    inflater.push(compressed, true);
+  } catch (error) {
+    normalizePersistenceError(
+      error,
+      () => new PersistenceMigrationError("PNG IDAT zlib stream is invalid"),
+    );
+  }
+  if (
+    decodedBytes !== expectedBytes ||
+    ((adlerB << 16) | adlerA) >>> 0 !== readPngAdler32(compressed)
+  ) {
+    throw new PersistenceMigrationError("PNG decoded scanline size or zlib checksum is invalid");
+  }
 }
 
 function acceptPngChunk(
   type: string,
   length: number,
+  data: Uint8Array,
   chunkEnd: number,
   byteLength: number,
   state: PngChunkState,
+  decodedByteLimit: number,
 ): boolean {
   if (type === "IHDR") throw new PersistenceMigrationError("PNG IHDR chunk is duplicated");
   if (type === "PLTE") {
     assertPngPlte(length, state);
+  } else if (type === "tRNS") {
+    assertPngTrns(length, state);
   } else if (type === "IDAT") {
     if (state.idatEnded) {
       throw new PersistenceMigrationError("PNG IDAT chunks must be consecutive");
     }
+    if (state.header?.colorType === 3 && !state.sawPlte) {
+      throw new PersistenceMigrationError("indexed PNG PLTE must precede IDAT");
+    }
     state.sawIdat = true;
+    state.idatBytes += length;
+    state.idatParts.push(data);
   } else if (state.sawIdat) {
     state.idatEnded = true;
   }
   if (type !== "IEND") return false;
-  if (
-    length !== 0 ||
-    !state.sawIdat ||
-    (state.colorType === 3 && !state.sawPlte) ||
-    chunkEnd !== byteLength
-  ) {
+  if (length !== 0 || !state.sawIdat || chunkEnd !== byteLength) {
     throw new PersistenceMigrationError("PNG IEND chunk must be empty and terminal");
   }
+  assertPngImageData(state, decodedByteLimit);
   return true;
 }
 
-function assertPngStructure(bytes: Uint8Array): void {
+function assertPngStructure(bytes: Uint8Array, decodedByteLimit: number): void {
   if (
     bytes.byteLength < PNG_MIN_BYTE_LENGTH ||
     PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)
@@ -468,10 +897,14 @@ function assertPngStructure(bytes: Uint8Array): void {
 
   let offset: number = PNG_SIGNATURE.length;
   const state: PngChunkState = {
-    colorType: -1,
+    header: undefined,
     sawPlte: false,
+    paletteEntries: 0,
+    sawTrns: false,
     sawIdat: false,
+    idatBytes: 0,
     idatEnded: false,
+    idatParts: [],
   };
   while (offset < bytes.byteLength) {
     if (bytes.byteLength - offset < PNG_CHUNK_OVERHEAD) {
@@ -493,21 +926,73 @@ function assertPngStructure(bytes: Uint8Array): void {
       if (type !== "IHDR" || length !== PNG_IHDR_LENGTH) {
         throw new PersistenceMigrationError("PNG IHDR must be first and exactly 13 bytes");
       }
-      state.colorType = assertPngIhdr(bytes, dataOffset);
+      state.header = assertPngIhdr(bytes, dataOffset);
       offset = chunkEnd;
       continue;
     }
-    if (acceptPngChunk(type, length, chunkEnd, bytes.byteLength, state)) return;
+    if (
+      acceptPngChunk(
+        type,
+        length,
+        bytes.subarray(dataOffset, crcOffset),
+        chunkEnd,
+        bytes.byteLength,
+        state,
+        decodedByteLimit,
+      )
+    ) {
+      return;
+    }
     offset = chunkEnd;
   }
   throw new PersistenceMigrationError("PNG bytes are missing a terminal IEND chunk");
 }
 
-function decodePngDataUrl(dataUrl: string): Uint8Array {
+function estimateBase64DecodedBytes(base64: string): number {
+  let padding = 0;
+  if (base64.endsWith("==")) padding = 2;
+  else if (base64.endsWith("=")) padding = 1;
+  return (base64.length / 4) * 3 - padding;
+}
+
+function decodePngDataUrl(
+  dataUrl: string,
+  limits: PersistenceAdmissionLimits,
+  admission: PersistenceAdmissionState,
+): Uint8Array {
   const match = BASE64_PNG_DATA_URL.exec(dataUrl);
   if (!match?.[1]) {
     throw new PersistenceMigrationError("PNG data URL must use valid base64 encoding");
   }
+  if (match[1].length % 4 !== 0) {
+    throw new PersistenceMigrationError("PNG data URL must use padded base64 encoding");
+  }
+  const encodedBytes = match[1].length;
+  const decodedBytes = estimateBase64DecodedBytes(match[1]);
+  if (encodedBytes > limits.maxEncodedAssetBytes) {
+    throw new PersistenceQuotaError(
+      `encoded PNG asset exceeds ${limits.maxEncodedAssetBytes} bytes`,
+    );
+  }
+  if (decodedBytes > limits.maxDecodedAssetBytes) {
+    throw new PersistenceQuotaError(
+      `decoded PNG asset exceeds ${limits.maxDecodedAssetBytes} bytes`,
+    );
+  }
+  addAdmissionBytes(
+    admission,
+    "encodedBytes",
+    encodedBytes,
+    limits.maxAggregateEncodedBytes,
+    "aggregate encoded PNG assets",
+  );
+  addAdmissionBytes(
+    admission,
+    "decodedBytes",
+    decodedBytes,
+    limits.maxAggregateDecodedBytes,
+    "aggregate decoded PNG assets",
+  );
   let binary: string;
   try {
     binary = atob(match[1]);
@@ -515,7 +1000,7 @@ function decodePngDataUrl(dataUrl: string): Uint8Array {
     throw new PersistenceMigrationError("PNG data URL contains invalid base64");
   }
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  assertPngStructure(bytes);
+  assertPngStructure(bytes, limits.maxDecodedAssetBytes);
   return bytes;
 }
 
@@ -531,12 +1016,14 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 async function detachJsonValue(
   value: unknown,
   assets: Map<string, DetachedBinaryAsset>,
+  limits: PersistenceAdmissionLimits,
+  admission: PersistenceAdmissionState,
 ): Promise<unknown> {
   if (typeof value === "string" && IMAGE_DATA_URL_PREFIX.test(value)) {
     if (!PNG_DATA_URL_PREFIX.test(value)) {
       throw new PersistenceMigrationError("unsupported image data URL");
     }
-    const bytes = decodePngDataUrl(value);
+    const bytes = decodePngDataUrl(value, limits, admission);
     const digest = await sha256(bytes);
     const reference: DetachedBinaryAssetReference = {
       kind: "detached-binary-asset-v1",
@@ -557,11 +1044,14 @@ async function detachJsonValue(
     return value;
   }
   if (Array.isArray(value)) {
-    return Promise.all(value.map((item) => detachJsonValue(item, assets)));
+    return Promise.all(value.map((item) => detachJsonValue(item, assets, limits, admission)));
   }
   if (isPlainRecord(value)) {
     const entries = await Promise.all(
-      Object.entries(value).map(async ([key, item]) => [key, await detachJsonValue(item, assets)]),
+      Object.entries(value).map(async ([key, item]) => [
+        key,
+        await detachJsonValue(item, assets, limits, admission),
+      ]),
     );
     return Object.fromEntries(entries);
   }
@@ -651,6 +1141,33 @@ function copyUint8Array(bytes: Uint8Array): Uint8Array {
   }
 }
 
+function assertDetachedAssetAdmission(
+  assets: readonly Record<string, unknown>[],
+  limits: PersistenceAdmissionLimits,
+): void {
+  let aggregateBytes = 0;
+  for (const asset of assets) {
+    assertDetachedReference(asset.reference);
+    const bytes = asset.bytes;
+    if (!isUint8ArrayView(bytes) || bytes.byteLength !== asset.reference.byteLength) {
+      throw new PersistenceMigrationError(
+        `detached binary asset bytes do not match reference: ${asset.reference.assetId}`,
+      );
+    }
+    if (bytes.byteLength > limits.maxDecodedAssetBytes) {
+      throw new PersistenceQuotaError(
+        `decoded PNG asset exceeds ${limits.maxDecodedAssetBytes} bytes`,
+      );
+    }
+    if (aggregateBytes > limits.maxAggregateDecodedBytes - bytes.byteLength) {
+      throw new PersistenceQuotaError(
+        `aggregate decoded PNG assets exceed ${limits.maxAggregateDecodedBytes} bytes`,
+      );
+    }
+    aggregateBytes += bytes.byteLength;
+  }
+}
+
 function snapshotValue(value: unknown, seen = new Map<object, unknown>()): unknown {
   if (value === null || typeof value !== "object") return value;
   const existing = seen.get(value);
@@ -698,7 +1215,11 @@ function cloneDetachedDocument(snapshot: DetachedWorkingDocument): DetachedWorki
   };
 }
 
-function snapshotDetachedDocument(record: unknown, assets: unknown): DetachedWorkingDocument {
+function snapshotDetachedDocument(
+  record: unknown,
+  assets: unknown,
+  limits: PersistenceAdmissionLimits,
+): DetachedWorkingDocument {
   let recordSnapshot: unknown;
   try {
     recordSnapshot = snapshotValue(record);
@@ -707,6 +1228,7 @@ function snapshotDetachedDocument(record: unknown, assets: unknown): DetachedWor
   }
 
   assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
+  assertDetachedAssetAdmission(assets, limits);
   const assetSnapshots = assets.map((asset) => {
     let reference: unknown;
     try {
@@ -725,9 +1247,10 @@ function snapshotDetachedDocument(record: unknown, assets: unknown): DetachedWor
     return { reference, bytes };
   });
 
-  validateDetachedWorkingDocument(
+  validateDetachedWorkingDocumentSnapshot(
     recordSnapshot as WorkingDocumentRecord,
     assetSnapshots as readonly DetachedBinaryAsset[],
+    limits,
   );
   return {
     record: recordSnapshot as WorkingDocumentRecord,
@@ -856,11 +1379,16 @@ function snapshotSaveOptions(
 
 export async function detachPngDataUrls(
   record: WorkingDocumentRecord,
+  options: PersistenceAdmissionOptions = {},
 ): Promise<DetachedWorkingDocument> {
   try {
+    const limits = normalizeAdmissionOptions(options);
     const snapshot = snapshotWorkingDocumentRecord(record);
     const assets = new Map<string, DetachedBinaryAsset>();
-    const payload = await detachJsonValue(snapshot.payload, assets);
+    const payload = await detachJsonValue(snapshot.payload, assets, limits, {
+      encodedBytes: 0,
+      decodedBytes: 0,
+    });
     if (!isPlainRecord(payload)) {
       throw new PersistenceMigrationError("working-document payload must be a JSON object");
     }
@@ -868,7 +1396,7 @@ export async function detachPngDataUrls(
       record: { ...snapshot, payload },
       assets: [...assets.values()].map(cloneDetachedAsset),
     };
-    await verifyDetachedWorkingDocumentSnapshot(detached);
+    await verifyDetachedWorkingDocumentSnapshot(detached, limits);
     return cloneDetachedDocument(detached);
   } catch (error) {
     return normalizePersistenceError(
@@ -878,54 +1406,54 @@ export async function detachPngDataUrls(
   }
 }
 
+function validateDetachedWorkingDocumentSnapshot(
+  record: WorkingDocumentRecord,
+  assets: readonly DetachedBinaryAsset[],
+  limits: PersistenceAdmissionLimits,
+): void {
+  validateWorkingDocumentRecord(record);
+  assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
+  assertDetachedAssetAdmission(assets, limits);
+  if (containsImageDataUrl(record.payload)) {
+    throw new PersistenceMigrationError("working document contains an embedded image data URL");
+  }
+
+  const assetsByRevision = new Map<string, DetachedBinaryAsset>();
+  for (const asset of assets) {
+    assertPngStructure(asset.bytes, limits.maxDecodedAssetBytes);
+    if (assetsByRevision.has(asset.reference.revisionId)) {
+      throw new PersistenceMigrationError(
+        `duplicate detached binary asset revision: ${asset.reference.revisionId}`,
+      );
+    }
+    assetsByRevision.set(asset.reference.revisionId, asset);
+  }
+
+  const references: DetachedBinaryAssetReference[] = [];
+  collectDetachedReferences(record.payload, references);
+  const referencedRevisions = new Set(references.map(({ revisionId }) => revisionId));
+  for (const reference of references) {
+    const asset = assetsByRevision.get(reference.revisionId);
+    if (
+      !asset ||
+      asset.reference.assetId !== reference.assetId ||
+      asset.reference.byteLength !== reference.byteLength
+    ) {
+      throw new PersistenceMigrationError(`missing detached binary asset: ${reference.revisionId}`);
+    }
+  }
+  if (referencedRevisions.size !== assetsByRevision.size) {
+    throw new PersistenceMigrationError("detached binary asset set must exactly match references");
+  }
+}
+
 export function validateDetachedWorkingDocument(
   record: WorkingDocumentRecord,
   assets: readonly DetachedBinaryAsset[],
+  options: PersistenceAdmissionOptions = {},
 ): void {
   try {
-    validateWorkingDocumentRecord(record);
-    assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
-    if (containsImageDataUrl(record.payload)) {
-      throw new PersistenceMigrationError("working document contains an embedded image data URL");
-    }
-
-    const assetsByRevision = new Map<string, DetachedBinaryAsset>();
-    for (const asset of assets) {
-      assertDetachedReference(asset.reference);
-      if (!isUint8ArrayView(asset.bytes) || asset.bytes.byteLength !== asset.reference.byteLength) {
-        throw new PersistenceMigrationError(
-          `detached binary asset bytes do not match reference: ${asset.reference.assetId}`,
-        );
-      }
-      assertPngStructure(asset.bytes);
-      if (assetsByRevision.has(asset.reference.revisionId)) {
-        throw new PersistenceMigrationError(
-          `duplicate detached binary asset revision: ${asset.reference.revisionId}`,
-        );
-      }
-      assetsByRevision.set(asset.reference.revisionId, asset);
-    }
-
-    const references: DetachedBinaryAssetReference[] = [];
-    collectDetachedReferences(record.payload, references);
-    const referencedRevisions = new Set(references.map(({ revisionId }) => revisionId));
-    for (const reference of references) {
-      const asset = assetsByRevision.get(reference.revisionId);
-      if (
-        !asset ||
-        asset.reference.assetId !== reference.assetId ||
-        asset.reference.byteLength !== reference.byteLength
-      ) {
-        throw new PersistenceMigrationError(
-          `missing detached binary asset: ${reference.revisionId}`,
-        );
-      }
-    }
-    if (referencedRevisions.size !== assetsByRevision.size) {
-      throw new PersistenceMigrationError(
-        "detached binary asset set must exactly match references",
-      );
-    }
+    validateDetachedWorkingDocumentSnapshot(record, assets, normalizeAdmissionOptions(options));
   } catch (error) {
     normalizePersistenceError(
       error,
@@ -936,8 +1464,9 @@ export function validateDetachedWorkingDocument(
 
 async function verifyDetachedWorkingDocumentSnapshot(
   snapshot: DetachedWorkingDocument,
+  limits: PersistenceAdmissionLimits,
 ): Promise<void> {
-  validateDetachedWorkingDocument(snapshot.record, snapshot.assets);
+  validateDetachedWorkingDocumentSnapshot(snapshot.record, snapshot.assets, limits);
   for (const asset of snapshot.assets) {
     if (`sha256:${await sha256(asset.bytes)}` !== asset.reference.revisionId) {
       throw new PersistenceMigrationError(
@@ -950,10 +1479,12 @@ async function verifyDetachedWorkingDocumentSnapshot(
 export async function verifyDetachedWorkingDocument(
   record: WorkingDocumentRecord,
   assets: readonly DetachedBinaryAsset[],
+  options: PersistenceAdmissionOptions = {},
 ): Promise<void> {
   try {
-    const snapshot = snapshotDetachedDocument(record, assets);
-    await verifyDetachedWorkingDocumentSnapshot(snapshot);
+    const limits = normalizeAdmissionOptions(options);
+    const snapshot = snapshotDetachedDocument(record, assets, limits);
+    await verifyDetachedWorkingDocumentSnapshot(snapshot, limits);
   } catch (error) {
     normalizePersistenceError(
       error,
@@ -965,10 +1496,12 @@ export async function verifyDetachedWorkingDocument(
 export async function migrateWorkingDocumentRecord(
   record: WorkingDocumentRecord,
   assets: readonly DetachedBinaryAsset[] = [],
+  options: PersistenceAdmissionOptions = {},
 ): Promise<WorkingDocumentRecord> {
   try {
-    const snapshot = snapshotDetachedDocument(record, assets);
-    await verifyDetachedWorkingDocumentSnapshot(snapshot);
+    const limits = normalizeAdmissionOptions(options);
+    const snapshot = snapshotDetachedDocument(record, assets, limits);
+    await verifyDetachedWorkingDocumentSnapshot(snapshot, limits);
     return structuredClone(snapshot.record);
   } catch (error) {
     return normalizePersistenceError(
@@ -1002,12 +1535,20 @@ export class AtomicWorkingDocumentPersistence {
   private readonly committedRoots = new Map<string, DetachedWorkingDocument>();
   private readonly acknowledgedRoots = new Map<string, AcknowledgedRoot>();
   private readonly options: AtomicWorkingDocumentPersistenceOptions;
+  private readonly admissionLimits: PersistenceAdmissionLimits;
 
   constructor(options: AtomicWorkingDocumentPersistenceOptions = {}) {
     try {
-      const maxBytes = options.maxBytes;
-      const onDurableBoundary = options.onDurableBoundary;
-      const onBoundary = options.onBoundary;
+      if (!isPlainRecord(options)) {
+        throw new PersistenceContractError("persistence options must be a plain object");
+      }
+      assertAllowedDataProperties(options, ATOMIC_PERSISTENCE_OPTION_KEYS, "persistence options");
+      const maxBytes = Object.getOwnPropertyDescriptor(options, "maxBytes")?.value;
+      const onDurableBoundary = Object.getOwnPropertyDescriptor(
+        options,
+        "onDurableBoundary",
+      )?.value;
+      const onBoundary = Object.getOwnPropertyDescriptor(options, "onBoundary")?.value;
       if (maxBytes !== undefined && (!Number.isSafeInteger(maxBytes) || maxBytes < 0)) {
         throw new PersistenceQuotaError("maxBytes must be a non-negative safe integer");
       }
@@ -1017,7 +1558,13 @@ export class AtomicWorkingDocumentPersistence {
       ) {
         throw new PersistenceContractError("persistence boundary hooks must be functions");
       }
-      this.options = { maxBytes, onDurableBoundary, onBoundary };
+      this.admissionLimits = normalizeAdmissionOptions(options, false);
+      this.options = {
+        ...this.admissionLimits,
+        maxBytes,
+        onDurableBoundary,
+        onBoundary,
+      };
     } catch (error) {
       normalizePersistenceError(
         error,
@@ -1032,9 +1579,9 @@ export class AtomicWorkingDocumentPersistence {
     options: SaveWorkingDocumentOptions = {},
   ): Promise<void> {
     try {
-      const candidate = snapshotDetachedDocument(record, assets);
+      const candidate = snapshotDetachedDocument(record, assets, this.admissionLimits);
       const expectedAcknowledgement = snapshotSaveOptions(candidate.record.documentId, options);
-      await verifyDetachedWorkingDocumentSnapshot(candidate);
+      await verifyDetachedWorkingDocumentSnapshot(candidate, this.admissionLimits);
       const byteLength =
         new TextEncoder().encode(JSON.stringify(candidate.record)).byteLength +
         candidate.assets.reduce((total, asset) => total + asset.bytes.byteLength, 0);

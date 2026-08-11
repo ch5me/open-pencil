@@ -35,6 +35,7 @@ export {
   type DetachedWorkingDocument,
   type DurableBinaryAsset,
   type PersistenceBoundaryHook,
+  type PersistenceAdmissionOptions,
   type PersistenceContractReceipt,
   type PersistenceDurableBoundary,
   type PersistenceState,

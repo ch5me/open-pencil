@@ -458,3 +458,4 @@ export * from "./editor/image-deferred";
 export * from "./editor/image-raster";
 export * from "./editor/image-selection";
 export * from "./editor/image-session";
+export * from "./editor/storage/persistence";

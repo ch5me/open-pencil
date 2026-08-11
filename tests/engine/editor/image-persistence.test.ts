@@ -21,9 +21,11 @@ import {
   validateWorkingDocumentRecord,
   verifyDetachedWorkingDocument,
   type DetachedWorkingDocument,
+  type PersistenceAdmissionOptions,
   type SaveWorkingDocumentOptions,
   type WorkingDocumentRecord,
 } from "@open-pencil/core/editor";
+import { zlibSync } from "fflate";
 
 const PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
@@ -141,6 +143,34 @@ function pngFromChunks(...chunks: Uint8Array[]): Uint8Array {
     offset += chunk.byteLength;
   }
   return result;
+}
+
+function pngIhdr(
+  width: number,
+  height: number,
+  bitDepth: number,
+  colorType: number,
+  interlace = 0,
+): Uint8Array {
+  const data = new Uint8Array(13);
+  const view = new DataView(data.buffer);
+  view.setUint32(0, width);
+  view.setUint32(4, height);
+  data.set([bitDepth, colorType, 0, 0, interlace], 8);
+  return pngChunk("IHDR", data);
+}
+
+function pngImage(
+  ihdr: Uint8Array,
+  scanlines: Uint8Array,
+  ...beforeIdat: Uint8Array[]
+): Uint8Array {
+  return pngFromChunks(
+    ihdr,
+    ...beforeIdat,
+    pngChunk("IDAT", zlibSync(scanlines)),
+    pngChunk("IEND"),
+  );
 }
 
 test("persistence-v1 detaches and deduplicates PNG bytes outside JSON", async () => {
@@ -374,6 +404,151 @@ test("public editor persistence rejects structurally corrupt PNGs before save or
       }),
     ).rejects.toBeInstanceOf(PersistenceMigrationError);
     expect(store.recover(prior.record.documentId)).toEqual(prior);
+  }
+});
+
+test("public editor persistence validates indexed palettes, transparency order, and IDAT data", async () => {
+  const indexedIhdr = pngIhdr(1, 1, 1, 3);
+  const palette = pngChunk("PLTE", new Uint8Array(6));
+  const transparency = pngChunk("tRNS", new Uint8Array([255]));
+  const indexed = pngImage(indexedIhdr, new Uint8Array([0, 0]), palette, transparency);
+  await expect(
+    detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(indexed) })),
+  ).resolves.toMatchObject({ assets: [{ reference: { byteLength: indexed.byteLength } }] });
+
+  const tooManyPaletteEntries = pngImage(
+    indexedIhdr,
+    new Uint8Array([0, 0]),
+    pngChunk("PLTE", new Uint8Array(9)),
+  );
+  const transparencyBeforePalette = pngImage(
+    indexedIhdr,
+    new Uint8Array([0, 0]),
+    transparency,
+    palette,
+  );
+  const idat = pngChunk("IDAT", zlibSync(new Uint8Array([0, 0])));
+  const transparencyAfterIdat = pngFromChunks(
+    indexedIhdr,
+    palette,
+    idat,
+    transparency,
+    pngChunk("IEND"),
+  );
+  const paletteAfterIdat = pngFromChunks(indexedIhdr, idat, palette, pngChunk("IEND"));
+  const emptyIdat = pngFromChunks(indexedIhdr, palette, pngChunk("IDAT"), pngChunk("IEND"));
+
+  for (const bytes of [
+    tooManyPaletteEntries,
+    transparencyBeforePalette,
+    transparencyAfterIdat,
+    paletteAfterIdat,
+    emptyIdat,
+  ]) {
+    await expect(
+      detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(bytes) })),
+    ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  }
+});
+
+test("public editor persistence validates bounded zlib framing and decoded scanline size", async () => {
+  const rgbaIhdr = pngIhdr(1, 1, 8, 6);
+  const validCompressed = zlibSync(new Uint8Array([0, 0, 0, 0, 0]));
+  const badChecksum = validCompressed.slice();
+  badChecksum[badChecksum.byteLength - 1] = (badChecksum.at(-1) ?? 0) ^ 1;
+  const trailingDeflateByte = new Uint8Array(validCompressed.byteLength + 1);
+  trailingDeflateByte.set(validCompressed.subarray(0, -4));
+  trailingDeflateByte[validCompressed.byteLength - 4] = 0;
+  trailingDeflateByte.set(validCompressed.subarray(-4), validCompressed.byteLength - 3);
+  const corrupt = [
+    pngFromChunks(
+      rgbaIhdr,
+      pngChunk("IDAT", new Uint8Array([0x78, 0x9c, 0, 0, 0, 0])),
+      pngChunk("IEND"),
+    ),
+    pngImage(rgbaIhdr, new Uint8Array([0, 0, 0, 0])),
+    pngFromChunks(rgbaIhdr, pngChunk("IDAT", badChecksum), pngChunk("IEND")),
+    pngFromChunks(rgbaIhdr, pngChunk("IDAT", trailingDeflateByte), pngChunk("IEND")),
+  ];
+
+  for (const bytes of corrupt) {
+    await expect(
+      detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(bytes) })),
+    ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  }
+
+  const oversizedScanlines = pngImage(pngIhdr(1024, 1024, 8, 6), new Uint8Array(0));
+  await expect(
+    detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(oversizedScanlines) }), {
+      maxDecodedAssetBytes: 1024,
+    }),
+  ).rejects.toBeInstanceOf(PersistenceQuotaError);
+});
+
+test("persistence admission rejects encoded, decoded, and aggregate bytes before decode work", async () => {
+  const twoAssets = record(NEXT_ROOT, 2, {
+    first: PNG_DATA_URL,
+    second: OTHER_PNG_DATA_URL,
+  });
+  const decodedBytes = pngBytes().byteLength;
+  const otherDecodedBytes = pngBytes(OTHER_PNG_BASE64).byteLength;
+  const quotaCases: readonly PersistenceAdmissionOptions[] = [
+    { maxEncodedAssetBytes: PNG_BASE64.length - 1 },
+    { maxDecodedAssetBytes: decodedBytes - 1 },
+    { maxAggregateEncodedBytes: PNG_BASE64.length + OTHER_PNG_BASE64.length - 1 },
+    { maxAggregateDecodedBytes: decodedBytes + otherDecodedBytes - 1 },
+  ];
+  for (const options of quotaCases) {
+    await expect(detachPngDataUrls(twoAssets, options)).rejects.toBeInstanceOf(
+      PersistenceQuotaError,
+    );
+  }
+
+  const detachedDocument = await detached(NEXT_ROOT, 2);
+  const malformedBytes = detachedDocument.assets[0]?.bytes.slice() ?? new Uint8Array();
+  malformedBytes.fill(0);
+  await expect(
+    migrateWorkingDocumentRecord(
+      detachedDocument.record,
+      [
+        {
+          reference: {
+            ...detachedDocument.assets[0]?.reference,
+            byteLength: malformedBytes.byteLength,
+          },
+          bytes: malformedBytes,
+        },
+      ],
+      { maxDecodedAssetBytes: malformedBytes.byteLength - 1 },
+    ),
+  ).rejects.toBeInstanceOf(PersistenceQuotaError);
+});
+
+test("persistence admission options accept exact validated limits only", async () => {
+  const invalidOptions = [
+    { unknown: 1 },
+    { maxDecodedAssetBytes: -1 },
+    { maxEncodedAssetBytes: 1.5 },
+    Object.defineProperty({}, "maxDecodedAssetBytes", {
+      enumerable: true,
+      get: () => 1,
+    }),
+    new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new TypeError("admission options proxy");
+        },
+      },
+    ),
+  ];
+  for (const options of invalidOptions) {
+    await expect(
+      Reflect.apply(detachPngDataUrls, undefined, [record(NEXT_ROOT, 1, {}), options]),
+    ).rejects.toBeInstanceOf(PersistenceContractError);
+    expect(() => Reflect.construct(AtomicWorkingDocumentPersistence, [options])).toThrow(
+      PersistenceContractError,
+    );
   }
 });
 
