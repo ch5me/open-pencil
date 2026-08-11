@@ -1,12 +1,14 @@
 type CanvasContextRecoveryOptions = {
   getCanvas: () => HTMLCanvasElement | null;
   isDestroyed: () => boolean;
+  onLost?: () => void;
   onRestored: () => void;
 };
 
 export function createCanvasContextRecovery({
   getCanvas,
   isDestroyed,
+  onLost: onLostCallback,
   onRestored,
 }: CanvasContextRecoveryOptions) {
   let lost = false;
@@ -15,6 +17,7 @@ export function createCanvasContextRecovery({
   function onLost(event: Event) {
     event.preventDefault();
     lost = true;
+    onLostCallback?.();
   }
 
   function onRestoredEvent() {

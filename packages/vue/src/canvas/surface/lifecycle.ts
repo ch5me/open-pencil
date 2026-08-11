@@ -4,8 +4,8 @@ import type { CanvasKit } from "canvaskit-wasm";
 import { onScopeDispose } from "vue";
 import type { Ref } from "vue";
 
-import { makeGLSurface, sizeCanvas, type CanvasGLContext } from "#vue/canvas/surface/gl-surface";
 import { createCanvasContextRecovery } from "#vue/canvas/surface/context-recovery";
+import { makeGLSurface, sizeCanvas, type CanvasGLContext } from "#vue/canvas/surface/gl-surface";
 import { useCanvasKitLoader } from "#vue/canvas/surface/kit-loader";
 import { createCanvasRenderLoop } from "#vue/canvas/surface/render-loop";
 import { useCanvasResizeObserver } from "#vue/canvas/surface/resize-observer";
@@ -36,6 +36,10 @@ export function createCanvasSurfaceManager({
   const contextRecovery = createCanvasContextRecovery({
     getCanvas: () => canvasRef.value,
     isDestroyed,
+    onLost: () => {
+      clearSceneBackingRenderTimer();
+      state.glContext = null;
+    },
     onRestored: () => {
       clearSceneBackingRenderTimer();
       state.glContext = null;
