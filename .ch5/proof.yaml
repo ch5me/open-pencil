@@ -13,7 +13,7 @@ proofs:
     evidence:
       path: artifacts/proof/image-editor-package-surface
     gates:
-      - minimal-raster-surface: PASS
+      - minimal-raster-surface: UNKNOWN
       - webgpu-capability-chunk: UNKNOWN
       - compatibility-gzip: UNKNOWN
       - startup-p75: UNKNOWN
