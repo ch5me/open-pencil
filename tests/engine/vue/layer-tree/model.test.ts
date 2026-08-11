@@ -15,6 +15,10 @@ import {
   retainLayerExpansion,
 } from "#vue/primitives/LayerTree/model";
 
+function hasPatchableComponentChange(changes: Partial<SceneNode>): boolean {
+  return "name" in changes || "layoutMode" in changes;
+}
+
 describe("layer tree model", () => {
   test("keeps treeKey context and tree-key slot compatibility aliases", () => {
     const aliasTypeMatches: LayerTreeContext["treeKey"] extends LayerTreeContext["treeVersion"]
@@ -115,13 +119,9 @@ describe("layer tree model", () => {
     const scheduler = createLayerTreeRebuildScheduler(() => {
       model = buildLayerTreeModel(editor.graph, pageId);
     });
-    const patchableKeys = new Set<keyof SceneNode>(["name", "layoutMode"]);
     const stop = [
       editor.onEditorEvent("node:updated", (id, changes) => {
-        if (
-          (Object.keys(changes) as (keyof SceneNode)[]).some((key) => patchableKeys.has(key)) &&
-          isNodeWithinComponent(editor.graph, id)
-        ) {
+        if (hasPatchableComponentChange(changes) && isNodeWithinComponent(editor.graph, id)) {
           scheduler.schedule(true);
         }
       }),
