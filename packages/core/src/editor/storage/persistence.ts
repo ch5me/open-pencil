@@ -384,7 +384,14 @@ function assertExpectedAcknowledgement(
   expectedAcknowledgement: AcknowledgedWorkingDocumentIdentity | undefined,
   acknowledgedRoot: AcknowledgedRoot | undefined,
 ): void {
-  if (expectedAcknowledgement === undefined) return;
+  if (expectedAcknowledgement === undefined) {
+    if (acknowledgedRoot) {
+      throw new PersistenceConflictError(
+        `working document acknowledgement is required for sequence ${acknowledgedRoot.contentSequence} root ${acknowledgedRoot.contentRootHash}`,
+      );
+    }
+    return;
+  }
   assertAcknowledgementIdentity(documentId, expectedAcknowledgement);
   if (
     !acknowledgedRoot ||

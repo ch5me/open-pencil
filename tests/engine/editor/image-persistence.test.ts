@@ -93,9 +93,11 @@ test("persistence-v1 recovers prior ACK or the complete new root over 100 termin
       onDurableBoundary: createTerminationInjector(seed, NEXT_ROOT),
     });
     await store.save(prior.record, prior.assets);
-    await expect(store.save(next.record, next.assets)).rejects.toBeInstanceOf(
-      PersistenceTerminationError,
-    );
+    await expect(
+      store.save(next.record, next.assets, {
+        expectedAcknowledgement: acknowledgement(prior.record),
+      }),
+    ).rejects.toBeInstanceOf(PersistenceTerminationError);
 
     const recovered = store.recover("doc:one");
     expect(recovered).toBeDefined();
@@ -154,9 +156,11 @@ test("persistence-v1 preserves ACK across same-content-root generation terminati
       },
     });
     await store.save(prior.record, prior.assets);
-    await expect(store.save(next.record, next.assets)).rejects.toBeInstanceOf(
-      PersistenceTerminationError,
-    );
+    await expect(
+      store.save(next.record, next.assets, {
+        expectedAcknowledgement: acknowledgement(prior.record),
+      }),
+    ).rejects.toBeInstanceOf(PersistenceTerminationError);
     expect(store.recover("doc:one")).toEqual(seed < 3 ? prior : next);
   }
 });
@@ -185,15 +189,19 @@ test("persistence-v1 quota and migration failures preserve the acknowledged root
   const oversized = await detachPngDataUrls(
     record(NEXT_ROOT, 2, { image: PNG_DATA_URL, padding: "x".repeat(256) }),
   );
-  await expect(quotaStore.save(oversized.record, oversized.assets)).rejects.toBeInstanceOf(
-    PersistenceQuotaError,
-  );
+  await expect(
+    quotaStore.save(oversized.record, oversized.assets, {
+      expectedAcknowledgement: acknowledgement(prior.record),
+    }),
+  ).rejects.toBeInstanceOf(PersistenceQuotaError);
   expect(quotaStore.recover("doc:one")?.record.contentRootHash).toBe(PRIOR_ROOT);
 
   const migrationStore = new AtomicWorkingDocumentPersistence();
   await migrationStore.save(prior.record, prior.assets);
   await expect(
-    migrationStore.save(record(NEXT_ROOT, 2, { image: PNG_DATA_URL }), []),
+    migrationStore.save(record(NEXT_ROOT, 2, { image: PNG_DATA_URL }), [], {
+      expectedAcknowledgement: acknowledgement(prior.record),
+    }),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
   expect(migrationStore.recover("doc:one")?.record.contentRootHash).toBe(PRIOR_ROOT);
 
@@ -205,7 +213,9 @@ test("persistence-v1 quota and migration failures preserve the acknowledged root
     migrateWorkingDocumentRecord(digestMismatch.record, digestMismatch.assets),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
   await expect(
-    migrationStore.save(digestMismatch.record, digestMismatch.assets),
+    migrationStore.save(digestMismatch.record, digestMismatch.assets, {
+      expectedAcknowledgement: acknowledgement(prior.record),
+    }),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
   expect(migrationStore.recover("doc:one")?.record.contentRootHash).toBe(PRIOR_ROOT);
   await expect(
@@ -219,15 +229,18 @@ test("persistence-v1 rejects surplus assets from mixed generations", async () =>
   const surplus = await detachPngDataUrls(record(THIRD_ROOT, 3, { image: OTHER_PNG_DATA_URL }));
   const store = new AtomicWorkingDocumentPersistence();
   await store.save(prior.record, prior.assets);
-  await expect(store.save(next.record, [...next.assets, ...surplus.assets])).rejects.toBeInstanceOf(
-    PersistenceMigrationError,
-  );
+  await expect(
+    store.save(next.record, [...next.assets, ...surplus.assets], {
+      expectedAcknowledgement: acknowledgement(prior.record),
+    }),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
   await expect(
     store.save(
       record(NEXT_ROOT, 2, {
         image: { ...next.assets[0]?.reference, hidden: surplus.assets[0]?.reference },
       }),
       next.assets,
+      { expectedAcknowledgement: acknowledgement(prior.record) },
     ),
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
   expect(store.recover("doc:one")).toEqual(prior);
@@ -245,9 +258,11 @@ test("persistence-v1 rejects stale sequences and stale-root CAS without regressi
     expectedAcknowledgement: acknowledgement(prior.record),
   });
 
-  await expect(store.save(prior.record, prior.assets)).rejects.toBeInstanceOf(
-    PersistenceConflictError,
-  );
+  await expect(
+    store.save(prior.record, prior.assets, {
+      expectedAcknowledgement: acknowledgement(next.record),
+    }),
+  ).rejects.toBeInstanceOf(PersistenceConflictError);
   await expect(
     store.save(third.record, third.assets, {
       expectedAcknowledgement: acknowledgement(prior.record),
@@ -259,14 +274,19 @@ test("persistence-v1 rejects stale sequences and stale-root CAS without regressi
     }),
   ).rejects.toBeInstanceOf(PersistenceContractError);
   await expect(
-    store.save({ ...next.record, contentRootHash: THIRD_ROOT }, next.assets),
+    store.save({ ...next.record, contentRootHash: THIRD_ROOT }, next.assets, {
+      expectedAcknowledgement: acknowledgement(next.record),
+    }),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
   expect(store.recover("doc:one")).toEqual(next);
 
   const legacyStore = new AtomicWorkingDocumentPersistence();
   await legacyStore.save(prior.record, prior.assets);
   await expect(
-    legacyStore.save(next.record, next.assets, { expectedContentRootHash: PRIOR_ROOT }),
+    legacyStore.save(next.record, next.assets, {
+      expectedAcknowledgement: acknowledgement(prior.record),
+      expectedContentRootHash: PRIOR_ROOT,
+    }),
   ).rejects.toBeInstanceOf(PersistenceContractError);
   expect(legacyStore.recover("doc:one")).toEqual(prior);
 });
@@ -276,7 +296,10 @@ test("persistence-v1 rejects same-root ABA against the acknowledged generation",
   const middle = await detached(NEXT_ROOT, 2);
   const latest = await detached(PRIOR_ROOT, 3);
   const candidate = await detached(THIRD_ROOT, 4);
-  const store = new AtomicWorkingDocumentPersistence();
+  const boundaries: string[] = [];
+  const store = new AtomicWorkingDocumentPersistence({
+    onDurableBoundary: (boundary) => boundaries.push(boundary),
+  });
   await store.save(first.record, first.assets);
   await store.save(middle.record, middle.assets, {
     expectedAcknowledgement: acknowledgement(first.record),
@@ -290,6 +313,14 @@ test("persistence-v1 rejects same-root ABA against the acknowledged generation",
       expectedAcknowledgement: acknowledgement(first.record),
     }),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
+  const boundaryCount = boundaries.length;
+  await expect(store.save(candidate.record, candidate.assets)).rejects.toBeInstanceOf(
+    PersistenceConflictError,
+  );
+  await expect(
+    store.save(candidate.record, candidate.assets, { expectedAcknowledgement: undefined }),
+  ).rejects.toBeInstanceOf(PersistenceConflictError);
+  expect(boundaries).toHaveLength(boundaryCount);
   expect(store.recover("doc:one")).toEqual(latest);
 });
 
@@ -308,7 +339,10 @@ test("persistence-v1 rejects root-only CAS after same-root ABA", async () => {
   });
 
   await expect(
-    store.save(candidate.record, candidate.assets, { expectedContentRootHash: PRIOR_ROOT }),
+    store.save(candidate.record, candidate.assets, {
+      expectedAcknowledgement: acknowledgement(latest.record),
+      expectedContentRootHash: PRIOR_ROOT,
+    }),
   ).rejects.toBeInstanceOf(PersistenceContractError);
   expect(store.recover("doc:one")).toEqual(latest);
 });
