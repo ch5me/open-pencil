@@ -34,6 +34,12 @@ test("marks stale and substituted evidence visibly", () => {
   expect(() => empty.assertNonzeroOutput()).toThrow(EvidenceContractError);
 });
 
+test("marks evidence stale when runtime identity changes", () => {
+  const collector = new EvidenceCollector("runtime", identity);
+  collector.record("published", 1, 1, { ...identity, runtime: "browser" });
+  expect(collector.receipt().stale).toBe(true);
+});
+
 test("performance-d1-m1-v1 tracks deterministic p95 and unavailable GPU profile", () => {
   const result = createBenchmarkResult(100, [3, 1, 4, 2, 5]);
   expect(result.p95).toBe(5);

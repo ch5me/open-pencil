@@ -24,7 +24,11 @@ export class EvidenceCollector {
     if (!Number.isSafeInteger(bytes) || bytes < 0) {
       throw new EvidenceContractError("evidence bytes must be a non-negative safe integer");
     }
-    if (identity.commit !== this.identity.commit || identity.repo !== this.identity.repo) {
+    if (
+      identity.commit !== this.identity.commit ||
+      identity.repo !== this.identity.repo ||
+      identity.runtime !== this.identity.runtime
+    ) {
       this.stale = true;
     }
     this.events.push({ phase, at, bytes, identity });
