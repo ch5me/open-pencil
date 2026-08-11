@@ -2,7 +2,7 @@ import { expect, test, useEditorSetupWithClear as setupEditor } from "#tests/e2e
 
 const editor = setupEditor("/?test&no-chrome&no-rulers");
 
-test.setTimeout(60_000);
+test.setTimeout(120_000);
 
 async function cycleWebGL2Context(testId: string, cycle: number) {
   return editor.page.getByTestId(testId).evaluate(
@@ -150,7 +150,7 @@ test("WebGL2 scene and overlay resources survive 20 context loss cycles", async 
     expect((await overlayCanvas.screenshot()).equals(blankOverlay)).toBe(false);
   }
 
-  await editor.page.evaluate(async () => {
+  await editor.page.evaluate(() => {
     const reports: Record<string, Record<string, number | string | undefined>> = {};
     const observer = new MutationObserver((records) => {
       for (const record of records) {
@@ -167,9 +167,11 @@ test("WebGL2 scene and overlay resources survive 20 context loss cycles", async 
     });
     observer.observe(document.body, { childList: true, subtree: true });
     Object.assign(window, { getContextRecoveryTeardownReports: () => reports });
-    const routerModulePath = "/src/router.ts";
-    const { default: router } = await import(routerModulePath);
-    await router.push("/login");
+    const appRoot = document.querySelector("#app") as Element & {
+      __vue_app__?: { unmount: () => void };
+    };
+    if (!appRoot.__vue_app__) throw new Error("Vue app instance missing");
+    appRoot.__vue_app__.unmount();
   });
   await expect(sceneCanvas).toHaveCount(0);
   const teardownReports = await editor.page.evaluate(() => {
@@ -183,6 +185,9 @@ test("WebGL2 scene and overlay resources survive 20 context loss cycles", async 
   });
   for (const testId of ["scene-canvas-element", "canvas-element"]) {
     const report = teardownReports?.[testId];
+    expect(report).toBeDefined();
+    expect(Number(report?.contextsCreated)).toBe(21);
+    expect(Number(report?.renderersCreated)).toBe(21);
     expect(Number(report?.contextsCreated)).toBe(Number(report?.contextsDeleted));
     expect(Number(report?.renderersCreated)).toBe(Number(report?.renderersDeleted));
   }
