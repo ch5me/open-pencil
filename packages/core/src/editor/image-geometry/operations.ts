@@ -14,9 +14,13 @@ function screenDeltaToLocal(transform: GeometryTransform, delta: Vector): Vector
   const sin = Math.sin(angle);
   const scaleX = transform.scaleX ?? 1;
   const scaleY = transform.scaleY ?? 1;
+  const unscaled = {
+    x: delta.x / scaleX,
+    y: delta.y / scaleY,
+  };
   return {
-    x: (cos * delta.x + sin * delta.y) / scaleX,
-    y: (-sin * delta.x + cos * delta.y) / scaleY,
+    x: cos * unscaled.x + sin * unscaled.y,
+    y: -sin * unscaled.x + cos * unscaled.y,
   };
 }
 
