@@ -629,6 +629,51 @@ test("persistence-v1 accepts cross-realm Uint8Array and rejects other views", as
   }
 });
 
+test("public editor API wraps detached asset buffers before persistence mutation", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const candidate = await detached(NEXT_ROOT, 2);
+  const bytes = candidate.assets[0]?.bytes;
+  expect(bytes).toBeDefined();
+  structuredClone(bytes?.buffer, { transfer: bytes ? [bytes.buffer] : [] });
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+
+  await expect(
+    migrateWorkingDocumentRecord(candidate.record, candidate.assets),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  await expect(
+    store.save(candidate.record, candidate.assets, {
+      expectedAcknowledgement: acknowledgement(prior.record),
+    }),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  expect(store.recover(prior.record.documentId)).toEqual(prior);
+});
+
+test("public editor API wraps hostile byte proxies before persistence mutation", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const candidate = await detached(NEXT_ROOT, 2);
+  const bytes = new Proxy(candidate.assets[0]?.bytes ?? new Uint8Array(), {
+    getPrototypeOf() {
+      throw new Error("hostile byte proxy");
+    },
+  });
+  const assets = [{ reference: candidate.assets[0]?.reference, bytes }];
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+
+  await expect(
+    Reflect.apply(migrateWorkingDocumentRecord, undefined, [candidate.record, assets]),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  await expect(
+    Reflect.apply(store.save, store, [
+      candidate.record,
+      assets,
+      { expectedAcknowledgement: acknowledgement(prior.record) },
+    ]),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  expect(store.recover(prior.record.documentId)).toEqual(prior);
+});
+
 test("persistence-v1 preserves existing record and receipt APIs", () => {
   const baseRecord = record(PRIOR_ROOT, 1, { title: "Draft", assets: ["asset:one"] });
   expect(() => validateWorkingDocumentRecord(baseRecord)).not.toThrow();

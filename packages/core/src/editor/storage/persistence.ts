@@ -288,8 +288,12 @@ function decodePngDataUrl(dataUrl: string): Uint8Array {
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  try {
+    const digest = await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer);
+    return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  } catch {
+    throw new PersistenceMigrationError("detached binary asset bytes could not be digested");
+  }
 }
 
 async function detachJsonValue(
@@ -401,7 +405,11 @@ function isUint8ArrayView(value: unknown): value is Uint8Array {
 }
 
 function copyUint8Array(bytes: Uint8Array): Uint8Array {
-  return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength).slice();
+  try {
+    return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength).slice();
+  } catch {
+    throw new PersistenceMigrationError("detached binary asset bytes could not be copied");
+  }
 }
 
 function snapshotValue(value: unknown, seen = new Map<object, unknown>()): unknown {
@@ -467,9 +475,14 @@ function snapshotDetachedDocument(record: unknown, assets: unknown): DetachedWor
     } catch {
       throw new PersistenceMigrationError("invalid detached binary asset reference");
     }
-    const bytes = isUint8ArrayView(asset.bytes)
-      ? copyUint8Array(asset.bytes)
-      : snapshotValue(asset.bytes);
+    let bytes: unknown;
+    try {
+      bytes = isUint8ArrayView(asset.bytes)
+        ? copyUint8Array(asset.bytes)
+        : snapshotValue(asset.bytes);
+    } catch {
+      throw new PersistenceMigrationError("detached binary asset bytes could not be snapshotted");
+    }
     return { reference, bytes };
   });
 
