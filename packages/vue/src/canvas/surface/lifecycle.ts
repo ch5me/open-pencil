@@ -5,6 +5,7 @@ import { onScopeDispose } from "vue";
 import type { Ref } from "vue";
 
 import { makeGLSurface, sizeCanvas, type CanvasGLContext } from "#vue/canvas/surface/gl-surface";
+import { createCanvasContextRecovery } from "#vue/canvas/surface/context-recovery";
 import { useCanvasKitLoader } from "#vue/canvas/surface/kit-loader";
 import { createCanvasRenderLoop } from "#vue/canvas/surface/render-loop";
 import { useCanvasResizeObserver } from "#vue/canvas/surface/resize-observer";
@@ -32,33 +33,18 @@ export function createCanvasSurfaceManager({
 }) {
   const state: SurfaceManagerState = { renderer: null, glContext: null };
   let sceneBackingRenderTimer: ReturnType<typeof setTimeout> | null = null;
-  let contextLost = false;
-  let lifecycleCanvas: HTMLCanvasElement | null = null;
-
-  function onContextLost(event: Event) {
-    event.preventDefault();
-    contextLost = true;
-    clearSceneBackingRenderTimer();
-    state.glContext = null;
-  }
-
-  function onContextRestored() {
-    if (isDestroyed() || !contextLost) return;
-    contextLost = false;
-    const canvas = canvasRef.value;
-    if (!canvas) return;
-    createSurface(canvas, { reloadFonts: true });
-    renderLoop.markDirty();
-  }
-
-  function bindContextLifecycle(canvas: HTMLCanvasElement) {
-    if (lifecycleCanvas === canvas) return;
-    lifecycleCanvas?.removeEventListener("webglcontextlost", onContextLost);
-    lifecycleCanvas?.removeEventListener("webglcontextrestored", onContextRestored);
-    canvas.addEventListener("webglcontextlost", onContextLost);
-    canvas.addEventListener("webglcontextrestored", onContextRestored);
-    lifecycleCanvas = canvas;
-  }
+  const contextRecovery = createCanvasContextRecovery({
+    getCanvas: () => canvasRef.value,
+    isDestroyed,
+    onRestored: () => {
+      clearSceneBackingRenderTimer();
+      state.glContext = null;
+      const canvas = canvasRef.value;
+      if (!canvas) return;
+      createSurface(canvas, { reloadFonts: true });
+      renderLoop.markDirty();
+    },
+  });
 
   function clearSceneBackingRenderTimer() {
     if (sceneBackingRenderTimer === null) return;
@@ -70,7 +56,7 @@ export function createCanvasSurfaceManager({
     canvas: HTMLCanvasElement,
     { reloadFonts = false }: { reloadFonts?: boolean } = {},
   ) {
-    bindContextLifecycle(canvas);
+    contextRecovery.bind(canvas);
     const ck = getCanvasKit();
     if (!ck) return;
 
@@ -106,7 +92,7 @@ export function createCanvasSurfaceManager({
   }
 
   function renderNow() {
-    if (!state.renderer || isDestroyed() || contextLost) return;
+    if (!state.renderer || isDestroyed() || contextRecovery.isLost()) return;
     state.renderer.renderFromEditorState(
       editor.state,
       editor.graph,
@@ -150,9 +136,7 @@ export function createCanvasSurfaceManager({
   function destroy() {
     clearSceneBackingRenderTimer();
     renderLoop.pause();
-    lifecycleCanvas?.removeEventListener("webglcontextlost", onContextLost);
-    lifecycleCanvas?.removeEventListener("webglcontextrestored", onContextRestored);
-    lifecycleCanvas = null;
+    contextRecovery.unbind();
     if (state.renderer) editor.removeCanvasRenderer(state.renderer);
     state.renderer?.destroy();
     state.glContext?.delete();
