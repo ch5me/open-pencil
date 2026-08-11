@@ -53,6 +53,7 @@ export interface PsdExternalSource {
 export interface PsdCorpusCase {
   readonly name: string;
   readonly capability: PsdCapabilityCode;
+  /** Warning required when the capability cannot be preserved. */
   readonly warning: PsdWarningCode;
   readonly source: "external";
   readonly fixture: string;
@@ -78,7 +79,8 @@ export interface PsdCorpusManifest {
   readonly source: PsdCorpusSource;
   readonly externalSources: readonly PsdExternalSource[];
   readonly cases: readonly PsdCorpusCase[];
-  readonly warningCoverage: 1;
+  readonly warningContractCoverage: 1;
+  readonly externalWarningCoverage: "UNKNOWN";
   readonly failedImportVisibleMutationCount: 0;
 }
 
