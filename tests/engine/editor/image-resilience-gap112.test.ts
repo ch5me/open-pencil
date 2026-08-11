@@ -13,6 +13,7 @@ import type { SceneGraph, SceneNode } from "#core/scene-graph";
 
 const LOSS_RESTART_CYCLES = 20;
 const SOURCE_DIMENSION = 4096;
+const REVISION_ID = "sha256:resilience" as const;
 
 function resiliencePlan(assetId = "asset:resilience"): ReturnType<typeof createCompositionPlan> {
   const node = {
