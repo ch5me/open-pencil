@@ -194,7 +194,7 @@ const PERSISTENCE_RECEIPT_STATE_KEYS = new Set([
   "crashRecovery",
 ]);
 const SAVE_WORKING_DOCUMENT_OPTION_KEYS = new Set(["expectedAcknowledgement"]);
-const PERSISTENCE_ADMISSION_OPTION_KEYS = new Set([
+const PERSISTENCE_ADMISSION_OPTION_KEYS: ReadonlySet<keyof PersistenceAdmissionOptions> = new Set([
   "maxEncodedAssetBytes",
   "maxDecodedAssetBytes",
   "maxAggregateEncodedBytes",
@@ -525,7 +525,8 @@ function assertPngPlte(length: number, state: PngChunkState): void {
 }
 
 function assertPngTrns(length: number, state: PngChunkState): void {
-  const colorType = state.header?.colorType;
+  const header = state.header;
+  const colorType = header?.colorType;
   if (
     state.sawTrns ||
     state.sawIdat ||
@@ -541,6 +542,39 @@ function assertPngTrns(length: number, state: PngChunkState): void {
   state.sawTrns = true;
 }
 
+function assertPngTrnsData(data: Uint8Array, state: PngChunkState): void {
+  assertPngTrns(data.byteLength, state);
+  const header = state.header;
+  if (header?.colorType === 0 && header.bitDepth < 16) {
+    const sample = ((data[0] ?? 0) << 8) | (data[1] ?? 0);
+    if (sample >= 2 ** header.bitDepth) {
+      throw new PersistenceMigrationError("PNG grayscale tRNS sample exceeds bit depth");
+    }
+  }
+}
+
+interface PngPass {
+  width: number;
+  height: number;
+}
+
+function pngPasses(header: PngImageHeader): readonly PngPass[] {
+  if (header.interlace === 0) return [{ width: header.width, height: header.height }];
+  const starts = [
+    [0, 0, 8, 8],
+    [4, 0, 8, 8],
+    [0, 4, 4, 8],
+    [2, 0, 4, 4],
+    [0, 2, 2, 4],
+    [1, 0, 2, 2],
+    [0, 1, 1, 2],
+  ] as const;
+  return starts.map(([startX, startY, stepX, stepY]) => ({
+    width: header.width <= startX ? 0 : Math.ceil((header.width - startX) / stepX),
+    height: header.height <= startY ? 0 : Math.ceil((header.height - startY) / stepY),
+  }));
+}
+
 function pngScanlineByteLength(header: PngImageHeader, limit: number): number {
   const channels: Readonly<Record<number, number>> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
   const bitsPerPixel = header.bitDepth * (channels[header.colorType] ?? 0);
@@ -549,18 +583,7 @@ function pngScanlineByteLength(header: PngImageHeader, limit: number): number {
   if (header.interlace === 0) {
     total = BigInt(header.height) * scanlineBytes(header.width);
   } else {
-    const starts = [
-      [0, 0, 8, 8],
-      [4, 0, 8, 8],
-      [0, 4, 4, 8],
-      [2, 0, 4, 4],
-      [0, 2, 2, 4],
-      [1, 0, 2, 2],
-      [0, 1, 1, 2],
-    ] as const;
-    for (const [startX, startY, stepX, stepY] of starts) {
-      const width = header.width <= startX ? 0 : Math.ceil((header.width - startX) / stepX);
-      const height = header.height <= startY ? 0 : Math.ceil((header.height - startY) / stepY);
+    for (const { width, height } of pngPasses(header)) {
       if (width > 0 && height > 0) total += BigInt(height) * scanlineBytes(width);
     }
   }
@@ -759,23 +782,24 @@ function assertExactDeflateFraming(compressed: Uint8Array, expectedBytes: number
       }
       const [literalTree, distanceTree] =
         blockType === 1 ? fixedDeflateTrees() : readDynamicDeflateTrees(reader);
-      while (true) {
+      let endOfBlock = false;
+      while (!endOfBlock) {
         const symbol = readDeflateSymbol(reader, literalTree);
         if (symbol < 256) {
           decodedBytes++;
         } else if (symbol === 256) {
-          break;
+          endOfBlock = true;
         } else {
           const lengthIndex = symbol - 257;
-          const lengthBase = lengthBases[lengthIndex];
-          const lengthExtra = lengthExtras[lengthIndex];
+          const lengthBase = lengthBases.at(lengthIndex);
+          const lengthExtra = lengthExtras.at(lengthIndex);
           if (lengthBase === undefined || lengthExtra === undefined) {
             throw new PersistenceMigrationError("PNG IDAT length code is invalid");
           }
           const length = lengthBase + reader.read(lengthExtra);
           const distanceSymbol = readDeflateSymbol(reader, distanceTree);
-          const distanceBase = distanceBases[distanceSymbol];
-          const distanceExtra = distanceExtras[distanceSymbol];
+          const distanceBase = distanceBases.at(distanceSymbol);
+          const distanceExtra = distanceExtras.at(distanceSymbol);
           if (distanceBase === undefined || distanceExtra === undefined) {
             throw new PersistenceMigrationError("PNG IDAT distance code is invalid");
           }
@@ -797,6 +821,77 @@ function assertExactDeflateFraming(compressed: Uint8Array, expectedBytes: number
   reader.assertAtTrailer();
   if (decodedBytes !== expectedBytes) {
     throw new PersistenceMigrationError("PNG decoded scanline size is invalid");
+  }
+}
+
+function paethPredictor(left: number, up: number, upperLeft: number): number {
+  const estimate = left + up - upperLeft;
+  const leftDistance = Math.abs(estimate - left);
+  const upDistance = Math.abs(estimate - up);
+  const upperLeftDistance = Math.abs(estimate - upperLeft);
+  if (leftDistance <= upDistance && leftDistance <= upperLeftDistance) return left;
+  return upDistance <= upperLeftDistance ? up : upperLeft;
+}
+
+function unfilterPngRow(
+  filter: number,
+  raw: Uint8Array,
+  previous: Uint8Array,
+  bytesPerPixel: number,
+): Uint8Array {
+  const row = new Uint8Array(raw.byteLength);
+  for (let index = 0; index < raw.byteLength; index++) {
+    const left = index < bytesPerPixel ? 0 : (row[index - bytesPerPixel] ?? 0);
+    const up = previous[index] ?? 0;
+    const upperLeft = index < bytesPerPixel ? 0 : (previous[index - bytesPerPixel] ?? 0);
+    let predictor = 0;
+    if (filter === 1) predictor = left;
+    else if (filter === 2) predictor = up;
+    else if (filter === 3) predictor = Math.floor((left + up) / 2);
+    else if (filter === 4) predictor = paethPredictor(left, up, upperLeft);
+    row[index] = ((raw[index] ?? 0) + predictor) & 0xff;
+  }
+  return row;
+}
+
+function assertIndexedPngSamples(
+  row: Uint8Array,
+  width: number,
+  bitDepth: number,
+  paletteEntries: number,
+): void {
+  const mask = 2 ** bitDepth - 1;
+  for (let sampleIndex = 0; sampleIndex < width; sampleIndex++) {
+    const bitOffset = sampleIndex * bitDepth;
+    const byte = row[Math.floor(bitOffset / 8)] ?? 0;
+    const shift = 8 - bitDepth - (bitOffset % 8);
+    if (((byte >> shift) & mask) >= paletteEntries) {
+      throw new PersistenceMigrationError("PNG indexed sample exceeds palette");
+    }
+  }
+}
+
+function assertPngScanlines(decoded: Uint8Array, state: PngChunkState): void {
+  const header = state.header;
+  if (!header) throw new PersistenceMigrationError("PNG header is missing");
+  const channels: Readonly<Record<number, number>> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 };
+  const bitsPerPixel = header.bitDepth * (channels[header.colorType] ?? 0);
+  const bytesPerPixel = Math.max(1, Math.ceil(bitsPerPixel / 8));
+  let offset = 0;
+  for (const pass of pngPasses(header)) {
+    if (pass.width === 0 || pass.height === 0) continue;
+    const rowBytes = Math.ceil((pass.width * bitsPerPixel) / 8);
+    let previous: Uint8Array = new Uint8Array(rowBytes);
+    for (let rowIndex = 0; rowIndex < pass.height; rowIndex++) {
+      const filter = decoded[offset] ?? 5;
+      offset++;
+      if (filter > 4) throw new PersistenceMigrationError("PNG scanline filter is invalid");
+      const raw = decoded.subarray(offset, offset + rowBytes);
+      offset += rowBytes;
+      if (header.colorType !== 3) continue;
+      previous = unfilterPngRow(filter, raw, previous, bytesPerPixel);
+      assertIndexedPngSamples(previous, pass.width, header.bitDepth, state.paletteEntries);
+    }
   }
 }
 
@@ -824,14 +919,16 @@ function assertPngImageData(state: PngChunkState, limit: number): void {
   assertExactDeflateFraming(compressed, expectedBytes);
 
   let decodedBytes = 0;
+  const decoded = new Uint8Array(expectedBytes);
   let adlerA = 1;
   let adlerB = 0;
   try {
     const inflater = new Unzlib((chunk) => {
-      decodedBytes += chunk.byteLength;
-      if (decodedBytes > expectedBytes) {
+      if (chunk.byteLength > expectedBytes - decodedBytes) {
         throw new PersistenceMigrationError("PNG decoded scanline size is invalid");
       }
+      decoded.set(chunk, decodedBytes);
+      decodedBytes += chunk.byteLength;
       for (const byte of chunk) {
         adlerA = (adlerA + byte) % 65521;
         adlerB = (adlerB + adlerA) % 65521;
@@ -850,6 +947,7 @@ function assertPngImageData(state: PngChunkState, limit: number): void {
   ) {
     throw new PersistenceMigrationError("PNG decoded scanline size or zlib checksum is invalid");
   }
+  assertPngScanlines(decoded, state);
 }
 
 function acceptPngChunk(
@@ -865,7 +963,7 @@ function acceptPngChunk(
   if (type === "PLTE") {
     assertPngPlte(length, state);
   } else if (type === "tRNS") {
-    assertPngTrns(length, state);
+    assertPngTrnsData(data, state);
   } else if (type === "IDAT") {
     if (state.idatEnded) {
       throw new PersistenceMigrationError("PNG IDAT chunks must be consecutive");
@@ -955,11 +1053,7 @@ function estimateBase64DecodedBytes(base64: string): number {
   return (base64.length / 4) * 3 - padding;
 }
 
-function decodePngDataUrl(
-  dataUrl: string,
-  limits: PersistenceAdmissionLimits,
-  admission: PersistenceAdmissionState,
-): Uint8Array {
+function inspectPngDataUrl(dataUrl: string, limits: PersistenceAdmissionLimits): string {
   const match = BASE64_PNG_DATA_URL.exec(dataUrl);
   if (!match?.[1]) {
     throw new PersistenceMigrationError("PNG data URL must use valid base64 encoding");
@@ -979,23 +1073,49 @@ function decodePngDataUrl(
       `decoded PNG asset exceeds ${limits.maxDecodedAssetBytes} bytes`,
     );
   }
-  addAdmissionBytes(
-    admission,
-    "encodedBytes",
-    encodedBytes,
-    limits.maxAggregateEncodedBytes,
-    "aggregate encoded PNG assets",
-  );
-  addAdmissionBytes(
-    admission,
-    "decodedBytes",
-    decodedBytes,
-    limits.maxAggregateDecodedBytes,
-    "aggregate decoded PNG assets",
-  );
+  return match[1];
+}
+
+function collectPngAdmission(
+  value: unknown,
+  limits: PersistenceAdmissionLimits,
+  admission: PersistenceAdmissionState,
+): void {
+  if (typeof value === "string" && IMAGE_DATA_URL_PREFIX.test(value)) {
+    if (!PNG_DATA_URL_PREFIX.test(value)) {
+      throw new PersistenceMigrationError("unsupported image data URL");
+    }
+    const base64 = inspectPngDataUrl(value, limits);
+    addAdmissionBytes(
+      admission,
+      "encodedBytes",
+      base64.length,
+      limits.maxAggregateEncodedBytes,
+      "aggregate encoded PNG assets",
+    );
+    addAdmissionBytes(
+      admission,
+      "decodedBytes",
+      estimateBase64DecodedBytes(base64),
+      limits.maxAggregateDecodedBytes,
+      "aggregate decoded PNG assets",
+    );
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectPngAdmission(item, limits, admission);
+    return;
+  }
+  if (isPlainRecord(value)) {
+    for (const item of Object.values(value)) collectPngAdmission(item, limits, admission);
+  }
+}
+
+function decodePngDataUrl(dataUrl: string, limits: PersistenceAdmissionLimits): Uint8Array {
+  const base64 = inspectPngDataUrl(dataUrl, limits);
   let binary: string;
   try {
-    binary = atob(match[1]);
+    binary = atob(base64);
   } catch {
     throw new PersistenceMigrationError("PNG data URL contains invalid base64");
   }
@@ -1017,13 +1137,12 @@ async function detachJsonValue(
   value: unknown,
   assets: Map<string, DetachedBinaryAsset>,
   limits: PersistenceAdmissionLimits,
-  admission: PersistenceAdmissionState,
 ): Promise<unknown> {
   if (typeof value === "string" && IMAGE_DATA_URL_PREFIX.test(value)) {
     if (!PNG_DATA_URL_PREFIX.test(value)) {
       throw new PersistenceMigrationError("unsupported image data URL");
     }
-    const bytes = decodePngDataUrl(value, limits, admission);
+    const bytes = decodePngDataUrl(value, limits);
     const digest = await sha256(bytes);
     const reference: DetachedBinaryAssetReference = {
       kind: "detached-binary-asset-v1",
@@ -1044,13 +1163,13 @@ async function detachJsonValue(
     return value;
   }
   if (Array.isArray(value)) {
-    return Promise.all(value.map((item) => detachJsonValue(item, assets, limits, admission)));
+    return Promise.all(value.map((item) => detachJsonValue(item, assets, limits)));
   }
   if (isPlainRecord(value)) {
     const entries = await Promise.all(
       Object.entries(value).map(async ([key, item]) => [
         key,
-        await detachJsonValue(item, assets, limits, admission),
+        await detachJsonValue(item, assets, limits),
       ]),
     );
     return Object.fromEntries(entries);
@@ -1244,17 +1363,18 @@ function snapshotDetachedDocument(
     } catch {
       throw new PersistenceMigrationError("detached binary asset bytes could not be snapshotted");
     }
+    assertDetachedReference(reference);
+    if (!isUint8ArrayView(bytes)) {
+      throw new PersistenceMigrationError("detached binary asset bytes could not be snapshotted");
+    }
     return { reference, bytes };
   });
 
-  validateDetachedWorkingDocumentSnapshot(
-    recordSnapshot as WorkingDocumentRecord,
-    assetSnapshots as readonly DetachedBinaryAsset[],
-    limits,
-  );
+  validateWorkingDocumentRecord(recordSnapshot);
+  validateDetachedWorkingDocumentSnapshot(recordSnapshot, assetSnapshots, limits);
   return {
-    record: recordSnapshot as WorkingDocumentRecord,
-    assets: assetSnapshots as readonly DetachedBinaryAsset[],
+    record: recordSnapshot,
+    assets: assetSnapshots,
   };
 }
 
@@ -1385,10 +1505,11 @@ export async function detachPngDataUrls(
     const limits = normalizeAdmissionOptions(options);
     const snapshot = snapshotWorkingDocumentRecord(record);
     const assets = new Map<string, DetachedBinaryAsset>();
-    const payload = await detachJsonValue(snapshot.payload, assets, limits, {
+    collectPngAdmission(snapshot.payload, limits, {
       encodedBytes: 0,
       decodedBytes: 0,
     });
+    const payload = await detachJsonValue(snapshot.payload, assets, limits);
     if (!isPlainRecord(payload)) {
       throw new PersistenceMigrationError("working-document payload must be a JSON object");
     }

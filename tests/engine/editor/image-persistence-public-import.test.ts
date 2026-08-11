@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,9 +15,9 @@ test("built core package exports persistence from root and editor", async () => 
       recursive: true,
     });
     await symlink(packageDirectory, packageLink, "dir");
-    const process = Bun.spawn(
+    const process = spawnSync(
+      "node",
       [
-        "node",
         "--input-type=module",
         "--eval",
         `
@@ -39,19 +40,13 @@ test("built core package exports persistence from root and editor", async () => 
       ],
       {
         cwd: temporaryDirectory,
-        stderr: "pipe",
-        stdout: "pipe",
+        encoding: "utf8",
       },
     );
-    const [exitCode, stderr, stdout] = await Promise.all([
-      process.exited,
-      new Response(process.stderr).text(),
-      new Response(process.stdout).text(),
-    ]);
-    expect(stderr).toBe("");
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("AtomicWorkingDocumentPersistence");
-    expect(stdout).toContain("verifyDetachedWorkingDocument");
+    expect(process.stderr).toBe("");
+    expect(process.status).toBe(0);
+    expect(process.stdout).toContain("AtomicWorkingDocumentPersistence");
+    expect(process.stdout).toContain("verifyDetachedWorkingDocument");
   } finally {
     await rm(temporaryDirectory, { force: true, recursive: true });
   }

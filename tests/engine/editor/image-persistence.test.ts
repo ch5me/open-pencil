@@ -85,6 +85,15 @@ function pngDataUrl(bytes: Uint8Array): string {
   return `data:image/png;base64,${bytes.toBase64()}`;
 }
 
+function isUint8Array(value: unknown): value is Uint8Array {
+  return (
+    ArrayBuffer.isView(value) &&
+    Object.prototype.toString.call(value) === "[object Uint8Array]" &&
+    "BYTES_PER_ELEMENT" in value &&
+    value.BYTES_PER_ELEMENT === 1
+  );
+}
+
 function pngUint32(bytes: Uint8Array, offset: number): number {
   return (
     ((bytes[offset] ?? 0) * 0x1000000 +
@@ -106,7 +115,7 @@ function pngCrc32(bytes: Uint8Array, start: number, end: number): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function pngChunk(type: string, data = new Uint8Array()): Uint8Array {
+function pngChunk(type: string, data: Uint8Array = new Uint8Array()): Uint8Array {
   const chunk = new Uint8Array(12 + data.byteLength);
   const view = new DataView(chunk.buffer);
   view.setUint32(0, data.byteLength);
@@ -437,6 +446,13 @@ test("public editor persistence validates indexed palettes, transparency order, 
   );
   const paletteAfterIdat = pngFromChunks(indexedIhdr, idat, palette, pngChunk("IEND"));
   const emptyIdat = pngFromChunks(indexedIhdr, palette, pngChunk("IDAT"), pngChunk("IEND"));
+  const oversizedTransparency = pngImage(
+    indexedIhdr,
+    new Uint8Array([0, 0]),
+    palette,
+    pngChunk("tRNS", new Uint8Array(3)),
+  );
+  const paletteOverflow = pngImage(pngIhdr(5, 1, 2, 3), new Uint8Array([1, 0x55, 0x2b]), palette);
 
   for (const bytes of [
     tooManyPaletteEntries,
@@ -444,6 +460,8 @@ test("public editor persistence validates indexed palettes, transparency order, 
     transparencyAfterIdat,
     paletteAfterIdat,
     emptyIdat,
+    oversizedTransparency,
+    paletteOverflow,
   ]) {
     await expect(
       detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(bytes) })),
@@ -469,6 +487,8 @@ test("public editor persistence validates bounded zlib framing and decoded scanl
     pngImage(rgbaIhdr, new Uint8Array([0, 0, 0, 0])),
     pngFromChunks(rgbaIhdr, pngChunk("IDAT", badChecksum), pngChunk("IEND")),
     pngFromChunks(rgbaIhdr, pngChunk("IDAT", trailingDeflateByte), pngChunk("IEND")),
+    pngImage(rgbaIhdr, new Uint8Array([5, 0, 0, 0, 0])),
+    pngImage(pngIhdr(1, 1, 1, 0), new Uint8Array([0, 0]), pngChunk("tRNS", new Uint8Array([0, 2]))),
   ];
 
   for (const bytes of corrupt) {
@@ -483,6 +503,17 @@ test("public editor persistence validates bounded zlib framing and decoded scanl
       maxDecodedAssetBytes: 1024,
     }),
   ).rejects.toBeInstanceOf(PersistenceQuotaError);
+});
+
+test("public editor persistence accepts 200 generated PNG scanline variants", async () => {
+  for (let index = 0; index < 200; index++) {
+    const filter = index % 5;
+    const pixel = index & 0xff;
+    const bytes = pngImage(pngIhdr(1, 1, 8, 6), new Uint8Array([filter, pixel, pixel, pixel, 255]));
+    await expect(
+      detachPngDataUrls(record(NEXT_ROOT, index, { image: pngDataUrl(bytes) })),
+    ).resolves.toMatchObject({ assets: [{ reference: { byteLength: bytes.byteLength } }] });
+  }
 });
 
 test("persistence admission rejects encoded, decoded, and aggregate bytes before decode work", async () => {
@@ -502,6 +533,23 @@ test("persistence admission rejects encoded, decoded, and aggregate bytes before
     await expect(detachPngDataUrls(twoAssets, options)).rejects.toBeInstanceOf(
       PersistenceQuotaError,
     );
+  }
+
+  for (const options of quotaCases.slice(2)) {
+    const originalAtob = globalThis.atob;
+    let atobCalls = 0;
+    globalThis.atob = (value) => {
+      atobCalls++;
+      return originalAtob(value);
+    };
+    try {
+      await expect(detachPngDataUrls(twoAssets, options)).rejects.toBeInstanceOf(
+        PersistenceQuotaError,
+      );
+      expect(atobCalls).toBe(0);
+    } finally {
+      globalThis.atob = originalAtob;
+    }
   }
 
   const detachedDocument = await detached(NEXT_ROOT, 2);
@@ -1144,9 +1192,13 @@ test("persistence-v1 rejects unsupported image data URLs everywhere persisted", 
 
 test("persistence-v1 accepts cross-realm Uint8Array and rejects other views", async () => {
   const source = await detached(PRIOR_ROOT, 1);
-  const bytes = runInNewContext("Uint8Array.from(bytes)", {
+  const crossRealmBytes: unknown = runInNewContext("Uint8Array.from(bytes)", {
     bytes: [...pngBytes()],
-  }) as Uint8Array;
+  });
+  if (!isUint8Array(crossRealmBytes)) {
+    throw new Error("cross-realm value is not a Uint8Array");
+  }
+  const bytes = crossRealmBytes;
   expect(bytes instanceof Uint8Array).toBeFalse();
 
   const crossRealmAssets = [{ reference: source.assets[0]?.reference, bytes }];
