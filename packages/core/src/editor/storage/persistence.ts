@@ -88,28 +88,28 @@ export interface PersistenceContractReceipt {
 }
 
 export class PersistenceContractError extends Error {
-  override readonly name = "PersistenceContractError";
-  readonly code = "E_IMAGE_PERSISTENCE_CONTRACT";
+  override readonly name: string = "PersistenceContractError";
+  readonly code: string = "E_IMAGE_PERSISTENCE_CONTRACT";
 }
 
-export class PersistenceQuotaError extends Error {
+export class PersistenceQuotaError extends PersistenceContractError {
   override readonly name = "PersistenceQuotaError";
-  readonly code = "E_IMAGE_PERSISTENCE_QUOTA";
+  override readonly code = "E_IMAGE_PERSISTENCE_QUOTA";
 }
 
-export class PersistenceMigrationError extends Error {
+export class PersistenceMigrationError extends PersistenceContractError {
   override readonly name = "PersistenceMigrationError";
-  readonly code = "E_IMAGE_PERSISTENCE_MIGRATION";
+  override readonly code = "E_IMAGE_PERSISTENCE_MIGRATION";
 }
 
-export class PersistenceConflictError extends Error {
+export class PersistenceConflictError extends PersistenceContractError {
   override readonly name = "PersistenceConflictError";
-  readonly code = "E_IMAGE_PERSISTENCE_CONFLICT";
+  override readonly code = "E_IMAGE_PERSISTENCE_CONFLICT";
 }
 
-export class PersistenceTerminationError extends Error {
+export class PersistenceTerminationError extends PersistenceContractError {
   override readonly name = "PersistenceTerminationError";
-  readonly code = "E_IMAGE_PERSISTENCE_TERMINATED";
+  override readonly code = "E_IMAGE_PERSISTENCE_TERMINATED";
 
   constructor(
     readonly boundary: PersistenceDurableBoundary,
@@ -128,13 +128,7 @@ type PersistenceError =
 
 function isPersistenceError(error: unknown): error is PersistenceError {
   try {
-    return (
-      error instanceof PersistenceContractError ||
-      error instanceof PersistenceQuotaError ||
-      error instanceof PersistenceMigrationError ||
-      error instanceof PersistenceConflictError ||
-      error instanceof PersistenceTerminationError
-    );
+    return error instanceof PersistenceContractError;
   } catch {
     return false;
   }
@@ -149,6 +143,26 @@ const IMAGE_DATA_URL_PREFIX = /^data:image\//iu;
 const PNG_DATA_URL_PREFIX = /^data:image\/png(?:;[^,]*)?,/iu;
 const BASE64_PNG_DATA_URL = /^data:image\/png;base64,([a-z\d+/]*={0,2})$/iu;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
+const PNG_IHDR_LENGTH = 13;
+const PNG_CHUNK_OVERHEAD = 12;
+const PNG_MIN_BYTE_LENGTH =
+  PNG_SIGNATURE.length + PNG_CHUNK_OVERHEAD + PNG_IHDR_LENGTH + PNG_CHUNK_OVERHEAD;
+const PERSISTENCE_STATE_VALUES: ReadonlySet<string> = new Set([
+  "SUPPORTED",
+  "UNKNOWN",
+  "UNSUPPORTED",
+]);
+const PERSISTENCE_RECEIPT_STATE_KEYS = new Set([
+  "streamingArchive",
+  "schemaMigration",
+  "indexedDbWorkingDocument",
+  "atomicSave",
+  "deduplication",
+  "viewportPersistence",
+  "selectionHistorySeparation",
+  "crashRecovery",
+]);
+const SAVE_WORKING_DOCUMENT_OPTION_KEYS = new Set(["expectedAcknowledgement"]);
 const WORKING_DOCUMENT_RECORD_KEYS = new Set([
   "schema",
   "schemaVersion",
@@ -200,6 +214,24 @@ function hasExactDataProperties(
       return descriptor?.enumerable === true && "value" in descriptor;
     })
   );
+}
+
+function assertAllowedDataProperties(
+  record: Record<string, unknown>,
+  keys: ReadonlySet<string>,
+  label: string,
+): void {
+  for (const key of Reflect.ownKeys(record)) {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (
+      typeof key !== "string" ||
+      !keys.has(key) ||
+      !descriptor?.enumerable ||
+      !("value" in descriptor)
+    ) {
+      throw new PersistenceContractError(`${label} has unknown or unsafe keys`);
+    }
+  }
 }
 
 function assertDensePlainRecordArray(
@@ -295,6 +327,62 @@ function containsImageDataUrl(value: unknown): boolean {
   return isPlainRecord(value) && Object.values(value).some(containsImageDataUrl);
 }
 
+function pngChunkType(bytes: Uint8Array, offset: number): string {
+  return String.fromCharCode(
+    bytes[offset + 4] ?? 0,
+    bytes[offset + 5] ?? 0,
+    bytes[offset + 6] ?? 0,
+    bytes[offset + 7] ?? 0,
+  );
+}
+
+function pngChunkLength(bytes: Uint8Array, offset: number): number {
+  return (
+    ((bytes[offset] ?? 0) * 0x1000000 +
+      (bytes[offset + 1] ?? 0) * 0x10000 +
+      (bytes[offset + 2] ?? 0) * 0x100 +
+      (bytes[offset + 3] ?? 0)) >>>
+    0
+  );
+}
+
+function assertPngStructure(bytes: Uint8Array): void {
+  if (
+    bytes.byteLength < PNG_MIN_BYTE_LENGTH ||
+    PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)
+  ) {
+    throw new PersistenceMigrationError("PNG bytes have an invalid signature or structure");
+  }
+
+  let offset: number = PNG_SIGNATURE.length;
+  let firstChunk = true;
+  while (offset < bytes.byteLength) {
+    if (bytes.byteLength - offset < PNG_CHUNK_OVERHEAD) {
+      throw new PersistenceMigrationError("PNG chunk exceeds byte bounds");
+    }
+    const length = pngChunkLength(bytes, offset);
+    const type = pngChunkType(bytes, offset);
+    const chunkEnd = offset + PNG_CHUNK_OVERHEAD + length;
+    if (
+      !/^[A-Za-z]{4}$/u.test(type) ||
+      chunkEnd < offset ||
+      chunkEnd > bytes.byteLength ||
+      (firstChunk && (type !== "IHDR" || length !== PNG_IHDR_LENGTH))
+    ) {
+      throw new PersistenceMigrationError("PNG chunk structure is invalid");
+    }
+    if (type === "IEND") {
+      if (length !== 0 || chunkEnd !== bytes.byteLength) {
+        throw new PersistenceMigrationError("PNG IEND chunk must be empty and terminal");
+      }
+      return;
+    }
+    firstChunk = false;
+    offset = chunkEnd;
+  }
+  throw new PersistenceMigrationError("PNG bytes are missing a terminal IEND chunk");
+}
+
 function decodePngDataUrl(dataUrl: string): Uint8Array {
   const match = BASE64_PNG_DATA_URL.exec(dataUrl);
   if (!match?.[1]) {
@@ -307,9 +395,7 @@ function decodePngDataUrl(dataUrl: string): Uint8Array {
     throw new PersistenceMigrationError("PNG data URL contains invalid base64");
   }
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  if (PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)) {
-    throw new PersistenceMigrationError("PNG data URL has an invalid PNG signature");
-  }
+  assertPngStructure(bytes);
   return bytes;
 }
 
@@ -377,7 +463,7 @@ function assertDetachedReference(
     reference.mimeType !== "image/png" ||
     typeof reference.byteLength !== "number" ||
     !Number.isSafeInteger(reference.byteLength) ||
-    reference.byteLength < PNG_SIGNATURE.length
+    reference.byteLength < PNG_MIN_BYTE_LENGTH
   ) {
     throw new PersistenceMigrationError("invalid detached binary asset reference");
   }
@@ -631,7 +717,11 @@ function snapshotSaveOptions(
     if (!isPlainRecord(options)) {
       throw new PersistenceContractError("save options must be a plain object");
     }
-    const expectedAcknowledgement = options.expectedAcknowledgement;
+    assertAllowedDataProperties(options, SAVE_WORKING_DOCUMENT_OPTION_KEYS, "save options");
+    const expectedAcknowledgement = Object.getOwnPropertyDescriptor(
+      options,
+      "expectedAcknowledgement",
+    )?.value;
     if (expectedAcknowledgement === undefined) return undefined;
     const snapshot = snapshotValue(expectedAcknowledgement);
     assertAcknowledgementIdentity(documentId, snapshot);
@@ -682,15 +772,12 @@ export function validateDetachedWorkingDocument(
     const assetsByRevision = new Map<string, DetachedBinaryAsset>();
     for (const asset of assets) {
       assertDetachedReference(asset.reference);
-      if (
-        !isUint8ArrayView(asset.bytes) ||
-        asset.bytes.byteLength !== asset.reference.byteLength ||
-        PNG_SIGNATURE.some((byte, index) => asset.bytes[index] !== byte)
-      ) {
+      if (!isUint8ArrayView(asset.bytes) || asset.bytes.byteLength !== asset.reference.byteLength) {
         throw new PersistenceMigrationError(
           `detached binary asset bytes do not match reference: ${asset.reference.assetId}`,
         );
       }
+      assertPngStructure(asset.bytes);
       if (assetsByRevision.has(asset.reference.revisionId)) {
         throw new PersistenceMigrationError(
           `duplicate detached binary asset revision: ${asset.reference.revisionId}`,
@@ -889,23 +976,31 @@ export class AtomicWorkingDocumentPersistence {
   }
 
   recover(documentId: string): DetachedWorkingDocument | undefined {
-    const acknowledgedRoot = this.acknowledgedRoots.get(documentId);
-    const acknowledged = acknowledgedRoot
-      ? this.committedRoots.get(acknowledgedRoot.rootKey)
-      : undefined;
-    if (acknowledged?.record.documentId === documentId) {
-      return cloneDetachedDocument(acknowledged);
-    }
+    try {
+      assertDocumentId(documentId);
+      const acknowledgedRoot = this.acknowledgedRoots.get(documentId);
+      const acknowledged = acknowledgedRoot
+        ? this.committedRoots.get(acknowledgedRoot.rootKey)
+        : undefined;
+      if (acknowledged?.record.documentId === documentId) {
+        return cloneDetachedDocument(acknowledged);
+      }
 
-    const latest = [...this.committedRoots.values()]
-      .filter(({ record }) => record.documentId === documentId)
-      .sort(
-        (left, right) =>
-          right.record.contentSequence - left.record.contentSequence ||
-          right.record.updatedAt - left.record.updatedAt,
-      )
-      .at(0);
-    return latest ? cloneDetachedDocument(latest) : undefined;
+      const latest = [...this.committedRoots.values()]
+        .filter(({ record }) => record.documentId === documentId)
+        .sort(
+          (left, right) =>
+            right.record.contentSequence - left.record.contentSequence ||
+            right.record.updatedAt - left.record.updatedAt,
+        )
+        .at(0);
+      return latest ? cloneDetachedDocument(latest) : undefined;
+    } catch (error) {
+      return normalizePersistenceError(
+        error,
+        () => new PersistenceContractError("working document could not be recovered"),
+      );
+    }
   }
 
   private afterBoundary(boundary: PersistenceDurableBoundary, contentRootHash: string): void {
@@ -1001,6 +1096,12 @@ export function validateWorkingDocumentRecord(
   }
 }
 
+function assertDocumentId(documentId: unknown): asserts documentId is string {
+  if (typeof documentId !== "string" || !documentId) {
+    throw new PersistenceContractError("documentId must be a non-empty string");
+  }
+}
+
 /**
  * Recovers only the acknowledged generation from a non-atomic record list.
  * Detached assets are not available here; use AtomicWorkingDocumentPersistence for full recovery.
@@ -1011,6 +1112,7 @@ export function recoverWorkingDocument(
   acknowledgedIdentity: AcknowledgedWorkingDocumentIdentity,
 ): WorkingDocumentRecord | undefined {
   try {
+    assertDocumentId(documentId);
     assertDensePlainRecordArray(records, WORKING_DOCUMENT_RECORD_KEYS, "working document records");
     const recordSnapshots = records.map((record) => snapshotWorkingDocumentRecord(record));
     const identitySnapshot = snapshotValue(acknowledgedIdentity);
@@ -1045,6 +1147,27 @@ export function createPersistenceContractReceipt(
   jsonOverheadBytes = 0,
 ): PersistenceContractReceipt {
   try {
+    if (!isPlainRecord(overrides)) {
+      throw new PersistenceContractError("persistence receipt overrides must be a plain object");
+    }
+    assertAllowedDataProperties(
+      overrides,
+      PERSISTENCE_RECEIPT_STATE_KEYS,
+      "persistence receipt overrides",
+    );
+    const snapshot = Object.fromEntries(
+      Reflect.ownKeys(overrides).map((key) => [
+        key,
+        Object.getOwnPropertyDescriptor(overrides, key)?.value,
+      ]),
+    );
+    if (
+      Object.values(snapshot).some(
+        (state) => typeof state !== "string" || !PERSISTENCE_STATE_VALUES.has(state),
+      )
+    ) {
+      throw new PersistenceContractError("persistence receipt state is invalid");
+    }
     if (!Number.isSafeInteger(jsonOverheadBytes) || jsonOverheadBytes < 0) {
       throw new PersistenceContractError("json overhead must be a non-negative safe integer");
     }
@@ -1059,7 +1182,7 @@ export function createPersistenceContractReceipt(
       viewportPersistence: "UNKNOWN",
       selectionHistorySeparation: "UNKNOWN",
       crashRecovery: "UNKNOWN",
-      ...overrides,
+      ...snapshot,
     };
   } catch (error) {
     return normalizePersistenceError(

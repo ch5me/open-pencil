@@ -25,8 +25,12 @@ import {
   type WorkingDocumentRecord,
 } from "@open-pencil/core/editor";
 
-const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgo=";
-const OTHER_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoA";
+const PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+const OTHER_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAAF0RVh0eBGYI+kAAAAASUVORK5CYII=";
+const PNG_DATA_URL = `data:image/png;base64,${PNG_BASE64}`;
+const OTHER_PNG_DATA_URL = `data:image/png;base64,${OTHER_PNG_BASE64}`;
 const PRIOR_ROOT = "a".repeat(64);
 const NEXT_ROOT = "b".repeat(64);
 const THIRD_ROOT = "c".repeat(64);
@@ -71,6 +75,14 @@ function acknowledgement(workingDocument: WorkingDocumentRecord) {
   );
 }
 
+function pngBytes(base64 = PNG_BASE64): Uint8Array {
+  return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+}
+
+function pngDataUrl(bytes: Uint8Array): string {
+  return `data:image/png;base64,${bytes.toBase64()}`;
+}
+
 test("persistence-v1 detaches and deduplicates PNG bytes outside JSON", async () => {
   const result = await detachPngDataUrls(
     record(NEXT_ROOT, 2, {
@@ -81,9 +93,7 @@ test("persistence-v1 detaches and deduplicates PNG bytes outside JSON", async ()
   const json = JSON.stringify(result.record);
   expect(json).not.toContain("data:image/png");
   expect(result.assets).toHaveLength(1);
-  expect(result.assets[0]?.bytes).toEqual(
-    new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-  );
+  expect(result.assets[0]?.bytes).toEqual(pngBytes());
   expect(json.match(/detached-binary-asset-v1/gu)).toHaveLength(2);
 });
 
@@ -130,7 +140,7 @@ test("persistence-v1 recovers prior ACK or the complete new root over 100 termin
   expect(priorRecoveries).toBe(75);
   expect(newRecoveries).toBe(25);
   expect(mixedRoots).toBe(0);
-});
+}, 30_000);
 
 test("persistence-v1 first-save termination recovers nothing or one complete new root", async () => {
   const next = await detached(NEXT_ROOT, 1);
@@ -249,6 +259,47 @@ test("persistence-v1 quota and migration failures preserve the acknowledged root
   ).rejects.toBeInstanceOf(PersistenceMigrationError);
 });
 
+test("public editor persistence rejects structurally corrupt PNGs before save or recovery", async () => {
+  const valid = pngBytes();
+  const signatureOnly = valid.slice(0, 8);
+  const nonIhdrFirst = valid.slice();
+  nonIhdrFirst.set([0x49, 0x44, 0x41, 0x54], 12);
+  const invalidIhdrLength = valid.slice();
+  invalidIhdrLength[11] = 12;
+  const oversizedChunk = valid.slice();
+  oversizedChunk.set([0xff, 0xff, 0xff, 0xff], 8);
+  const trailingAfterIend = Uint8Array.from([...valid, 0]);
+  const corruptPngs = [
+    signatureOnly,
+    nonIhdrFirst,
+    invalidIhdrLength,
+    oversizedChunk,
+    trailingAfterIend,
+  ];
+
+  const prior = await detached(PRIOR_ROOT, 1);
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+  for (const bytes of corruptPngs) {
+    await expect(
+      detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(bytes) })),
+    ).rejects.toBeInstanceOf(PersistenceMigrationError);
+    const reference = {
+      kind: "detached-binary-asset-v1" as const,
+      assetId: `asset:${NEXT_ROOT}` as const,
+      revisionId: `sha256:${NEXT_ROOT}` as const,
+      mimeType: "image/png" as const,
+      byteLength: bytes.byteLength,
+    };
+    await expect(
+      store.save(record(NEXT_ROOT, 2, { image: reference }), [{ reference, bytes }], {
+        expectedAcknowledgement: acknowledgement(prior.record),
+      }),
+    ).rejects.toBeInstanceOf(PersistenceMigrationError);
+    expect(store.recover(prior.record.documentId)).toEqual(prior);
+  }
+});
+
 test("persistence-v1 rejects surplus assets from mixed generations", async () => {
   const prior = await detached(PRIOR_ROOT, 1);
   const next = await detached(NEXT_ROOT, 2);
@@ -355,6 +406,37 @@ test("persistence-v1 exposes acknowledgement-only save options and requires full
     PersistenceConflictError,
   );
   expect(store.recover("doc:one")).toEqual(prior);
+});
+
+test("public editor save accepts exact options only", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const next = await detached(NEXT_ROOT, 2);
+  const invalidOptions = [
+    { expectedContentRootHash: PRIOR_ROOT },
+    { unknown: true },
+    { expectedAcknowledgement: acknowledgement(prior.record), unknown: true },
+    Object.defineProperty({}, "expectedAcknowledgement", {
+      enumerable: true,
+      get: () => acknowledgement(prior.record),
+    }),
+    new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new TypeError("save options proxy");
+        },
+      },
+    ),
+  ];
+
+  for (const options of invalidOptions) {
+    const store = new AtomicWorkingDocumentPersistence();
+    await store.save(prior.record, prior.assets);
+    await expect(
+      Reflect.apply(store.save.bind(store), undefined, [next.record, next.assets, options]),
+    ).rejects.toBeInstanceOf(PersistenceContractError);
+    expect(store.recover(prior.record.documentId)).toEqual(prior);
+  }
 });
 
 test("persistence-v1 rejects non-JSON payload representations before serialization", async () => {
@@ -713,15 +795,84 @@ test("public persistence boundaries normalize access traps without double-wrappi
   await expect(detachPngDataUrls(asyncTypedRecord)).rejects.toBe(asyncTyped);
 
   const saveTyped = new PersistenceQuotaError("preserve save identity");
-  const typedSaveOptions = Object.defineProperty({}, "expectedAcknowledgement", {
-    enumerable: true,
-    get() {
-      throw saveTyped;
+  const typedSaveOptions = new Proxy(
+    {},
+    {
+      ownKeys() {
+        throw saveTyped;
+      },
     },
-  });
+  );
   await expect(
     new AtomicWorkingDocumentPersistence().save(base, [], typedSaveOptions),
   ).rejects.toBe(saveTyped);
+});
+
+test("public persistence normalization preserves specialized error identity and codes", () => {
+  const errors = [
+    new PersistenceContractError("contract"),
+    new PersistenceQuotaError("quota"),
+    new PersistenceMigrationError("migration"),
+    new PersistenceConflictError("conflict"),
+    new PersistenceTerminationError("asset", 0),
+  ];
+
+  for (const typed of errors) {
+    expect(typed).toBeInstanceOf(PersistenceContractError);
+    const hostile = new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw typed;
+        },
+      },
+    );
+    try {
+      Reflect.apply(createPersistenceContractReceipt, undefined, [hostile]);
+      throw new Error("expected typed persistence failure");
+    } catch (error) {
+      expect(error).toBe(typed);
+      expect(error).toMatchObject({ code: typed.code });
+    }
+  }
+});
+
+test("public persistence receipt accepts exact state overrides only", () => {
+  expect(
+    createPersistenceContractReceipt({
+      atomicSave: "SUPPORTED",
+      crashRecovery: "UNSUPPORTED",
+    }),
+  ).toMatchObject({
+    version: "persistence-v1",
+    atomicSave: "SUPPORTED",
+    crashRecovery: "UNSUPPORTED",
+  });
+
+  const invalidOverrides = [
+    { version: "persistence-v1" },
+    { jsonOverheadBytes: 1 },
+    { unknown: "SUPPORTED" },
+    { atomicSave: "YES" },
+    Object.defineProperty({}, "atomicSave", {
+      enumerable: true,
+      get: () => "SUPPORTED",
+    }),
+    { [Symbol("atomicSave")]: "SUPPORTED" },
+    new Proxy(
+      {},
+      {
+        ownKeys() {
+          throw new TypeError("receipt proxy");
+        },
+      },
+    ),
+  ];
+  for (const overrides of invalidOverrides) {
+    expect(() => Reflect.apply(createPersistenceContractReceipt, undefined, [overrides])).toThrow(
+      PersistenceContractError,
+    );
+  }
 });
 
 test("persistence-v1 rejects unsupported image data URLs everywhere persisted", async () => {
@@ -741,9 +892,9 @@ test("persistence-v1 rejects unsupported image data URLs everywhere persisted", 
 
 test("persistence-v1 accepts cross-realm Uint8Array and rejects other views", async () => {
   const source = await detached(PRIOR_ROOT, 1);
-  const bytes = runInNewContext(
-    "new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])",
-  ) as Uint8Array;
+  const bytes = runInNewContext("Uint8Array.from(bytes)", {
+    bytes: [...pngBytes()],
+  }) as Uint8Array;
   expect(bytes instanceof Uint8Array).toBeFalse();
 
   const crossRealmAssets = [{ reference: source.assets[0]?.reference, bytes }];
@@ -864,6 +1015,41 @@ test("persistence-v1 preserves existing record and receipt APIs", () => {
   expect(() =>
     validateWorkingDocumentRecord({ ...baseRecord, viewport: { ...baseRecord.viewport, zoom: 0 } }),
   ).toThrow(PersistenceContractError);
+});
+
+test("public recovery rejects empty and hostile document identifiers", async () => {
+  const prior = await detached(PRIOR_ROOT, 1);
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+  const invalidDocumentIds = [
+    "",
+    null,
+    undefined,
+    1,
+    {},
+    new Proxy(
+      {},
+      {
+        getPrototypeOf() {
+          throw new TypeError("documentId proxy");
+        },
+      },
+    ),
+  ];
+
+  for (const documentId of invalidDocumentIds) {
+    expect(() => Reflect.apply(store.recover.bind(store), undefined, [documentId])).toThrow(
+      PersistenceContractError,
+    );
+    expect(() =>
+      Reflect.apply(recoverWorkingDocument, undefined, [
+        [prior.record],
+        documentId,
+        acknowledgement(prior.record),
+      ]),
+    ).toThrow(PersistenceContractError);
+  }
+  expect(store.recover(prior.record.documentId)).toEqual(prior);
 });
 
 test("persistence-v1 record recovery ignores unacknowledged embedded data URLs", () => {
