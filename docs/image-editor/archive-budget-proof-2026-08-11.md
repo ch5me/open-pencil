@@ -18,9 +18,9 @@ CH5_RAW_TEST_OK=1 bun test \
   tests/engine/io/transactional-worker.test.ts \
   tests/engine/io/formats/psd.test.ts
 
-55 pass
+61 pass
 0 fail
-218 expect() calls
+244 expect() calls
 ```
 
 Observed effects:
@@ -45,7 +45,7 @@ The focused run failed only the new regression checks:
 hostile-io-v1 rejects aggregate archive expansion before unzip allocation
 host rejects zero-byte output before commit
 
-21 pass
+22 pass
 2 fail
 SEEDED_DEFECT_PROOF=PASS expected_failure_exit=1
 ```
