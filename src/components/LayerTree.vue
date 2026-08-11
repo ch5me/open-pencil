@@ -33,7 +33,7 @@ function onScroll(e: Event) {
 }
 
 function isVirtualized(count: number) {
-  return count > VIRTUALIZATION_THRESHOLD;
+  return count >= VIRTUALIZATION_THRESHOLD;
 }
 
 function virtualStart(count: number) {
@@ -63,8 +63,16 @@ function virtualItemsStyle(count: number) {
     : undefined;
 }
 
-watch(scroller, (el) => {
-  if (el) viewportHeight.value = el.clientHeight;
+watch(scroller, (el, _, onCleanup) => {
+  if (!el) return;
+  const updateViewportHeight = () => {
+    viewportHeight.value = el.clientHeight;
+  };
+  updateViewportHeight();
+  if (scrollTop.value > 0) el.scrollTop = scrollTop.value;
+  const observer = new ResizeObserver(updateViewportHeight);
+  observer.observe(el);
+  onCleanup(() => observer.disconnect());
 });
 
 watch(renameInput, (input) => {

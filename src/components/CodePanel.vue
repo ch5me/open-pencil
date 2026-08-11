@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { JSX_REFERENCE, selectionToJSX } from "@open-pencil/core/design-jsx";
 import type { JSXFormat } from "@open-pencil/core/design-jsx";
-import "prismjs/components/prism-jsx";
 import { useI18n, useSceneComputed } from "@open-pencil/vue";
 import { useClipboard } from "@vueuse/core";
 import Prism from "prismjs";
