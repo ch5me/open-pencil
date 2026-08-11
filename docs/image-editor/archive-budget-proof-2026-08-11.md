@@ -27,8 +27,9 @@ Observed effects:
 
 - Declared file size rejects before `.fig`, JSON, or PSD payload reads.
 - ZIP central-directory decoded totals reject before `unzipSync` allocation.
+- Missing ZIP central-directory metadata rejects before `unzipSync` allocation.
 - PSD decoded dimensions, expansion, and render-buffer limits reject before full payload allocation.
-- PSD cancellation rejects after a pending payload read and before publication.
+- PSD cancellation rejects before header reads and after a pending payload read, before publication.
 - Transaction verification rejects an all-zero-byte output before commit.
 
 ## Seeded-defect proof

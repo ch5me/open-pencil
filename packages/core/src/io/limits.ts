@@ -67,7 +67,9 @@ export function assertZipDecodedWithinLimits(bytes: Uint8Array, limits: IOInputL
       break;
     }
   }
-  if (eocd < 0) return;
+  if (eocd < 0) {
+    throw new IOHostileInputError("ZIP end of central directory is missing");
+  }
 
   const entryCount = readU16(bytes, eocd + 10);
   const centralSize = readU32(bytes, eocd + 12);
