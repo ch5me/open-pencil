@@ -680,3 +680,17 @@ test("renderer-resilience-v1 records unsupported runtime paths as UNKNOWN", () =
     validateRendererResilienceContract(Object.assign({}, contract, { version: "wrong" })),
   ).toThrow(RendererResilienceContractError);
 });
+
+test("renderer-resilience-v1 defaults every unobserved dimension to UNKNOWN", () => {
+  expect(createRendererResilienceContract()).toEqual({
+    version: "renderer-resilience-v1",
+    contextRestoration: "UNKNOWN",
+    resourceRecreation: "UNKNOWN",
+    lowMemoryProgressiveOpen: "UNKNOWN",
+    resolutionDowngrade: "UNKNOWN",
+    readbackTimeout: "UNKNOWN",
+    cancellation: "UNKNOWN",
+    corruptedImageIsolation: "UNKNOWN",
+    longSessionLeakGuard: "UNKNOWN",
+  });
+});
