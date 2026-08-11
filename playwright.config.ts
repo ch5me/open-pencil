@@ -36,7 +36,7 @@ export default defineConfig({
     {
       name: "openpencil-perf",
       testDir: "./tests/e2e",
-      testMatch: ["**/*.performance.spec.ts", "**/layers/large-tree.spec.ts"],
+      testMatch: "**/*.performance.spec.ts",
       fullyParallel: false,
       use: {
         browserName: "chromium",

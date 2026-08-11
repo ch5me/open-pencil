@@ -36,9 +36,14 @@ test("layer tree meets the named consuming performance contract", async ({
   browser,
   browserName,
 }, testInfo) => {
-  test.skip(!PROFILE, "Set OPENPENCIL_PERF_PROFILE=D1 or M1 on a named host.");
+  if (!PROFILE) {
+    throw new Error("Missing OPENPENCIL_PERF_PROFILE; expected D1 or M1.");
+  }
   if (PROFILE !== "D1" && PROFILE !== "M1") {
     throw new Error(`Invalid OPENPENCIL_PERF_PROFILE: ${PROFILE}`);
+  }
+  if (!EXPECTED_COMMIT) {
+    throw new Error("Missing OPENPENCIL_PERF_COMMIT; expected the exact tested HEAD.");
   }
   expect(EXPECTED_COMMIT, "Set OPENPENCIL_PERF_COMMIT to the exact tested HEAD.").toMatch(
     /^[0-9a-f]{40}$/,
