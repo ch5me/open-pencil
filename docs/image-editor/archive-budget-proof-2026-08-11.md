@@ -16,7 +16,8 @@ Focused archive, transaction, and PSD tests:
 CH5_RAW_TEST_OK=1 bun test \
   tests/engine/io/hostile-input.test.ts \
   tests/engine/io/transactional-worker.test.ts \
-  tests/engine/io/formats/psd.test.ts
+  tests/engine/io/formats/psd.test.ts \
+  tests/engine/io/formats/psd-worker.test.ts
 
 61 pass
 0 fail
