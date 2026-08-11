@@ -550,6 +550,13 @@ function assertPngTrnsData(data: Uint8Array, state: PngChunkState): void {
     if (sample >= 2 ** header.bitDepth) {
       throw new PersistenceMigrationError("PNG grayscale tRNS sample exceeds bit depth");
     }
+  } else if (header?.colorType === 2 && header.bitDepth < 16) {
+    for (let offset = 0; offset < data.byteLength; offset += 2) {
+      const sample = ((data[offset] ?? 0) << 8) | (data[offset + 1] ?? 0);
+      if (sample >= 2 ** header.bitDepth) {
+        throw new PersistenceMigrationError("PNG truecolor tRNS sample exceeds bit depth");
+      }
+    }
   }
 }
 

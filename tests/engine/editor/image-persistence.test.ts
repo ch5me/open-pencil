@@ -472,6 +472,17 @@ test("public editor persistence validates indexed palettes, transparency order, 
 test("public editor persistence validates bounded zlib framing and decoded scanline size", async () => {
   const rgbaIhdr = pngIhdr(1, 1, 8, 6);
   const validCompressed = zlibSync(new Uint8Array([0, 0, 0, 0, 0]));
+  const truecolorTransparencyOverflows = [
+    [1, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0],
+    [0, 0, 0, 0, 1, 0],
+  ].map((transparency) =>
+    pngImage(
+      pngIhdr(1, 1, 8, 2),
+      new Uint8Array([0, 0, 0, 0]),
+      pngChunk("tRNS", new Uint8Array(transparency)),
+    ),
+  );
   const badChecksum = validCompressed.slice();
   badChecksum[badChecksum.byteLength - 1] = (badChecksum.at(-1) ?? 0) ^ 1;
   const trailingDeflateByte = new Uint8Array(validCompressed.byteLength + 1);
@@ -489,6 +500,7 @@ test("public editor persistence validates bounded zlib framing and decoded scanl
     pngFromChunks(rgbaIhdr, pngChunk("IDAT", trailingDeflateByte), pngChunk("IEND")),
     pngImage(rgbaIhdr, new Uint8Array([5, 0, 0, 0, 0])),
     pngImage(pngIhdr(1, 1, 1, 0), new Uint8Array([0, 0]), pngChunk("tRNS", new Uint8Array([0, 2]))),
+    ...truecolorTransparencyOverflows,
   ];
 
   for (const bytes of corrupt) {
