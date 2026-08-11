@@ -12,8 +12,24 @@ export interface ImageRuntimeFootprintContract {
   readonly runtimeVersionStrategy: FootprintState;
 }
 
+export interface ImageRuntimeFootprintUnknownProof {
+  readonly version: "image-runtime-footprint-unknown-v1";
+  readonly fields: readonly ["offlineCache", "runtimeVersionStrategy"];
+  readonly reason: "consuming-surface-not-observed";
+}
+
 export class ImageRuntimeFootprintError extends Error {
   readonly code = "E_IMAGE_RUNTIME_FOOTPRINT";
+}
+
+export const IMAGE_RUNTIME_FOOTPRINT_UNKNOWN_PROOF = {
+  version: "image-runtime-footprint-unknown-v1",
+  fields: ["offlineCache", "runtimeVersionStrategy"],
+  reason: "consuming-surface-not-observed",
+} as const satisfies ImageRuntimeFootprintUnknownProof;
+
+export function createImageRuntimeFootprintUnknownProof(): ImageRuntimeFootprintUnknownProof {
+  return IMAGE_RUNTIME_FOOTPRINT_UNKNOWN_PROOF;
 }
 
 export function createImageRuntimeFootprintContract(
