@@ -1,10 +1,17 @@
 <script setup lang="ts">
+import type { SceneNode } from "@open-pencil/core/scene-graph";
 import { TreeRoot } from "reka-ui";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onScopeDispose, ref, watch } from "vue";
 
 import { useEditor } from "#vue/editor/context";
 import { provideLayerTree } from "#vue/primitives/LayerTree/context";
 import type { LayerNode } from "#vue/primitives/LayerTree/context";
+import {
+  buildLayerTreeModel,
+  indexLayerNodes,
+  patchLayerNode,
+  retainLayerExpansion,
+} from "#vue/primitives/LayerTree/model";
 import { useLayerDrag } from "#vue/primitives/LayerTree/useLayerDrag";
 
 const { indentPerLevel = 16 } = defineProps<{
@@ -31,31 +38,68 @@ const { draggingId, instruction, instructionTargetId, setupItem } = useLayerDrag
   expandNode,
 );
 
-function buildTree(parentId: string): LayerNode[] {
-  const parent = editor.graph.getNode(parentId);
-  if (!parent) return [];
-  return parent.childIds
-    .map((cid) => editor.graph.getNode(cid))
-    .filter((n): n is NonNullable<typeof n> => !!n)
-    .map((node) => ({
-      id: node.id,
-      name: node.name,
-      type: node.type,
-      layoutMode: node.layoutMode,
-      visible: node.visible,
-      locked: node.locked,
-      children: node.childIds.length > 0 ? buildTree(node.id) : undefined,
-    }));
-}
-
-const items = ref(buildTree(editor.state.currentPageId));
-const treeKey = ref(0);
+const initialModel = buildLayerTreeModel(editor.graph, editor.state.currentPageId);
+const items = ref(initialModel.items);
+const treeVersion = ref(0);
 const expanded = ref<string[]>([]);
 const selectedIds = computed(() => editor.state.selectedIds);
+let nodesById = indexLayerNodes(items.value);
+let rebuildPending = false;
+let rebuildToken = 0;
 
-watch([() => editor.state.sceneVersion, () => editor.state.currentPageId], () => {
-  items.value = buildTree(editor.state.currentPageId);
-  treeKey.value++;
+function rebuildTree() {
+  rebuildPending = false;
+  rebuildToken++;
+  const model = buildLayerTreeModel(editor.graph, editor.state.currentPageId);
+  items.value = model.items;
+  nodesById = indexLayerNodes(items.value);
+  expanded.value = retainLayerExpansion(expanded.value, nodesById);
+  treeVersion.value++;
+}
+
+function scheduleTreeRebuild() {
+  if (rebuildPending) return;
+  rebuildPending = true;
+  const token = ++rebuildToken;
+  queueMicrotask(() => {
+    if (rebuildPending && token === rebuildToken) rebuildTree();
+  });
+}
+
+const PATCHABLE_NODE_KEYS = new Set<keyof SceneNode>([
+  "name",
+  "type",
+  "layoutMode",
+  "visible",
+  "locked",
+]);
+
+function patchTreeNode(id: string, changes: Partial<SceneNode>) {
+  if ("childIds" in changes || "parentId" in changes) {
+    scheduleTreeRebuild();
+    return;
+  }
+  if (!(Object.keys(changes) as (keyof SceneNode)[]).some((key) => PATCHABLE_NODE_KEYS.has(key))) {
+    return;
+  }
+
+  const target = nodesById.get(id);
+  const source = editor.graph.getNode(id);
+  if (target && source) patchLayerNode(target, source);
+}
+
+const unsubscribe = [
+  editor.onEditorEvent("graph:replaced", rebuildTree),
+  editor.onEditorEvent("page:changed", rebuildTree),
+  editor.onEditorEvent("node:created", scheduleTreeRebuild),
+  editor.onEditorEvent("node:deleted", scheduleTreeRebuild),
+  editor.onEditorEvent("node:reparented", scheduleTreeRebuild),
+  editor.onEditorEvent("node:reordered", scheduleTreeRebuild),
+  editor.onEditorEvent("node:updated", patchTreeNode),
+];
+
+onScopeDispose(() => {
+  for (const stop of unsubscribe) stop();
 });
 
 const rowRefs = new Map<string, HTMLElement>();
@@ -133,7 +177,7 @@ provideLayerTree({
   editor,
   items,
   expanded,
-  treeKey,
+  treeVersion,
   selectedIds,
   indentPerLevel,
   draggingId,
@@ -160,11 +204,10 @@ provideLayerTree({
 
 <template>
   <TreeRoot
-    :key="treeKey"
     v-slot="{ flattenItems }"
+    v-model:expanded="expanded"
     as="div"
     class="flex min-h-0 flex-1 flex-col overflow-hidden"
-    :expanded="expanded"
     :items="items"
     :get-key="getKey"
     :get-children="getChildren"
@@ -173,7 +216,7 @@ provideLayerTree({
       :items="items"
       :flatten-items="flattenItems"
       :expanded="expanded"
-      :tree-key="treeKey"
+      :tree-version="treeVersion"
       :selected-ids="selectedIds"
       :dragging-id="draggingId"
       :instruction="instruction"
