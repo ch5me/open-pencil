@@ -8,6 +8,7 @@ export {
   type PsdChannelMetadata,
   type PsdCorpusCase,
   type PsdCorpusManifest,
+  type PsdCorpusSource,
   type PsdColorMode,
   type PsdBitDepth,
   type PsdHeader,
@@ -35,6 +36,7 @@ export {
   stagePsdImport,
   stagePsbExport,
   stagePsbImport,
+  PSD_CAPABILITY_WARNING_CONTRACT,
 } from "./staged";
 export {
   rasterizePsdLayers,

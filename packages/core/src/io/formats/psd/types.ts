@@ -30,6 +30,13 @@ export type PsdCapabilityCode =
 export type PsdExternalApplication = "photoshop" | "affinity" | "krita" | "photopea";
 export type PsdRoundTripStatus = "UNKNOWN" | "PASS" | "FAIL";
 
+export interface PsdCorpusSource {
+  readonly kind: "external";
+  readonly repository: string;
+  readonly ref: string;
+  readonly license: string;
+}
+
 export interface PsdExternalSource {
   readonly application: PsdExternalApplication;
   readonly build: string;
@@ -68,6 +75,7 @@ export interface PsdCorpusCase {
 
 export interface PsdCorpusManifest {
   readonly version: "psd-corpus-v1";
+  readonly source: PsdCorpusSource;
   readonly externalSources: readonly PsdExternalSource[];
   readonly cases: readonly PsdCorpusCase[];
   readonly warningCoverage: 1;

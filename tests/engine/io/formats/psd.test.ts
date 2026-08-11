@@ -9,6 +9,9 @@ import {
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdCorpusCase,
+  type PsdCorpusSource,
+  type PsdExternalSource,
+  PSD_CAPABILITY_WARNING_CONTRACT,
   parsePsdHeader,
   rasterizePsdLayers,
   readPsdFile,
@@ -21,6 +24,8 @@ import externalCorpus from "#tests/fixtures/psd-corpus-v1/manifest.json";
 import { expectDefined } from "#tests/helpers/assert";
 
 const externalCorpusCases = externalCorpus.cases as readonly PsdCorpusCase[];
+const externalCorpusSource = externalCorpus.source as PsdCorpusSource;
+const externalCorpusSources = externalCorpus.externalSources as readonly PsdExternalSource[];
 
 function stagedPsdWithMetadata(metadata: unknown): Uint8Array {
   const header = stagePsdExport({ width: 1, height: 1, layers: [] }).slice(0, 26);
@@ -248,7 +253,11 @@ test("deterministically round-trips typed metadata without mutating caller data"
   expect(layer).toEqual(before);
   expect(stagePsdImport(first).layers).toEqual([layer]);
   expect(
-    createPsdCorpusManifest(externalCorpusCases).cases.every(
+    createPsdCorpusManifest(
+      externalCorpusCases,
+      externalCorpusSource,
+      externalCorpusSources,
+    ).cases.every(
       (entry) =>
         entry.externalReopen === "UNKNOWN" &&
         entry.semanticRoundTrip === "PASS" &&
@@ -579,25 +588,42 @@ test("rejects compressed expansion and render-buffer budgets", () => {
 
 test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen status", async () => {
   const firstExternalCase = expectDefined(externalCorpusCases[0], "first PSD corpus case");
-  expect(() => createPsdCorpusManifest([])).toThrow("external corpus manifest is empty");
-  expect(() => createPsdCorpusManifest([{ ...firstExternalCase, warning: "" }])).toThrow(
-    "warning coverage is incomplete",
-  );
-  expect(() => createPsdCorpusManifest([{ ...firstExternalCase, sha256: "not-a-digest" }])).toThrow(
-    "lowercase SHA-256 digest",
+  expect(() => createPsdCorpusManifest([], externalCorpusSource)).toThrow(
+    "external corpus manifest is empty",
   );
   expect(() =>
-    createPsdCorpusManifest([
-      {
-        ...firstExternalCase,
-        byteRoundTrip: "PASS",
-        byteRoundTripSha256: "0000000000000000000000000000000000000000000000000000000000000000",
-      },
-      ...externalCorpusCases.slice(1),
-    ]),
+    createPsdCorpusManifest(
+      [{ ...firstExternalCase, warning: "unsupported-bit-depth" }],
+      externalCorpusSource,
+    ),
+  ).toThrow("warning does not match capability");
+  expect(() =>
+    createPsdCorpusManifest([{ ...firstExternalCase, warning: "" }], externalCorpusSource),
+  ).toThrow("warning coverage is incomplete");
+  expect(() =>
+    createPsdCorpusManifest(
+      [{ ...firstExternalCase, sha256: "not-a-digest" }],
+      externalCorpusSource,
+    ),
+  ).toThrow("lowercase SHA-256 digest");
+  expect(() =>
+    createPsdCorpusManifest(externalCorpusCases, { ...externalCorpusSource, ref: "main" }),
+  ).toThrow("external corpus provenance is invalid");
+  expect(() =>
+    createPsdCorpusManifest(
+      [
+        {
+          ...firstExternalCase,
+          byteRoundTrip: "PASS",
+          byteRoundTripSha256: "0000000000000000000000000000000000000000000000000000000000000000",
+        },
+        ...externalCorpusCases.slice(1),
+      ],
+      externalCorpusSource,
+    ),
   ).toThrow("does not match source bytes");
   expect(() =>
-    createPsdCorpusManifest(externalCorpusCases, [
+    createPsdCorpusManifest(externalCorpusCases, externalCorpusSource, [
       {
         application: "photoshop",
         build: "UNKNOWN",
@@ -610,11 +636,17 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
           editability: "PASS",
         },
       },
-      ...externalCorpus.externalSources.slice(1),
+      ...externalCorpusSources.slice(1),
     ]),
   ).toThrow("lacks external reopen provenance");
-  const manifest = createPsdCorpusManifest(externalCorpusCases);
+  const manifest = createPsdCorpusManifest(
+    externalCorpusCases,
+    externalCorpusSource,
+    externalCorpusSources,
+  );
   expect(manifest.version).toBe("psd-corpus-v1");
+  expect(manifest.source).toEqual(externalCorpus.source);
+  expect(Object.keys(PSD_CAPABILITY_WARNING_CONTRACT)).toHaveLength(16);
   expect(externalCorpus.externalSources.map((entry) => entry.application)).toEqual([
     "photoshop",
     "affinity",
@@ -646,20 +678,21 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
     const header = parsePsdHeader(bytes);
     expect(header.width).toBeGreaterThan(0);
     expect(header.height).toBeGreaterThan(0);
+    const generatedLayer = layerMetadata(entry.name, entry.name);
     const generated = stagePsdExport({
       width: header.width,
       height: header.height,
-      layers: [],
+      layers: [generatedLayer],
     });
-    expect(
-      stagePsdImport(generated, {
-        ...DEFAULT_PSD_LIMITS,
-        maxExpansionRatio: Number.MAX_SAFE_INTEGER,
-      }).header,
-    ).toMatchObject({
+    const reopened = stagePsdImport(generated, {
+      ...DEFAULT_PSD_LIMITS,
+      maxExpansionRatio: Number.MAX_SAFE_INTEGER,
+    });
+    expect(reopened.header).toMatchObject({
       width: header.width,
       height: header.height,
     });
+    expect(reopened.layers).toEqual([generatedLayer]);
     expect(entry.selfGeneratedRoundTrip).toBe("PASS");
     expect(createHash("sha256").update(generated).digest("hex")).toBe(
       entry.selfGeneratedRoundTripSha256,
