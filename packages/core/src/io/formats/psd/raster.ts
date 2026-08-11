@@ -263,6 +263,10 @@ function canUseRasterWorker(): boolean {
   return IS_BROWSER && typeof Worker !== "undefined";
 }
 
+function throwIfCancelled(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new PsdCancelledError("PSD rasterization cancelled");
+}
+
 function workerError(response: PsdRasterWorkerResponse): Error {
   if (response.code === "hostile-psd-file") {
     return new PsdHostileFileError(response.error ?? "PSD raster worker rejected input");
@@ -297,6 +301,10 @@ export function rasterizePsdLayersInWorker(
       reject(new PsdCancelledError("PSD rasterization cancelled"));
     };
     signal?.addEventListener("abort", cancel, { once: true });
+    if (signal?.aborted) {
+      cancel();
+      return;
+    }
     worker.onmessage = (event: MessageEvent<PsdRasterWorkerResponse>) => {
       if (settled) return;
       const elapsedMs = performance.now() - startedAt;
@@ -310,6 +318,10 @@ export function rasterizePsdLayersInWorker(
         !Number.isFinite(workerMs)
       ) {
         reject(workerError(response));
+        return;
+      }
+      if (signal?.aborted) {
+        reject(new PsdCancelledError("PSD rasterization cancelled"));
         return;
       }
       resolve({
@@ -347,16 +359,16 @@ export async function rasterizePsdLayersAdaptive(
   input: PsdRasterInput,
   options: { signal?: AbortSignal; onMetrics?: (metrics: PsdRasterMetrics) => void } = {},
 ): Promise<Uint8Array> {
-  if (options.signal?.aborted) {
-    throw new PsdCancelledError("PSD rasterization cancelled");
-  }
+  throwIfCancelled(options.signal);
   if (canUseRasterWorker() && rasterWorkerGate.policy(true).useWorker) {
     const result = await rasterizePsdLayersInWorker(input, options.signal);
+    throwIfCancelled(options.signal);
     options.onMetrics?.(result.metrics);
     return result.pixels;
   }
   const start = performance.now();
   const result = rasterizePsdLayers(input);
+  throwIfCancelled(options.signal);
   const elapsedMs = performance.now() - start;
   rasterWorkerGate.record(elapsedMs);
   options.onMetrics?.({

@@ -1,5 +1,9 @@
-import { BUILTIN_IO_FORMATS, IORegistry } from "@open-pencil/core/io";
-import { IS_BROWSER } from "@open-pencil/core/constants";
+import {
+  BUILTIN_IO_FORMATS,
+  IOCancelledError,
+  IORegistry,
+  throwIfIOCancelled,
+} from "@open-pencil/core/io";
 import { readFigFile } from "@open-pencil/core/io/formats/fig";
 import { computeAllLayouts } from "@open-pencil/core/layout";
 import type { SceneGraph } from "@open-pencil/core/scene-graph";
@@ -9,6 +13,7 @@ import { setOpenPencilStore } from "@/app/browser-bridge";
 import { setActiveEditorStore } from "@/app/editor/active-store";
 import { createEditorStore } from "@/app/editor/session";
 import type { EditorStore } from "@/app/editor/session";
+import { beginFileOpen } from "@/app/tabs/open-controller";
 
 export interface Tab {
   id: string;
@@ -175,34 +180,50 @@ export async function openFileInNewTab(
   file: File,
   handle?: FileSystemFileHandle,
   path?: string,
+  parentSignal?: AbortSignal,
 ): Promise<void> {
+  throwIfIOCancelled(parentSignal);
+  const open = beginFileOpen(parentSignal);
+  const { signal } = open;
   const current = activeTab.value;
   const isUntouched =
     current?.store.state.documentName === "Untitled" && !current.store.undo.canUndo;
   const store = isUntouched ? current.store : createTab().store;
-  if (isDOMImportFile(file)) {
-    await store.openDOMFile(file, { handle, path });
-    return;
-  }
-
   const documentName = file.name.replace(/\.[^.]+$/i, "");
 
-  store.state.documentName = documentName;
   store.state.loading = true;
-  await yieldToUI();
 
   try {
+    await yieldToUI();
+    throwIfIOCancelled(signal);
+    if (isDOMImportFile(file)) {
+      await store.openDOMFile(file, { handle, path, signal });
+      return;
+    }
     const isFig = file.name.toLowerCase().endsWith(".fig");
-    const { graph: imported, sourceFormat } = isFig
-      ? { graph: await readFigFile(file, { populate: "first-page" }), sourceFormat: "fig" }
-      : await io.readDocument({
+    let imported: SceneGraph;
+    let sourceFormat: string;
+    if (isFig) {
+      imported = await readFigFile(file, { populate: "first-page", signal });
+      sourceFormat = "fig";
+    } else {
+      throwIfIOCancelled(signal);
+      const data = new Uint8Array(await file.arrayBuffer());
+      throwIfIOCancelled(signal);
+      ({ graph: imported, sourceFormat } = await io.readDocument(
+        {
           name: file.name,
           mimeType: file.type || undefined,
-          data: new Uint8Array(await file.arrayBuffer()),
-        });
+          data,
+        },
+        { signal },
+      ));
+    }
 
     const firstPageId = imported.getPages()[0]?.id;
     if (firstPageId) computeAllLayouts(imported, firstPageId);
+    throwIfIOCancelled(signal);
+    store.state.documentName = documentName;
     store.replaceGraph(imported);
     store.undo.clear();
     store.setDocumentSource(file.name, sourceFormat, handle, path);
@@ -211,8 +232,11 @@ export async function openFileInNewTab(
     const pageId = store.graph.getPages()[0]?.id ?? store.graph.rootId;
     await store.switchPage(pageId);
     await store.fitCurrentPageToViewport();
+  } catch (error) {
+    if (!(error instanceof IOCancelledError)) throw error;
   } finally {
-    store.state.loading = false;
+    if (open.isCurrent()) store.state.loading = false;
+    open.finish();
   }
 }
 

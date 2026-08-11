@@ -4,6 +4,7 @@ import { readFigFile } from "#core/io/formats/fig/read";
 import { parsePenFile, readPenFile } from "#core/io/formats/pen/read";
 import { IOCancelledError, IOHostileInputError } from "#core/io/limits";
 import { IOInputLimitError, IORegistry } from "#core/io/registry";
+import { SceneGraph } from "#core/scene-graph";
 
 const oversizedFile = (size: number) => {
   let reads = 0;
@@ -60,6 +61,61 @@ test("IORegistry rejects declared input limit before adapter dispatch", async ()
     ),
   ).rejects.toThrow(IOInputLimitError);
   expect(dispatched).toBe(0);
+});
+
+test("IORegistry rejects pre-cancelled reads before adapter dispatch", async () => {
+  const controller = new AbortController();
+  let dispatched = 0;
+  const registry = new IORegistry([
+    {
+      id: "json",
+      label: "JSON",
+      role: "interchange-document",
+      category: "document",
+      extensions: ["json"],
+      mimeTypes: ["application/json"],
+      support: { readDocument: true },
+      async readDocument() {
+        dispatched += 1;
+        return { graph: new SceneGraph(), sourceFormat: "json" };
+      },
+    },
+  ]);
+  controller.abort();
+
+  await expect(
+    registry.readDocument(
+      { name: "input.json", data: new Uint8Array() },
+      { signal: controller.signal },
+    ),
+  ).rejects.toThrow(IOCancelledError);
+  expect(dispatched).toBe(0);
+});
+
+test("IORegistry rejects cancellation after adapter work before publishing its result", async () => {
+  const controller = new AbortController();
+  const registry = new IORegistry([
+    {
+      id: "json",
+      label: "JSON",
+      role: "interchange-document",
+      category: "document",
+      extensions: ["json"],
+      mimeTypes: ["application/json"],
+      support: { readDocument: true },
+      async readDocument() {
+        controller.abort();
+        return { graph: new SceneGraph(), sourceFormat: "json" };
+      },
+    },
+  ]);
+
+  await expect(
+    registry.readDocument(
+      { name: "input.json", data: new Uint8Array() },
+      { signal: controller.signal },
+    ),
+  ).rejects.toThrow(IOCancelledError);
 });
 
 function hostileZip(...decodedSizes: number[]): ArrayBuffer {

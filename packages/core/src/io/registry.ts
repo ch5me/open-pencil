@@ -1,5 +1,6 @@
 import type { SceneGraph } from "#core/scene-graph";
 
+import { throwIfIOCancelled } from "./limits";
 import type { ExportRequest, IOContext, IOFormatAdapter, ReadDocumentInput } from "./types";
 
 export class IOInputLimitError extends Error {
@@ -64,12 +65,15 @@ export class IORegistry {
   }
 
   async readDocument(input: ReadDocumentInput, context?: IOContext) {
+    throwIfIOCancelled(context?.signal);
     assertInputWithinLimit(input.data.byteLength, context?.maxInputBytes);
     const reader = this.findReader(input.name ?? "", input.mimeType);
     if (!reader?.readDocument) {
       throw new Error(`Unsupported document format: ${input.name ?? "unknown"}`);
     }
-    return reader.readDocument(input, context);
+    const result = await reader.readDocument(input, context);
+    throwIfIOCancelled(context?.signal);
+    return result;
   }
 
   async writeDocument(formatId: string, graph: SceneGraph, options?: unknown, context?: IOContext) {

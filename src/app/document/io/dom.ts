@@ -1,4 +1,5 @@
 import type { Editor, EditorState } from "@open-pencil/core/editor";
+import { IOCancelledError, throwIfIOCancelled } from "@open-pencil/core/io";
 import { browserHTMLToSceneGraph } from "@open-pencil/dom-css/browser";
 
 import { yieldToUI } from "@/app/document/io/browser";
@@ -26,11 +27,13 @@ type DOMImportOptions = {
   cssText?: string;
   handle?: FileSystemFileHandle;
   path?: string;
+  signal?: AbortSignal;
 };
 
 type DOMTextImportOptions = {
   cssText?: string;
   documentName?: string;
+  signal?: AbortSignal;
 };
 
 function documentNameFor(file: File): string {
@@ -44,11 +47,16 @@ export function createDOMOpenActions({
   fitCurrentPageToViewport,
 }: OpenDOMFileOptions) {
   async function applyDOMText(html: string, options: DOMTextImportOptions) {
+    throwIfIOCancelled(options.signal);
     await yieldToUI();
+    throwIfIOCancelled(options.signal);
     const pageName = options.documentName ?? "DOM Import";
     const graph = await browserHTMLToSceneGraph(html, { cssText: options.cssText, pageName });
+    throwIfIOCancelled(options.signal);
     await yieldToUI();
+    throwIfIOCancelled(options.signal);
     await applyImportedDocument(editor, graph);
+    throwIfIOCancelled(options.signal);
     state.documentName = pageName;
     await fitCurrentPageToViewport();
     editor.requestRender();
@@ -72,18 +80,17 @@ export function createDOMOpenActions({
 
   async function openDOMFile(file: File, options: DOMImportOptions = {}) {
     try {
-      state.loading = true;
       const html = await file.text();
       await applyDOMText(html, {
         cssText: options.cssText,
         documentName: documentNameFor(file),
+        signal: options.signal,
       });
       setDocumentSource(file.name, "html", options.handle, options.path);
     } catch (e) {
+      if (e instanceof IOCancelledError) throw e;
       console.error("Failed to open DOM/CSS file:", e);
       toast.error(`Failed to open DOM/CSS file: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      state.loading = false;
     }
   }
 

@@ -65,3 +65,11 @@ test("PSD worker rejects pre-cancelled work with the PSD cancellation type", asy
     rasterizePsdLayersInWorker(rasterInput(100), controller.signal),
   ).rejects.toBeInstanceOf(PsdCancelledError);
 });
+
+test("PSD worker terminates work cancelled after dispatch", async () => {
+  const controller = new AbortController();
+  const result = rasterizePsdLayersInWorker(rasterInput(512), controller.signal);
+  controller.abort();
+
+  await expect(result).rejects.toBeInstanceOf(PsdCancelledError);
+});
