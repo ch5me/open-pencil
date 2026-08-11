@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 
 import type { SceneNode } from "@open-pencil/core";
 import { createEditor } from "@open-pencil/core/editor";
 
 import { createRect, firstPageId, makeSceneGraph } from "#tests/helpers/scene";
+import type { LayerTreeContext } from "#vue/primitives/LayerTree/context";
 import {
   buildLayerTreeModel,
   createLayerTreeRebuildScheduler,
@@ -14,6 +16,20 @@ import {
 } from "#vue/primitives/LayerTree/model";
 
 describe("layer tree model", () => {
+  test("keeps treeKey context and tree-key slot compatibility aliases", () => {
+    const aliasTypeMatches: LayerTreeContext["treeKey"] extends LayerTreeContext["treeVersion"]
+      ? true
+      : false = true;
+    const rootSource = readFileSync(
+      "packages/vue/src/primitives/LayerTree/LayerTreeRoot.vue",
+      "utf8",
+    );
+
+    expect(aliasTypeMatches).toBe(true);
+    expect(rootSource).toContain("treeKey: treeVersion");
+    expect(rootSource).toContain(':tree-key="treeVersion"');
+  });
+
   test("builds indexed nested items in scene order", () => {
     const graph = makeSceneGraph();
     const pageId = firstPageId(graph);

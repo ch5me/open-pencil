@@ -181,6 +181,7 @@ provideLayerTree({
   editor,
   items,
   expanded,
+  treeKey: treeVersion,
   treeVersion,
   selectedIds,
   indentPerLevel,
@@ -220,6 +221,7 @@ provideLayerTree({
       :items="items"
       :flatten-items="flattenItems"
       :expanded="expanded"
+      :tree-key="treeVersion"
       :tree-version="treeVersion"
       :selected-ids="selectedIds"
       :dragging-id="draggingId"

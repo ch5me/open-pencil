@@ -25,13 +25,15 @@ test("layer tree meets the named consuming performance contract", async ({
   browserName,
 }, testInfo) => {
   test.skip(!PROFILE, "Set OPENPENCIL_PERF_PROFILE=D1 or M1 on a named host.");
-  expect(["D1", "M1"]).toContain(PROFILE);
+  if (PROFILE !== "D1" && PROFILE !== "M1") {
+    throw new Error(`Invalid OPENPENCIL_PERF_PROFILE: ${PROFILE}`);
+  }
   expect(EXPECTED_COMMIT, "Set OPENPENCIL_PERF_COMMIT to the exact tested HEAD.").toMatch(
     /^[0-9a-f]{40}$/,
   );
   test.setTimeout(90_000);
 
-  const profile = PROFILE as keyof typeof PROFILE_HOSTS;
+  const profile = PROFILE;
   expect(
     PROFILE_HOSTS[profile].length,
     profile === "M1"
@@ -173,7 +175,7 @@ test("layer tree meets the named consuming performance contract", async ({
       const renderer = store?.renderer;
       if (!store || !renderer) throw new Error("OpenPencil renderer not initialized");
       const pageNode = store.graph.getNode(store.state.currentPageId);
-      if (!pageNode || pageNode.childIds.length !== 512) {
+      if (pageNode?.childIds.length !== 512) {
         throw new Error(`Expected 512 editable layers, got ${pageNode?.childIds.length ?? 0}`);
       }
 
