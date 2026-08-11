@@ -1,3 +1,5 @@
+/* oxlint-disable max-lines */
+
 import { expect, test } from "bun:test";
 
 import {
@@ -407,6 +409,117 @@ test("persistence-v1 rejects non-JSON whole-record representations before serial
     await expect(
       new AtomicWorkingDocumentPersistence().save(invalidRecord, []),
     ).rejects.toBeInstanceOf(PersistenceContractError);
+  }
+});
+
+test("public editor recovery rejects hostile record array shapes with typed errors", () => {
+  const base = record(PRIOR_ROOT, 1, {});
+  const sparse = [base];
+  sparse.length = 2;
+  const extraKey = [base];
+  Reflect.set(extraKey, "extra", base);
+  const accessorRecord = { ...base };
+  Object.defineProperty(accessorRecord, "documentId", {
+    enumerable: true,
+    get: () => {
+      throw new TypeError("record getter executed");
+    },
+  });
+  const hostileArrays: readonly unknown[] = [
+    null,
+    1,
+    {},
+    sparse,
+    extraKey,
+    [null],
+    [undefined],
+    [1],
+    [{ ...base, extra: true }],
+    [accessorRecord],
+  ];
+
+  for (const hostile of hostileArrays) {
+    expect(() =>
+      Reflect.apply(recoverWorkingDocument, undefined, [
+        hostile,
+        base.documentId,
+        acknowledgement(base),
+      ]),
+    ).toThrow(PersistenceContractError);
+  }
+});
+
+test("public editor save and migration reject hostile asset array shapes with typed errors", async () => {
+  const detachedDocument = await detached(PRIOR_ROOT, 1);
+  const asset = detachedDocument.assets[0];
+  const sparse = [asset];
+  sparse.length = 2;
+  const extraArrayKey = [asset];
+  Reflect.set(extraArrayKey, "extra", asset);
+  const accessorAsset = { ...asset };
+  Object.defineProperty(accessorAsset, "bytes", {
+    enumerable: true,
+    get: () => {
+      throw new TypeError("asset getter executed");
+    },
+  });
+  const hostileArrays: readonly unknown[] = [
+    null,
+    1,
+    {},
+    sparse,
+    extraArrayKey,
+    [null],
+    [undefined],
+    [1],
+    [{ reference: asset.reference }],
+    [{ ...asset, extra: true }],
+    [accessorAsset],
+  ];
+
+  for (const hostile of hostileArrays) {
+    const store = new AtomicWorkingDocumentPersistence();
+    await expect(
+      Reflect.apply(store.save.bind(store), undefined, [detachedDocument.record, hostile]),
+    ).rejects.toBeInstanceOf(PersistenceContractError);
+    await expect(
+      Reflect.apply(migrateWorkingDocumentRecord, undefined, [detachedDocument.record, hostile]),
+    ).rejects.toBeInstanceOf(PersistenceContractError);
+  }
+  const store = new AtomicWorkingDocumentPersistence();
+  await expect(
+    Reflect.apply(store.save.bind(store), undefined, [detachedDocument.record, undefined]),
+  ).rejects.toBeInstanceOf(PersistenceContractError);
+  await expect(
+    Reflect.apply(migrateWorkingDocumentRecord, undefined, [detachedDocument.record, undefined]),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+});
+
+test("public editor save and migration reject corrupt exact-shape asset fields without TypeError", async () => {
+  const detachedDocument = await detached(PRIOR_ROOT, 1);
+  const asset = detachedDocument.assets[0];
+  const accessorReference = { ...asset.reference };
+  Object.defineProperty(accessorReference, "revisionId", {
+    enumerable: true,
+    get: () => {
+      throw new TypeError("reference getter executed");
+    },
+  });
+  const corruptAssets: readonly unknown[] = [
+    [{ reference: null, bytes: asset.bytes }],
+    [{ reference: asset.reference, bytes: null }],
+    [{ reference: { ...asset.reference, extra: true }, bytes: asset.bytes }],
+    [{ reference: accessorReference, bytes: asset.bytes }],
+  ];
+
+  for (const corrupt of corruptAssets) {
+    const store = new AtomicWorkingDocumentPersistence();
+    await expect(
+      Reflect.apply(store.save.bind(store), undefined, [detachedDocument.record, corrupt]),
+    ).rejects.toBeInstanceOf(PersistenceMigrationError);
+    await expect(
+      Reflect.apply(migrateWorkingDocumentRecord, undefined, [detachedDocument.record, corrupt]),
+    ).rejects.toBeInstanceOf(PersistenceMigrationError);
   }
 });
 

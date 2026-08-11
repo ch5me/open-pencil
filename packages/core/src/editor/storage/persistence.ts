@@ -137,6 +137,14 @@ const WORKING_DOCUMENT_RECORD_KEYS = new Set([
   "updatedAt",
 ]);
 const WORKING_DOCUMENT_VIEWPORT_KEYS = new Set(["panX", "panY", "zoom"]);
+const DETACHED_BINARY_ASSET_KEYS = new Set(["reference", "bytes"]);
+const DETACHED_BINARY_ASSET_REFERENCE_KEYS = new Set([
+  "kind",
+  "assetId",
+  "revisionId",
+  "mimeType",
+  "byteLength",
+]);
 
 function assertFinite(value: number, label: string): void {
   if (!Number.isFinite(value)) throw new PersistenceContractError(`${label} must be finite`);
@@ -153,6 +161,48 @@ function hasExactKeys(record: Record<string, unknown>, keys: ReadonlySet<string>
   return (
     ownKeys.length === keys.size && ownKeys.every((key) => typeof key === "string" && keys.has(key))
   );
+}
+
+function hasExactDataProperties(
+  record: Record<string, unknown>,
+  keys: ReadonlySet<string>,
+): boolean {
+  return (
+    hasExactKeys(record, keys) &&
+    [...keys].every((key) => {
+      const descriptor = Object.getOwnPropertyDescriptor(record, key);
+      return descriptor?.enumerable === true && "value" in descriptor;
+    })
+  );
+}
+
+function assertDensePlainRecordArray(
+  value: unknown,
+  elementKeys: ReadonlySet<string>,
+  label: string,
+): asserts value is readonly Record<string, unknown>[] {
+  if (
+    !Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Array.prototype ||
+    Reflect.ownKeys(value).some(
+      (key) =>
+        key !== "length" &&
+        (typeof key !== "string" || !/^(0|[1-9]\d*)$/u.test(key) || Number(key) >= value.length),
+    )
+  ) {
+    throw new PersistenceContractError(`${label} must be a dense array`);
+  }
+  for (let index = 0; index < value.length; index++) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, index);
+    if (
+      !descriptor?.enumerable ||
+      !("value" in descriptor) ||
+      !isPlainRecord(descriptor.value) ||
+      !hasExactDataProperties(descriptor.value, elementKeys)
+    ) {
+      throw new PersistenceContractError(`${label} must contain exact plain-object elements`);
+    }
+  }
 }
 
 function isDetachedReference(value: unknown): value is DetachedBinaryAssetReference {
@@ -284,6 +334,7 @@ function assertDetachedReference(
 ): asserts reference is DetachedBinaryAssetReference {
   if (
     !isPlainRecord(reference) ||
+    !hasExactDataProperties(reference, DETACHED_BINARY_ASSET_REFERENCE_KEYS) ||
     reference.kind !== "detached-binary-asset-v1" ||
     typeof reference.assetId !== "string" ||
     !/^asset:[0-9a-f]{64}$/u.test(reference.assetId) ||
@@ -293,8 +344,7 @@ function assertDetachedReference(
     reference.mimeType !== "image/png" ||
     typeof reference.byteLength !== "number" ||
     !Number.isSafeInteger(reference.byteLength) ||
-    reference.byteLength < PNG_SIGNATURE.length ||
-    Reflect.ownKeys(reference).length !== 5
+    reference.byteLength < PNG_SIGNATURE.length
   ) {
     throw new PersistenceMigrationError("invalid detached binary asset reference");
   }
@@ -462,6 +512,7 @@ export function validateDetachedWorkingDocument(
   assets: readonly DetachedBinaryAsset[],
 ): void {
   validateWorkingDocumentRecord(record);
+  assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
   if (containsPngDataUrl(record.payload)) {
     throw new PersistenceMigrationError("working document contains an embedded PNG data URL");
   }
@@ -470,6 +521,7 @@ export function validateDetachedWorkingDocument(
   for (const asset of assets) {
     assertDetachedReference(asset.reference);
     if (
+      !(asset.bytes instanceof Uint8Array) ||
       asset.bytes.byteLength !== asset.reference.byteLength ||
       PNG_SIGNATURE.some((byte, index) => asset.bytes[index] !== byte)
     ) {
@@ -730,6 +782,8 @@ export function recoverWorkingDocument(
   documentId: string,
   acknowledgedIdentity: AcknowledgedWorkingDocumentIdentity,
 ): WorkingDocumentRecord | undefined {
+  assertDensePlainRecordArray(records, WORKING_DOCUMENT_RECORD_KEYS, "working document records");
+  records.forEach(validateWorkingDocumentRecord);
   assertAcknowledgementIdentity(documentId, acknowledgedIdentity);
   const candidates = records.filter(
     (record) =>
@@ -738,7 +792,6 @@ export function recoverWorkingDocument(
       record.contentSequence === acknowledgedIdentity.contentSequence &&
       record.contentRootHash === acknowledgedIdentity.contentRootHash,
   );
-  candidates.forEach(validateWorkingDocumentRecord);
   if (candidates.some(({ payload }) => containsPngDataUrl(payload))) {
     throw new PersistenceMigrationError(
       "record-only recovery cannot recover embedded PNG data URLs",
