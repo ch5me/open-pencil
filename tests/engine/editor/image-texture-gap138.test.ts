@@ -13,7 +13,8 @@ import {
   createImageQaRegressionContract,
   validateImageQaRegressionContract,
 } from "#core/editor/image-qa";
-import type { SceneGraph, SceneNode } from "#core/scene-graph";
+import { SceneGraph, type SceneNode } from "#core/scene-graph";
+import { createDefaultNode } from "#core/scene-graph/node-defaults";
 
 const TEST_IDENTITY =
   "PROOF-GAP-138 catches unchanged, selective, and restored texture upload regressions";
@@ -24,17 +25,9 @@ const SOURCE_REVISION_2 = "sha256:source-2";
 const MASK_REVISION = "sha256:mask-1";
 
 function imageNode(id: string, assetId: string, isMask = false): SceneNode {
-  // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-  return {
-    id,
-    type: "IMAGE",
+  return createDefaultNode(() => id, "RECTANGLE", {
     parentId: "group",
-    childIds: [],
-    visible: true,
-    opacity: 1,
     blendMode: "NORMAL",
-    clipsContent: false,
-    rotation: 0,
     isMask,
     maskType: "ALPHA",
     fills: [
@@ -46,33 +39,24 @@ function imageNode(id: string, assetId: string, isMask = false): SceneNode {
         imageHash: assetId,
       },
     ],
-    // Fixture models only the composition resolver surface.
-  } as unknown as SceneNode;
+  });
 }
 
 function texturePlan(): ReturnType<typeof createCompositionPlan> {
   const source = imageNode("source", SOURCE_ASSET);
   const mask = imageNode("mask", MASK_ASSET, true);
-  const group = {
-    ...imageNode("group", "asset:unused"),
-    type: "GROUP",
+  const group = createDefaultNode(() => "group", "GROUP", {
     parentId: null,
     childIds: [source.id, mask.id],
     fills: [],
-  };
-  const nodes = new Map([
-    [group.id, group],
-    [source.id, source],
-    [mask.id, mask],
-  ]);
-  return createCompositionPlan(
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-    {
-      rootId: group.id,
-      getNode: (id: string) => nodes.get(id),
-    } as unknown as SceneGraph,
-    group.id,
-  );
+  });
+  const graph = new SceneGraph();
+  graph.nodes.clear();
+  graph.rootId = group.id;
+  graph.nodes.set(group.id, group);
+  graph.nodes.set(source.id, source);
+  graph.nodes.set(mask.id, mask);
+  return createCompositionPlan(graph, group.id);
 }
 
 function textureResolver() {
