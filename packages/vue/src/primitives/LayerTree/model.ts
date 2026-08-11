@@ -73,18 +73,18 @@ export function isNodeWithinComponent(graph: SceneGraph, nodeId: string | null):
 
 export function createLayerTreeRebuildScheduler(rebuild: () => void) {
   let pending = false;
+  let pendingAfterComponentSync = false;
   let generation = 0;
   let disposed = false;
 
   function flush(expectedGeneration: number) {
     if (disposed || !pending || generation !== expectedGeneration) return;
     pending = false;
+    pendingAfterComponentSync = false;
     rebuild();
   }
 
-  function schedule(afterComponentSync = false) {
-    if (disposed || pending) return;
-    pending = true;
+  function enqueue(afterComponentSync: boolean) {
     const expectedGeneration = ++generation;
     if (afterComponentSync) {
       queueMicrotask(() => queueMicrotask(() => flush(expectedGeneration)));
@@ -93,8 +93,23 @@ export function createLayerTreeRebuildScheduler(rebuild: () => void) {
     }
   }
 
+  function schedule(afterComponentSync = false) {
+    if (disposed) return;
+    if (pending) {
+      if (afterComponentSync && !pendingAfterComponentSync) {
+        pendingAfterComponentSync = true;
+        enqueue(true);
+      }
+      return;
+    }
+    pending = true;
+    pendingAfterComponentSync = afterComponentSync;
+    enqueue(afterComponentSync);
+  }
+
   function cancel() {
     pending = false;
+    pendingAfterComponentSync = false;
     generation++;
   }
 

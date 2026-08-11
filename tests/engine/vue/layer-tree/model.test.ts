@@ -145,4 +145,23 @@ describe("layer tree model", () => {
     await Promise.resolve();
     expect(rebuilds).toBe(1);
   });
+
+  test("upgrades a pending immediate rebuild to run after component synchronization", async () => {
+    let componentSynced = false;
+    const observedSyncState: boolean[] = [];
+    const scheduler = createLayerTreeRebuildScheduler(() => {
+      observedSyncState.push(componentSynced);
+    });
+
+    scheduler.schedule(false);
+    scheduler.schedule(true);
+    queueMicrotask(() => {
+      componentSynced = true;
+    });
+
+    await Promise.resolve();
+    expect(observedSyncState).toEqual([]);
+    await Promise.resolve();
+    expect(observedSyncState).toEqual([true]);
+  });
 });
