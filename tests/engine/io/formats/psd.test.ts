@@ -583,9 +583,9 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
   expect(() => createPsdCorpusManifest([{ ...firstExternalCase, warning: "" }])).toThrow(
     "warning coverage is incomplete",
   );
-  expect(() =>
-    createPsdCorpusManifest([{ ...firstExternalCase, sha256: "not-a-digest" }]),
-  ).toThrow("lowercase SHA-256 digest");
+  expect(() => createPsdCorpusManifest([{ ...firstExternalCase, sha256: "not-a-digest" }])).toThrow(
+    "lowercase SHA-256 digest",
+  );
   expect(() =>
     createPsdCorpusManifest([
       {
