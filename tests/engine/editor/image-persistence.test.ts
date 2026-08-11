@@ -83,6 +83,66 @@ function pngDataUrl(bytes: Uint8Array): string {
   return `data:image/png;base64,${bytes.toBase64()}`;
 }
 
+function pngUint32(bytes: Uint8Array, offset: number): number {
+  return (
+    ((bytes[offset] ?? 0) * 0x1000000 +
+      (bytes[offset + 1] ?? 0) * 0x10000 +
+      (bytes[offset + 2] ?? 0) * 0x100 +
+      (bytes[offset + 3] ?? 0)) >>>
+    0
+  );
+}
+
+function pngCrc32(bytes: Uint8Array, start: number, end: number): number {
+  let crc = 0xffffffff;
+  for (let index = start; index < end; index++) {
+    crc ^= bytes[index] ?? 0;
+    for (let bit = 0; bit < 8; bit++) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type: string, data = new Uint8Array()): Uint8Array {
+  const chunk = new Uint8Array(12 + data.byteLength);
+  const view = new DataView(chunk.buffer);
+  view.setUint32(0, data.byteLength);
+  chunk.set(
+    Uint8Array.from(type, (character) => character.charCodeAt(0)),
+    4,
+  );
+  chunk.set(data, 8);
+  view.setUint32(8 + data.byteLength, pngCrc32(chunk, 4, 8 + data.byteLength));
+  return chunk;
+}
+
+function pngChunks(bytes: Uint8Array): Map<string, Uint8Array> {
+  const chunks = new Map<string, Uint8Array>();
+  let offset = 8;
+  while (offset < bytes.byteLength) {
+    const end = offset + 12 + pngUint32(bytes, offset);
+    const type = String.fromCharCode(...bytes.subarray(offset + 4, offset + 8));
+    chunks.set(type, bytes.slice(offset, end));
+    offset = end;
+  }
+  return chunks;
+}
+
+function pngFromChunks(...chunks: Uint8Array[]): Uint8Array {
+  const signature = pngBytes().slice(0, 8);
+  const result = new Uint8Array(
+    signature.byteLength + chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
+  );
+  result.set(signature);
+  let offset = signature.byteLength;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
+}
+
 test("persistence-v1 detaches and deduplicates PNG bytes outside JSON", async () => {
   const result = await detachPngDataUrls(
     record(NEXT_ROOT, 2, {
@@ -261,20 +321,37 @@ test("persistence-v1 quota and migration failures preserve the acknowledged root
 
 test("public editor persistence rejects structurally corrupt PNGs before save or recovery", async () => {
   const valid = pngBytes();
+  const chunks = pngChunks(valid);
+  const ihdr = chunks.get("IHDR") ?? new Uint8Array();
+  const idat = chunks.get("IDAT") ?? new Uint8Array();
+  const iend = chunks.get("IEND") ?? new Uint8Array();
   const signatureOnly = valid.slice(0, 8);
-  const nonIhdrFirst = valid.slice();
-  nonIhdrFirst.set([0x49, 0x44, 0x41, 0x54], 12);
-  const invalidIhdrLength = valid.slice();
-  invalidIhdrLength[11] = 12;
+  const nonIhdrFirst = pngFromChunks(pngChunk("IDAT", ihdr.slice(8, 21)), idat, iend);
+  const invalidIhdrLength = pngFromChunks(pngChunk("IHDR", ihdr.slice(8, 20)), idat, iend);
   const oversizedChunk = valid.slice();
   oversizedChunk.set([0xff, 0xff, 0xff, 0xff], 8);
   const trailingAfterIend = Uint8Array.from([...valid, 0]);
+  const missingIdat = pngFromChunks(ihdr, pngChunk("tEXt", new Uint8Array(1)), iend);
+  const badCrc = valid.slice();
+  badCrc[badCrc.byteLength - 1] = (badCrc.at(-1) ?? 0) ^ 1;
+  const duplicateIhdr = pngFromChunks(ihdr, ihdr, idat, iend);
+  const nonconsecutiveIdat = pngFromChunks(ihdr, idat, pngChunk("tEXt"), idat, iend);
+  const invalidChunkType = pngFromChunks(ihdr, pngChunk("text"), idat, iend);
+  const invalidIhdrFields = valid.slice();
+  invalidIhdrFields.set([0, 0, 0, 0], 16);
+  new DataView(invalidIhdrFields.buffer).setUint32(29, pngCrc32(invalidIhdrFields, 12, 29));
   const corruptPngs = [
     signatureOnly,
     nonIhdrFirst,
     invalidIhdrLength,
     oversizedChunk,
     trailingAfterIend,
+    missingIdat,
+    badCrc,
+    duplicateIhdr,
+    nonconsecutiveIdat,
+    invalidChunkType,
+    invalidIhdrFields,
   ];
 
   const prior = await detached(PRIOR_ROOT, 1);

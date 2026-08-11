@@ -146,7 +146,18 @@ const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
 const PNG_IHDR_LENGTH = 13;
 const PNG_CHUNK_OVERHEAD = 12;
 const PNG_MIN_BYTE_LENGTH =
-  PNG_SIGNATURE.length + PNG_CHUNK_OVERHEAD + PNG_IHDR_LENGTH + PNG_CHUNK_OVERHEAD;
+  PNG_SIGNATURE.length +
+  PNG_CHUNK_OVERHEAD +
+  PNG_IHDR_LENGTH +
+  PNG_CHUNK_OVERHEAD +
+  PNG_CHUNK_OVERHEAD;
+const PNG_CRC_TABLE = Uint32Array.from({ length: 256 }, (_, value) => {
+  let crc = value;
+  for (let bit = 0; bit < 8; bit++) {
+    crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return crc >>> 0;
+});
 const PERSISTENCE_STATE_VALUES: ReadonlySet<string> = new Set([
   "SUPPORTED",
   "UNKNOWN",
@@ -336,7 +347,7 @@ function pngChunkType(bytes: Uint8Array, offset: number): string {
   );
 }
 
-function pngChunkLength(bytes: Uint8Array, offset: number): number {
+function readPngUint32(bytes: Uint8Array, offset: number): number {
   return (
     ((bytes[offset] ?? 0) * 0x1000000 +
       (bytes[offset + 1] ?? 0) * 0x10000 +
@@ -344,6 +355,107 @@ function pngChunkLength(bytes: Uint8Array, offset: number): number {
       (bytes[offset + 3] ?? 0)) >>>
     0
   );
+}
+
+function pngCrc32(bytes: Uint8Array, start: number, end: number): number {
+  let crc = 0xffffffff;
+  for (let index = start; index < end; index++) {
+    crc = (PNG_CRC_TABLE[(crc ^ (bytes[index] ?? 0)) & 0xff] ?? 0) ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function assertPngChunkType(bytes: Uint8Array, offset: number, type: string): void {
+  const typeBytes = bytes.subarray(offset + 4, offset + 8);
+  const isAsciiLetter = (byte: number) =>
+    (byte >= 0x41 && byte <= 0x5a) || (byte >= 0x61 && byte <= 0x7a);
+  if (
+    typeBytes.length !== 4 ||
+    [...typeBytes].some((byte) => !isAsciiLetter(byte)) ||
+    (typeBytes[2] ?? 0) > 0x5a ||
+    ((typeBytes[0] ?? 0) <= 0x5a && !["IHDR", "PLTE", "IDAT", "IEND"].includes(type))
+  ) {
+    throw new PersistenceMigrationError("PNG chunk type is invalid");
+  }
+}
+
+function assertPngIhdr(bytes: Uint8Array, dataOffset: number): number {
+  const width = readPngUint32(bytes, dataOffset);
+  const height = readPngUint32(bytes, dataOffset + 4);
+  const bitDepth = bytes[dataOffset + 8] ?? 0;
+  const colorType = bytes[dataOffset + 9] ?? 0;
+  const validDepths: Readonly<Record<number, readonly number[]>> = {
+    0: [1, 2, 4, 8, 16],
+    2: [8, 16],
+    3: [1, 2, 4, 8],
+    4: [8, 16],
+    6: [8, 16],
+  };
+  if (
+    width === 0 ||
+    width > 0x7fffffff ||
+    height === 0 ||
+    height > 0x7fffffff ||
+    !validDepths[colorType]?.includes(bitDepth) ||
+    bytes[dataOffset + 10] !== 0 ||
+    bytes[dataOffset + 11] !== 0 ||
+    ((bytes[dataOffset + 12] ?? 2) !== 0 && bytes[dataOffset + 12] !== 1)
+  ) {
+    throw new PersistenceMigrationError("PNG IHDR fields are invalid");
+  }
+  return colorType;
+}
+
+interface PngChunkState {
+  colorType: number;
+  sawPlte: boolean;
+  sawIdat: boolean;
+  idatEnded: boolean;
+}
+
+function assertPngPlte(length: number, state: PngChunkState): void {
+  if (
+    state.sawPlte ||
+    state.sawIdat ||
+    state.colorType === 0 ||
+    state.colorType === 4 ||
+    length === 0 ||
+    length > 768 ||
+    length % 3 !== 0
+  ) {
+    throw new PersistenceMigrationError("PNG PLTE chunk is invalid or misordered");
+  }
+  state.sawPlte = true;
+}
+
+function acceptPngChunk(
+  type: string,
+  length: number,
+  chunkEnd: number,
+  byteLength: number,
+  state: PngChunkState,
+): boolean {
+  if (type === "IHDR") throw new PersistenceMigrationError("PNG IHDR chunk is duplicated");
+  if (type === "PLTE") {
+    assertPngPlte(length, state);
+  } else if (type === "IDAT") {
+    if (state.idatEnded) {
+      throw new PersistenceMigrationError("PNG IDAT chunks must be consecutive");
+    }
+    state.sawIdat = true;
+  } else if (state.sawIdat) {
+    state.idatEnded = true;
+  }
+  if (type !== "IEND") return false;
+  if (
+    length !== 0 ||
+    !state.sawIdat ||
+    (state.colorType === 3 && !state.sawPlte) ||
+    chunkEnd !== byteLength
+  ) {
+    throw new PersistenceMigrationError("PNG IEND chunk must be empty and terminal");
+  }
+  return true;
 }
 
 function assertPngStructure(bytes: Uint8Array): void {
@@ -355,29 +467,37 @@ function assertPngStructure(bytes: Uint8Array): void {
   }
 
   let offset: number = PNG_SIGNATURE.length;
-  let firstChunk = true;
+  const state: PngChunkState = {
+    colorType: -1,
+    sawPlte: false,
+    sawIdat: false,
+    idatEnded: false,
+  };
   while (offset < bytes.byteLength) {
     if (bytes.byteLength - offset < PNG_CHUNK_OVERHEAD) {
       throw new PersistenceMigrationError("PNG chunk exceeds byte bounds");
     }
-    const length = pngChunkLength(bytes, offset);
+    const length = readPngUint32(bytes, offset);
     const type = pngChunkType(bytes, offset);
-    const chunkEnd = offset + PNG_CHUNK_OVERHEAD + length;
-    if (
-      !/^[A-Za-z]{4}$/u.test(type) ||
-      chunkEnd < offset ||
-      chunkEnd > bytes.byteLength ||
-      (firstChunk && (type !== "IHDR" || length !== PNG_IHDR_LENGTH))
-    ) {
-      throw new PersistenceMigrationError("PNG chunk structure is invalid");
+    assertPngChunkType(bytes, offset, type);
+    if (length > bytes.byteLength - offset - PNG_CHUNK_OVERHEAD) {
+      throw new PersistenceMigrationError("PNG chunk exceeds byte bounds");
     }
-    if (type === "IEND") {
-      if (length !== 0 || chunkEnd !== bytes.byteLength) {
-        throw new PersistenceMigrationError("PNG IEND chunk must be empty and terminal");
+    const dataOffset = offset + 8;
+    const crcOffset = dataOffset + length;
+    const chunkEnd = crcOffset + 4;
+    if (pngCrc32(bytes, offset + 4, crcOffset) !== readPngUint32(bytes, crcOffset)) {
+      throw new PersistenceMigrationError(`PNG ${type} chunk CRC is invalid`);
+    }
+    if (offset === PNG_SIGNATURE.length) {
+      if (type !== "IHDR" || length !== PNG_IHDR_LENGTH) {
+        throw new PersistenceMigrationError("PNG IHDR must be first and exactly 13 bytes");
       }
-      return;
+      state.colorType = assertPngIhdr(bytes, dataOffset);
+      offset = chunkEnd;
+      continue;
     }
-    firstChunk = false;
+    if (acceptPngChunk(type, length, chunkEnd, bytes.byteLength, state)) return;
     offset = chunkEnd;
   }
   throw new PersistenceMigrationError("PNG bytes are missing a terminal IEND chunk");
