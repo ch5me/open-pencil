@@ -11,6 +11,7 @@ import {
   UnsupportedImageBackendError,
   createRendererResilienceContract,
   type ImageRenderAdapter,
+  type ImageRenderFrame,
   type RendererResilienceContract,
 } from "./types";
 
@@ -238,6 +239,61 @@ export interface ResilienceCycleReport {
   readonly resourceGenerationStart: number;
   readonly resourceGenerationEnd: number;
   readonly contract: RendererResilienceContract;
+}
+
+export interface LongSessionLeakReport {
+  readonly samples: number;
+  readonly baselineTextures: number;
+  readonly peakTextures: number;
+  readonly baselineCommands: number;
+  readonly peakCommands: number;
+  /** Retained frame resources observed above the first sample. */
+  readonly leakedResources: number;
+  readonly silentFailures: number;
+  readonly contract: RendererResilienceContract;
+}
+
+/**
+ * Proves the adapter does not grow its retained frame resource set during a
+ * long render loop. Host heap/VRAM is intentionally outside this pure adapter
+ * proof and remains UNKNOWN until a host-backed harness measures it.
+ */
+export function observeLongSessionLeakGuard(
+  renderOnce: () => ImageRenderFrame,
+  samples: number,
+): LongSessionLeakReport {
+  if (!Number.isInteger(samples) || samples < 1) {
+    throw new RangeError("long-session leak observation requires at least one sample");
+  }
+  const first = renderOnce();
+  const baselineTextures = first.textures.length;
+  const baselineCommands = first.commands.length;
+  let peakTextures = baselineTextures;
+  let peakCommands = baselineCommands;
+  let silentFailures = first.gaps.length;
+
+  for (let sample = 1; sample < samples; sample += 1) {
+    const frame = renderOnce();
+    peakTextures = Math.max(peakTextures, frame.textures.length);
+    peakCommands = Math.max(peakCommands, frame.commands.length);
+    silentFailures += frame.gaps.length;
+  }
+
+  const leakedResources =
+    Math.max(0, peakTextures - baselineTextures) + Math.max(0, peakCommands - baselineCommands);
+  const healthy = silentFailures === 0 && leakedResources === 0;
+  return {
+    samples,
+    baselineTextures,
+    peakTextures,
+    baselineCommands,
+    peakCommands,
+    leakedResources,
+    silentFailures,
+    contract: createRendererResilienceContract({
+      longSessionLeakGuard: healthy ? "SUPPORTED" : "UNSUPPORTED",
+    }),
+  };
 }
 
 /**

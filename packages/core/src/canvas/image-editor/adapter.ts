@@ -101,6 +101,14 @@ export function createImageRenderAdapter(
             });
             continue;
           }
+          if (!(revision.bytes instanceof Uint8Array) || revision.bytes.byteLength === 0) {
+            gaps.push({
+              code: "corrupted-image",
+              message: `image revision is corrupted: ${binding.revisionId}`,
+              assetId,
+            });
+            continue;
+          }
           if (emittedAssets.has(assetId)) continue;
           emittedAssets.add(assetId);
           const dirty =
@@ -118,7 +126,18 @@ export function createImageRenderAdapter(
             const revisionChanged =
               nextUploadedRevisions.get(assetId) !== binding.revisionId;
             const dirtyRect = nextDirtyRects.get(assetId);
-            const tilePlan = createTextureTilePlan(revision.metadata, dirtyRect, options);
+            let tilePlan: Pick<ImageTexture, "tilePlan">;
+            try {
+              tilePlan = createTextureTilePlan(revision.metadata, dirtyRect, options);
+            } catch (error) {
+              if (!(error instanceof RangeError)) throw error;
+              gaps.push({
+                code: "corrupted-image",
+                message: `image metadata is corrupted: ${binding.revisionId}`,
+                assetId,
+              });
+              continue;
+            }
             nextUploadedRevisions.set(assetId, binding.revisionId);
             nextDirtyAssets.delete(assetId);
             nextDirtyRects.delete(assetId);
