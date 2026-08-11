@@ -6,10 +6,12 @@ export interface IOInputLimits {
 
 export class IOHostileInputError extends Error {
   readonly code = "io-hostile-input";
+  readonly name = "IOHostileInputError";
 }
 
 export class IOCancelledError extends Error {
   readonly code = "io-import-cancelled";
+  readonly name = "IOCancelledError";
 }
 
 export function throwIfIOCancelled(signal?: AbortSignal): void {

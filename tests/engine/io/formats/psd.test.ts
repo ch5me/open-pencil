@@ -18,6 +18,7 @@ import {
   stagePsbImport,
 } from "#core/io/formats/psd";
 import externalCorpus from "#tests/fixtures/psd-corpus-v1/manifest.json";
+import { expectDefined } from "#tests/helpers/assert";
 
 const externalCorpusCases = externalCorpus.cases as readonly PsdCorpusCase[];
 
@@ -577,17 +578,18 @@ test("rejects compressed expansion and render-buffer budgets", () => {
 });
 
 test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen status", async () => {
+  const firstExternalCase = expectDefined(externalCorpusCases[0], "first PSD corpus case");
   expect(() => createPsdCorpusManifest([])).toThrow("external corpus manifest is empty");
-  expect(() => createPsdCorpusManifest([{ ...externalCorpusCases[0]!, warning: "" }])).toThrow(
+  expect(() => createPsdCorpusManifest([{ ...firstExternalCase, warning: "" }])).toThrow(
     "warning coverage is incomplete",
   );
   expect(() =>
-    createPsdCorpusManifest([{ ...externalCorpusCases[0]!, sha256: "not-a-digest" }]),
+    createPsdCorpusManifest([{ ...firstExternalCase, sha256: "not-a-digest" }]),
   ).toThrow("lowercase SHA-256 digest");
   expect(() =>
     createPsdCorpusManifest([
       {
-        ...externalCorpusCases[0]!,
+        ...firstExternalCase,
         byteRoundTrip: "PASS",
         byteRoundTripSha256: "0000000000000000000000000000000000000000000000000000000000000000",
       },
@@ -680,7 +682,7 @@ test("rejects oversized PSD files before reading payload", async () => {
       reads += 1;
       return new ArrayBuffer(26);
     },
-  } as unknown as File;
+  } as File;
 
   await expect(readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxBytes: 100 })).rejects.toThrow(
     "PSD exceeds byte limit",
@@ -704,7 +706,7 @@ test("rejects decoded dimensions after header read but before payload allocation
       payloadReads += 1;
       return header.buffer;
     },
-  } as unknown as File;
+  } as File;
 
   await expect(readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxWidth: 9 })).rejects.toThrow(
     "PSD dimensions exceed limits",
@@ -741,7 +743,7 @@ test("rejects decoded PSD budgets after header read but before payload allocatio
         payloadReads += 1;
         return header.buffer;
       },
-    } as unknown as File;
+    } as File;
 
     await expect(readPsdFile(file, limits)).rejects.toThrow(message);
     expect(headerReads).toBe(1);
@@ -762,7 +764,7 @@ test("pre-cancelled PSD import reads no header or payload bytes", async () => {
       reads += 1;
       return new ArrayBuffer(26);
     },
-  } as unknown as File;
+  } as File;
   controller.abort();
 
   await expect(readPsdFile(file, DEFAULT_PSD_LIMITS, controller.signal)).rejects.toBeInstanceOf(
@@ -784,7 +786,7 @@ test("cancellation tombstone prevents a post-cancel PSD publish", async () => {
       new Promise<ArrayBuffer>((resolve) => {
         resolvePayload = resolve;
       }),
-  } as unknown as File;
+  } as File;
 
   const importPromise = readPsdFile(file, DEFAULT_PSD_LIMITS, controller.signal);
   await Promise.resolve();
