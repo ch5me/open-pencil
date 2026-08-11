@@ -30,6 +30,27 @@ export {
   type RendererResilienceState,
 } from "./types";
 export {
+  IMAGE_RETRY_POLICY,
+  RetryExhaustedError,
+  RetryPolicyError,
+  createProgressiveOpenPlan,
+  isRetryableImageError,
+  observeContextLossCycles,
+  resolveImageMemoryBudget,
+  retryDelayMs,
+  runWithRetry,
+  validateRetryPolicy,
+  type ImageMemoryBudget,
+  type ProgressiveOpenOptions,
+  type ProgressiveOpenPlan,
+  type ProgressiveOpenStage,
+  type ResilienceCycleReport,
+  type RetryAttemptFailure,
+  type RetryOptions,
+  type RetryPolicy,
+  type RetryReport,
+} from "./resilience";
+export {
   composeRaster,
   composeRasterRGBA8,
   RasterBackendUnavailableError,
