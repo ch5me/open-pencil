@@ -11,6 +11,7 @@ export {
   type ImageTilePlanOptions,
 } from "./tiling";
 export {
+  ImageRenderContextLostError,
   UnsupportedImageBackendError,
   createRendererResilienceContract,
   RendererResilienceContractError,
