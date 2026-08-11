@@ -1368,6 +1368,150 @@ test("public recovery rejects empty and hostile document identifiers", async () 
   expect(store.recover(prior.record.documentId)).toEqual(prior);
 });
 
+test("public identity helpers require exact document, sequence, hash, and root-key shapes", () => {
+  const hostile = new Proxy(
+    {},
+    {
+      getPrototypeOf() {
+        throw new TypeError("hostile identity input");
+      },
+    },
+  );
+  for (const documentId of ["", null, undefined, 1, hostile]) {
+    expect(() =>
+      Reflect.apply(createAcknowledgedWorkingDocumentIdentity, undefined, [
+        documentId,
+        1,
+        PRIOR_ROOT,
+      ]),
+    ).toThrow(PersistenceContractError);
+  }
+  for (const sequence of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, null, hostile]) {
+    expect(() =>
+      Reflect.apply(createAcknowledgedWorkingDocumentIdentity, undefined, [
+        "doc:one",
+        sequence,
+        PRIOR_ROOT,
+      ]),
+    ).toThrow(PersistenceContractError);
+  }
+  for (const contentRootHash of [
+    "",
+    "A".repeat(64),
+    "a".repeat(63),
+    `${"a".repeat(63)}g`,
+    null,
+    hostile,
+  ]) {
+    expect(() =>
+      Reflect.apply(createAcknowledgedWorkingDocumentIdentity, undefined, [
+        "doc:one",
+        1,
+        contentRootHash,
+      ]),
+    ).toThrow(PersistenceContractError);
+  }
+
+  const valid = createAcknowledgedWorkingDocumentIdentity("doc:one", 1, PRIOR_ROOT);
+  const symbolExtra = { ...valid };
+  Reflect.set(symbolExtra, Symbol("extra"), true);
+  const hiddenExtra = Object.defineProperty({ ...valid }, "extra", { value: true });
+  const invalidIdentities = [
+    { ...valid, rootKey: "" },
+    { ...valid, contentSequence: -1 },
+    { ...valid, contentRootHash: "A".repeat(64) },
+    { contentSequence: 1, contentRootHash: PRIOR_ROOT },
+    { ...valid, extra: true },
+    symbolExtra,
+    hiddenExtra,
+    Object.defineProperty({ ...valid }, "rootKey", {
+      enumerable: true,
+      get() {
+        throw new TypeError("root key getter");
+      },
+    }),
+    hostile,
+  ];
+  for (const identity of invalidIdentities) {
+    expect(() =>
+      Reflect.apply(recoverWorkingDocument, undefined, [
+        [record(PRIOR_ROOT, 1, {})],
+        "doc:one",
+        identity,
+      ]),
+    ).toThrow(PersistenceContractError);
+  }
+  expect(() =>
+    recoverWorkingDocument(
+      [{ ...record(PRIOR_ROOT, 1, {}), documentId: "doc:two" }],
+      "doc:two",
+      valid,
+    ),
+  ).toThrow(PersistenceContractError);
+});
+
+test("termination injection validates hashes and never widens invalid filters", () => {
+  const hostile = new Proxy(
+    {},
+    {
+      getPrototypeOf() {
+        throw new TypeError("hostile termination hash");
+      },
+    },
+  );
+  for (const seed of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1, null, hostile]) {
+    expect(() => Reflect.apply(createTerminationInjector, undefined, [seed])).toThrow(
+      PersistenceContractError,
+    );
+  }
+  for (const contentRootHash of [
+    "",
+    "A".repeat(64),
+    "a".repeat(63),
+    `${"a".repeat(63)}g`,
+    null,
+    hostile,
+  ]) {
+    expect(() => Reflect.apply(createTerminationInjector, undefined, [0, contentRootHash])).toThrow(
+      PersistenceContractError,
+    );
+  }
+
+  const targeted = createTerminationInjector(0, PRIOR_ROOT);
+  expect(() => targeted("asset", NEXT_ROOT)).not.toThrow();
+  expect(() => targeted("asset", PRIOR_ROOT)).toThrow(PersistenceTerminationError);
+  const wildcard = createTerminationInjector(0);
+  expect(() => wildcard("asset", NEXT_ROOT)).toThrow(PersistenceTerminationError);
+  expect(() => Reflect.apply(targeted, undefined, ["asset", ""])).toThrow(PersistenceContractError);
+  expect(() => Reflect.apply(targeted, undefined, ["invalid", PRIOR_ROOT])).toThrow(
+    PersistenceContractError,
+  );
+});
+
+test("estimateJsonOverhead accepts plain data objects only with typed failures", () => {
+  const accessor = Object.defineProperty({}, "value", {
+    enumerable: true,
+    get() {
+      throw new TypeError("payload getter");
+    },
+  });
+  const hostile = new Proxy(
+    {},
+    {
+      ownKeys() {
+        throw new TypeError("payload proxy");
+      },
+    },
+  );
+  for (const payload of [null, undefined, 1, "value", [], accessor, hostile]) {
+    expect(() => Reflect.apply(estimateJsonOverhead, undefined, [payload])).toThrow(
+      PersistenceContractError,
+    );
+  }
+  expect(estimateJsonOverhead(Object.create(null))).toBe(0);
+  expect(estimateJsonOverhead({ value: 1 })).toBe(8);
+});
+
 test("persistence-v1 record recovery ignores unacknowledged embedded data URLs", () => {
   const acknowledged = record(PRIOR_ROOT, 1, { title: "A1" });
   const unacknowledged = record(NEXT_ROOT, 2, { image: PNG_DATA_URL, title: "B2" });

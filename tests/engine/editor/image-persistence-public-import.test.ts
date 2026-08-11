@@ -25,6 +25,9 @@ test("built core package exports persistence from root and editor", async () => 
           import * as editor from "@open-pencil/core/editor";
           const names = [
             "AtomicWorkingDocumentPersistence",
+            "createAcknowledgedWorkingDocumentIdentity",
+            "createTerminationInjector",
+            "estimateJsonOverhead",
             "PersistenceContractError",
             "PersistenceQuotaError",
             "detachPngDataUrls",
@@ -34,6 +37,27 @@ test("built core package exports persistence from root and editor", async () => 
           ];
           for (const name of names) {
             if (core[name] !== editor[name]) throw new Error(\`missing root persistence export: \${name}\`);
+          }
+          for (const api of [core, editor]) {
+            const invalidCalls = [
+              () => api.createAcknowledgedWorkingDocumentIdentity("", 1, "a".repeat(64)),
+              () => api.createAcknowledgedWorkingDocumentIdentity("doc:one", -1, "a".repeat(64)),
+              () => api.createAcknowledgedWorkingDocumentIdentity("doc:one", 1, ""),
+              () => api.createTerminationInjector(0, ""),
+              () => api.estimateJsonOverhead([]),
+              () => api.estimateJsonOverhead(Object.defineProperty({}, "value", {
+                enumerable: true,
+                get() { throw new TypeError("public getter"); },
+              })),
+            ];
+            for (const call of invalidCalls) {
+              try {
+                call();
+                throw new Error("expected persistence contract failure");
+              } catch (error) {
+                if (!(error instanceof api.PersistenceContractError)) throw error;
+              }
+            }
           }
           console.log(names.join(","));
         `,

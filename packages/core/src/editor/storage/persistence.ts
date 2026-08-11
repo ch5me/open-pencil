@@ -194,6 +194,7 @@ const PERSISTENCE_RECEIPT_STATE_KEYS = new Set([
   "crashRecovery",
 ]);
 const SAVE_WORKING_DOCUMENT_OPTION_KEYS = new Set(["expectedAcknowledgement"]);
+const ACKNOWLEDGED_IDENTITY_KEYS = new Set(["contentSequence", "contentRootHash", "rootKey"]);
 const PERSISTENCE_ADMISSION_OPTION_KEYS: ReadonlySet<keyof PersistenceAdmissionOptions> = new Set([
   "maxEncodedAssetBytes",
   "maxDecodedAssetBytes",
@@ -231,6 +232,28 @@ const DETACHED_BINARY_ASSET_REFERENCE_KEYS = new Set([
 
 function assertFinite(value: number, label: string): void {
   if (!Number.isFinite(value)) throw new PersistenceContractError(`${label} must be finite`);
+}
+
+function assertDocumentId(documentId: unknown): asserts documentId is string {
+  if (typeof documentId !== "string" || !documentId) {
+    throw new PersistenceContractError("documentId must be a non-empty string");
+  }
+}
+
+function assertContentSequence(contentSequence: unknown): asserts contentSequence is number {
+  if (
+    typeof contentSequence !== "number" ||
+    !Number.isSafeInteger(contentSequence) ||
+    contentSequence < 0
+  ) {
+    throw new PersistenceContractError("content sequence must be a non-negative safe integer");
+  }
+}
+
+function assertContentRootHash(contentRootHash: unknown): asserts contentRootHash is string {
+  if (typeof contentRootHash !== "string" || !/^[0-9a-f]{64}$/u.test(contentRootHash)) {
+    throw new PersistenceContractError("contentRootHash must be 64 lowercase hexadecimal digits");
+  }
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -1413,20 +1436,19 @@ function assertAcknowledgementIdentity(
   documentId: string,
   identity: unknown,
 ): asserts identity is AcknowledgedWorkingDocumentIdentity {
+  assertDocumentId(documentId);
   assertJsonValue(identity);
-  if (!isPlainRecord(identity)) {
+  if (!isPlainRecord(identity) || !hasExactDataProperties(identity, ACKNOWLEDGED_IDENTITY_KEYS)) {
     throw new PersistenceContractError("expected acknowledgement identity is invalid");
   }
-  const contentSequence = identity.contentSequence;
-  const contentRootHash = identity.contentRootHash;
+  const contentSequence = Object.getOwnPropertyDescriptor(identity, "contentSequence")?.value;
+  const contentRootHash = Object.getOwnPropertyDescriptor(identity, "contentRootHash")?.value;
+  const rootKey = Object.getOwnPropertyDescriptor(identity, "rootKey")?.value;
+  assertContentSequence(contentSequence);
+  assertContentRootHash(contentRootHash);
   if (
-    Reflect.ownKeys(identity).length !== 3 ||
-    typeof contentSequence !== "number" ||
-    !Number.isSafeInteger(contentSequence) ||
-    contentSequence < 0 ||
-    typeof contentRootHash !== "string" ||
-    !/^[0-9a-f]{64}$/u.test(contentRootHash) ||
-    identity.rootKey !== durableRootKey(documentId, contentSequence, contentRootHash)
+    typeof rootKey !== "string" ||
+    rootKey !== durableRootKey(documentId, contentSequence, contentRootHash)
   ) {
     throw new PersistenceContractError("expected acknowledgement identity is invalid");
   }
@@ -1438,6 +1460,9 @@ export function createAcknowledgedWorkingDocumentIdentity(
   contentRootHash: string,
 ): AcknowledgedWorkingDocumentIdentity {
   try {
+    assertDocumentId(documentId);
+    assertContentSequence(contentSequence);
+    assertContentRootHash(contentRootHash);
     const identity = {
       contentSequence,
       contentRootHash,
@@ -1643,18 +1668,37 @@ export function createTerminationInjector(
   seed: number,
   contentRootHash?: string,
 ): PersistenceBoundaryHook {
-  if (!Number.isSafeInteger(seed) || seed < 0) {
-    throw new PersistenceContractError("termination seed must be a non-negative safe integer");
-  }
-  const boundary = PERSISTENCE_DURABLE_BOUNDARIES[seed % PERSISTENCE_DURABLE_BOUNDARIES.length];
-  return (observedBoundary, observedRootHash) => {
-    if (
-      observedBoundary === boundary &&
-      (!contentRootHash || observedRootHash === contentRootHash)
-    ) {
-      throw new PersistenceTerminationError(boundary, seed);
+  try {
+    if (!Number.isSafeInteger(seed) || seed < 0) {
+      throw new PersistenceContractError("termination seed must be a non-negative safe integer");
     }
-  };
+    if (contentRootHash !== undefined) assertContentRootHash(contentRootHash);
+    const boundary = PERSISTENCE_DURABLE_BOUNDARIES[seed % PERSISTENCE_DURABLE_BOUNDARIES.length];
+    return (observedBoundary, observedRootHash) => {
+      try {
+        if (!PERSISTENCE_DURABLE_BOUNDARIES.includes(observedBoundary)) {
+          throw new PersistenceContractError("persistence boundary is invalid");
+        }
+        assertContentRootHash(observedRootHash);
+      } catch (error) {
+        normalizePersistenceError(
+          error,
+          () => new PersistenceContractError("termination injection input is invalid"),
+        );
+      }
+      if (
+        observedBoundary === boundary &&
+        (contentRootHash === undefined || observedRootHash === contentRootHash)
+      ) {
+        throw new PersistenceTerminationError(boundary, seed);
+      }
+    };
+  } catch (error) {
+    return normalizePersistenceError(
+      error,
+      () => new PersistenceContractError("termination injector is invalid"),
+    );
+  }
 }
 
 export class AtomicWorkingDocumentPersistence {
@@ -1805,6 +1849,9 @@ export class AtomicWorkingDocumentPersistence {
 
 export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>): number {
   try {
+    if (!isPlainRecord(payload)) {
+      throw new PersistenceContractError("json overhead payload must be a plain object");
+    }
     assertJsonValue(payload);
     const jsonBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
     return jsonBytes - new TextEncoder().encode(JSON.stringify(Object.values(payload))).byteLength;
@@ -1888,12 +1935,6 @@ export function validateWorkingDocumentRecord(
       error,
       () => new PersistenceContractError("working document is invalid"),
     );
-  }
-}
-
-function assertDocumentId(documentId: unknown): asserts documentId is string {
-  if (typeof documentId !== "string" || !documentId) {
-    throw new PersistenceContractError("documentId must be a non-empty string");
   }
 }
 
