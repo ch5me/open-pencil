@@ -72,7 +72,6 @@ export interface AcknowledgedWorkingDocumentIdentity {
 
 export interface SaveWorkingDocumentOptions {
   readonly expectedAcknowledgement?: AcknowledgedWorkingDocumentIdentity;
-  readonly expectedContentRootHash?: string;
 }
 
 export interface PersistenceContractReceipt {
@@ -120,6 +119,7 @@ export class PersistenceTerminationError extends Error {
   }
 }
 
+const IMAGE_DATA_URL_PREFIX = /^data:image\//iu;
 const PNG_DATA_URL_PREFIX = /^data:image\/png(?:;[^,]*)?,/iu;
 const BASE64_PNG_DATA_URL = /^data:image\/png;base64,([a-z\d+/]*={0,2})$/iu;
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] as const;
@@ -253,9 +253,9 @@ function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
     if (typeof key !== "string" || !descriptor?.enumerable || !("value" in descriptor)) {
       throw new PersistenceContractError("working-document payload has non-JSON properties");
     }
-    if (PNG_DATA_URL_PREFIX.test(key)) {
+    if (IMAGE_DATA_URL_PREFIX.test(key)) {
       throw new PersistenceContractError(
-        "working-document payload keys must not contain PNG data URLs",
+        "working-document payload keys must not contain image data URLs",
       );
     }
     assertJsonValue(descriptor.value, ancestors);
@@ -263,10 +263,10 @@ function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
   ancestors.delete(value);
 }
 
-function containsPngDataUrl(value: unknown): boolean {
-  if (typeof value === "string") return PNG_DATA_URL_PREFIX.test(value);
-  if (Array.isArray(value)) return value.some(containsPngDataUrl);
-  return isPlainRecord(value) && Object.values(value).some(containsPngDataUrl);
+function containsImageDataUrl(value: unknown): boolean {
+  if (typeof value === "string") return IMAGE_DATA_URL_PREFIX.test(value);
+  if (Array.isArray(value)) return value.some(containsImageDataUrl);
+  return isPlainRecord(value) && Object.values(value).some(containsImageDataUrl);
 }
 
 function decodePngDataUrl(dataUrl: string): Uint8Array {
@@ -296,7 +296,10 @@ async function detachJsonValue(
   value: unknown,
   assets: Map<string, DetachedBinaryAsset>,
 ): Promise<unknown> {
-  if (typeof value === "string" && PNG_DATA_URL_PREFIX.test(value)) {
+  if (typeof value === "string" && IMAGE_DATA_URL_PREFIX.test(value)) {
+    if (!PNG_DATA_URL_PREFIX.test(value)) {
+      throw new PersistenceMigrationError("unsupported image data URL");
+    }
     const bytes = decodePngDataUrl(value);
     const digest = await sha256(bytes);
     const reference: DetachedBinaryAssetReference = {
@@ -385,10 +388,59 @@ function collectDetachedReferences(
   }
 }
 
+function isUint8ArrayView(value: unknown): value is Uint8Array {
+  return (
+    ArrayBuffer.isView(value) &&
+    Object.prototype.toString.call(value) === "[object Uint8Array]" &&
+    "BYTES_PER_ELEMENT" in value &&
+    value.BYTES_PER_ELEMENT === 1 &&
+    "length" in value &&
+    typeof value.length === "number" &&
+    value.byteLength === value.length
+  );
+}
+
+function copyUint8Array(bytes: Uint8Array): Uint8Array {
+  return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength).slice();
+}
+
+function snapshotValue(value: unknown, seen = new Map<object, unknown>()): unknown {
+  if (value === null || typeof value !== "object") return value;
+  const existing = seen.get(value);
+  if (existing) return existing;
+  if (isUint8ArrayView(value)) return copyUint8Array(value);
+  if (value instanceof ArrayBuffer) return value.slice(0);
+  if (ArrayBuffer.isView(value)) return structuredClone(value);
+
+  let snapshot: object;
+  if (Array.isArray(value)) {
+    const arraySnapshot: unknown[] = [];
+    arraySnapshot.length = value.length;
+    snapshot = arraySnapshot;
+  } else {
+    snapshot = Object.create(Object.getPrototypeOf(value));
+  }
+  Object.setPrototypeOf(snapshot, Object.getPrototypeOf(value));
+  seen.set(value, snapshot);
+  for (const key of Reflect.ownKeys(value)) {
+    if (key === "length" && Array.isArray(value)) continue;
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor) continue;
+    Object.defineProperty(
+      snapshot,
+      key,
+      "value" in descriptor
+        ? { ...descriptor, value: snapshotValue(descriptor.value, seen) }
+        : descriptor,
+    );
+  }
+  return snapshot;
+}
+
 function cloneDetachedAsset(asset: DetachedBinaryAsset): DetachedBinaryAsset {
   return {
     reference: structuredClone(asset.reference),
-    bytes: new Uint8Array(asset.bytes),
+    bytes: copyUint8Array(asset.bytes),
   };
 }
 
@@ -396,6 +448,38 @@ function cloneDetachedDocument(snapshot: DetachedWorkingDocument): DetachedWorki
   return {
     record: structuredClone(snapshot.record),
     assets: snapshot.assets.map(cloneDetachedAsset),
+  };
+}
+
+function snapshotDetachedDocument(record: unknown, assets: unknown): DetachedWorkingDocument {
+  let recordSnapshot: unknown;
+  try {
+    recordSnapshot = snapshotValue(record);
+  } catch {
+    throw new PersistenceContractError("working document could not be detached");
+  }
+
+  assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
+  const assetSnapshots = assets.map((asset) => {
+    let reference: unknown;
+    try {
+      reference = snapshotValue(asset.reference);
+    } catch {
+      throw new PersistenceMigrationError("invalid detached binary asset reference");
+    }
+    const bytes = isUint8ArrayView(asset.bytes)
+      ? copyUint8Array(asset.bytes)
+      : snapshotValue(asset.bytes);
+    return { reference, bytes };
+  });
+
+  validateDetachedWorkingDocument(
+    recordSnapshot as WorkingDocumentRecord,
+    assetSnapshots as readonly DetachedBinaryAsset[],
+  );
+  return {
+    record: recordSnapshot as WorkingDocumentRecord,
+    assets: assetSnapshots as readonly DetachedBinaryAsset[],
   };
 }
 
@@ -468,28 +552,6 @@ function assertExpectedAcknowledgement(
   }
 }
 
-function assertExpectedContentRootHash(
-  expectedContentRootHash: string | undefined,
-  acknowledgedRoot: AcknowledgedRoot | undefined,
-): void {
-  if (expectedContentRootHash !== undefined && !/^[0-9a-f]{64}$/u.test(expectedContentRootHash)) {
-    throw new PersistenceContractError("expected content root hash must be a SHA-256 digest");
-  }
-  if (expectedContentRootHash !== undefined && acknowledgedRoot) {
-    throw new PersistenceContractError(
-      "expected content root hash cannot identify an acknowledged generation",
-    );
-  }
-  if (
-    expectedContentRootHash !== undefined &&
-    expectedContentRootHash !== acknowledgedRoot?.contentRootHash
-  ) {
-    throw new PersistenceConflictError(
-      `working document root changed from ${expectedContentRootHash} to ${acknowledgedRoot?.contentRootHash ?? "none"}`,
-    );
-  }
-}
-
 export async function detachPngDataUrls(
   record: WorkingDocumentRecord,
 ): Promise<DetachedWorkingDocument> {
@@ -513,15 +575,15 @@ export function validateDetachedWorkingDocument(
 ): void {
   validateWorkingDocumentRecord(record);
   assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, "detached binary assets");
-  if (containsPngDataUrl(record.payload)) {
-    throw new PersistenceMigrationError("working document contains an embedded PNG data URL");
+  if (containsImageDataUrl(record.payload)) {
+    throw new PersistenceMigrationError("working document contains an embedded image data URL");
   }
 
   const assetsByRevision = new Map<string, DetachedBinaryAsset>();
   for (const asset of assets) {
     assertDetachedReference(asset.reference);
     if (
-      !(asset.bytes instanceof Uint8Array) ||
+      !isUint8ArrayView(asset.bytes) ||
       asset.bytes.byteLength !== asset.reference.byteLength ||
       PNG_SIGNATURE.some((byte, index) => asset.bytes[index] !== byte)
     ) {
@@ -573,8 +635,9 @@ export async function migrateWorkingDocumentRecord(
   record: WorkingDocumentRecord,
   assets: readonly DetachedBinaryAsset[] = [],
 ): Promise<WorkingDocumentRecord> {
-  await verifyDetachedWorkingDocument(record, assets);
-  return structuredClone(record);
+  const snapshot = snapshotDetachedDocument(record, assets);
+  await verifyDetachedWorkingDocument(snapshot.record, snapshot.assets);
+  return snapshot.record;
 }
 
 export function createTerminationInjector(
@@ -615,13 +678,7 @@ export class AtomicWorkingDocumentPersistence {
     assets: readonly DetachedBinaryAsset[],
     options: SaveWorkingDocumentOptions = {},
   ): Promise<void> {
-    validateDetachedWorkingDocument(record, assets);
-    let candidate: DetachedWorkingDocument;
-    try {
-      candidate = cloneDetachedDocument({ record, assets });
-    } catch {
-      throw new PersistenceContractError("working document could not be detached");
-    }
+    const candidate = snapshotDetachedDocument(record, assets);
     await verifyDetachedWorkingDocument(candidate.record, candidate.assets);
     const byteLength =
       new TextEncoder().encode(JSON.stringify(candidate.record)).byteLength +
@@ -639,7 +696,6 @@ export class AtomicWorkingDocumentPersistence {
       options.expectedAcknowledgement,
       acknowledgedRoot,
     );
-    assertExpectedContentRootHash(options.expectedContentRootHash, acknowledgedRoot);
     if (acknowledged && candidate.record.contentSequence <= acknowledged.record.contentSequence) {
       throw new PersistenceConflictError(
         `working document sequence ${candidate.record.contentSequence} conflicts with acknowledged sequence ${acknowledged.record.contentSequence}`,
@@ -719,9 +775,11 @@ export function validateWorkingDocumentRecord(
   }
   assertJsonValue(record);
   if (
-    Object.entries(record).some(([key, value]) => key !== "payload" && containsPngDataUrl(value))
+    Object.entries(record).some(([key, value]) => key !== "payload" && containsImageDataUrl(value))
   ) {
-    throw new PersistenceContractError("working document metadata must not contain PNG data URLs");
+    throw new PersistenceContractError(
+      "working document metadata must not contain image data URLs",
+    );
   }
   if (
     record.schema !== "openpencil-working-document-v1" ||
@@ -792,9 +850,9 @@ export function recoverWorkingDocument(
       record.contentSequence === acknowledgedIdentity.contentSequence &&
       record.contentRootHash === acknowledgedIdentity.contentRootHash,
   );
-  if (candidates.some(({ payload }) => containsPngDataUrl(payload))) {
+  if (candidates.some(({ payload }) => containsImageDataUrl(payload))) {
     throw new PersistenceMigrationError(
-      "record-only recovery cannot recover embedded PNG data URLs",
+      "record-only recovery cannot recover embedded image data URLs",
     );
   }
   const recovered = candidates

@@ -1,6 +1,7 @@
 /* oxlint-disable max-lines */
 
 import { expect, test } from "bun:test";
+import { runInNewContext } from "node:vm";
 
 import {
   AtomicWorkingDocumentPersistence,
@@ -18,6 +19,7 @@ import {
   recoverWorkingDocument,
   validateWorkingDocumentRecord,
   type DetachedWorkingDocument,
+  type SaveWorkingDocumentOptions,
   type WorkingDocumentRecord,
 } from "@open-pencil/core/editor";
 
@@ -54,7 +56,7 @@ async function detached(
   return detachPngDataUrls(
     record(contentRootHash, contentSequence, {
       title: contentSequence === 1 ? "Prior" : "Next",
-      image: PNG_DATA_URL,
+      image: contentSequence === 1 ? PNG_DATA_URL : OTHER_PNG_DATA_URL,
     }),
   );
 }
@@ -145,6 +147,26 @@ test("persistence-v1 first-save termination recovers nothing or one complete new
       expect(recovered?.record.commitState).toBe("committed");
     }
   }
+});
+
+test("persistence-v1 recovers the latest complete unacknowledged root", async () => {
+  const first = await detached(PRIOR_ROOT, 1);
+  const latest = await detached(NEXT_ROOT, 2);
+  const store = new AtomicWorkingDocumentPersistence({
+    onDurableBoundary: (boundary) => {
+      if (boundary === "committed-record") {
+        throw new PersistenceTerminationError(boundary, 0);
+      }
+    },
+  });
+
+  await expect(store.save(first.record, first.assets)).rejects.toBeInstanceOf(
+    PersistenceTerminationError,
+  );
+  await expect(store.save(latest.record, latest.assets)).rejects.toBeInstanceOf(
+    PersistenceTerminationError,
+  );
+  expect(store.recover("doc:one")).toEqual(latest);
 });
 
 test("persistence-v1 preserves ACK across same-content-root generation termination", async () => {
@@ -281,16 +303,6 @@ test("persistence-v1 rejects stale sequences and stale-root CAS without regressi
     }),
   ).rejects.toBeInstanceOf(PersistenceConflictError);
   expect(store.recover("doc:one")).toEqual(next);
-
-  const legacyStore = new AtomicWorkingDocumentPersistence();
-  await legacyStore.save(prior.record, prior.assets);
-  await expect(
-    legacyStore.save(next.record, next.assets, {
-      expectedAcknowledgement: acknowledgement(prior.record),
-      expectedContentRootHash: PRIOR_ROOT,
-    }),
-  ).rejects.toBeInstanceOf(PersistenceContractError);
-  expect(legacyStore.recover("doc:one")).toEqual(prior);
 });
 
 test("persistence-v1 rejects same-root ABA against the acknowledged generation", async () => {
@@ -326,27 +338,21 @@ test("persistence-v1 rejects same-root ABA against the acknowledged generation",
   expect(store.recover("doc:one")).toEqual(latest);
 });
 
-test("persistence-v1 rejects root-only CAS after same-root ABA", async () => {
-  const first = await detached(PRIOR_ROOT, 1);
-  const middle = await detached(NEXT_ROOT, 2);
-  const latest = await detached(PRIOR_ROOT, 3);
-  const candidate = await detached(THIRD_ROOT, 4);
-  const store = new AtomicWorkingDocumentPersistence();
-  await store.save(first.record, first.assets);
-  await store.save(middle.record, middle.assets, {
-    expectedAcknowledgement: acknowledgement(first.record),
-  });
-  await store.save(latest.record, latest.assets, {
-    expectedAcknowledgement: acknowledgement(middle.record),
-  });
+test("persistence-v1 exposes acknowledgement-only save options and requires full ACK", async () => {
+  type HasRootOnlyOption = "expectedContentRootHash" extends keyof SaveWorkingDocumentOptions
+    ? true
+    : false;
+  const hasRootOnlyOption: HasRootOnlyOption = false;
+  expect(hasRootOnlyOption).toBeFalse();
 
-  await expect(
-    store.save(candidate.record, candidate.assets, {
-      expectedAcknowledgement: acknowledgement(latest.record),
-      expectedContentRootHash: PRIOR_ROOT,
-    }),
-  ).rejects.toBeInstanceOf(PersistenceContractError);
-  expect(store.recover("doc:one")).toEqual(latest);
+  const prior = await detached(PRIOR_ROOT, 1);
+  const next = await detached(NEXT_ROOT, 2);
+  const store = new AtomicWorkingDocumentPersistence();
+  await store.save(prior.record, prior.assets);
+  await expect(store.save(next.record, next.assets)).rejects.toBeInstanceOf(
+    PersistenceConflictError,
+  );
+  expect(store.recover("doc:one")).toEqual(prior);
 });
 
 test("persistence-v1 rejects non-JSON payload representations before serialization", async () => {
@@ -568,6 +574,61 @@ test("persistence-v1 detaches caller and recovery asset buffers", async () => {
   expect(store.recover("doc:one")?.assets[0]?.bytes[8]).toBe(originalByte);
 });
 
+test("persistence-v1 migration snapshots record and assets before async digest", async () => {
+  const source = await detached(PRIOR_ROOT, 1);
+  const originalRecord = structuredClone(source.record);
+  const migration = migrateWorkingDocumentRecord(source.record, source.assets);
+
+  Reflect.set(source.record, "documentId", "doc:mutated");
+  Reflect.set(source.record.payload, "title", "Mutated");
+  if (source.assets[0]) {
+    source.assets[0].bytes[0] = 0;
+    Reflect.set(source.assets[0].reference, "revisionId", `sha256:${THIRD_ROOT}`);
+  }
+
+  await expect(migration).resolves.toEqual(originalRecord);
+});
+
+test("persistence-v1 rejects unsupported image data URLs everywhere persisted", async () => {
+  const jpegDataUrl = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+  const svgDataUrl = "data:image/svg+xml,%3Csvg%3E%3C/svg%3E";
+
+  await expect(
+    detachPngDataUrls(record(NEXT_ROOT, 1, { image: jpegDataUrl })),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  await expect(
+    new AtomicWorkingDocumentPersistence().save(record(NEXT_ROOT, 1, { image: svgDataUrl }), []),
+  ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  await expect(
+    detachPngDataUrls({ ...record(NEXT_ROOT, 1, {}), selectionIds: [jpegDataUrl] }),
+  ).rejects.toBeInstanceOf(PersistenceContractError);
+});
+
+test("persistence-v1 accepts cross-realm Uint8Array and rejects other views", async () => {
+  const source = await detached(PRIOR_ROOT, 1);
+  const bytes = runInNewContext(
+    "new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])",
+  ) as Uint8Array;
+  expect(bytes instanceof Uint8Array).toBeFalse();
+
+  const crossRealmAssets = [{ reference: source.assets[0]?.reference, bytes }];
+  await expect(migrateWorkingDocumentRecord(source.record, crossRealmAssets)).resolves.toEqual(
+    source.record,
+  );
+
+  for (const invalidBytes of [
+    new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength),
+    new Uint16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2),
+  ]) {
+    await expect(
+      Reflect.apply(migrateWorkingDocumentRecord, undefined, [
+        source.record,
+        [{ reference: source.assets[0]?.reference, bytes: invalidBytes }],
+      ]),
+    ).rejects.toBeInstanceOf(PersistenceMigrationError);
+  }
+});
+
 test("persistence-v1 preserves existing record and receipt APIs", () => {
   const baseRecord = record(PRIOR_ROOT, 1, { title: "Draft", assets: ["asset:one"] });
   expect(() => validateWorkingDocumentRecord(baseRecord)).not.toThrow();
@@ -584,11 +645,25 @@ test("persistence-v1 preserves existing record and receipt APIs", () => {
   expect(receipt.jsonOverheadBytes).toBeGreaterThanOrEqual(0);
 
   const staged = { ...baseRecord, contentSequence: 5, commitState: "staged" as const };
-  const committed = { ...baseRecord, contentSequence: 2, updatedAt: 20 };
+  const staleCommitted = {
+    ...baseRecord,
+    contentSequence: 2,
+    payload: { title: "Stale" },
+    updatedAt: 10,
+  };
+  const committed = {
+    ...baseRecord,
+    contentSequence: 2,
+    payload: { title: "Latest" },
+    updatedAt: 20,
+  };
   expect(
-    recoverWorkingDocument([staged, baseRecord, committed], "doc:one", acknowledgement(committed))
-      ?.contentSequence,
-  ).toBe(2);
+    recoverWorkingDocument(
+      [staged, baseRecord, staleCommitted, committed],
+      "doc:one",
+      acknowledgement(committed),
+    )?.payload,
+  ).toEqual({ title: "Latest" });
   expect(
     recoverWorkingDocument(
       [baseRecord],
