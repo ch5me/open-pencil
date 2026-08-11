@@ -708,20 +708,32 @@ export function validateWorkingDocumentRecord(
   }
 }
 
+/**
+ * Recovers only the acknowledged generation from a non-atomic record list.
+ * Detached assets are not available here; use AtomicWorkingDocumentPersistence for full recovery.
+ */
 export function recoverWorkingDocument(
   records: readonly WorkingDocumentRecord[],
   documentId: string,
+  acknowledgedIdentity: AcknowledgedWorkingDocumentIdentity,
 ): WorkingDocumentRecord | undefined {
+  assertAcknowledgementIdentity(documentId, acknowledgedIdentity);
   const candidates = records.filter(
-    (record) => record.documentId === documentId && record.commitState === "committed",
+    (record) =>
+      record.documentId === documentId &&
+      record.commitState === "committed" &&
+      record.contentSequence === acknowledgedIdentity.contentSequence &&
+      record.contentRootHash === acknowledgedIdentity.contentRootHash,
   );
   candidates.forEach(validateWorkingDocumentRecord);
+  if (candidates.some(({ payload }) => containsPngDataUrl(payload))) {
+    throw new PersistenceMigrationError(
+      "record-only recovery cannot recover embedded PNG data URLs",
+    );
+  }
   const recovered = candidates
     .slice()
-    .sort(
-      (left, right) =>
-        right.contentSequence - left.contentSequence || right.updatedAt - left.updatedAt,
-    )
+    .sort((left, right) => right.updatedAt - left.updatedAt)
     .at(0);
   return recovered ? structuredClone(recovered) : undefined;
 }

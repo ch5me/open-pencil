@@ -17,7 +17,7 @@ import {
   validateWorkingDocumentRecord,
   type DetachedWorkingDocument,
   type WorkingDocumentRecord,
-} from "#core/editor/storage";
+} from "@open-pencil/core/editor";
 
 const PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgo=";
 const OTHER_PNG_DATA_URL = "data:image/png;base64,iVBORw0KGgoA";
@@ -412,12 +412,12 @@ test("persistence-v1 rejects non-JSON whole-record representations before serial
 
 test("persistence-v1 rejects unknown JSON-safe record keys before PNG detachment", async () => {
   const base = record(NEXT_ROOT, 1, {});
-  await expect(detachPngDataUrls({ ...base, extra: PNG_DATA_URL })).rejects.toBeInstanceOf(
-    PersistenceContractError,
-  );
-  await expect(detachPngDataUrls({ ...base, extra: { benign: true } })).rejects.toBeInstanceOf(
-    PersistenceContractError,
-  );
+  const embedded = { ...base };
+  const benign = { ...base };
+  Reflect.set(embedded, "extra", PNG_DATA_URL);
+  Reflect.set(benign, "extra", { benign: true });
+  await expect(detachPngDataUrls(embedded)).rejects.toBeInstanceOf(PersistenceContractError);
+  await expect(detachPngDataUrls(benign)).rejects.toBeInstanceOf(PersistenceContractError);
 });
 
 test("persistence-v1 detaches caller and recovery asset buffers", async () => {
@@ -450,18 +450,50 @@ test("persistence-v1 preserves existing record and receipt APIs", () => {
 
   const staged = { ...baseRecord, contentSequence: 5, commitState: "staged" as const };
   const committed = { ...baseRecord, contentSequence: 2, updatedAt: 20 };
-  expect(recoverWorkingDocument([staged, baseRecord, committed], "doc:one")?.contentSequence).toBe(
-    2,
-  );
-  expect(recoverWorkingDocument([baseRecord], "doc:missing")).toBeUndefined();
+  expect(
+    recoverWorkingDocument([staged, baseRecord, committed], "doc:one", acknowledgement(committed))
+      ?.contentSequence,
+  ).toBe(2);
+  expect(
+    recoverWorkingDocument(
+      [baseRecord],
+      "doc:missing",
+      createAcknowledgedWorkingDocumentIdentity(
+        "doc:missing",
+        baseRecord.contentSequence,
+        baseRecord.contentRootHash,
+      ),
+    ),
+  ).toBeUndefined();
   const sourceSelection = ["layer:one"];
   const recovered = recoverWorkingDocument(
     [{ ...baseRecord, selectionIds: sourceSelection }],
     "doc:one",
+    acknowledgement(baseRecord),
   );
   sourceSelection.splice(0);
   expect(recovered?.selectionIds).toEqual(["layer:one"]);
   expect(() =>
     validateWorkingDocumentRecord({ ...baseRecord, viewport: { ...baseRecord.viewport, zoom: 0 } }),
   ).toThrow(PersistenceContractError);
+});
+
+test("persistence-v1 record recovery ignores unacknowledged embedded data URLs", () => {
+  const acknowledged = record(PRIOR_ROOT, 1, { title: "A1" });
+  const unacknowledged = record(NEXT_ROOT, 2, { image: PNG_DATA_URL, title: "B2" });
+
+  expect(
+    recoverWorkingDocument(
+      [acknowledged, unacknowledged],
+      acknowledged.documentId,
+      acknowledgement(acknowledged),
+    ),
+  ).toEqual(acknowledged);
+  expect(() =>
+    recoverWorkingDocument(
+      [unacknowledged],
+      unacknowledged.documentId,
+      acknowledgement(unacknowledged),
+    ),
+  ).toThrow(PersistenceMigrationError);
 });
