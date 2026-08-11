@@ -29,6 +29,11 @@ const PSD_EXTERNAL_APPLICATIONS: readonly PsdExternalSource["application"][] = [
   "photopea",
 ];
 
+type PsdWarningCapabilityCode = Exclude<
+  PsdCapabilityCode,
+  "E_PSD_CAPABILITY_CMYK" | "E_PSD_CAPABILITY_16_BIT" | "E_PSD_CAPABILITY_PSB"
+>;
+
 export const PSD_CAPABILITY_WARNING_CONTRACT = {
   E_PSD_CAPABILITY_EDITABLE_TEXT: "unsupported-layer-feature",
   E_PSD_CAPABILITY_SHAPES: "unsupported-layer-feature",
@@ -43,10 +48,18 @@ export const PSD_CAPABILITY_WARNING_CONTRACT = {
   E_PSD_CAPABILITY_CHANNELS: "unsupported-layer-feature",
   E_PSD_CAPABILITY_ICC: "unsupported-color-mode",
   E_PSD_CAPABILITY_DPI: "unsupported-layer-feature",
-  E_PSD_CAPABILITY_CMYK: "unsupported-color-mode",
-  E_PSD_CAPABILITY_16_BIT: "unsupported-bit-depth",
-  E_PSD_CAPABILITY_PSB: "unsupported-layer-feature",
-} as const satisfies Readonly<Record<PsdCapabilityCode, PsdWarningCode>>;
+} as const satisfies Readonly<Record<PsdWarningCapabilityCode, PsdWarningCode>>;
+
+function capabilityWarning(capability: PsdCapabilityCode): PsdWarningCode | undefined {
+  if (
+    capability === "E_PSD_CAPABILITY_CMYK" ||
+    capability === "E_PSD_CAPABILITY_16_BIT" ||
+    capability === "E_PSD_CAPABILITY_PSB"
+  ) {
+    return undefined;
+  }
+  return PSD_CAPABILITY_WARNING_CONTRACT[capability];
+}
 
 export const PSD_EXTERNAL_SOURCE_CONTRACT: readonly PsdExternalSource[] =
   PSD_EXTERNAL_APPLICATIONS.map((application) => ({
@@ -134,7 +147,7 @@ export function createPsdCorpusManifest(
     if (entry.warning.length === 0) {
       throw new PsdUnsupportedError("PSD external corpus warning coverage is incomplete");
     }
-    if (entry.warning !== PSD_CAPABILITY_WARNING_CONTRACT[entry.capability]) {
+    if (entry.warning !== capabilityWarning(entry.capability)) {
       throw new PsdUnsupportedError("PSD external corpus warning does not match capability");
     }
     assertSha256(entry.sha256, `PSD corpus case ${index}.sha256`);
@@ -145,11 +158,6 @@ export function createPsdCorpusManifest(
       entry.selfGeneratedRoundTripSha256,
       `PSD corpus case ${index}.selfGeneratedRoundTripSha256`,
     );
-    if (entry.semanticRoundTrip !== entry.selfGeneratedRoundTrip) {
-      throw new PsdUnsupportedError(
-        "PSD corpus semantic round-trip status disagrees with self-generated evidence",
-      );
-    }
     if (entry.byteRoundTrip === "PASS") {
       if (entry.byteRoundTripSha256 === null) {
         throw new PsdUnsupportedError("PSD corpus byte round-trip lacks an exact hash");

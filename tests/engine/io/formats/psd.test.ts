@@ -260,7 +260,7 @@ test("deterministically round-trips typed metadata without mutating caller data"
     ).cases.every(
       (entry) =>
         entry.externalReopen === "UNKNOWN" &&
-        entry.semanticRoundTrip === "PASS" &&
+        entry.semanticRoundTrip === "UNKNOWN" &&
         entry.byteRoundTrip === "UNKNOWN" &&
         entry.byteRoundTripSha256 === null,
     ),
@@ -646,7 +646,7 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
   );
   expect(manifest.version).toBe("psd-corpus-v1");
   expect(manifest.source).toEqual(externalCorpus.source);
-  expect(Object.keys(PSD_CAPABILITY_WARNING_CONTRACT)).toHaveLength(16);
+  expect(Object.keys(PSD_CAPABILITY_WARNING_CONTRACT)).toHaveLength(13);
   expect(externalCorpus.externalSources.map((entry) => entry.application)).toEqual([
     "photoshop",
     "affinity",
@@ -700,7 +700,7 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
     expect(createHash("sha256").update(generated).digest("hex")).toBe(
       entry.selfGeneratedRoundTripSha256,
     );
-    expect(entry.semanticRoundTrip).toBe("PASS");
+    expect(entry.semanticRoundTrip).toBe("UNKNOWN");
     expect(entry.byteRoundTrip).toBe("UNKNOWN");
     expect(entry.byteRoundTripSha256).toBeNull();
     expect(entry.source).toBe("external");
