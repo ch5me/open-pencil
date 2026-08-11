@@ -4,6 +4,7 @@ import { createCompositionPlan } from "#core/canvas/composition";
 import {
   createImageRenderAdapter,
   createRendererResilienceContract,
+  ImageRenderContextLostError,
   ImageTilePlanLimitError,
   RendererResilienceContractError,
   UnsupportedImageBackendError,
@@ -73,6 +74,40 @@ test("image render adapter rejects unsupported backends and restores texture sta
   adapter.markDirty("asset:image");
   adapter.restore();
   expect(adapter.backend).toBe("skia");
+});
+
+test("image render adapter fails loud during loss and recreates all resources on restore", () => {
+  const adapter = createImageRenderAdapter();
+  const plan = imagePlan();
+  const resolve: ImageRevisionResolver = {
+    getAsset: (assetId) => ({ assetId, revisionId: "sha256:hero" }),
+    getRevision: (revisionId) => ({
+      revisionId,
+      kind: "image",
+      metadata: {},
+      bytes: new Uint8Array([1, 2, 3]),
+    }),
+  };
+
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    uploaded: true,
+    dirty: true,
+  });
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    uploaded: false,
+    dirty: false,
+  });
+
+  adapter.loseContext();
+  expect(() => adapter.render(plan, resolve)).toThrow(ImageRenderContextLostError);
+  expect(adapter.backend).toBe("skia");
+
+  adapter.restore();
+  expect(adapter.resourceGeneration).toBe(1);
+  expect(adapter.render(plan, resolve).textures[0]).toMatchObject({
+    uploaded: true,
+    dirty: true,
+  });
 });
 
 test("image render adapter resolves the first bound image asset", () => {

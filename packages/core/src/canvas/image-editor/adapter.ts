@@ -3,6 +3,7 @@ import type { AssetId } from "#core/editor/assets";
 
 import { createImageTilePlan } from "./tiling";
 import {
+  ImageRenderContextLostError,
   UnsupportedImageBackendError,
   type ImageRenderAdapter,
   type ImageRenderCommand,
@@ -30,10 +31,20 @@ export function createImageRenderAdapter(
   const dirtyAssets = new Set<AssetId>();
   const dirtyRects = new Map<AssetId, ImageDirtyRect>();
   const uploadedRevisions = new Map<AssetId, string>();
+  let contextLost = false;
+  let resourceGeneration = 0;
 
   return {
     backend: "skia",
+    get resourceGeneration(): number {
+      return resourceGeneration;
+    },
     render(plan: CompositionPlan, resolve: ImageRevisionResolver): ImageRenderFrame {
+      if (contextLost) {
+        throw new ImageRenderContextLostError(
+          "image render context is lost; wait for resource restoration",
+        );
+      }
       const nextDirtyAssets = new Set(dirtyAssets);
       const nextDirtyRects = new Map(dirtyRects);
       const nextUploadedRevisions = new Map(uploadedRevisions);
@@ -138,7 +149,15 @@ export function createImageRenderAdapter(
       }
       dirtyAssets.add(assetId);
     },
+    loseContext(): void {
+      contextLost = true;
+      dirtyAssets.clear();
+      dirtyRects.clear();
+      uploadedRevisions.clear();
+    },
     restore(): void {
+      contextLost = false;
+      resourceGeneration += 1;
       dirtyAssets.clear();
       dirtyRects.clear();
       uploadedRevisions.clear();

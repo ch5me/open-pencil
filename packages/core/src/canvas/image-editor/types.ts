@@ -67,6 +67,10 @@ export class UnsupportedImageBackendError extends Error {
   readonly code = "unsupported-image-backend";
 }
 
+export class ImageRenderContextLostError extends Error {
+  readonly code = "image-render-context-lost";
+}
+
 export type ImageRenderGapCode =
   | "missing-asset-binding"
   | "missing-asset-revision"
@@ -127,7 +131,9 @@ export interface ImageRevisionResolver {
 
 export interface ImageRenderAdapter {
   readonly backend: ImageRenderBackend;
+  readonly resourceGeneration: number;
   render(plan: CompositionPlan, resolve: ImageRevisionResolver): ImageRenderFrame;
   markDirty(assetId: AssetId, dirtyRect?: ImageDirtyRect): void;
+  loseContext(): void;
   restore(): void;
 }
