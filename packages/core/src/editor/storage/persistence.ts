@@ -37,12 +37,21 @@ export interface WorkingDocumentRecord {
   readonly updatedAt: number;
 }
 
-export interface DetachedWorkingDocument {
+interface BinaryWorkingDocument<TAsset> {
   readonly record: WorkingDocumentRecord;
-  readonly assets: readonly DetachedBinaryAsset[];
+  readonly assets: readonly TAsset[];
 }
 
+export type DetachedWorkingDocument = BinaryWorkingDocument<DetachedBinaryAsset>;
+
 export type RecoveredWorkingDocument = DetachedWorkingDocument;
+
+interface StoredBinaryAsset {
+  readonly reference: DetachedBinaryAssetReference;
+  readonly bytes: ArrayBuffer;
+}
+
+type StoredWorkingDocument = BinaryWorkingDocument<StoredBinaryAsset>;
 
 export const PERSISTENCE_DURABLE_BOUNDARIES = [
   "asset",
@@ -1364,6 +1373,25 @@ function cloneDetachedDocument(snapshot: DetachedWorkingDocument): DetachedWorki
   };
 }
 
+function storeDetachedAsset(asset: DetachedBinaryAsset): StoredBinaryAsset {
+  const bytes = new ArrayBuffer(asset.bytes.byteLength);
+  new Uint8Array(bytes).set(asset.bytes);
+  return {
+    reference: structuredClone(asset.reference),
+    bytes,
+  };
+}
+
+function restoreStoredDocument(snapshot: StoredWorkingDocument): DetachedWorkingDocument {
+  return {
+    record: structuredClone(snapshot.record),
+    assets: snapshot.assets.map((asset) => ({
+      reference: structuredClone(asset.reference),
+      bytes: new Uint8Array(asset.bytes.slice(0)),
+    })),
+  };
+}
+
 function snapshotDetachedDocument(
   record: unknown,
   assets: unknown,
@@ -1702,9 +1730,9 @@ export function createTerminationInjector(
 }
 
 export class AtomicWorkingDocumentPersistence {
-  private readonly stagedAssets = new Map<string, readonly DetachedBinaryAsset[]>();
+  private readonly stagedAssets = new Map<string, readonly StoredBinaryAsset[]>();
   private readonly stagedRecords = new Map<string, WorkingDocumentRecord>();
-  private readonly committedRoots = new Map<string, DetachedWorkingDocument>();
+  private readonly committedRoots = new Map<string, StoredWorkingDocument>();
   private readonly acknowledgedRoots = new Map<string, AcknowledgedRoot>();
   private readonly options: AtomicWorkingDocumentPersistenceOptions;
   private readonly admissionLimits: PersistenceAdmissionLimits;
@@ -1781,7 +1809,7 @@ export class AtomicWorkingDocumentPersistence {
         candidate.record.contentSequence,
         candidate.record.contentRootHash,
       );
-      this.stagedAssets.set(rootKey, candidate.assets);
+      this.stagedAssets.set(rootKey, candidate.assets.map(storeDetachedAsset));
       this.afterBoundary("asset", candidate.record.contentRootHash);
       this.stagedRecords.set(rootKey, { ...candidate.record, commitState: "staged" });
       this.afterBoundary("staged-record", candidate.record.contentRootHash);
@@ -1791,13 +1819,10 @@ export class AtomicWorkingDocumentPersistence {
       if (!stagedRecord || !stagedAssets) {
         throw new PersistenceContractError("staged persistence root is incomplete");
       }
-      this.committedRoots.set(
-        rootKey,
-        cloneDetachedDocument({
-          record: { ...stagedRecord, commitState: "committed" },
-          assets: stagedAssets,
-        }),
-      );
+      this.committedRoots.set(rootKey, {
+        record: { ...stagedRecord, commitState: "committed" },
+        assets: stagedAssets,
+      });
       this.afterBoundary("committed-record", candidate.record.contentRootHash);
 
       this.acknowledgedRoots.set(candidate.record.documentId, {
@@ -1822,7 +1847,7 @@ export class AtomicWorkingDocumentPersistence {
         ? this.committedRoots.get(acknowledgedRoot.rootKey)
         : undefined;
       if (acknowledged?.record.documentId === documentId) {
-        return cloneDetachedDocument(acknowledged);
+        return restoreStoredDocument(acknowledged);
       }
 
       const latest = [...this.committedRoots.values()]
@@ -1833,7 +1858,7 @@ export class AtomicWorkingDocumentPersistence {
             right.record.updatedAt - left.record.updatedAt,
         )
         .at(0);
-      return latest ? cloneDetachedDocument(latest) : undefined;
+      return latest ? restoreStoredDocument(latest) : undefined;
     } catch (error) {
       return normalizePersistenceError(
         error,

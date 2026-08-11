@@ -196,6 +196,30 @@ test("persistence-v1 detaches and deduplicates PNG bytes outside JSON", async ()
   expect(json.match(/detached-binary-asset-v1/gu)).toHaveLength(2);
 });
 
+test("persistence-v1 stores exact binary bytes without Base64 expansion", async () => {
+  const candidate = await detached(NEXT_ROOT, 2);
+  const recordBytes = new TextEncoder().encode(JSON.stringify(candidate.record)).byteLength;
+  const binaryBytes = candidate.assets.reduce((total, asset) => total + asset.bytes.byteLength, 0);
+  const base64Bytes = candidate.assets.reduce(
+    (total, asset) => total + Math.ceil(asset.bytes.byteLength / 3) * 4,
+    0,
+  );
+  expect(base64Bytes).toBeGreaterThan(binaryBytes);
+
+  const exactBytes = recordBytes + binaryBytes;
+  const store = new AtomicWorkingDocumentPersistence({ maxBytes: exactBytes });
+  await store.save(candidate.record, candidate.assets);
+  expect(store.recover(candidate.record.documentId)).toEqual(candidate);
+
+  const tooSmallStore = new AtomicWorkingDocumentPersistence({
+    maxBytes: exactBytes - 1,
+  });
+  await expect(tooSmallStore.save(candidate.record, candidate.assets)).rejects.toBeInstanceOf(
+    PersistenceQuotaError,
+  );
+  expect(tooSmallStore.recover(candidate.record.documentId)).toBeUndefined();
+});
+
 test("persistence-v1 recovers prior ACK or the complete new root over 100 terminations", async () => {
   const prior = await detached(PRIOR_ROOT, 1);
   const next = await detached(NEXT_ROOT, 2);
