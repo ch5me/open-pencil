@@ -49,6 +49,16 @@
       "default": "./dist/canvas/index.js",
       "import": "./dist/canvas/index.js"
     },
+    "./canvas/image-editor": {
+      "types": "./dist/canvas/image-editor/index.d.ts",
+      "default": "./dist/canvas/image-editor/index.js",
+      "import": "./dist/canvas/image-editor/index.js"
+    },
+    "./canvas/image-editor/raster": {
+      "types": "./dist/canvas/image-editor/raster.d.ts",
+      "default": "./dist/canvas/image-editor/raster.js",
+      "import": "./dist/canvas/image-editor/raster.js"
+    },
     "./design-jsx": {
       "types": "./dist/design-jsx/index.d.ts",
       "default": "./dist/design-jsx/index.js",
