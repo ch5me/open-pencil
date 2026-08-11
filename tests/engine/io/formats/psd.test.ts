@@ -18,6 +18,7 @@ import {
   stagePsbImport,
 } from "#core/io/formats/psd";
 import externalCorpus from "#tests/fixtures/psd-corpus-v1/manifest.json";
+import { expectDefined } from "#tests/helpers/assert";
 
 const externalCorpusCases = externalCorpus.cases as readonly PsdCorpusCase[];
 
@@ -62,9 +63,7 @@ test("reopens the staged PSD export with stable interchange header fields", () =
     bitsPerChannel: 8,
     colorMode: 3,
   });
-  expect(reopened.layers).toEqual([
-    layerMetadata("background", "Background"),
-  ]);
+  expect(reopened.layers).toEqual([layerMetadata("background", "Background")]);
   expect(reopened.warnings).toEqual([]);
   expect(reopened.degraded).toBe(false);
 });
@@ -222,9 +221,7 @@ test("preserves editable PSD text-layer metadata through producer staging", () =
     layers: [layerMetadata("text-1", "Headline", { text })],
   });
 
-  expect(stagePsdImport(bytes).layers).toEqual([
-    layerMetadata("text-1", "Headline", { text }),
-  ]);
+  expect(stagePsdImport(bytes).layers).toEqual([layerMetadata("text-1", "Headline", { text })]);
 });
 
 test("deterministically round-trips typed metadata without mutating caller data", () => {
@@ -258,9 +255,7 @@ test("deterministically round-trips typed metadata without mutating caller data"
         entry.byteRoundTrip === "UNKNOWN" &&
         entry.byteRoundTripSha256 === null,
     ),
-  ).toBe(
-    true,
-  );
+  ).toBe(true);
 });
 
 test("preserves advanced PSD layer metadata and reports typed degradation", () => {
@@ -275,11 +270,13 @@ test("preserves advanced PSD layer metadata and reports typed degradation", () =
       height: 80,
       path: ["M 0 0", "L 100 80"],
     },
-    paths: [{
-      id: "path:hero",
-      anchors: [{ id: "a", x: 0, y: 0, handleOut: [10, 10] }],
-      closed: false,
-    }],
+    paths: [
+      {
+        id: "path:hero",
+        anchors: [{ id: "a", x: 0, y: 0, handleOut: [10, 10] }],
+        closed: false,
+      },
+    ],
     effects: [{ kind: "shadow", visible: true, blur: 4 }],
     vectorMask: {
       type: "VECTOR",
@@ -298,8 +295,8 @@ test("preserves advanced PSD layer metadata and reports typed degradation", () =
 test("rasterizes visible text and shape layers with opacity and source-over order", () => {
   const redShape = new Uint8Array([255, 0, 0, 255]);
   const blueText = new Uint8Array([0, 0, 255, 255]);
-  expect(
-    [...rasterizePsdLayers({
+  expect([
+    ...rasterizePsdLayers({
       width: 1,
       height: 1,
       layers: [
@@ -312,8 +309,8 @@ test("rasterizes visible text and shape layers with opacity and source-over orde
           raster: { width: 1, height: 1, pixels: blueText },
         },
       ],
-    })],
-  ).toEqual([128, 0, 128, 255]);
+    }),
+  ]).toEqual([128, 0, 128, 255]);
 });
 
 test("rasterizes supported PSD blend modes and rejects unsupported modes", () => {
@@ -408,24 +405,26 @@ test("rejects unsupported PSD adjustment types before raster mutation", () => {
 });
 
 test("applies supported PSD adjustment metadata during rasterization", () => {
-  expect(
-    [...rasterizePsdLayers({
+  expect([
+    ...rasterizePsdLayers({
       width: 1,
       height: 1,
-      layers: [{
-        ...layerMetadata("exposure", "Exposure", {
-          adjustmentType: "exposure",
-          adjustments: { exposure: 1 },
-        }),
-        raster: { width: 1, height: 1, pixels: new Uint8Array([32, 64, 96, 255]) },
-      }],
-    })],
-  ).toEqual([64, 128, 192, 255]);
+      layers: [
+        {
+          ...layerMetadata("exposure", "Exposure", {
+            adjustmentType: "exposure",
+            adjustments: { exposure: 1 },
+          }),
+          raster: { width: 1, height: 1, pixels: new Uint8Array([32, 64, 96, 255]) },
+        },
+      ],
+    }),
+  ]).toEqual([64, 128, 192, 255]);
 });
 
 test("skips hidden layers and rejects malformed raster payloads", () => {
-  expect(
-    [...rasterizePsdLayers({
+  expect([
+    ...rasterizePsdLayers({
       width: 1,
       height: 1,
       layers: [
@@ -434,8 +433,8 @@ test("skips hidden layers and rejects malformed raster payloads", () => {
           raster: { width: 1, height: 1, pixels: new Uint8Array([255, 0, 0, 255]) },
         },
       ],
-    })],
-  ).toEqual([0, 0, 0, 0]);
+    }),
+  ]).toEqual([0, 0, 0, 0]);
 
   expect(() =>
     rasterizePsdLayers({
@@ -452,17 +451,9 @@ test("skips hidden layers and rejects malformed raster payloads", () => {
 });
 
 test("preserves rotated raster layers and applies rotated alpha masks", () => {
-  const pixels = new Uint8Array([
-    255, 0, 0, 255,
-    0, 255, 0, 255,
-    0, 0, 255, 255,
-    255, 255, 0, 255,
-  ]);
+  const pixels = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 0, 255]);
   const mask = new Uint8Array([
-    255, 255, 255, 255,
-    255, 255, 255, 0,
-    255, 255, 255, 0,
-    255, 255, 255, 255,
+    255, 255, 255, 255, 255, 255, 255, 0, 255, 255, 255, 0, 255, 255, 255, 255,
   ]);
   const rotated = rasterizePsdLayers({
     width: 2,
@@ -480,12 +471,7 @@ test("preserves rotated raster layers and applies rotated alpha masks", () => {
       },
     ],
   });
-  expect([...rotated]).toEqual([
-    0, 0, 0, 0,
-    255, 0, 0, 255,
-    255, 255, 0, 255,
-    0, 0, 0, 0,
-  ]);
+  expect([...rotated]).toEqual([0, 0, 0, 0, 255, 0, 0, 255, 255, 255, 0, 255, 0, 0, 0, 0]);
 });
 
 test("rejects malformed rotated raster and mask transforms", () => {
@@ -592,22 +578,20 @@ test("rejects compressed expansion and render-buffer budgets", () => {
 });
 
 test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen status", async () => {
+  const firstExternalCase = expectDefined(externalCorpusCases[0], "first PSD corpus case");
   expect(() => createPsdCorpusManifest([])).toThrow("external corpus manifest is empty");
-  expect(() =>
-    createPsdCorpusManifest([{ ...externalCorpusCases[0]!, warning: "" }]),
-  ).toThrow("warning coverage is incomplete");
-  expect(() =>
-    createPsdCorpusManifest([
-      { ...externalCorpusCases[0]!, sha256: "not-a-digest" },
-    ]),
-  ).toThrow("lowercase SHA-256 digest");
+  expect(() => createPsdCorpusManifest([{ ...firstExternalCase, warning: "" }])).toThrow(
+    "warning coverage is incomplete",
+  );
+  expect(() => createPsdCorpusManifest([{ ...firstExternalCase, sha256: "not-a-digest" }])).toThrow(
+    "lowercase SHA-256 digest",
+  );
   expect(() =>
     createPsdCorpusManifest([
       {
-        ...externalCorpusCases[0]!,
+        ...firstExternalCase,
         byteRoundTrip: "PASS",
-        byteRoundTripSha256:
-          "0000000000000000000000000000000000000000000000000000000000000000",
+        byteRoundTripSha256: "0000000000000000000000000000000000000000000000000000000000000000",
       },
       ...externalCorpusCases.slice(1),
     ]),
@@ -654,7 +638,9 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
   expect(manifest.failedImportVisibleMutationCount).toBe(0);
   expect(manifest.cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(true);
   for (const entry of manifest.cases) {
-    const fixture = Bun.file(new URL(`../../../fixtures/psd-corpus-v1/${entry.fixture}`, import.meta.url));
+    const fixture = Bun.file(
+      new URL(`../../../fixtures/psd-corpus-v1/${entry.fixture}`, import.meta.url),
+    );
     const bytes = new Uint8Array(await fixture.arrayBuffer());
     expect(createHash("sha256").update(bytes).digest("hex")).toBe(entry.sha256);
     const header = parsePsdHeader(bytes);
@@ -696,7 +682,7 @@ test("rejects oversized PSD files before reading payload", async () => {
       reads += 1;
       return new ArrayBuffer(26);
     },
-  } as unknown as File;
+  } as File;
 
   await expect(readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxBytes: 100 })).rejects.toThrow(
     "PSD exceeds byte limit",
@@ -720,13 +706,71 @@ test("rejects decoded dimensions after header read but before payload allocation
       payloadReads += 1;
       return header.buffer;
     },
-  } as unknown as File;
+  } as File;
 
-  await expect(
-    readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxWidth: 9 }),
-  ).rejects.toThrow("PSD dimensions exceed limits");
+  await expect(readPsdFile(file, { ...DEFAULT_PSD_LIMITS, maxWidth: 9 })).rejects.toThrow(
+    "PSD dimensions exceed limits",
+  );
   expect(headerReads).toBe(1);
   expect(payloadReads).toBe(0);
+});
+
+test("rejects decoded PSD budgets after header read but before payload allocation", async () => {
+  const header = stagePsdExport({ width: 10, height: 20, layers: [] });
+  const cases = [
+    {
+      limits: { ...DEFAULT_PSD_LIMITS, maxDecodedBytes: 799 },
+      message: "PSD decoded payload exceeds limits",
+    },
+    {
+      limits: { ...DEFAULT_PSD_LIMITS, maxExpansionRatio: 1 },
+      message: "PSD compressed expansion exceeds limits",
+    },
+  ];
+
+  for (const { limits, message } of cases) {
+    let headerReads = 0;
+    let payloadReads = 0;
+    const file = {
+      size: header.byteLength,
+      slice: () => ({
+        arrayBuffer: async () => {
+          headerReads += 1;
+          return header.buffer;
+        },
+      }),
+      arrayBuffer: async () => {
+        payloadReads += 1;
+        return header.buffer;
+      },
+    } as File;
+
+    await expect(readPsdFile(file, limits)).rejects.toThrow(message);
+    expect(headerReads).toBe(1);
+    expect(payloadReads).toBe(0);
+  }
+});
+
+test("pre-cancelled PSD import reads no header or payload bytes", async () => {
+  const controller = new AbortController();
+  let reads = 0;
+  const file = {
+    size: 26,
+    slice: () => {
+      reads += 1;
+      return new Blob();
+    },
+    arrayBuffer: async () => {
+      reads += 1;
+      return new ArrayBuffer(26);
+    },
+  } as File;
+  controller.abort();
+
+  await expect(readPsdFile(file, DEFAULT_PSD_LIMITS, controller.signal)).rejects.toBeInstanceOf(
+    PsdCancelledError,
+  );
+  expect(reads).toBe(0);
 });
 
 test("cancellation tombstone prevents a post-cancel PSD publish", async () => {
@@ -742,7 +786,7 @@ test("cancellation tombstone prevents a post-cancel PSD publish", async () => {
       new Promise<ArrayBuffer>((resolve) => {
         resolvePayload = resolve;
       }),
-  } as unknown as File;
+  } as File;
 
   const importPromise = readPsdFile(file, DEFAULT_PSD_LIMITS, controller.signal);
   await Promise.resolve();

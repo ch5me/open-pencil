@@ -125,6 +125,12 @@ test("hostile-io-v1 rejects aggregate archive expansion before unzip allocation"
   ).rejects.toThrow(IOHostileInputError);
 });
 
+test("hostile-io-v1 rejects missing ZIP metadata before unzip allocation", async () => {
+  await expect(readFigFile(new File([new Uint8Array(64)], "hostile.fig"))).rejects.toThrow(
+    IOHostileInputError,
+  );
+});
+
 test("hostile-io-v1 preserves typed cancellation before reading JSON", async () => {
   const controller = new AbortController();
   controller.abort();

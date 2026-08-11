@@ -6,10 +6,12 @@ export interface IOInputLimits {
 
 export class IOHostileInputError extends Error {
   readonly code = "io-hostile-input";
+  readonly name = "IOHostileInputError";
 }
 
 export class IOCancelledError extends Error {
   readonly code = "io-import-cancelled";
+  readonly name = "IOCancelledError";
 }
 
 export function throwIfIOCancelled(signal?: AbortSignal): void {
@@ -67,7 +69,9 @@ export function assertZipDecodedWithinLimits(bytes: Uint8Array, limits: IOInputL
       break;
     }
   }
-  if (eocd < 0) return;
+  if (eocd < 0) {
+    throw new IOHostileInputError("ZIP end of central directory is missing");
+  }
 
   const entryCount = readU16(bytes, eocd + 10);
   const centralSize = readU32(bytes, eocd + 12);
