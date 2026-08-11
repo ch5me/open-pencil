@@ -666,7 +666,8 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
     ),
   ).toBe(true);
   expect(manifest.cases.length).toBeGreaterThan(0);
-  expect(manifest.warningCoverage).toBe(1);
+  expect(manifest.warningContractCoverage).toBe(1);
+  expect(manifest.externalWarningCoverage).toBe("UNKNOWN");
   expect(manifest.failedImportVisibleMutationCount).toBe(0);
   expect(manifest.cases.every((entry) => entry.externalReopen === "UNKNOWN")).toBe(true);
   for (const entry of manifest.cases) {

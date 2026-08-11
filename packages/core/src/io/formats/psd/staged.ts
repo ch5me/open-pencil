@@ -179,7 +179,8 @@ export function createPsdCorpusManifest(
     source,
     externalSources,
     cases,
-    warningCoverage: 1,
+    warningContractCoverage: 1,
+    externalWarningCoverage: "UNKNOWN",
     failedImportVisibleMutationCount: 0,
   };
 }
