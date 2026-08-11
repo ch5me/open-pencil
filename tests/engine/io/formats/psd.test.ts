@@ -675,6 +675,7 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
       new URL(`../../../fixtures/psd-corpus-v1/${entry.fixture}`, import.meta.url),
     );
     const bytes = new Uint8Array(await fixture.arrayBuffer());
+    expect(bytes.byteLength).toBeGreaterThan(26);
     expect(createHash("sha256").update(bytes).digest("hex")).toBe(entry.sha256);
     const header = parsePsdHeader(bytes);
     expect(header.width).toBeGreaterThan(0);
@@ -685,6 +686,7 @@ test("psd-corpus-v1 verifies external fixture provenance and fail-loud reopen st
       height: header.height,
       layers: [generatedLayer],
     });
+    expect(generated.byteLength).toBeGreaterThan(26);
     const reopened = stagePsdImport(generated, {
       ...DEFAULT_PSD_LIMITS,
       maxExpansionRatio: Number.MAX_SAFE_INTEGER,
