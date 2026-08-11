@@ -420,6 +420,28 @@ test("persistence-v1 rejects unknown JSON-safe record keys before PNG detachment
   await expect(detachPngDataUrls(benign)).rejects.toBeInstanceOf(PersistenceContractError);
 });
 
+test("public editor API rejects unknown viewport keys before PNG detachment", async () => {
+  const embedded = record(NEXT_ROOT, 1, {});
+  const benign = record(NEXT_ROOT, 1, {});
+  Reflect.set(embedded.viewport, "extra", PNG_DATA_URL);
+  Reflect.set(benign.viewport, "extra", true);
+
+  await expect(detachPngDataUrls(embedded)).rejects.toBeInstanceOf(PersistenceContractError);
+  await expect(detachPngDataUrls(benign)).rejects.toBeInstanceOf(PersistenceContractError);
+});
+
+test("persistence-v1 rejects PNG data URLs outside payload arrays", async () => {
+  await expect(
+    detachPngDataUrls({ ...record(NEXT_ROOT, 1, {}), selectionIds: [PNG_DATA_URL] }),
+  ).rejects.toBeInstanceOf(PersistenceContractError);
+});
+
+test("persistence-v1 rejects PNG data URLs in nested payload keys", async () => {
+  await expect(
+    detachPngDataUrls(record(NEXT_ROOT, 1, { nested: { [PNG_DATA_URL]: true } })),
+  ).rejects.toBeInstanceOf(PersistenceContractError);
+});
+
 test("persistence-v1 detaches caller and recovery asset buffers", async () => {
   const next = await detachPngDataUrls(record(NEXT_ROOT, 1, { image: OTHER_PNG_DATA_URL }));
   const store = new AtomicWorkingDocumentPersistence();

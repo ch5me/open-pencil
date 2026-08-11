@@ -136,6 +136,7 @@ const WORKING_DOCUMENT_RECORD_KEYS = new Set([
   "commitState",
   "updatedAt",
 ]);
+const WORKING_DOCUMENT_VIEWPORT_KEYS = new Set(["panX", "panY", "zoom"]);
 
 function assertFinite(value: number, label: string): void {
   if (!Number.isFinite(value)) throw new PersistenceContractError(`${label} must be finite`);
@@ -145,6 +146,13 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
+}
+
+function hasExactKeys(record: Record<string, unknown>, keys: ReadonlySet<string>): boolean {
+  const ownKeys = Reflect.ownKeys(record);
+  return (
+    ownKeys.length === keys.size && ownKeys.every((key) => typeof key === "string" && keys.has(key))
+  );
 }
 
 function isDetachedReference(value: unknown): value is DetachedBinaryAssetReference {
@@ -194,6 +202,11 @@ function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (typeof key !== "string" || !descriptor?.enumerable || !("value" in descriptor)) {
       throw new PersistenceContractError("working-document payload has non-JSON properties");
+    }
+    if (PNG_DATA_URL_PREFIX.test(key)) {
+      throw new PersistenceContractError(
+        "working-document payload keys must not contain PNG data URLs",
+      );
     }
     assertJsonValue(descriptor.value, ancestors);
   }
@@ -649,16 +662,15 @@ export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>)
 export function validateWorkingDocumentRecord(
   record: unknown,
 ): asserts record is WorkingDocumentRecord {
-  if (
-    !isPlainRecord(record) ||
-    Reflect.ownKeys(record).length !== WORKING_DOCUMENT_RECORD_KEYS.size ||
-    Reflect.ownKeys(record).some(
-      (key) => typeof key !== "string" || !WORKING_DOCUMENT_RECORD_KEYS.has(key),
-    )
-  ) {
+  if (!isPlainRecord(record) || !hasExactKeys(record, WORKING_DOCUMENT_RECORD_KEYS)) {
     throw new PersistenceContractError("working document has unknown record keys");
   }
   assertJsonValue(record);
+  if (
+    Object.entries(record).some(([key, value]) => key !== "payload" && containsPngDataUrl(value))
+  ) {
+    throw new PersistenceContractError("working document metadata must not contain PNG data URLs");
+  }
   if (
     record.schema !== "openpencil-working-document-v1" ||
     record.schemaVersion !== 1 ||
@@ -686,6 +698,7 @@ export function validateWorkingDocumentRecord(
   const viewport = record.viewport;
   if (
     !isPlainRecord(viewport) ||
+    !hasExactKeys(viewport, WORKING_DOCUMENT_VIEWPORT_KEYS) ||
     typeof viewport.panX !== "number" ||
     typeof viewport.panY !== "number" ||
     typeof viewport.zoom !== "number"
