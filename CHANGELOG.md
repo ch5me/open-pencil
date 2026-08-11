@@ -35,6 +35,7 @@
 
 ### Fixes
 
+- Recreate and dispose CanvasKit WebGL2 renderer resources after context loss instead of retaining stale ready state or switching renderers.
 - Bind CH5 lint receipts to the full resolved production package closure and reject source or installed artifact mutation during evaluation.
 - Resize auto-height text when typography metrics such as line height or font size change, keeping imported Figma text bounds editable and undoable.
 - Match Figma auto-layout reflow when deleting children or hiding optional instance slots, including HUG-height component instances.

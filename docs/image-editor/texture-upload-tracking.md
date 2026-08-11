@@ -84,17 +84,20 @@ soak measurement. The default contract therefore reports every resilience
 dimension as `UNKNOWN`; setting a field to `SUPPORTED` is evidence metadata,
 not an implementation of recovery.
 
-UG-GAP-111 acceptance requires a consuming-backend probe with all of the
-following evidence:
+The Vue CanvasKit consuming surface now requires WebGL2, destroys the active
+renderer, GrContext, and CanvasKit WebGL handle on loss, then recreates them on
+restore. The deterministic unit harness verifies balanced disposal calls. The
+consuming Playwright harness drives `WEBGL_lose_context` through 20 cycles on
+both scene and overlay canvases, preserves the `webgl2` backend, rejects stale
+ready state, renders fresh post-restore edits, and observes no cycle-created
+workers or browser errors.
 
-- 20 loss/restart cycles for each backend, with zero silent failures.
+Remaining UG-GAP-111 acceptance requires:
+
 - A 60-minute warm-state soak with growth at or below 5%.
 - Observed memory at or below 64 MiB for D1 and 32 MiB for M1.
-- Zero leaked workers and renderer contexts after teardown.
+- Physical device/runtime confirmation beyond the deterministic lifecycle harness.
 
-The existing adapter and unit tests do not observe those surfaces, so
-UG-GAP-111 remains `UNKNOWN`. Do not infer loss recovery, memory bounds,
-leak-freedom, or backend switching from contract construction, synthetic
-benchmarks, or tile-plan output. A future proof must record backend identity,
-cycle counts, warm-state samples, memory profile, and teardown counts from the
-consuming renderer.
+WebGPU remains unsupported and unclaimed. D1/M1 soak, physical GPU release,
+worker lifecycle outside the recovery cycles, and device memory bounds remain
+`UNKNOWN`.
