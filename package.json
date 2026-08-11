@@ -9,9 +9,9 @@
   "type": "module",
   "scripts": {
     "dev": "./node_modules/.bin/vite",
-    "svc:ensure": "pitchfork start app docs",
-    "svc:status": "pitchfork list --json",
-    "svc:stop": "pitchfork stop --local",
+    "svc:ensure": "ch5-svc up app docs",
+    "svc:status": "ch5-svc status --json",
+    "svc:stop": "ch5-svc down",
     "build": "bun run build:packages && bun run lint && ./node_modules/.bin/vite build",
     "preview": "./node_modules/.bin/vite preview",
     "tauri": "./node_modules/.bin/tauri",
