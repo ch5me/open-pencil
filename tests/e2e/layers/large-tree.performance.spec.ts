@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
+import { arch, hostname, platform, release } from "node:os";
 
 import { test, expect } from "@playwright/test";
 
@@ -14,6 +15,16 @@ const PROFILE_HOSTS = {
   D1: ["Mac16,6"],
   M1: M1_HOST_MODEL ? [M1_HOST_MODEL] : [],
 } as const;
+const SOFTWARE_RENDERER_PATTERN = /swiftshader|software|llvmpipe|lavapipe|softpipe/i;
+
+function runCommand(executable: string, args: string[]) {
+  return execFileSync(executable, args, { encoding: "utf8" }).trim();
+}
+
+function requiredIdentity(value: string, label: string) {
+  expect(value, `${label} unavailable`).not.toMatch(/^(?:|unknown)$/i);
+  return value;
+}
 
 function p95(samples: readonly number[]) {
   const ordered = [...samples].sort((left, right) => left - right);
@@ -22,6 +33,7 @@ function p95(samples: readonly number[]) {
 
 test("layer tree meets the named consuming performance contract", async ({
   page,
+  browser,
   browserName,
 }, testInfo) => {
   test.skip(!PROFILE, "Set OPENPENCIL_PERF_PROFILE=D1 or M1 on a named host.");
@@ -41,14 +53,79 @@ test("layer tree meets the named consuming performance contract", async ({
       : `${profile} host identity configured`,
   ).toBeGreaterThan(0);
   const hostModel =
-    process.platform === "darwin"
-      ? execFileSync("sysctl", ["-n", "hw.model"], { encoding: "utf8" }).trim()
-      : "UNKNOWN";
+    process.platform === "darwin" ? runCommand("sysctl", ["-n", "hw.model"]) : "UNKNOWN";
   expect(PROFILE_HOSTS[profile], `${profile} host identity`).toContain(hostModel);
+  const hostIdentity = {
+    hostname: requiredIdentity(hostname(), "host name"),
+    model: requiredIdentity(hostModel, "host model"),
+    cpu: requiredIdentity(
+      process.platform === "darwin"
+        ? runCommand("sysctl", ["-n", "machdep.cpu.brand_string"])
+        : "UNKNOWN",
+      "host CPU",
+    ),
+    platform: requiredIdentity(platform(), "host platform"),
+    release: requiredIdentity(release(), "host release"),
+    arch: requiredIdentity(arch(), "host architecture"),
+    osVersion: requiredIdentity(
+      process.platform === "darwin" ? runCommand("sw_vers", ["-productVersion"]) : "UNKNOWN",
+      "host OS version",
+    ),
+    osBuild: requiredIdentity(
+      process.platform === "darwin" ? runCommand("sw_vers", ["-buildVersion"]) : "UNKNOWN",
+      "host OS build",
+    ),
+  };
+  const commit = runCommand("git", ["rev-parse", "HEAD"]);
+  const workingTreeDirty = runCommand("git", ["status", "--porcelain"]).length > 0;
+  expect(workingTreeDirty, "performance evidence requires a clean working Tree").toBe(false);
+  expect(commit, "performance evidence commit identity").toBe(EXPECTED_COMMIT);
 
   const canvas = new CanvasHelper(page);
   await page.goto("/?test&no-rulers");
   await canvas.waitForInit();
+  const canvasWebGL = await page.evaluate(() => {
+    const identities: Record<
+      string,
+      { vendor: string; renderer: string; unmaskedVendor: string; unmaskedRenderer: string }
+    > = {};
+    for (const testId of ["scene-canvas-element", "canvas-element"]) {
+      const canvasElement = document.querySelector<HTMLCanvasElement>(`[data-test-id="${testId}"]`);
+      if (!canvasElement) throw new Error(`${testId} canvas unavailable`);
+      const gl = canvasElement.getContext("webgl2");
+      if (!gl) throw new Error(`${testId} WebGL2 context unavailable`);
+      const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+      if (!debugInfo) throw new Error(`${testId} hardware WebGL identity unavailable`);
+      identities[testId] = {
+        vendor: String(gl.getParameter(gl.VENDOR) ?? ""),
+        renderer: String(gl.getParameter(gl.RENDERER) ?? ""),
+        unmaskedVendor: String(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) ?? ""),
+        unmaskedRenderer: String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) ?? ""),
+      };
+    }
+    return identities;
+  });
+  for (const [testId, gpu] of Object.entries(canvasWebGL)) {
+    for (const [field, value] of Object.entries(gpu)) {
+      requiredIdentity(value, `${testId} WebGL ${field}`);
+      expect(value, `${testId} WebGL ${field} must use hardware`).not.toMatch(
+        SOFTWARE_RENDERER_PATTERN,
+      );
+    }
+    if (process.platform === "darwin") {
+      expect(gpu.unmaskedRenderer, `${testId} must use ANGLE Metal`).toMatch(/metal/i);
+    }
+  }
+  const browserIdentity = {
+    project: testInfo.project.name,
+    name: requiredIdentity(browserName, "browser name"),
+    version: requiredIdentity(browser.version(), "browser version"),
+    executablePath: requiredIdentity(browser.browserType().executablePath(), "browser executable"),
+    userAgent: requiredIdentity(
+      await page.evaluate(() => navigator.userAgent),
+      "browser user agent",
+    ),
+  };
 
   async function addLayers(from: number, to: number) {
     await page.evaluate(
@@ -257,22 +334,17 @@ test("layer tree meets the named consuming performance contract", async ({
     ...cachedRepaint.longTasks,
     ...layer512Edit.longTasks,
   );
-  const workingTreeDirty =
-    execFileSync("git", ["status", "--porcelain"], {
-      encoding: "utf8",
-    }).trim().length > 0;
   const identity = {
     profile,
-    hostModel,
-    commit: execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(),
+    host: hostIdentity,
+    commit,
     workingTreeDirty,
-    browserName,
-    browserVersion: page.context().browser()?.version() ?? "UNKNOWN",
-    userAgent: await page.evaluate(() => navigator.userAgent),
+    browser: browserIdentity,
+    canvasWebGL,
     hardwareConcurrency: await page.evaluate(() => navigator.hardwareConcurrency),
   };
   const evidence = {
-    schema: "ch5.open-pencil.layer-tree-performance.v2",
+    schema: "ch5.open-pencil.layer-tree-performance.v3",
     identity,
     layerTreeInteraction: {
       samples: layerTreeInteraction.samples,
@@ -301,15 +373,13 @@ test("layer tree meets the named consuming performance contract", async ({
     mountedRows100,
     mountedRows1200: await rows.count(),
   };
-  const evidencePath = testInfo.outputPath("layer-tree-performance-v2.json");
+  const evidencePath = testInfo.outputPath("layer-tree-performance-v3.json");
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
-  await testInfo.attach("layer-tree-performance-v2", {
+  await testInfo.attach("layer-tree-performance-v3", {
     path: evidencePath,
     contentType: "application/json",
   });
 
-  expect.soft(workingTreeDirty, "performance evidence requires a clean working Tree").toBe(false);
-  expect.soft(identity.commit, "performance evidence commit identity").toBe(EXPECTED_COMMIT);
   expect.soft(mountedRows100, "100-layer mounted rows").toBeLessThan(100);
   expect
     .soft(layerTreeInteractionP95Ms, "100-layer tree interaction p95")

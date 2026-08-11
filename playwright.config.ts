@@ -30,7 +30,20 @@ export default defineConfig({
     {
       name: "openpencil",
       testDir: "./tests/e2e",
+      testIgnore: "**/*.performance.spec.ts",
       fullyParallel: false,
+    },
+    {
+      name: "openpencil-perf",
+      testDir: "./tests/e2e",
+      testMatch: ["**/*.performance.spec.ts", "**/layers/large-tree.spec.ts"],
+      fullyParallel: false,
+      use: {
+        browserName: "chromium",
+        launchOptions: {
+          args: process.platform === "darwin" ? ["--use-angle=metal"] : [],
+        },
+      },
     },
     {
       name: "openpencil-webkit",
