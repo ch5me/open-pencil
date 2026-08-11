@@ -302,7 +302,7 @@ Thanks to [@sld0Ant](https://github.com/sld0Ant) (Anton Soldatov) for creating a
 
 ## About this fork (CH5)
 
-This is CH5's fork of [OpenPencil](https://github.com/open-pencil/open-pencil), created and primarily authored by [Danila Poyarkov](https://github.com/dannote) (`dannote`). MIT licensed, copyright retained — see `LICENSE`. CH5's additions on top of upstream are the Elf sign-in integration and hosting this fork at [`design.elf.dance`](https://design.elf.dance).
+This is CH5's private fork of [OpenPencil](https://github.com/open-pencil/open-pencil), created and primarily authored by [Danila Poyarkov](https://github.com/dannote) (`dannote`). MIT licensed, copyright retained — see `LICENSE`. CH5 originally forked it for Elf sign-in and hosting at [`design.elf.dance`](https://design.elf.dance); the private fork now also carries substantial product and platform extensions. Upstream authorship remains upstream's.
 
 ## License
 

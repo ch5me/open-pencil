@@ -4,7 +4,25 @@
 
 This repo is a **fork** of [`github.com/open-pencil/open-pencil`](https://github.com/open-pencil/open-pencil), created and primarily authored by **Danila Poyarkov** (`dannote`), MIT licensed (see `LICENSE`, copyright retained). The large majority of commits and functionality are upstream's work.
 
-CH5's additions on top of upstream are narrow: the Elf sign-in integration (see "CH5 Federation Context" below) and hosting this fork at `design.elf.dance`. Do not describe or document this project as CH5-authored — it is CH5-hosted and CH5-extended.
+CH5 originally forked OpenPencil for Elf sign-in and hosting at
+`design.elf.dance`, but the fork has since accumulated substantial product and
+platform divergence. Do not describe or document upstream work as CH5-authored:
+this remains Danila Poyarkov's project, CH5-hosted and CH5-extended. The current
+drift is tracked in `docs/ch5/upstream-drift.md`.
+
+## Upstream maintenance
+
+- `upstream` fetches `https://github.com/open-pencil/open-pencil.git`; its push
+  URL must remain `DISABLED-no-upstream-contributions`.
+- Run `bun run upstream:inspect -- --json` before every sync.
+- The workflow contract lives in `.ch5/upstream-sync.json`; operator guidance
+  lives in `docs/ch5/upstream-sync.md`; CH5 intent lives in
+  `docs/ch5/upstream-drift.md`.
+- `routine` and `review` may use `bun run upstream:sync -- --push` from a clean
+  Grove Tree. `program` requires a dedicated reconciliation plan and must not be
+  scheduled for automatic landing.
+- Successful `HEAD:main` push triggers normal CI and staging. Production remains
+  an explicit promotion.
 
 ## CH5 Federation Context (2026-05-16)
 

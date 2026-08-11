@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add a guarded upstream-fork sync workflow with drift classification, conflict
+  prediction, full verification, provenance locking, and direct-main push proof.
+
 ### Changed
 
 - Add JSX authoring support for components, component sets, and instances.

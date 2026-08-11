@@ -1,0 +1,40 @@
+{
+  "schema": "ch5.upstream-sync.config.v1",
+  "upstream": {
+    "remote": "upstream",
+    "url": "https://github.com/open-pencil/open-pencil.git",
+    "branch": "master"
+  },
+  "target": {
+    "remote": "origin",
+    "branch": "main"
+  },
+  "thresholds": {
+    "maxUpstreamCommits": 75,
+    "maxChangedFiles": 400,
+    "maxConflicts": 0
+  },
+  "criticalPaths": [
+    "package.json",
+    "bun.lock",
+    "desktop/",
+    "api/",
+    "packages/core/src/kiwi/",
+    "packages/core/src/scene-graph/",
+    "src/app/ai/",
+    "src/app/document/io/"
+  ],
+  "verification": {
+    "commands": [
+      "bun run format:check",
+      "bun run check",
+      "bun run test:unit",
+      "bun run test"
+    ]
+  },
+  "commit": {
+    "messagePrefix": "chore(upstream): merge"
+  },
+  "lockFile": ".ch5/upstream-sync.lock.json",
+  "requireManagedWorktree": true
+}
