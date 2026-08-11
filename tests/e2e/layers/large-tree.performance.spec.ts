@@ -7,6 +7,7 @@ import { CanvasHelper } from "#tests/helpers/canvas";
 
 const PROFILE = process.env.OPENPENCIL_PERF_PROFILE;
 const M1_HOST_MODEL = process.env.OPENPENCIL_PERF_M1_HOST_MODEL;
+const EXPECTED_COMMIT = process.env.OPENPENCIL_PERF_COMMIT?.trim();
 const SAMPLE_COUNT = 60;
 const WARMUP_COUNT = 10;
 const PROFILE_HOSTS = {
@@ -25,6 +26,9 @@ test("layer tree meets the named consuming performance contract", async ({
 }, testInfo) => {
   test.skip(!PROFILE, "Set OPENPENCIL_PERF_PROFILE=D1 or M1 on a named host.");
   expect(["D1", "M1"]).toContain(PROFILE);
+  expect(EXPECTED_COMMIT, "Set OPENPENCIL_PERF_COMMIT to the exact tested HEAD.").toMatch(
+    /^[0-9a-f]{40}$/,
+  );
   test.setTimeout(90_000);
 
   const profile = PROFILE as keyof typeof PROFILE_HOSTS;
@@ -77,6 +81,10 @@ test("layer tree meets the named consuming performance contract", async ({
       if (buttons.length < 2) throw new Error("Layer tree interaction rows not mounted");
 
       const samples: number[] = [];
+      const longTasks: number[] = [];
+      const observer = new PerformanceObserver((list) => {
+        longTasks.push(...list.getEntries().map((entry) => entry.duration));
+      });
       const yieldTask = () =>
         new Promise<void>((resolve) => {
           setTimeout(resolve, 0);
@@ -87,6 +95,7 @@ test("layer tree meets the named consuming performance contract", async ({
         await Promise.resolve();
         await yieldTask();
       }
+      observer.observe({ type: "longtask", buffered: false });
       for (let i = 0; i < sampleCount; i++) {
         const startedAt = performance.now();
         buttons[i % 2]?.click();
@@ -94,7 +103,10 @@ test("layer tree meets the named consuming performance contract", async ({
         samples.push(performance.now() - startedAt);
         await yieldTask();
       }
-      return { samples };
+      await yieldTask();
+      longTasks.push(...observer.takeRecords().map((entry) => entry.duration));
+      observer.disconnect();
+      return { samples, longTasks };
     },
     { sampleCount: SAMPLE_COUNT, warmupCount: WARMUP_COUNT },
   );
@@ -106,7 +118,11 @@ test("layer tree meets the named consuming performance contract", async ({
       if (!store || !renderer) throw new Error("OpenPencil renderer not initialized");
 
       const samples: number[] = [];
+      const longTasks: number[] = [];
       const modes: string[] = [];
+      const observer = new PerformanceObserver((list) => {
+        longTasks.push(...list.getEntries().map((entry) => entry.duration));
+      });
       const yieldTask = () =>
         new Promise<void>((resolve) => {
           setTimeout(resolve, 0);
@@ -121,6 +137,7 @@ test("layer tree meets the named consuming performance contract", async ({
         render();
         await yieldTask();
       }
+      observer.observe({ type: "longtask", buffered: false });
       for (let i = 0; i < sampleCount; i++) {
         const startedAt = performance.now();
         render();
@@ -128,6 +145,9 @@ test("layer tree meets the named consuming performance contract", async ({
         modes.push(renderer.profiler.stats.scenePictureMode);
         await yieldTask();
       }
+      await yieldTask();
+      longTasks.push(...observer.takeRecords().map((entry) => entry.duration));
+      observer.disconnect();
 
       const stats = renderer.profiler.stats;
       const profiler = {
@@ -141,7 +161,7 @@ test("layer tree meets the named consuming performance contract", async ({
         culledNodes: stats.culledNodes,
       };
       renderer.profiler.setVisible(false);
-      return { samples, modes, profiler };
+      return { samples, longTasks, modes, profiler };
     },
     { sampleCount: SAMPLE_COUNT, warmupCount: WARMUP_COUNT },
   );
@@ -158,8 +178,12 @@ test("layer tree meets the named consuming performance contract", async ({
       }
 
       const samples: number[] = [];
+      const longTasks: number[] = [];
       const firstRow = document.querySelector('[data-test-id="layers-item"]');
       const selectedBefore = [...store.state.selectedIds];
+      const observer = new PerformanceObserver((list) => {
+        longTasks.push(...list.getEntries().map((entry) => entry.duration));
+      });
       const yieldTask = () =>
         new Promise<void>((resolve) => {
           setTimeout(resolve, 0);
@@ -176,6 +200,7 @@ test("layer tree meets the named consuming performance contract", async ({
         render();
         await yieldTask();
       }
+      observer.observe({ type: "longtask", buffered: false });
       for (let i = 0; i < sampleCount; i++) {
         const id = pageNode.childIds[i % pageNode.childIds.length];
         if (!id) throw new Error("Layer not found");
@@ -185,6 +210,9 @@ test("layer tree meets the named consuming performance contract", async ({
         samples.push(performance.now() - startedAt);
         await yieldTask();
       }
+      await yieldTask();
+      longTasks.push(...observer.takeRecords().map((entry) => entry.duration));
+      observer.disconnect();
 
       const lastEditedId = pageNode.childIds[(sampleCount - 1) % pageNode.childIds.length];
       const stats = renderer.profiler.stats;
@@ -202,6 +230,7 @@ test("layer tree meets the named consuming performance contract", async ({
 
       return {
         samples,
+        longTasks,
         profiler,
         editedNodeCount: pageNode.childIds.length,
         lastEditedX: lastEditedId ? store.graph.getNode(lastEditedId)?.x : null,
@@ -222,9 +251,9 @@ test("layer tree meets the named consuming performance contract", async ({
   const layer512EditP95Ms = p95(layer512Edit.samples);
   const mainThreadMaxMs = Math.max(
     0,
-    ...layerTreeInteraction.samples,
-    ...cachedRepaint.samples,
-    ...layer512Edit.samples,
+    ...layerTreeInteraction.longTasks,
+    ...cachedRepaint.longTasks,
+    ...layer512Edit.longTasks,
   );
   const workingTreeDirty =
     execFileSync("git", ["status", "--porcelain"], {
@@ -246,16 +275,19 @@ test("layer tree meets the named consuming performance contract", async ({
     layerTreeInteraction: {
       samples: layerTreeInteraction.samples,
       p95Ms: layerTreeInteractionP95Ms,
+      longTasks: layerTreeInteraction.longTasks,
     },
     cachedRepaint: {
       samples: cachedRepaint.samples,
       p95Ms: cachedRepaintP95Ms,
+      longTasks: cachedRepaint.longTasks,
       modes: cachedRepaint.modes,
       profiler: cachedRepaint.profiler,
     },
     layer512Edit: {
       samples: layer512Edit.samples,
       p95Ms: layer512EditP95Ms,
+      longTasks: layer512Edit.longTasks,
       profiler: layer512Edit.profiler,
       editedNodeCount: layer512Edit.editedNodeCount,
       lastEditedX: layer512Edit.lastEditedX,
@@ -274,6 +306,8 @@ test("layer tree meets the named consuming performance contract", async ({
     contentType: "application/json",
   });
 
+  expect.soft(workingTreeDirty, "performance evidence requires a clean working Tree").toBe(false);
+  expect.soft(identity.commit, "performance evidence commit identity").toBe(EXPECTED_COMMIT);
   expect.soft(mountedRows100, "100-layer mounted rows").toBeLessThan(100);
   expect
     .soft(layerTreeInteractionP95Ms, "100-layer tree interaction p95")

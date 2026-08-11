@@ -62,6 +62,50 @@ export function retainLayerExpansion(
   return expandedIds.filter((id) => byId.has(id));
 }
 
+export function isNodeWithinComponent(graph: SceneGraph, nodeId: string | null): boolean {
+  let node = nodeId ? graph.getNode(nodeId) : undefined;
+  while (node) {
+    if (node.type === "COMPONENT") return true;
+    node = node.parentId ? graph.getNode(node.parentId) : undefined;
+  }
+  return false;
+}
+
+export function createLayerTreeRebuildScheduler(rebuild: () => void) {
+  let pending = false;
+  let generation = 0;
+  let disposed = false;
+
+  function flush(expectedGeneration: number) {
+    if (disposed || !pending || generation !== expectedGeneration) return;
+    pending = false;
+    rebuild();
+  }
+
+  function schedule(afterComponentSync = false) {
+    if (disposed || pending) return;
+    pending = true;
+    const expectedGeneration = ++generation;
+    if (afterComponentSync) {
+      queueMicrotask(() => queueMicrotask(() => flush(expectedGeneration)));
+    } else {
+      queueMicrotask(() => flush(expectedGeneration));
+    }
+  }
+
+  function cancel() {
+    pending = false;
+    generation++;
+  }
+
+  function dispose() {
+    disposed = true;
+    cancel();
+  }
+
+  return { schedule, cancel, dispose };
+}
+
 export function patchLayerNode(target: LayerNode, source: SceneNode): boolean {
   const changed =
     target.name !== source.name ||

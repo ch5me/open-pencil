@@ -8,7 +8,9 @@ import { provideLayerTree } from "#vue/primitives/LayerTree/context";
 import type { LayerNode } from "#vue/primitives/LayerTree/context";
 import {
   buildLayerTreeModel,
+  createLayerTreeRebuildScheduler,
   indexLayerNodes,
+  isNodeWithinComponent,
   patchLayerNode,
   retainLayerExpansion,
 } from "#vue/primitives/LayerTree/model";
@@ -44,12 +46,9 @@ const treeVersion = ref(0);
 const expanded = ref<string[]>([]);
 const selectedIds = computed(() => editor.state.selectedIds);
 let nodesById = indexLayerNodes(items.value);
-let rebuildPending = false;
-let rebuildToken = 0;
 
 function rebuildTree() {
-  rebuildPending = false;
-  rebuildToken++;
+  rebuildScheduler.cancel();
   const model = buildLayerTreeModel(editor.graph, editor.state.currentPageId);
   items.value = model.items;
   nodesById = indexLayerNodes(items.value);
@@ -57,14 +56,7 @@ function rebuildTree() {
   treeVersion.value++;
 }
 
-function scheduleTreeRebuild() {
-  if (rebuildPending) return;
-  rebuildPending = true;
-  const token = ++rebuildToken;
-  queueMicrotask(() => {
-    if (rebuildPending && token === rebuildToken) rebuildTree();
-  });
-}
+const rebuildScheduler = createLayerTreeRebuildScheduler(rebuildTree);
 
 const PATCHABLE_NODE_KEYS = new Set<keyof SceneNode>([
   "name",
@@ -76,7 +68,7 @@ const PATCHABLE_NODE_KEYS = new Set<keyof SceneNode>([
 
 function patchTreeNode(id: string, changes: Partial<SceneNode>) {
   if ("childIds" in changes || "parentId" in changes) {
-    scheduleTreeRebuild();
+    rebuildScheduler.schedule(isNodeWithinComponent(editor.graph, id));
     return;
   }
   if (!(Object.keys(changes) as (keyof SceneNode)[]).some((key) => PATCHABLE_NODE_KEYS.has(key))) {
@@ -86,20 +78,32 @@ function patchTreeNode(id: string, changes: Partial<SceneNode>) {
   const target = nodesById.get(id);
   const source = editor.graph.getNode(id);
   if (target && source) patchLayerNode(target, source);
+  if (isNodeWithinComponent(editor.graph, id)) rebuildScheduler.schedule(true);
 }
 
 const unsubscribe = [
   editor.onEditorEvent("graph:replaced", rebuildTree),
   editor.onEditorEvent("page:changed", rebuildTree),
-  editor.onEditorEvent("node:created", scheduleTreeRebuild),
-  editor.onEditorEvent("node:deleted", scheduleTreeRebuild),
-  editor.onEditorEvent("node:reparented", scheduleTreeRebuild),
-  editor.onEditorEvent("node:reordered", scheduleTreeRebuild),
+  editor.onEditorEvent("node:created", (node) => {
+    rebuildScheduler.schedule(isNodeWithinComponent(editor.graph, node.id));
+  }),
+  editor.onEditorEvent("node:deleted", () => rebuildScheduler.schedule(true)),
+  editor.onEditorEvent("node:reparented", (nodeId, oldParentId, newParentId) => {
+    rebuildScheduler.schedule(
+      isNodeWithinComponent(editor.graph, nodeId) ||
+        isNodeWithinComponent(editor.graph, oldParentId) ||
+        isNodeWithinComponent(editor.graph, newParentId),
+    );
+  }),
+  editor.onEditorEvent("node:reordered", (_, parentId) => {
+    rebuildScheduler.schedule(isNodeWithinComponent(editor.graph, parentId));
+  }),
   editor.onEditorEvent("node:updated", patchTreeNode),
 ];
 
 onScopeDispose(() => {
   for (const stop of unsubscribe) stop();
+  rebuildScheduler.dispose();
 });
 
 const rowRefs = new Map<string, HTMLElement>();

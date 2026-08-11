@@ -1,9 +1,14 @@
 import { describe, expect, test } from "bun:test";
 
+import type { SceneNode } from "@open-pencil/core";
+import { createEditor } from "@open-pencil/core/editor";
+
 import { createRect, firstPageId, makeSceneGraph } from "#tests/helpers/scene";
 import {
   buildLayerTreeModel,
+  createLayerTreeRebuildScheduler,
   indexLayerNodes,
+  isNodeWithinComponent,
   patchLayerNode,
   retainLayerExpansion,
 } from "#vue/primitives/LayerTree/model";
@@ -75,5 +80,69 @@ describe("layer tree model", () => {
     const model = buildLayerTreeModel(graph, pageId);
 
     expect(retainLayerExpansion([frame.id, "deleted"], model.byId)).toEqual([frame.id]);
+  });
+
+  test("rebuilds after component synchronization updates instance child fields and order", async () => {
+    const editor = createEditor();
+    const pageId = editor.state.currentPageId;
+    const component = editor.graph.createNode("COMPONENT", pageId, { name: "Card" });
+    const first = editor.graph.createNode("FRAME", component.id, {
+      name: "First",
+      layoutMode: "NONE",
+    });
+    const second = editor.graph.createNode("FRAME", component.id, { name: "Second" });
+    const instance = editor.graph.createInstance(component.id, pageId);
+    expect(instance).toBeDefined();
+    if (!instance) return;
+
+    let model = buildLayerTreeModel(editor.graph, pageId);
+    const scheduler = createLayerTreeRebuildScheduler(() => {
+      model = buildLayerTreeModel(editor.graph, pageId);
+    });
+    const patchableKeys = new Set<keyof SceneNode>(["name", "layoutMode"]);
+    const stop = [
+      editor.onEditorEvent("node:updated", (id, changes) => {
+        if (
+          (Object.keys(changes) as (keyof SceneNode)[]).some((key) => patchableKeys.has(key)) &&
+          isNodeWithinComponent(editor.graph, id)
+        ) {
+          scheduler.schedule(true);
+        }
+      }),
+      editor.onEditorEvent("node:reordered", (_, parentId) => {
+        scheduler.schedule(isNodeWithinComponent(editor.graph, parentId));
+      }),
+    ];
+
+    editor.graph.updateNode(first.id, { name: "First synced", layoutMode: "VERTICAL" });
+    editor.graph.reorderChild(second.id, component.id, 0);
+
+    await Promise.resolve();
+    const staleInstance = model.byId.get(instance.id);
+    expect(staleInstance?.children?.map((node) => node.name)).toEqual(["First", "Second"]);
+
+    await Promise.resolve();
+    const syncedInstance = model.byId.get(instance.id);
+    expect(syncedInstance?.children?.map((node) => node.name)).toEqual(["Second", "First synced"]);
+    expect(syncedInstance?.children?.[1]?.layoutMode).toBe("VERTICAL");
+
+    for (const unsubscribe of stop) unsubscribe();
+    scheduler.dispose();
+  });
+
+  test("coalesces structural rebuilds and cancels pending work on disposal", async () => {
+    let rebuilds = 0;
+    const scheduler = createLayerTreeRebuildScheduler(() => rebuilds++);
+
+    scheduler.schedule();
+    scheduler.schedule();
+    await Promise.resolve();
+    expect(rebuilds).toBe(1);
+
+    scheduler.schedule(true);
+    scheduler.dispose();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(rebuilds).toBe(1);
   });
 });
