@@ -25,12 +25,7 @@
     "src/app/document/io/"
   ],
   "verification": {
-    "commands": [
-      "bun run format:check",
-      "bun run check",
-      "bun run test:unit",
-      "bun run test"
-    ]
+    "commands": ["bun run format:verify", "bun run check", "bun run test:unit", "bun run test"]
   },
   "commit": {
     "messagePrefix": "chore(upstream): merge"
@@ -58,7 +53,9 @@
       "scripts/preview-proof.ts",
       "scripts/promote.mjs",
       "scripts/upstream-sync.ts",
-      "scripts/validate-hosted-flags.ts"
+      "scripts/validate-hosted-flags.ts",
+      "tests/engine/upstream-sync",
+      "tools/ch5"
     ]
   },
   "requireManagedWorktree": true
