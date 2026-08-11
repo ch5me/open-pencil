@@ -32,6 +32,33 @@ export function createCanvasSurfaceManager({
 }) {
   const state: SurfaceManagerState = { renderer: null, glContext: null };
   let sceneBackingRenderTimer: ReturnType<typeof setTimeout> | null = null;
+  let contextLost = false;
+  let lifecycleCanvas: HTMLCanvasElement | null = null;
+
+  function onContextLost(event: Event) {
+    event.preventDefault();
+    contextLost = true;
+    clearSceneBackingRenderTimer();
+    state.glContext = null;
+  }
+
+  function onContextRestored() {
+    if (isDestroyed() || !contextLost) return;
+    contextLost = false;
+    const canvas = canvasRef.value;
+    if (!canvas) return;
+    createSurface(canvas, { reloadFonts: true });
+    renderLoop.markDirty();
+  }
+
+  function bindContextLifecycle(canvas: HTMLCanvasElement) {
+    if (lifecycleCanvas === canvas) return;
+    lifecycleCanvas?.removeEventListener("webglcontextlost", onContextLost);
+    lifecycleCanvas?.removeEventListener("webglcontextrestored", onContextRestored);
+    canvas.addEventListener("webglcontextlost", onContextLost);
+    canvas.addEventListener("webglcontextrestored", onContextRestored);
+    lifecycleCanvas = canvas;
+  }
 
   function clearSceneBackingRenderTimer() {
     if (sceneBackingRenderTimer === null) return;
@@ -43,6 +70,7 @@ export function createCanvasSurfaceManager({
     canvas: HTMLCanvasElement,
     { reloadFonts = false }: { reloadFonts?: boolean } = {},
   ) {
+    bindContextLifecycle(canvas);
     const ck = getCanvasKit();
     if (!ck) return;
 
@@ -78,7 +106,7 @@ export function createCanvasSurfaceManager({
   }
 
   function renderNow() {
-    if (!state.renderer || isDestroyed()) return;
+    if (!state.renderer || isDestroyed() || contextLost) return;
     state.renderer.renderFromEditorState(
       editor.state,
       editor.graph,
@@ -122,6 +150,9 @@ export function createCanvasSurfaceManager({
   function destroy() {
     clearSceneBackingRenderTimer();
     renderLoop.pause();
+    lifecycleCanvas?.removeEventListener("webglcontextlost", onContextLost);
+    lifecycleCanvas?.removeEventListener("webglcontextrestored", onContextRestored);
+    lifecycleCanvas = null;
     if (state.renderer) editor.removeCanvasRenderer(state.renderer);
     state.renderer?.destroy();
     state.glContext?.delete();
