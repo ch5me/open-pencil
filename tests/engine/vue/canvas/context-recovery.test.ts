@@ -59,7 +59,7 @@ describe("canvas context recovery", () => {
     expect(restored).toBe(0);
   });
 
-  test("recreates WebGL2 resources for 20 loss/restart cycles without leaks", () => {
+  test("blocks queued resize recreation during 20 WebGL2 loss/restart cycles", () => {
     const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
     const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
     globalThis.requestAnimationFrame = (callback) => {
@@ -133,6 +133,13 @@ describe("canvas context recovery", () => {
         expect(lost.defaultPrevented).toBe(true);
         expect(manager.getBackend()).toBeNull();
         expect(activeRenderers).toBe(0);
+        expect(target.dataset.surfaceError).toBe("webgl-context-lost");
+
+        const lostStats = manager.getLifecycleStats();
+        manager.resizeCanvas(target);
+        expect(manager.createSurface(target)).toBe(false);
+        expect(manager.getLifecycleStats()).toEqual(lostStats);
+        expect(target.dataset.ready).toBeUndefined();
         expect(target.dataset.surfaceError).toBe("webgl-context-lost");
 
         target.dispatchEvent(new Event("webglcontextrestored"));

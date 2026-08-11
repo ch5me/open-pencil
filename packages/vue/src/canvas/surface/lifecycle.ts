@@ -122,6 +122,7 @@ export function createCanvasSurfaceManager({
     canvas: HTMLCanvasElement,
     { reloadFonts = false, recreated = false }: { reloadFonts?: boolean; recreated?: boolean } = {},
   ): boolean {
+    if (contextRecovery.isLost()) return false;
     contextRecovery.bind(canvas);
     delete canvas.dataset.ready;
     const ck = getCanvasKit();
@@ -193,6 +194,7 @@ export function createCanvasSurfaceManager({
   const renderLoop = createCanvasRenderLoop(editor, renderNow, { layer: options?.layer });
 
   function resizeCanvas(canvas: HTMLCanvasElement) {
+    if (contextRecovery.isLost()) return;
     const ck = getCanvasKit();
     if (!ck || !state.renderer) {
       createSurface(canvas);

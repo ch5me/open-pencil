@@ -4,10 +4,13 @@ const editor = setupEditor("/?test&no-chrome&no-rulers");
 
 test.setTimeout(60_000);
 
-async function cycleWebGL2Context(testId: string, cycles: number) {
+async function cycleWebGL2Context(testId: string, cycle: number) {
   return editor.page.getByTestId(testId).evaluate(
     async (element, options) => {
-      const canvas = element as HTMLCanvasElement;
+      if (!(element instanceof HTMLCanvasElement)) {
+        throw new Error(`${options.testId} is not a canvas`);
+      }
+      const canvas = element;
       const gl = canvas.getContext("webgl2");
       const extension = gl?.getExtension("WEBGL_lose_context");
       if (!gl || !extension) {
@@ -30,26 +33,33 @@ async function cycleWebGL2Context(testId: string, cycles: number) {
           );
         });
 
-      for (let cycle = 1; cycle <= options.cycles; cycle += 1) {
-        const lost = waitForEvent("webglcontextlost");
-        extension.loseContext();
-        await lost;
-        if (canvas.dataset.ready !== undefined) {
-          throw new Error(`${options.testId} kept stale data-ready after loss ${cycle}`);
-        }
-
-        await new Promise((resolve) => {
-          setTimeout(resolve, 50);
-        });
-        const restored = waitForEvent("webglcontextrestored");
-        extension.restoreContext();
-        await restored;
-        await new Promise(requestAnimationFrame);
-        if (canvas.dataset.ready !== "1" || Number(canvas.dataset.resourceGeneration) !== cycle) {
-          throw new Error(`${options.testId} failed recreation cycle ${cycle}`);
-        }
+      const lost = waitForEvent("webglcontextlost");
+      extension.loseContext();
+      await lost;
+      if (canvas.dataset.ready !== undefined) {
+        throw new Error(`${options.testId} kept stale data-ready after loss ${options.cycle}`);
       }
 
+      await new Promise((resolve) => {
+        setTimeout(resolve, 50);
+      });
+      const restored = waitForEvent("webglcontextrestored");
+      extension.restoreContext();
+      await restored;
+      await new Promise(requestAnimationFrame);
+      const ready = canvas.getAttribute("data-ready");
+      if (ready !== "1" || Number(canvas.dataset.resourceGeneration) !== options.cycle) {
+        throw new Error(`${options.testId} failed recreation cycle ${options.cycle}`);
+      }
+
+      const trackedWindow = window as typeof window & {
+        getContextRecoveryWorkerCounts?: () => {
+          created: number;
+          terminated: number;
+          active: number;
+          scope: string;
+        };
+      };
       return {
         backend: canvas.dataset.rendererBackend,
         contextLosses: Number(canvas.dataset.contextLosses),
@@ -59,9 +69,10 @@ async function cycleWebGL2Context(testId: string, cycles: number) {
         renderersCreated: Number(canvas.dataset.renderersCreated),
         renderersDeleted: Number(canvas.dataset.renderersDeleted),
         resourceGeneration: Number(canvas.dataset.resourceGeneration),
+        workers: trackedWindow.getContextRecoveryWorkerCounts?.(),
       };
     },
-    { cycles, testId },
+    { cycle, testId },
   );
 }
 
@@ -86,31 +97,20 @@ test("WebGL2 scene and overlay resources survive 20 context loss cycles", async 
       }
     };
     Object.assign(window, {
-      getContextRecoveryWorkerCounts: () => ({ created, terminated }),
+      getContextRecoveryWorkerCounts: () => ({
+        created,
+        terminated,
+        active: created - terminated,
+        scope: "workers created after instrumentation during context-loss cycles",
+      }),
     });
   });
-
-  for (const testId of ["scene-canvas-element", "canvas-element"]) {
-    const report = await cycleWebGL2Context(testId, 20);
-    expect(report).toEqual({
-      backend: "webgl2",
-      contextLosses: 20,
-      contextRestorations: 20,
-      contextsCreated: 21,
-      contextsDeleted: 20,
-      renderersCreated: 21,
-      renderersDeleted: 20,
-      resourceGeneration: 20,
-    });
-    expect(report.contextsCreated - report.contextsDeleted).toBe(1);
-    expect(report.renderersCreated - report.renderersDeleted).toBe(1);
-  }
 
   await editor.page.evaluate(() => {
     const store = window.openPencil?.getStore?.();
     if (!store) throw new Error("OpenPencil store not initialized");
     const rectangle = store.graph.createNode("RECTANGLE", store.state.currentPageId, {
-      name: "Post-restore edit",
+      name: "Context recovery proof",
       x: 96,
       y: 80,
       width: 240,
@@ -125,16 +125,66 @@ test("WebGL2 scene and overlay resources survive 20 context loss cycles", async 
   });
   await editor.canvas.waitForRender();
 
-  const restoredScene = await sceneCanvas.screenshot();
-  const restoredOverlay = await overlayCanvas.screenshot();
-  const workerCounts = await editor.page.evaluate(() => {
-    const trackedWindow = window as typeof window & {
-      getContextRecoveryWorkerCounts?: () => { created: number; terminated: number };
-    };
-    return trackedWindow.getContextRecoveryWorkerCounts?.();
+  for (let cycle = 1; cycle <= 20; cycle += 1) {
+    for (const testId of ["scene-canvas-element", "canvas-element"]) {
+      const report = await cycleWebGL2Context(testId, cycle);
+      expect(report).toEqual({
+        backend: "webgl2",
+        contextLosses: cycle,
+        contextRestorations: cycle,
+        contextsCreated: cycle + 1,
+        contextsDeleted: cycle,
+        renderersCreated: cycle + 1,
+        renderersDeleted: cycle,
+        resourceGeneration: cycle,
+        workers: {
+          created: 0,
+          terminated: 0,
+          active: 0,
+          scope: "workers created after instrumentation during context-loss cycles",
+        },
+      });
+    }
+    await editor.canvas.waitForRender();
+    expect((await sceneCanvas.screenshot()).equals(blankScene)).toBe(false);
+    expect((await overlayCanvas.screenshot()).equals(blankOverlay)).toBe(false);
+  }
+
+  await editor.page.evaluate(async () => {
+    const reports: Record<string, Record<string, number | string | undefined>> = {};
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.removedNodes) {
+          if (!(node instanceof Element)) continue;
+          for (const canvas of node.matches("canvas[data-test-id]")
+            ? [node]
+            : node.querySelectorAll("canvas[data-test-id]")) {
+            if (!(canvas instanceof HTMLCanvasElement) || !canvas.dataset.testId) continue;
+            reports[canvas.dataset.testId] = Object.fromEntries(Object.entries(canvas.dataset));
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    Object.assign(window, { getContextRecoveryTeardownReports: () => reports });
+    const routerModulePath = "/src/router.ts";
+    const { default: router } = await import(routerModulePath);
+    await router.push("/login");
   });
-  expect(restoredScene.equals(blankScene)).toBe(false);
-  expect(restoredOverlay.equals(blankOverlay)).toBe(false);
-  expect(workerCounts).toEqual({ created: 0, terminated: 0 });
+  await expect(sceneCanvas).toHaveCount(0);
+  const teardownReports = await editor.page.evaluate(() => {
+    const trackedWindow = window as typeof window & {
+      getContextRecoveryTeardownReports?: () => Record<
+        string,
+        Record<string, number | string | undefined>
+      >;
+    };
+    return trackedWindow.getContextRecoveryTeardownReports?.();
+  });
+  for (const testId of ["scene-canvas-element", "canvas-element"]) {
+    const report = teardownReports?.[testId];
+    expect(Number(report?.contextsCreated)).toBe(Number(report?.contextsDeleted));
+    expect(Number(report?.renderersCreated)).toBe(Number(report?.renderersDeleted));
+  }
   editor.canvas.assertNoErrors();
 });
