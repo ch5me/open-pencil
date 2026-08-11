@@ -681,44 +681,16 @@ test("renderer-resilience-v1 records unsupported runtime paths as UNKNOWN", () =
   ).toThrow(RendererResilienceContractError);
 });
 
-test("RESILIENCE-GAP-111 recreates image resources after 20 loss and restart cycles", () => {
-  const adapter = createImageRenderAdapter();
-  const plan = imagePlan();
-  const resolve: ImageRevisionResolver = {
-    getAsset: (assetId) => ({ assetId, revisionId: "sha256:hero" }),
-    getRevision: (revisionId) => ({
-      revisionId,
-      kind: "image",
-      metadata: {},
-      bytes: new Uint8Array([1, 2, 3]),
-    }),
-  };
-
-  expect(adapter.render(plan, resolve).gaps).toEqual([]);
-  for (let cycle = 1; cycle <= 20; cycle += 1) {
-    adapter.restore();
-    const recovered = adapter.render(plan, resolve);
-    expect(recovered).toMatchObject({
-      backend: "skia",
-      gaps: [],
-    });
-    expect(recovered.textures).toEqual([
-      {
-        assetId: "asset:hero",
-        revisionId: "sha256:hero",
-        byteLength: 3,
-        dirty: true,
-        uploaded: true,
-      },
-    ]);
-    expect(adapter.render(plan, resolve).textures).toEqual([
-      {
-        assetId: "asset:hero",
-        revisionId: "sha256:hero",
-        byteLength: 3,
-        dirty: false,
-        uploaded: false,
-      },
-    ]);
-  }
+test("renderer-resilience-v1 defaults every unobserved dimension to UNKNOWN", () => {
+  expect(createRendererResilienceContract()).toEqual({
+    version: "renderer-resilience-v1",
+    contextRestoration: "UNKNOWN",
+    resourceRecreation: "UNKNOWN",
+    lowMemoryProgressiveOpen: "UNKNOWN",
+    resolutionDowngrade: "UNKNOWN",
+    readbackTimeout: "UNKNOWN",
+    cancellation: "UNKNOWN",
+    corruptedImageIsolation: "UNKNOWN",
+    longSessionLeakGuard: "UNKNOWN",
+  });
 });

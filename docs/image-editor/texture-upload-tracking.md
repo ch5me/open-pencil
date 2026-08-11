@@ -74,3 +74,27 @@ with the wrong asset revision.
 
 External renderer, performance, and device parity remain `UNKNOWN` until
 observed on those consuming surfaces.
+
+## G112 / UG-GAP-111 resilience boundary
+
+The current OpenPencil image adapter exposes a typed
+`renderer-resilience-v1` contract, but it does not own GPU context-loss
+recovery, resource recreation, worker lifecycle accounting, or long-session
+soak measurement. The default contract therefore reports every resilience
+dimension as `UNKNOWN`; setting a field to `SUPPORTED` is evidence metadata,
+not an implementation of recovery.
+
+UG-GAP-111 acceptance requires a consuming-backend probe with all of the
+following evidence:
+
+- 20 loss/restart cycles for each backend, with zero silent failures.
+- A 60-minute warm-state soak with growth at or below 5%.
+- Observed memory at or below 64 MiB for D1 and 32 MiB for M1.
+- Zero leaked workers and renderer contexts after teardown.
+
+The existing adapter and unit tests do not observe those surfaces, so
+UG-GAP-111 remains `UNKNOWN`. Do not infer loss recovery, memory bounds,
+leak-freedom, or backend switching from contract construction, synthetic
+benchmarks, or tile-plan output. A future proof must record backend identity,
+cycle counts, warm-state samples, memory profile, and teardown counts from the
+consuming renderer.
