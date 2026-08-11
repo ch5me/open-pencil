@@ -18,7 +18,7 @@ const oversizedFile = (size: number) => {
         reads += 1;
         return "{}";
       },
-    } as unknown as File,
+    } as File,
     reads: () => reads,
   };
 };
@@ -62,32 +62,44 @@ test("IORegistry rejects declared input limit before adapter dispatch", async ()
   expect(dispatched).toBe(0);
 });
 
-function hostileZip(decodedSize: number): ArrayBuffer {
-  const name = new TextEncoder().encode("canvas");
-  const localSize = 30 + name.length + 1;
-  const centralSize = 46 + name.length;
-  const bytes = new Uint8Array(localSize + centralSize + 22);
+function hostileZip(...decodedSizes: number[]): ArrayBuffer {
+  const names = decodedSizes.map((_, index) =>
+    new TextEncoder().encode(index === 0 ? "canvas" : `images/${index}.png`)
+  );
+  const localSizes = names.map((name) => 30 + name.length + 1);
+  const centralSizes = names.map((name) => 46 + name.length);
+  const centralOffset = localSizes.reduce((total, size) => total + size, 0);
+  const centralSize = centralSizes.reduce((total, size) => total + size, 0);
+  const bytes = new Uint8Array(centralOffset + centralSize + 22);
   const view = new DataView(bytes.buffer);
   const u32 = (offset: number, value: number) => view.setUint32(offset, value, true);
   const u16 = (offset: number, value: number) => view.setUint16(offset, value, true);
-  u32(0, 0x04034b50);
-  u16(8, 0);
-  u16(26, name.length);
-  bytes.set(name, 30);
-  bytes[localSize - 1] = 0;
-  const central = localSize;
-  u32(central, 0x02014b50);
-  u16(central + 10, 0);
-  u32(central + 20, 1);
-  u32(central + 24, decodedSize);
-  u16(central + 28, name.length);
-  bytes.set(name, central + 46);
-  const eocd = central + centralSize;
+  let localOffset = 0;
+  let central = centralOffset;
+  decodedSizes.forEach((decodedSize, index) => {
+    const name = names[index];
+    u32(localOffset, 0x04034b50);
+    u16(localOffset + 8, 0);
+    u16(localOffset + 26, name.length);
+    bytes.set(name, localOffset + 30);
+    bytes[localOffset + localSizes[index] - 1] = 0;
+
+    u32(central, 0x02014b50);
+    u16(central + 10, 0);
+    u32(central + 20, 1);
+    u32(central + 24, decodedSize);
+    u16(central + 28, name.length);
+    u32(central + 42, localOffset);
+    bytes.set(name, central + 46);
+    localOffset += localSizes[index];
+    central += centralSizes[index];
+  });
+  const eocd = centralOffset + centralSize;
   u32(eocd, 0x06054b50);
-  u16(eocd + 8, 1);
-  u16(eocd + 10, 1);
+  u16(eocd + 8, decodedSizes.length);
+  u16(eocd + 10, decodedSizes.length);
   u32(eocd + 12, centralSize);
-  u32(eocd + 16, central);
+  u32(eocd + 16, centralOffset);
   return bytes.buffer;
 }
 
@@ -100,6 +112,15 @@ test("hostile-io-v1 rejects decoded JSON before graph allocation", () => {
 test("hostile-io-v1 rejects archive expansion before unzip allocation", async () => {
   await expect(
     readFigFile(new File([hostileZip(1024)], "hostile.fig"), {
+      maxDecodedBytes: 512,
+      maxExpansionRatio: 128,
+    }),
+  ).rejects.toThrow(IOHostileInputError);
+});
+
+test("hostile-io-v1 rejects aggregate archive expansion before unzip allocation", async () => {
+  await expect(
+    readFigFile(new File([hostileZip(300, 300)], "hostile.fig"), {
       maxDecodedBytes: 512,
       maxExpansionRatio: 128,
     }),

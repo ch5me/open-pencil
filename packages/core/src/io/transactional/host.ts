@@ -12,10 +12,12 @@ import {
 
 export class TransactionProtocolError extends Error {
   readonly code = "transaction-protocol-error";
+  readonly name = "TransactionProtocolError";
 }
 
 export class TransactionCancelledError extends Error {
   readonly code = "transaction-cancelled";
+  readonly name = "TransactionCancelledError";
 }
 
 export interface HostTransactionIds {
@@ -110,7 +112,10 @@ export class HostTransaction {
 
   verifyOutput(): void {
     this.requireState("receiving-output");
-    if (this.outputChunks.length === 0)
+    if (
+      this.outputChunks.length === 0 ||
+      this.outputChunks.every((chunk) => chunk.byteLength === 0)
+    )
       throw new TransactionProtocolError("output cannot be empty");
     this.advance("verifying-output");
     this.advance("prepared");

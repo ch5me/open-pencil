@@ -75,6 +75,26 @@ describe("transactional IO and worker contracts", () => {
     expect(tx.state).toBe("rolled-back");
   });
 
+  test("host rejects zero-byte output before commit", () => {
+    const tx = new HostTransaction();
+    tx.begin({
+      operation: "open-archive",
+      memoryProfile: "D1",
+      protocolCapabilities: [],
+      inputManifestHash: digest,
+      expectedInputBytes: 1,
+      expectedOutputClass: "archive",
+      replayable: true,
+    });
+    tx.stageInput(chunk(0));
+    tx.inputComplete();
+    tx.workerDispatched();
+    tx.receiveOutput({ ...chunk(0), byteLength: 0, bytes: new Uint8Array() });
+
+    expect(() => tx.verifyOutput()).toThrow("output cannot be empty");
+    expect(tx.state).toBe("receiving-output");
+  });
+
   test("worker enforces sequence and directional lifecycle", () => {
     const worker = new WorkerStateMachine();
     worker.ready();
