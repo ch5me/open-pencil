@@ -20,6 +20,7 @@ import {
 } from './documents/crud'
 import { DocumentRoomDO } from './documents/room'
 import { deriveHostedRoomId } from './documents/room/id'
+import { FireflyRuntimeError, sendFireflyRuntimeChat } from './runtime'
 export { DocumentRoomDO }
 
 export interface Env {
@@ -31,6 +32,7 @@ export interface Env {
   ELF_ISSUER?: string
   ELF_AUDIENCE?: string
   ALLOW_DEV_STUB_AUTH?: string
+  FIREFLY_API_ORIGIN?: string
 }
 
 export const app = new Hono<{ Bindings: Env }>()
@@ -128,6 +130,28 @@ app.get('/api/session', async (c) => {
     user: { id: result.userId },
     mode: 'authenticated'
   })
+})
+
+app.post('/api/runtime/chat', requireSession(), async (c) => {
+  const sessionToken = (c as any).get('sessionToken') as string
+  const body = await c.req.json<{ message?: string; chatSessionId?: string }>()
+  if (!body.message?.trim()) {
+    return c.json({ error: 'message-required', message: 'A chat message is required.' }, 400)
+  }
+
+  try {
+    return c.json(
+      await sendFireflyRuntimeChat(
+        { env: c.env, sessionToken },
+        { message: body.message, chatSessionId: body.chatSessionId }
+      )
+    )
+  } catch (error) {
+    if (error instanceof FireflyRuntimeError) {
+      return c.json({ error: error.code, message: error.message }, error.status as never)
+    }
+    throw error
+  }
 })
 
 app.get('/api/documents', requireSession(), async (c) => {

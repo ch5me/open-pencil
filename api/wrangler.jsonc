@@ -16,7 +16,8 @@
   "vars": {
     "ELF_JWKS_URL": "https://api.elf.dance/.well-known/jwks.json",
     "ELF_ISSUER": "https://app.elf.dance",
-    "ELF_AUDIENCE": "https://api.elf.dance"
+    "ELF_AUDIENCE": "https://api.elf.dance",
+    "FIREFLY_API_ORIGIN": "https://api.elf.dance"
   },
   // Top-level config is the default (production) environment: openpencil-api.elf.dance.
   "routes": [
@@ -63,7 +64,8 @@
       "vars": {
         "ELF_JWKS_URL": "https://api.elf.dance/.well-known/jwks.json",
         "ELF_ISSUER": "https://app.elf.dance",
-        "ELF_AUDIENCE": "https://api.elf.dance"
+        "ELF_AUDIENCE": "https://api.elf.dance",
+        "FIREFLY_API_ORIGIN": "https://api.staging.elf.dance"
       },
       "routes": [
         { "pattern": "staging-openpencil-api.elf.dance/*", "zone_name": "elf.dance" }

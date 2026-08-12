@@ -9,8 +9,10 @@ import type { ACPAgentID, AIProviderID } from '@open-pencil/core/constants'
 import { resolveLanguageModelID } from '@/app/ai/chat/model'
 import SYSTEM_PROMPT from '@/app/ai/chat/system-prompt.md?raw'
 import { createAIModelRuntime } from '@/app/ai/models'
+import { createFireflyChatTransport } from '@/app/ai/runtime/firefly'
 import { MAX_AGENT_STEPS, createAITools, recordStepUsage, resetRunSteps } from '@/app/ai/tools'
 import type { getActiveEditorStore } from '@/app/editor/active-store'
+import { isHostedMode } from '@/app/hosted/flags'
 
 type EditorStore = ReturnType<typeof getActiveEditorStore>
 
@@ -148,7 +150,8 @@ export function createChatSessionManager({
 
   async function ensureChat(): Promise<Chat<UIMessage> | null> {
     await credentialsReady
-    if (!isConfigured.value) return null
+    const useFireflyRuntime = isHostedMode()
+    if (!useFireflyRuntime && !isConfigured.value) return null
 
     const store = getActiveEditorStore()
     if (currentChatStore && chat) {
@@ -157,9 +160,11 @@ export function createChatSessionManager({
 
     if (!chat || transportDirty || currentChatStore !== store) {
       const messages = currentChatMessages.get(store)
-      const transport: ChatTransport<UIMessage> = isACPProvider.value
-        ? await createActiveACPTransport()
-        : await createTransport(store)
+      const transport: ChatTransport<UIMessage> = useFireflyRuntime
+        ? createFireflyChatTransport()
+        : isACPProvider.value
+          ? await createActiveACPTransport()
+          : await createTransport(store)
       chat = new Chat<UIMessage>({ transport, messages })
       currentChatStore = store
       transportDirty = false
