@@ -53,6 +53,8 @@ async function installTauriClipboardMock(page: Page) {
               return []
             case 'load_system_font':
               return null
+            case 'proxy_http_request':
+              throw new Error('Network unavailable in clipboard test')
             case 'plugin:event|listen':
             case 'plugin:event|unlisten':
             case 'plugin:process|exit':
