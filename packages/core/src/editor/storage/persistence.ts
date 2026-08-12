@@ -592,13 +592,8 @@ function assertPNGTRNSData(data: Uint8Array, state: PNGChunkState): void {
   }
 }
 
-interface PNGPass {
-  width: number
-  height: number
-}
-
-function pngPasses(header: PNGImageHeader): readonly PNGPass[] {
-  if (header.interlace === 0) return [{ width: header.width, height: header.height }]
+function pngPasses(header: PNGImageHeader): readonly (readonly [width: number, height: number])[] {
+  if (header.interlace === 0) return [[header.width, header.height]]
   const starts = [
     [0, 0, 8, 8],
     [4, 0, 8, 8],
@@ -608,10 +603,13 @@ function pngPasses(header: PNGImageHeader): readonly PNGPass[] {
     [1, 0, 2, 2],
     [0, 1, 1, 2]
   ] as const
-  return starts.map(([startX, startY, stepX, stepY]) => ({
-    width: header.width <= startX ? 0 : Math.ceil((header.width - startX) / stepX),
-    height: header.height <= startY ? 0 : Math.ceil((header.height - startY) / stepY)
-  }))
+  return starts.map(
+    ([startX, startY, stepX, stepY]) =>
+      [
+        header.width <= startX ? 0 : Math.ceil((header.width - startX) / stepX),
+        header.height <= startY ? 0 : Math.ceil((header.height - startY) / stepY)
+      ] as const
+  )
 }
 
 function pngScanlineByteLength(header: PNGImageHeader, limit: number): number {
@@ -622,7 +620,7 @@ function pngScanlineByteLength(header: PNGImageHeader, limit: number): number {
   if (header.interlace === 0) {
     total = BigInt(header.height) * scanlineBytes(header.width)
   } else {
-    for (const { width, height } of pngPasses(header)) {
+    for (const [width, height] of pngPasses(header)) {
       if (width > 0 && height > 0) total += BigInt(height) * scanlineBytes(width)
     }
   }
@@ -916,11 +914,11 @@ function assertPNGScanlines(decoded: Uint8Array, state: PNGChunkState): void {
   const bitsPerPixel = header.bitDepth * (channels[header.colorType] ?? 0)
   const bytesPerPixel = Math.max(1, Math.ceil(bitsPerPixel / 8))
   let offset = 0
-  for (const pass of pngPasses(header)) {
-    if (pass.width === 0 || pass.height === 0) continue
-    const rowBytes = Math.ceil((pass.width * bitsPerPixel) / 8)
+  for (const [width, height] of pngPasses(header)) {
+    if (width === 0 || height === 0) continue
+    const rowBytes = Math.ceil((width * bitsPerPixel) / 8)
     let previous: Uint8Array = new Uint8Array(rowBytes)
-    for (let rowIndex = 0; rowIndex < pass.height; rowIndex++) {
+    for (let rowIndex = 0; rowIndex < height; rowIndex++) {
       const filter = decoded[offset] ?? 5
       offset++
       if (filter > 4) throw new PersistenceMigrationError('PNG scanline filter is invalid')
@@ -928,7 +926,7 @@ function assertPNGScanlines(decoded: Uint8Array, state: PNGChunkState): void {
       offset += rowBytes
       if (header.colorType !== 3) continue
       previous = unfilterPNGRow(filter, raw, previous, bytesPerPixel)
-      assertIndexedPNGSamples(previous, pass.width, header.bitDepth, state.paletteEntries)
+      assertIndexedPNGSamples(previous, width, header.bitDepth, state.paletteEntries)
     }
   }
 }
