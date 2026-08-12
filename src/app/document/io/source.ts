@@ -21,6 +21,19 @@ type DocumentSourceState = EditorState & {
 
 export { createDocumentSourceState }
 
+function isExpectedSaveCancellation(error: unknown): boolean {
+  return (
+    error instanceof Error && (error.name === 'IOCancelledError' || error.name === 'AbortError')
+  )
+}
+
+export function observeSaveAction<T>(result: Promise<T>): Promise<T> {
+  void result.catch((error) => {
+    if (!isExpectedSaveCancellation(error)) console.error('Save failed:', error)
+  })
+  return result
+}
+
 type DocumentSourceOptions = DocumentSourceAccess & {
   editor: Editor
   state: DocumentSourceState
@@ -93,8 +106,8 @@ export function createDocumentSourceActions({
     return saveOperation.run(save)
   }
 
-  const saveFigFile = () => runSave(saveFigFileUncontrolled)
-  const saveFigFileAs = () => runSave(saveFigFileAsUncontrolled)
+  const saveFigFile = () => observeSaveAction(runSave(saveFigFileUncontrolled))
+  const saveFigFileAs = () => observeSaveAction(runSave(saveFigFileAsUncontrolled))
 
   const { disposeAutosave } = createAutosave({
     state,
