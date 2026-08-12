@@ -33,6 +33,10 @@ export function createDocumentWriter({
   setSavedVersion,
   setLastWriteTime
 }: DocumentWriterOptions) {
+  let currentGeneration = 0
+  let activeAbort: (() => void) | null = null
+  let writeTail = Promise.resolve()
+
   return async function writeFile(
     write: DocumentWrite,
     signal?: AbortSignal,
@@ -51,36 +55,78 @@ export function createDocumentWriter({
       })()
     if (!resolvedTarget) return false
 
-    signal?.throwIfAborted()
-    setLastWriteTime(Date.now())
-    if ('storage' in resolvedTarget) {
-      const storage = resolvedTarget.storage
-      await persistStorageCanvasLocally({
-        providerId: storage.providerId,
-        canvasId: storage.documentId,
-        name: state.documentName || 'Untitled',
-        figBytes: write.data
-      })
+    const generation = ++currentGeneration
+    activeAbort?.()
+    const throwIfStale = () => {
       signal?.throwIfAborted()
-      setSavedVersion(write.sceneVersion)
-      return true
+      if (generation !== currentGeneration) {
+        throw new DOMException('Save superseded', 'AbortError')
+      }
     }
 
-    if ('path' in resolvedTarget) {
-      const { writeFile: tauriWrite } = await import('@tauri-apps/plugin-fs')
-      signal?.throwIfAborted()
-      await tauriWrite(resolvedTarget.path, write.data)
-      signal?.throwIfAborted()
-      setSavedVersion(write.sceneVersion)
-      return true
-    }
+    const result = writeTail.then(async () => {
+      throwIfStale()
+      setLastWriteTime(Date.now())
+      if ('storage' in resolvedTarget) {
+        const storage = resolvedTarget.storage
+        await persistStorageCanvasLocally({
+          providerId: storage.providerId,
+          canvasId: storage.documentId,
+          name: state.documentName || 'Untitled',
+          figBytes: write.data
+        })
+        throwIfStale()
+        setSavedVersion(write.sceneVersion)
+        return true
+      }
 
-    const writable = await resolvedTarget.handle.createWritable()
-    signal?.throwIfAborted()
-    await writable.write(new Uint8Array(write.data))
-    await writable.close()
-    signal?.throwIfAborted()
-    setSavedVersion(write.sceneVersion)
-    return true
+      if ('path' in resolvedTarget) {
+        const { remove, rename, writeFile: tauriWrite } = await import('@tauri-apps/plugin-fs')
+        const temporaryPath = `${resolvedTarget.path}.open-pencil-${generation}.tmp`
+        try {
+          throwIfStale()
+          await tauriWrite(temporaryPath, write.data)
+          throwIfStale()
+          await rename(temporaryPath, resolvedTarget.path)
+          throwIfStale()
+          setSavedVersion(write.sceneVersion)
+          return true
+        } catch (error) {
+          await remove(temporaryPath).catch(() => undefined)
+          throw error
+        }
+      }
+
+      const writable = await resolvedTarget.handle.createWritable()
+      let abortRequested = false
+      const abortWritable = () => {
+        if (abortRequested) return
+        abortRequested = true
+        void writable.abort(signal?.reason).catch(() => undefined)
+      }
+      activeAbort = abortWritable
+      signal?.addEventListener('abort', abortWritable, { once: true })
+      if (signal?.aborted) abortWritable()
+      try {
+        throwIfStale()
+        await writable.write(new Uint8Array(write.data))
+        throwIfStale()
+        await writable.close()
+        throwIfStale()
+        setSavedVersion(write.sceneVersion)
+        return true
+      } catch (error) {
+        abortWritable()
+        throw error
+      } finally {
+        if (activeAbort === abortWritable) activeAbort = null
+        signal?.removeEventListener('abort', abortWritable)
+      }
+    })
+    writeTail = result.then(
+      () => undefined,
+      () => undefined
+    )
+    return result
   }
 }

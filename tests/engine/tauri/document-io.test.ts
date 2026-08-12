@@ -47,11 +47,20 @@ describe('Tauri document IO helpers', () => {
 
     await write({ data: new Uint8Array([1, 2, 3]), sceneVersion: 42 })
 
-    expect(calls).toHaveLength(1)
+    expect(calls).toHaveLength(2)
     expect(calls[0]?.cmd).toBe('plugin:fs|write_file')
     expect([...new Uint8Array(calls[0]?.args as ArrayBuffer)]).toEqual([1, 2, 3])
     expect(calls[0]?.options).toEqual({
-      headers: { path: '%2Ftmp%2Fdocument.fig', options: undefined }
+      headers: { path: '%2Ftmp%2Fdocument.fig.open-pencil-1.tmp', options: undefined }
+    })
+    expect(calls[1]).toEqual({
+      cmd: 'plugin:fs|rename',
+      args: {
+        oldPath: '/tmp/document.fig.open-pencil-1.tmp',
+        newPath: '/tmp/document.fig',
+        options: undefined
+      },
+      options: undefined
     })
     expect(savedVersions).toEqual([42])
   })
