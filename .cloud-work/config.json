@@ -1,5 +1,5 @@
 {
-  "bootstrapCommand": "bun install --frozen-lockfile",
+  "bootstrapCommand": "mise trust .mise.toml && bun install --frozen-lockfile",
   "verifyCommand": "bun run check",
   "cloudRemote": "codex-cloud"
 }
