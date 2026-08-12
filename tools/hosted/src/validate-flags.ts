@@ -45,6 +45,19 @@ assert('local' in topology.environments, 'local environment present')
 assert('preview' in topology.environments, 'preview environment present')
 assert('staging' in topology.environments, 'staging environment present')
 assert('production' in topology.environments, 'production environment present')
+const missingAgentDefaults = Object.entries(
+  topology.environments as Record<string, HostedEnvironmentConfig>
+)
+  .filter(([, config]) => config.flags.hostedAgent !== false)
+  .map(([environment]) => environment)
+assert(
+  missingAgentDefaults.length === 0,
+  `hostedAgent defaults off in every environment${missingAgentDefaults.length ? `: ${missingAgentDefaults.join(', ')}` : ''}`
+)
+assert(
+  'VITE_HOSTED_AGENT_ENABLED' in topology.envVarContract,
+  'hostedAgent environment variable contract present'
+)
 
 // --- 2. Alignment with .ch5/environments.yaml ---
 output('\n2. Alignment with .ch5/environments.yaml')
@@ -100,6 +113,25 @@ const docsWithoutAuth: HostedEnvironmentConfig = {
 }
 const docsErrs = validateHostedConfig(docsWithoutAuth)
 assert(docsErrs.length > 0, 'docs without auth produces violations')
+
+const agentWithoutAuth: HostedEnvironmentConfig = {
+  env: 'local',
+  flags: {
+    hostedAuth: false,
+    hostedAgent: true,
+    hostedDocs: false,
+    hostedCollab: false
+  },
+  apiOrigin: 'http://127.0.0.1:8787',
+  authOrigin: '',
+  authCallbackUrl: '',
+  appUrl: 'http://localhost:1420'
+}
+const agentErrs = validateHostedConfig(agentWithoutAuth)
+assert(
+  agentErrs.includes('hostedAgent requires hostedAuth to be enabled'),
+  'hostedAgent without auth produces the specific violation'
+)
 
 const hostedNoAPI: HostedEnvironmentConfig = {
   env: 'staging',
