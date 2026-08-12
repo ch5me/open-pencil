@@ -6,10 +6,11 @@ import {
   type GatewayToolManifest
 } from '@/app/ai/agent-service/execution'
 import type { EditorStore } from '@/app/editor/active-store'
+import { createEditorStore } from '@/app/editor/session'
 
 const manifest: GatewayToolManifest = {
   id: 'manifest-1',
-  actions: [{ name: 'create_shape', mutates: true }]
+  actions: [{ name: 'create_shape', mutates: true, requiresApproval: true }]
 }
 
 const baseCall: GatewayToolCall = {
@@ -128,5 +129,82 @@ describe('gateway tool execution', () => {
 
     expect(rejected).toMatchObject({ ok: false, error: { code: 'approval_rejected' } })
     expect(timedOut).toMatchObject({ ok: false, error: { code: 'approval_rejected' } })
+  })
+
+  test('fences execution when cancellation races approval', async () => {
+    let cancelled = false
+    let approve: ((value: boolean) => void) | undefined
+    const harness = setup({
+      approve: () =>
+        new Promise<boolean>((resolve) => {
+          approve = resolve
+        })
+    })
+    const execute = createGatewayToolExecutor({
+      store: {} as EditorStore,
+      runId: baseCall.runId,
+      target: () => baseCall.target,
+      manifest,
+      approve: () =>
+        new Promise<boolean>((resolve) => {
+          approve = resolve
+        }),
+      isCancelled: () => cancelled,
+      createTools: () => ({
+        create_shape: {
+          execute: async (_input: unknown) => {
+            throw new Error('Cancelled tool must not execute')
+          }
+        }
+      })
+    })
+
+    const pending = execute(baseCall)
+    cancelled = true
+    approve?.(true)
+
+    await expect(pending).resolves.toMatchObject({
+      ok: false,
+      error: { code: 'approval_rejected' }
+    })
+    expect(harness.executionCount()).toBe(0)
+  })
+
+  test('rejects node operands outside the authorized page', async () => {
+    const store = createEditorStore()
+    const targetPageId = store.state.currentPageId
+    const otherPage = store.graph.addPage('Other page')
+    const foreignNode = store.graph.createNode('RECTANGLE', otherPage.id, {
+      name: 'Foreign rectangle'
+    })
+    let executions = 0
+    const execute = createGatewayToolExecutor({
+      store,
+      runId: baseCall.runId,
+      target: () => ({ documentId: 'document-1', pageId: targetPageId }),
+      manifest: {
+        id: 'manifest-1',
+        actions: [{ name: 'node_resize', mutates: true, requiresApproval: true }]
+      },
+      approve: () => true,
+      createTools: () => ({
+        node_resize: {
+          execute: async (_input: unknown) => {
+            executions++
+            return {}
+          }
+        }
+      })
+    })
+
+    const result = await execute({
+      ...baseCall,
+      target: { documentId: 'document-1', pageId: targetPageId },
+      toolName: 'node_resize',
+      input: { id: foreignNode.id, width: 20, height: 20 }
+    })
+
+    expect(result).toMatchObject({ ok: false, error: { code: 'target_mismatch' } })
+    expect(executions).toBe(0)
   })
 })

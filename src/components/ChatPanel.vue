@@ -144,6 +144,19 @@ async function handleStop() {
   await chat.value?.stop()
 }
 
+async function handleResume() {
+  terminalStatus.value = null
+  terminalStatusDetail.value = ''
+  try {
+    await chat.value?.resumeStream()
+  } catch (error) {
+    const resolved = error instanceof Error ? error : new Error(String(error))
+    terminalStatus.value = terminalStatusFromError(resolved)
+    terminalStatusDetail.value = resolved.message
+    toast.error(resolved.message)
+  }
+}
+
 async function handleCopyDebug() {
   await copyChatLog(messages.value)
   debugCopied.value = true
@@ -235,6 +248,14 @@ async function handleClearChat() {
             <div v-if="terminalStatusDetail" class="text-muted">
               {{ terminalStatusDetail }}
             </div>
+            <AppTextButton
+              v-if="terminalStatus === 'interrupted'"
+              class="mt-2"
+              @click="handleResume"
+            >
+              <icon-lucide-refresh-cw class="size-3" />
+              Resume
+            </AppTextButton>
           </div>
         </ScrollAreaViewport>
         <ScrollAreaScrollbar orientation="vertical" class="flex w-1.5 touch-none p-px select-none">

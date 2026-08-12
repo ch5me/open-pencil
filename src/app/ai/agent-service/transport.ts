@@ -39,6 +39,8 @@ type RunState = {
   textParts: Set<string>
   toolCalls: Set<string>
   pendingContinuations: Map<string, AgentToolResultContinuation>
+  cancelling: boolean
+  cancelPromise?: Promise<void>
 }
 
 export type AgentServiceTransportOptions = HostedRequestOptions & {
@@ -195,7 +197,15 @@ async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Agen
   try {
     let done = false
     while (!done) {
-      const result = await reader.read()
+      let result: ReadableStreamReadResult<Uint8Array>
+      try {
+        result = await reader.read()
+      } catch {
+        throw new AgentServiceTransportError(
+          'stream-interrupted',
+          'Agent event stream disconnected.'
+        )
+      }
       done = result.done
       buffer += decoder.decode(result.value, { stream: !done }).replaceAll('\r\n', '\n')
       const frames = buffer.split('\n\n')
@@ -212,7 +222,24 @@ async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Agen
           .map((line) => line.slice(5).trimStart())
           .join('\n')
         if (!data) continue
-        const event = parseAgentEvent(JSON.parse(data) as unknown)
+        let value: unknown
+        try {
+          value = JSON.parse(data)
+        } catch {
+          throw new AgentServiceTransportError(
+            'stream-interrupted',
+            'Agent stream contained malformed JSON.'
+          )
+        }
+        let event: AgentEvent
+        try {
+          event = parseAgentEvent(value)
+        } catch {
+          throw new AgentServiceTransportError(
+            'stream-interrupted',
+            'Agent stream contained a malformed event.'
+          )
+        }
         if (!id || event.eventId !== id) {
           throw new AgentServiceTransportError(
             'stream-interrupted',
@@ -335,9 +362,14 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
               },
         manifest: {
           id: manifest.manifestId,
-          actions: manifest.actions.map(({ name, mutates }) => ({ name, mutates }))
+          actions: manifest.actions.map(({ name, mutates, requiresApproval }) => ({
+            name,
+            mutates,
+            requiresApproval
+          }))
         },
-        approve: this.options.approve ?? requestToolApprovalFromUser
+        approve: this.options.approve ?? requestToolApprovalFromUser,
+        isCancelled: () => state.cancelling
       })
       const input = agentArguments(event.data.arguments)
       const manifestAction = manifest.actions.find((action) => action.name === event.data.name)
@@ -394,6 +426,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
         try {
           state.interrupted = false
           await this.consumeInto(response, state, controller)
+          if (state.cancelPromise) await state.cancelPromise
           if (!state.finished) {
             throw new AgentServiceTransportError(
               'stream-interrupted',
@@ -437,10 +470,17 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       interrupted: false,
       textParts: new Set(),
       toolCalls: new Set(),
-      pendingContinuations: new Map()
+      pendingContinuations: new Map(),
+      cancelling: false
     }
     this.active = state
-    abortSignal?.addEventListener('abort', () => void this.cancel(state), { once: true })
+    abortSignal?.addEventListener(
+      'abort',
+      () => {
+        state.cancelPromise = this.cancel(state)
+      },
+      { once: true }
+    )
     const response = await this.response('/api/agent/runs', {
       method: 'POST',
       signal: abortSignal,
@@ -499,18 +539,61 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     return this.stream(response, state)
   }
 
-  private async cancel(state: RunState) {
-    if (state.finished) return
-    state.finished = true
-    state.interrupted = false
-    if (!state.runId) return
-    const { rejectPermissionsForSession } = await import('@/app/ai/acp/permission')
-    rejectPermissionsForSession(state.runId)
-    if (!state.sessionId) return
-    await this.response(
-      `/api/agent/sessions/${encodeURIComponent(state.sessionId)}/runs/${encodeURIComponent(state.runId)}/cancel`,
-      { method: 'POST' }
-    )
+  private cancel(state: RunState): Promise<void> {
+    if (state.finished) return Promise.resolve()
+    if (state.cancelPromise) return state.cancelPromise
+    state.cancelPromise = (async () => {
+      state.cancelling = true
+      state.interrupted = false
+      if (!state.runId) {
+        state.finished = true
+        return
+      }
+      const { rejectPermissionsForSession } = await import('@/app/ai/acp/permission')
+      rejectPermissionsForSession(state.runId)
+      if (!state.sessionId) {
+        state.finished = true
+        return
+      }
+      try {
+        const response = await this.response(
+          `/api/agent/sessions/${encodeURIComponent(state.sessionId)}/runs/${encodeURIComponent(state.runId)}/cancel`,
+          { method: 'POST' }
+        )
+        if (!response.body)
+          throw new AgentServiceTransportError(
+            'cancellation-failed',
+            'Cancellation receipt is missing.'
+          )
+        let confirmed = false
+        for await (const event of sseEvents(response.body)) {
+          validateOrder(event, state)
+          if (event.type !== 'run.cancelled' || confirmed) {
+            throw new AgentServiceTransportError(
+              'cancellation-failed',
+              'Gateway did not confirm cancellation.'
+            )
+          }
+          confirmed = true
+          state.receipt = event.data.receipt
+        }
+        if (!confirmed || state.receipt?.status !== 'cancelled') {
+          throw new AgentServiceTransportError(
+            'cancellation-failed',
+            'Gateway did not confirm cancellation.'
+          )
+        }
+        state.finished = true
+      } catch (error) {
+        state.cancelling = false
+        state.cancelPromise = undefined
+        throw new AgentServiceTransportError(
+          'cancellation-failed',
+          error instanceof Error ? error.message : 'Agent cancellation failed.'
+        )
+      }
+    })()
+    return state.cancelPromise
   }
 }
 

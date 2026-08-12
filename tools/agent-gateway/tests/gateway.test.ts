@@ -35,6 +35,12 @@ function startRun(body: unknown = runRequest): Promise<Response> {
   )
 }
 
+function gatewayRequest(path: string, init?: RequestInit): Request {
+  const headers = new Headers(init?.headers)
+  headers.set('x-openpencil-principal', 'stub-user-001')
+  return new Request(`http://gateway.test${path}`, { ...init, headers })
+}
+
 function events(text: string) {
   return text
     .split('\n\n')
@@ -59,26 +65,23 @@ test('streams a real action, accepts continuation, and returns an opaque receipt
   if (!call || call.type !== 'tool.call') throw new Error('Missing tool call')
 
   const response = await gateway.fetch(
-    new Request(
-      `http://gateway.test/v1/sessions/${call.sessionId}/runs/${call.runId}/tool-results`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          schema: AGENT_CONTINUATION_SCHEMA,
-          requestId: runRequest.requestId,
-          idempotencyKey: 'result-1',
-          sessionId: call.sessionId,
-          runId: call.runId,
-          callId: call.data.callId,
-          continuationId: call.data.continuationId,
-          manifestId: call.data.manifestId,
-          target: call.data.target,
-          status: 'ok',
-          output: { id: 'rectangle-1' }
-        })
-      }
-    )
+    gatewayRequest(`/v1/sessions/${call.sessionId}/runs/${call.runId}/tool-results`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schema: AGENT_CONTINUATION_SCHEMA,
+        requestId: runRequest.requestId,
+        idempotencyKey: 'result-1',
+        sessionId: call.sessionId,
+        runId: call.runId,
+        callId: call.data.callId,
+        continuationId: call.data.continuationId,
+        manifestId: call.data.manifestId,
+        target: call.data.target,
+        status: 'ok',
+        output: { id: 'rectangle-1' }
+      })
+    })
   )
   const continued = events(await response.text())
   const completed = continued.find((event) => event.type === 'run.completed')
@@ -108,7 +111,7 @@ test('supports malformed failure, cancellation, and Last-Event-ID resume', async
   const run = initial[0]
   if (!run) throw new Error('Missing run')
   const resumed = await gateway.fetch(
-    new Request(`http://gateway.test/v1/sessions/${run.sessionId}/runs/${run.runId}/events`, {
+    gatewayRequest(`/v1/sessions/${run.sessionId}/runs/${run.runId}/events`, {
       headers: { 'last-event-id': 'event-3' }
     })
   )
@@ -116,7 +119,7 @@ test('supports malformed failure, cancellation, and Last-Event-ID resume', async
   expect(replay[0]?.seq).toBe(4)
 
   const cancelled = await gateway.fetch(
-    new Request(`http://gateway.test/v1/sessions/${run.sessionId}/runs/${run.runId}/cancel`, {
+    gatewayRequest(`/v1/sessions/${run.sessionId}/runs/${run.runId}/cancel`, {
       method: 'POST'
     })
   )
@@ -124,14 +127,14 @@ test('supports malformed failure, cancellation, and Last-Event-ID resume', async
   expect(cancelledEvent?.type).toBe('run.cancelled')
 
   const repeated = await gateway.fetch(
-    new Request(`http://gateway.test/v1/sessions/${run.sessionId}/runs/${run.runId}/cancel`, {
+    gatewayRequest(`/v1/sessions/${run.sessionId}/runs/${run.runId}/cancel`, {
       method: 'POST'
     })
   )
   expect(events(await repeated.text())[0]?.eventId).toBe(cancelledEvent?.eventId)
 
   const unknownCursor = await gateway.fetch(
-    new Request(`http://gateway.test/v1/sessions/${run.sessionId}/runs/${run.runId}/events`, {
+    gatewayRequest(`/v1/sessions/${run.sessionId}/runs/${run.runId}/events`, {
       headers: { 'last-event-id': 'missing-event' }
     })
   )

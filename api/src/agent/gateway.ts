@@ -132,7 +132,7 @@ function validateAgentEventStream(
   let buffer = ''
   let identity: { sessionId: string; runId: string } | undefined
   let previousSequence: number | undefined
-  let previousEventId: string | undefined
+  const eventIds = new Set<string>()
   let newRunPhase: 'session' | 'started' | 'active' = 'session'
   let terminal = false
   const validatesNewRunLifecycle =
@@ -180,7 +180,7 @@ function validateAgentEventStream(
         if (event.eventId !== id) {
           throw new AgentContractError('event-identity-mismatch', 'SSE id does not match eventId.')
         }
-        if (event.eventId === previousEventId) {
+        if (eventIds.has(event.eventId)) {
           throw new AgentContractError('event-identity-mismatch', 'Agent event ID was duplicated.')
         }
         if (
@@ -269,7 +269,7 @@ function validateAgentEventStream(
           )
         }
         previousSequence = event.seq
-        previousEventId = event.eventId
+        eventIds.add(event.eventId)
         controller.enqueue(encoder.encode(`${frame}\n\n`))
       }
     },

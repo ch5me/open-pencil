@@ -13,6 +13,7 @@ import type {
 } from '@open-pencil/agent-contracts'
 
 interface RunState {
+  principal: string
   request: AgentRunRequest
   sessionId: string
   runId: string
@@ -81,16 +82,25 @@ function sse(events: AgentEvent[], malformed = false): Response {
   })
 }
 
-function runKey(sessionId: string, runId: string): string {
-  return `${sessionId}/${runId}`
+function runKey(principal: string, sessionId: string, runId: string): string {
+  return `${principal}/${sessionId}/${runId}`
 }
 
-function resolveRunRoute(url: URL, runs: Map<string, RunState>): RunRoute | Response {
+function resolveRunRoute(
+  request: Request,
+  url: URL,
+  runs: Map<string, RunState>
+): RunRoute | Response {
   const match = url.pathname.match(
     /^\/v1\/sessions\/([^/]+)\/runs\/([^/]+)\/(tool-results|cancel|events)$/
   )
   if (!match) return json({ code: 'session-not-found', message: 'Run not found.' }, 404)
-  const state = runs.get(runKey(decodeURIComponent(match[1]), decodeURIComponent(match[2])))
+  const principal = request.headers.get('x-openpencil-principal')
+  if (!principal)
+    return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
+  const state = runs.get(
+    runKey(principal, decodeURIComponent(match[1]), decodeURIComponent(match[2]))
+  )
   if (!state) return json({ code: 'session-not-found', message: 'Run not found.' }, 404)
   return { state, action: match[3] as RunRoute['action'] }
 }
@@ -106,21 +116,23 @@ async function startRun(
   } catch {
     return json({ code: 'invalid-request', message: 'Malformed run request.' }, 400)
   }
-  const existing = idempotency.get(body.idempotencyKey)
-  if (existing) return sse(existing.events)
   const principal = request.headers.get('x-openpencil-principal')
   if (!principal)
     return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
+  const idempotencyKey = `${principal}/${body.idempotencyKey}`
+  const existing = idempotency.get(idempotencyKey)
+  if (existing) return sse(existing.events)
 
   const state: RunState = {
+    principal,
     request: body,
     sessionId: body.conversation.sessionId ?? `session-${body.conversation.clientId}`,
     runId: `run-${body.requestId}`,
     events: [],
     cancelled: false
   }
-  runs.set(runKey(state.sessionId, state.runId), state)
-  idempotency.set(body.idempotencyKey, state)
+  runs.set(runKey(principal, state.sessionId, state.runId), state)
+  idempotency.set(idempotencyKey, state)
   if (body.input.text.includes('[malformed]')) return sse([], true)
 
   push(state, { type: 'session.created', data: { requestId: body.requestId } })
@@ -242,7 +254,7 @@ export function createFakeGateway(): FakeGateway {
         return startRun(request, runs, idempotency)
       }
 
-      const route = resolveRunRoute(url, runs)
+      const route = resolveRunRoute(request, url, runs)
       if (route instanceof Response) return route
       if (request.method === 'GET' && route.action === 'events')
         return resumeRun(request, route.state)

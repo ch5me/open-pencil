@@ -27,6 +27,7 @@ export interface GatewayToolCall {
 export interface GatewayToolManifestEntry {
   name: string
   mutates: boolean
+  requiresApproval: boolean
 }
 
 export interface GatewayToolManifest {
@@ -61,6 +62,7 @@ export interface GatewayToolExecutorOptions {
   approve?: ToolApprovalHandler
   approvalTimeoutMs?: number
   createTools?: (store: EditorStore) => GatewayToolSet
+  isCancelled?: () => boolean
 }
 
 type GatewayToolExecute = NonNullable<ToolSet[string]['execute']>
@@ -135,6 +137,9 @@ export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
   const continuations = new Map<string, string>()
 
   async function executeNew(call: GatewayToolCall): Promise<GatewayToolResult> {
+    if (options.isCancelled?.()) {
+      return failure(call, 'approval_rejected', 'Tool call was cancelled.')
+    }
     if (call.runId !== options.runId) {
       return failure(call, 'target_mismatch', 'Tool call belongs to another run.')
     }
@@ -155,7 +160,21 @@ export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
     if (!inputIsValid(call.input, definition)) {
       return failure(call, 'invalid_schema', 'Tool input does not match the action schema.')
     }
-    if (definition.mutates) {
+    for (const key of ['id', 'node_id', 'parent_id']) {
+      const nodeId = call.input[key]
+      if (
+        typeof nodeId === 'string' &&
+        nodeId !== target.pageId &&
+        !options.store.graph.isDescendant(nodeId, target.pageId)
+      ) {
+        return failure(
+          call,
+          'target_mismatch',
+          'Tool input references a node outside the target page.'
+        )
+      }
+    }
+    if (action.requiresApproval) {
       const approved = await requestBoundedToolApproval(
         options.approve,
         { runId: call.runId, callId: call.callId, toolName: call.toolName, input: call.input },
@@ -163,6 +182,9 @@ export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
       )
       if (!approved) {
         return failure(call, 'approval_rejected', 'Mutation approval was rejected or timed out.')
+      }
+      if (options.isCancelled?.()) {
+        return failure(call, 'approval_rejected', 'Tool call was cancelled.')
       }
       const current = options.target()
       if (current.documentId !== target.documentId || current.pageId !== target.pageId) {
@@ -175,6 +197,9 @@ export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
     }
 
     try {
+      if (options.isCancelled?.()) {
+        return failure(call, 'approval_rejected', 'Tool call was cancelled.')
+      }
       const output = await execute(call.input, { toolCallId: call.callId, messages: [] })
       if (
         output &&

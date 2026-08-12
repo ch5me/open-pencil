@@ -232,6 +232,47 @@ describe('hosted agent service transport', () => {
     expect(methods).toEqual(['POST', 'POST'])
     expect(paths[1]).toBe('/api/agent/sessions/session-1/runs/run-1/cancel')
   })
+
+  test('reports cancellation failure with the stable typed error', async () => {
+    const abort = new AbortController()
+    const requestFetch: typeof globalThis.fetch = async (input) => {
+      if (String(input).endsWith('/cancel')) {
+        return Response.json(
+          { code: 'gateway-unavailable', message: 'Cancel unavailable.' },
+          {
+            status: 503
+          }
+        )
+      }
+      const encoder = new TextEncoder()
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `id: event-0\ndata: ${JSON.stringify(event(0, 'run.started', { requestId: 'request-1' }))}\n\n`
+              )
+            )
+            setTimeout(() => {
+              abort.abort()
+              controller.close()
+            })
+          }
+        }),
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } }
+      )
+    }
+    const hosted = transport(requestFetch)
+    const stream = await hosted.sendMessages({
+      trigger: 'submit-message',
+      chatId: 'chat',
+      messageId: undefined,
+      messages: [userMessage('Design')],
+      abortSignal: abort.signal
+    })
+
+    await expect(chunks(stream)).rejects.toMatchObject({ code: 'cancellation-failed' })
+  })
   test('executes a real ToolDef action, posts continuation, and finishes', async () => {
     const store = createEditorStore()
     const pageId = store.state.currentPageId
