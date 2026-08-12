@@ -76,7 +76,11 @@ try {
   nodeEval("await import('@open-pencil/core')", tempDir)
   nodeEval("await import('@open-pencil/core/io/formats/raster')", tempDir)
   nodeEval(
-    "const { readFile } = await import('node:fs/promises'); const { fileURLToPath } = await import('node:url'); const host = fileURLToPath(import.meta.resolve('@open-pencil/core/io/formats/raster')); const source = await readFile(new URL('./worker-host.js', 'file://' + host), 'utf8'); if (!source.includes('new URL(\"./worker.js\", import.meta.url)')) throw new Error('Packed raster host does not resolve emitted worker.js'); await readFile(new URL('./worker.js', 'file://' + host))",
+    "const { readFile } = await import('node:fs/promises'); const host = new URL('./worker-host.js', import.meta.resolve('@open-pencil/core/io/formats/raster')); const source = await readFile(host, 'utf8'); const match = source.match(/new URL\\((['\"])(\\.\\/worker\\.js)\\1, import\\.meta\\.url\\)/); if (!match) throw new Error('Packed raster host does not resolve emitted worker.js'); await readFile(new URL(match[2], host))",
+    tempDir
+  )
+  nodeEval(
+    "const { readFile } = await import('node:fs/promises'); const host = new URL('./export.js', import.meta.resolve('@open-pencil/core/io/formats/fig')); const source = await readFile(host, 'utf8'); const match = source.match(/new URL\\((['\"])(\\.\\/export-worker\\.js)\\1, import\\.meta\\.url\\)/); if (!match) throw new Error('Packed FIG export host does not resolve emitted export-worker.js'); await readFile(new URL(match[2], host))",
     tempDir
   )
   nodeEval("await import('@open-pencil/dom-css')", tempDir)
