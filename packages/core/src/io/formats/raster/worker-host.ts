@@ -24,8 +24,8 @@ export function canUseRasterExportWorker(): boolean {
 
 function waitForAbortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) return Promise.reject(new IOCancelledError("IO export cancelled"));
-  const cancel = () => rejectAbort(new IOCancelledError("IO export cancelled"));
   let rejectAbort: (error: IOCancelledError) => void = () => undefined;
+  const cancel = () => rejectAbort(new IOCancelledError("IO export cancelled"));
   const aborted = new Promise<never>((_, reject) => {
     rejectAbort = reject;
   });
@@ -54,14 +54,16 @@ export async function renderRasterViaWorker(
   timeoutMs = RASTER_EXPORT_TIMEOUT_MS,
 ): Promise<Uint8Array | null> {
   throwIfIOCancelled(signal);
-  const deadline = signal ? undefined : new AbortController();
-  const deadlineTimer = deadline ? setTimeout(() => deadline.abort(), timeoutMs) : undefined;
-  const exportSignal = signal ?? deadline?.signal;
-  if (!exportSignal) throw new Error("Raster export signal unavailable");
+  const exportController = new AbortController();
+  const cancel = () => exportController.abort();
+  const deadlineTimer = setTimeout(cancel, timeoutMs);
+  signal?.addEventListener("abort", cancel, { once: true });
+  if (signal?.aborted) cancel();
+  const exportSignal = exportController.signal;
 
   try {
     const fontSnapshot = await waitForAbortable(
-      fontManager.createExportSnapshot(graph, nodeIds),
+      fontManager.createExportSnapshot(graph, nodeIds, exportSignal),
       exportSignal,
     );
     const requiredKeys = fontManager.collectFontKeys(graph, nodeIds);
@@ -93,11 +95,11 @@ export async function renderRasterViaWorker(
       const finish = (callback: () => void) => {
         if (settled) return;
         settled = true;
-        exportSignal.removeEventListener("abort", cancel);
+        exportSignal.removeEventListener("abort", cancelWorker);
         worker.terminate();
         callback();
       };
-      const cancel = () => finish(() => reject(new IOCancelledError("IO export cancelled")));
+      const cancelWorker = () => finish(() => reject(new IOCancelledError("IO export cancelled")));
 
       worker.onmessage = (event: MessageEvent<RasterWorkerResponse>) => {
         finish(() => {
@@ -116,21 +118,21 @@ export async function renderRasterViaWorker(
         finish(() => reject(new Error(event.message || "Raster export worker failed")));
       };
 
-      exportSignal.addEventListener("abort", cancel, { once: true });
+      exportSignal.addEventListener("abort", cancelWorker, { once: true });
       if (exportSignal.aborted) {
-        cancel();
+        cancelWorker();
         return;
       }
 
-      const request: RasterWorkerRequest = {
-        graph: serializeSceneGraph(graph),
-        pageId,
-        nodeIds: [...nodeIds],
-        options,
-        canvasKitWasmUrl: canvasKitWasmUrl(),
-        fontSnapshot,
-      };
       try {
+        const request: RasterWorkerRequest = {
+          graph: serializeSceneGraph(graph),
+          pageId,
+          nodeIds: [...nodeIds],
+          options,
+          canvasKitWasmUrl: canvasKitWasmUrl(),
+          fontSnapshot,
+        };
         // Structured clone preserves caller-owned image, document, and font buffers.
         worker.postMessage(request, []);
       } catch (error) {
@@ -138,6 +140,7 @@ export async function renderRasterViaWorker(
       }
     });
   } finally {
-    if (deadlineTimer) clearTimeout(deadlineTimer);
+    clearTimeout(deadlineTimer);
+    signal?.removeEventListener("abort", cancel);
   }
 }

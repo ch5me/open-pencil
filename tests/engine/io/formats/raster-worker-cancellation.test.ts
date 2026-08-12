@@ -12,6 +12,7 @@ const originalCreateExportSnapshot = fontManager.createExportSnapshot;
 afterEach(() => {
   Object.assign(globalThis, { Worker: originalWorker, fetch: originalFetch });
   fontManager.createExportSnapshot = originalCreateExportSnapshot;
+  fontManager.setDownloadedFontCache(null);
 });
 
 function graphWithImage() {
@@ -142,6 +143,63 @@ test("timeout terminates raster work", async () => {
     renderRasterViaWorker(graph, pageId, [nodeId], { format: "PNG" }, undefined, 1),
   ).rejects.toBeInstanceOf(IOCancelledError);
   expect(terminated).toBe(true);
+});
+
+test("timeout still terminates raster work with a caller signal", async () => {
+  let terminated = false;
+  class FakeWorker {
+    onmessage = null;
+    onerror = null;
+    postMessage() {
+      return undefined;
+    }
+    terminate() {
+      terminated = true;
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker });
+
+  const controller = new AbortController();
+  const { graph, pageId, nodeId } = graphWithImage();
+  await expect(
+    renderRasterViaWorker(graph, pageId, [nodeId], { format: "PNG" }, controller.signal, 1),
+  ).rejects.toBeInstanceOf(IOCancelledError);
+  expect(controller.signal.aborted).toBe(false);
+  expect(terminated).toBe(true);
+});
+
+test("cancelled font acquisition cannot mutate loaded font state after settling", async () => {
+  let resolveCache: ((data: ArrayBuffer) => void) | undefined;
+  fontManager.setDownloadedFontCache({
+    read: () =>
+      new Promise((resolve) => {
+        resolveCache = resolve;
+      }),
+    write: () => Promise.resolve(),
+  });
+
+  const graph = new SceneGraph();
+  const page = graph.getPages()[0];
+  const family = `LateCancelledExport_${Date.now()}`;
+  const text = graph.createNode("TEXT", page.id, {
+    text: "Cancelled",
+    fontFamily: family,
+    fontWeight: 400,
+  });
+  const controller = new AbortController();
+  const exporting = renderRasterViaWorker(
+    graph,
+    page.id,
+    [text.id],
+    { format: "PNG" },
+    controller.signal,
+  );
+  controller.abort();
+
+  await expect(exporting).rejects.toBeInstanceOf(IOCancelledError);
+  resolveCache?.(new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer);
+  await waitForWorkerDispatch();
+  expect(fontManager.isStyleLoaded(family, "Regular")).toBe(false);
 });
 
 test("concurrent raster exports stay caller-owned without detaching editor bytes", async () => {
@@ -287,4 +345,48 @@ test("dispatch failure terminates worker", async () => {
     "post failed",
   );
   expect(terminated).toBe(true);
+});
+
+test("serialization failure terminates worker and removes caller listener", async () => {
+  let terminated = false;
+  class FakeWorker {
+    onmessage = null;
+    onerror = null;
+    postMessage() {
+      throw new Error("unexpected dispatch");
+    }
+    terminate() {
+      terminated = true;
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker });
+
+  const controller = new AbortController();
+  let listeners = 0;
+  const addEventListener = controller.signal.addEventListener.bind(controller.signal);
+  const removeEventListener = controller.signal.removeEventListener.bind(controller.signal);
+  controller.signal.addEventListener = ((...args: Parameters<AbortSignal["addEventListener"]>) => {
+    listeners++;
+    return addEventListener(...args);
+  }) as AbortSignal["addEventListener"];
+  controller.signal.removeEventListener = ((
+    ...args: Parameters<AbortSignal["removeEventListener"]>
+  ) => {
+    listeners--;
+    return removeEventListener(...args);
+  }) as AbortSignal["removeEventListener"];
+
+  const { graph, pageId, nodeId } = graphWithImage();
+  class ThrowingMap<K, V> extends Map<K, V> {
+    override [Symbol.iterator](): MapIterator<[K, V]> {
+      throw new Error("serialize failed");
+    }
+  }
+  graph.nodes = new ThrowingMap(graph.nodes);
+
+  await expect(
+    renderRasterViaWorker(graph, pageId, [nodeId], { format: "PNG" }, controller.signal),
+  ).rejects.toThrow("serialize failed");
+  expect(terminated).toBe(true);
+  expect(listeners).toBe(0);
 });

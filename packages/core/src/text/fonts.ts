@@ -185,10 +185,15 @@ export class FontManager {
     this.fallbackUserAgent = userAgent;
   }
 
-  async loadCachedFont(family: string, style = "Regular"): Promise<ArrayBuffer | null> {
+  async loadCachedFont(
+    family: string,
+    style = "Regular",
+    signal?: AbortSignal,
+  ): Promise<ArrayBuffer | null> {
     const cached = await this.readDownloadedFont(family, style);
+    signal?.throwIfAborted();
     if (!cached) return null;
-    return this.registerAndCache(family, style, cached);
+    return this.registerAndCache(family, style, cached, signal);
   }
 
   async requestLocalFontAccess(): Promise<FontInfo[]> {
@@ -242,9 +247,9 @@ export class FontManager {
     this.googleFamiliesPromise = this.loadGoogleFamilies();
   }
 
-  async fetchBundledFont(url: string): Promise<ArrayBuffer | null> {
+  async fetchBundledFont(url: string, signal?: AbortSignal): Promise<ArrayBuffer | null> {
     if (IS_BROWSER) {
-      const response = await fetch(url);
+      const response = await fetch(url, { signal });
       return response.arrayBuffer();
     }
     const { readFile } = await import(/* @vite-ignore */ "node:fs/promises");
@@ -254,10 +259,16 @@ export class FontManager {
     const packageRoot = dirname(fileURLToPath(packageJsonUrl));
     const assetPath = resolve(packageRoot, `assets${url}`);
     const buf = await readFile(assetPath);
+    signal?.throwIfAborted();
     return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
   }
 
-  async loadFont(family: string, style = "Regular"): Promise<ArrayBuffer | null> {
+  async loadFont(
+    family: string,
+    style = "Regular",
+    signal?: AbortSignal,
+  ): Promise<ArrayBuffer | null> {
+    signal?.throwIfAborted();
     const cacheKey = `${family}|${style}`;
     if (this.loadedFamilies.has(cacheKey)) {
       const cached = this.loadedFamilies.get(cacheKey);
@@ -266,30 +277,34 @@ export class FontManager {
       return cached;
     }
 
-    const downloadedBuffer = await this.loadCachedFont(family, style);
+    const downloadedBuffer = await this.loadCachedFont(family, style, signal);
     if (downloadedBuffer) return downloadedBuffer;
 
-    const localBuffer = await this.findLocalFont(family, style);
-    if (localBuffer) return this.registerAndCache(family, style, localBuffer);
+    const localBuffer = await this.findLocalFont(family, style, {}, signal);
+    if (localBuffer) return this.registerAndCache(family, style, localBuffer, signal);
 
     const bundledUrl = BUNDLED_FONTS[cacheKey];
     if (bundledUrl) {
       try {
-        const buffer = await this.fetchBundledFont(bundledUrl);
-        if (buffer && !isVariableFont(buffer)) return this.registerAndCache(family, style, buffer);
+        const buffer = await this.fetchBundledFont(bundledUrl, signal);
+        if (buffer && !isVariableFont(buffer)) {
+          return this.registerAndCache(family, style, buffer, signal);
+        }
       } catch (e) {
+        signal?.throwIfAborted();
         console.warn(`Bundled font load failed for "${family}" ${style}:`, e);
       }
     }
 
     if (typeof fetch !== "undefined") {
       try {
-        const buffer = await this.fetchGoogleFont(family, style);
+        const buffer = await this.fetchGoogleFont(family, style, signal);
         if (buffer) {
           await this.writeDownloadedFont(family, style, buffer);
-          return this.registerAndCache(family, style, buffer);
+          return this.registerAndCache(family, style, buffer, signal);
         }
       } catch (e) {
+        signal?.throwIfAborted();
         console.warn(`Google Fonts fetch failed for "${family}" ${style}:`, e);
       }
     }
@@ -325,13 +340,18 @@ export class FontManager {
     });
   }
 
-  async createExportSnapshot(graph: SceneGraph, nodeIds: string[]): Promise<FontExportSnapshot> {
+  async createExportSnapshot(
+    graph: SceneGraph,
+    nodeIds: string[],
+    signal?: AbortSignal,
+  ): Promise<FontExportSnapshot> {
     const fontKeys = this.collectFontKeys(graph, nodeIds);
     const scripts = this.collectFallbackScripts(graph, nodeIds);
     await Promise.all([
-      ...fontKeys.map(([family, style]) => this.loadFont(family, style)),
-      this.ensureFallbackPack(scripts),
+      ...fontKeys.map(([family, style]) => this.loadFont(family, style, signal)),
+      this.ensureFallbackPack(scripts, signal),
     ]);
+    signal?.throwIfAborted();
 
     const fallbackFamilies = {
       cjk: scripts.includes("cjk") ? [...this.cjkFallbackFamilies] : [],
@@ -415,8 +435,16 @@ export class FontManager {
     return [...scripts];
   }
 
-  async ensureCJKFallback(): Promise<string[]> {
+  async ensureCJKFallback(signal?: AbortSignal): Promise<string[]> {
     if (this.cjkFallbackFamilies.length > 0) return this.cjkFallbackFamilies;
+    if (signal) {
+      return this.ensureFallbackFamilies(
+        "cjk",
+        this.cjkFallbackFamilies,
+        { allowVariableLocalFonts: true },
+        signal,
+      );
+    }
     if (this.cjkFallbackPromise) return this.cjkFallbackPromise;
 
     this.cjkFallbackPromise = this.ensureFallbackFamilies("cjk", this.cjkFallbackFamilies, {
@@ -435,8 +463,11 @@ export class FontManager {
     }
   }
 
-  async ensureArabicFallback(): Promise<string[]> {
+  async ensureArabicFallback(signal?: AbortSignal): Promise<string[]> {
     if (this.arabicFallbackFamilies.length > 0) return this.arabicFallbackFamilies;
+    if (signal) {
+      return this.ensureFallbackFamilies("arabic", this.arabicFallbackFamilies, {}, signal);
+    }
     if (this.arabicFallbackPromise) return this.arabicFallbackPromise;
 
     this.arabicFallbackPromise = this.ensureFallbackFamilies("arabic", this.arabicFallbackFamilies);
@@ -445,12 +476,15 @@ export class FontManager {
 
   async ensureFallbackPack(
     scripts: FontFallbackScript[] = ["cjk", "arabic"],
+    signal?: AbortSignal,
   ): Promise<Record<FontFallbackScript, string[]>> {
     const result: Record<FontFallbackScript, string[]> = { cjk: [], arabic: [] };
     await Promise.all(
       scripts.map(async (script) => {
         result[script] =
-          script === "cjk" ? await this.ensureCJKFallback() : await this.ensureArabicFallback();
+          script === "cjk"
+            ? await this.ensureCJKFallback(signal)
+            : await this.ensureArabicFallback(signal);
       }),
     );
     return result;
@@ -470,14 +504,21 @@ export class FontManager {
     script: FontFallbackScript,
     targetFamilies: string[],
     options: { allowVariableLocalFonts?: boolean } = {},
+    signal?: AbortSignal,
   ): Promise<string[]> {
     const manifest = fontFallbackEntry(script, this.fallbackUserAgent);
 
     for (const family of manifest.localFamilies) {
-      const buffer = await this.findLocalFont(family, undefined, {
-        allowVariable: options.allowVariableLocalFonts,
-      });
-      if (buffer && this.registerAndCache(family, "Regular", buffer)) {
+      const buffer = await this.findLocalFont(
+        family,
+        undefined,
+        {
+          allowVariable: options.allowVariableLocalFonts,
+        },
+        signal,
+      );
+      if (buffer && this.registerAndCache(family, "Regular", buffer, signal)) {
+        signal?.throwIfAborted();
         targetFamilies.push(family);
       }
     }
@@ -485,11 +526,12 @@ export class FontManager {
     if (targetFamilies.length === 0) {
       const results = await Promise.allSettled(
         manifest.remoteFamilies.map(async (family) => {
-          const data = await this.loadFont(family, "Regular");
+          const data = await this.loadFont(family, "Regular", signal);
           return data ? family : null;
         }),
       );
       for (const result of results) {
+        signal?.throwIfAborted();
         if (result.status === "fulfilled" && result.value) targetFamilies.push(result.value);
       }
     }
@@ -581,15 +623,20 @@ export class FontManager {
     return files;
   }
 
-  private async fetchGoogleFont(family: string, style: string): Promise<ArrayBuffer | null> {
+  private async fetchGoogleFont(
+    family: string,
+    style: string,
+    signal?: AbortSignal,
+  ): Promise<ArrayBuffer | null> {
     const files = await this.fetchGoogleFontFiles(family);
+    signal?.throwIfAborted();
     if (!files) return null;
 
     const variant = styleToVariant(style);
     const ttfUrl = files[variant] ?? files["regular"];
     if (!ttfUrl) return null;
 
-    const response = await fetch(ttfUrl);
+    const response = await fetch(ttfUrl, { signal });
     if (!response.ok) return null;
 
     return response.arrayBuffer();
@@ -599,6 +646,7 @@ export class FontManager {
     family: string,
     style?: string,
     options: FindLocalFontOptions = {},
+    signal?: AbortSignal,
   ): Promise<ArrayBuffer | null> {
     if (!IS_BROWSER || !window.queryLocalFonts) return null;
     if (this.localFontAccessState !== "granted") return null;
@@ -608,18 +656,26 @@ export class FontManager {
       if (!match) return null;
       const blob: Blob = await match.blob();
       const buffer = await blob.arrayBuffer();
+      signal?.throwIfAborted();
       if (!options.allowVariable && isVariableFont(buffer)) return null;
       return buffer;
     } catch (e) {
+      signal?.throwIfAborted();
       console.warn(`Local font access failed for "${family}" ${style ?? ""}:`, e);
       return null;
     }
   }
 
-  private registerAndCache(family: string, style: string, buffer: ArrayBuffer): ArrayBuffer | null {
+  private registerAndCache(
+    family: string,
+    style: string,
+    buffer: ArrayBuffer,
+    signal?: AbortSignal,
+  ): ArrayBuffer | null {
+    signal?.throwIfAborted();
     this.loadedFamilies.set(`${family}|${style}`, buffer);
     this.registerFontInCanvasKit(family, buffer);
-    this.registerFontInBrowser(family, style, buffer);
+    this.registerFontInBrowser(family, style, buffer, signal);
     return buffer;
   }
 
@@ -633,7 +689,12 @@ export class FontManager {
     }
   }
 
-  private registerFontInBrowser(family: string, style: string, data: ArrayBuffer) {
+  private registerFontInBrowser(
+    family: string,
+    style: string,
+    data: ArrayBuffer,
+    signal?: AbortSignal,
+  ) {
     if (!IS_BROWSER) return;
     const weight = styleToWeight(style);
     const italic = style.toLowerCase().includes("italic") ? "italic" : "normal";
@@ -643,7 +704,11 @@ export class FontManager {
     });
     face
       .load()
-      .then(() => document.fonts.add(face))
+      .then(() => {
+        if (signal?.aborted) return undefined;
+        document.fonts.add(face);
+        return undefined;
+      })
       .catch(() => {
         console.warn(`Failed to load font "${family}" (${style})`);
       });

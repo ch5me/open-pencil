@@ -25,9 +25,23 @@ function rawText(): Plugin {
   }
 }
 
+function emittedWorkerUrls(): Plugin {
+  return {
+    name: 'emitted-worker-urls',
+    transform(code, id) {
+      if (id.endsWith('/io/formats/raster/worker-host.ts')) {
+        return code.replace(
+          'new URL("./worker.ts", import.meta.url)',
+          'new URL("./worker.js", import.meta.url)'
+        )
+      }
+    }
+  }
+}
+
 export default defineConfig({
   entry: ['src/**/*.ts', '!src/**/*.d.ts'],
-  plugins: [rawText()],
+  plugins: [rawText(), emittedWorkerUrls()],
   unbundle: true,
   platform: 'neutral',
   format: ['esm'],

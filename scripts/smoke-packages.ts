@@ -73,6 +73,10 @@ try {
   nodeEval("await import('@open-pencil/fig')", tempDir);
   nodeEval("await import('@open-pencil/core')", tempDir);
   nodeEval("await import('@open-pencil/core/scene-graph')", tempDir);
+  nodeEval(
+    "const { readFile } = await import('node:fs/promises'); const { fileURLToPath } = await import('node:url'); const host = fileURLToPath(import.meta.resolve('@open-pencil/core/io/formats/raster')); const source = await readFile(new URL('./worker-host.js', 'file://' + host), 'utf8'); if (!source.includes('new URL(\"./worker.js\", import.meta.url)')) throw new Error('Packed raster host does not resolve emitted worker.js'); await readFile(new URL('./worker.js', 'file://' + host))",
+    tempDir,
+  );
   nodeEval("await import('@open-pencil/dom-css')", tempDir);
   nodeEval("await import('@open-pencil/dom-css/browser')", tempDir);
   nodeEval("await import('@open-pencil/dom-css/jsx-runtime')", tempDir);
