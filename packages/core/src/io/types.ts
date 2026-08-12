@@ -63,6 +63,8 @@ export interface ExportRequest {
 export interface IOContext {
   canvasKit?: CanvasKit
   renderer?: SkiaRenderer
+  signal?: AbortSignal
+  maxInputBytes?: number
 }
 
 export interface FigWriteOptions {

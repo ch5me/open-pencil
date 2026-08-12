@@ -1,4 +1,5 @@
 import { parseFigBuffer } from '@open-pencil/fig'
+import type { SceneGraph } from '@open-pencil/scene-graph'
 
 import { IS_BROWSER } from '#core/constants'
 import {
@@ -11,7 +12,6 @@ import { assertInputWithinLimit } from '#core/io/registry'
 import { importNodeChanges } from '#core/kiwi/fig/import'
 import { deserializeSceneGraph } from '#core/kiwi/fig/parse/transfer'
 import type { SerializedSceneGraph } from '#core/kiwi/fig/parse/transfer'
-import type { SceneGraph } from '#core/scene-graph'
 
 export interface ParseFigFileOptions {
   populate?: 'all' | 'first-page'
@@ -94,7 +94,8 @@ export function parseFigViaWorker(
     try {
       worker.postMessage({ buffer, options: workerOptions }, [buffer])
     } catch (error) {
-      finish(() => reject(error))
+      const cause = error instanceof Error ? error : new Error('Worker failed to receive .fig data')
+      finish(() => reject(cause))
     }
   })
 }

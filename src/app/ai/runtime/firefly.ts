@@ -11,7 +11,12 @@ export type FireflyRuntimeReceipt = {
 
 type FireflyRuntimeChatResponse = {
   text: string
-  receipt: FireflyRuntimeReceipt
+  receipt?: {
+    runtimeId?: string
+    traceId?: string
+    billingAuthority?: string
+    billingReference?: string
+  }
 }
 
 export class FireflyChatTransportError extends Error {
@@ -35,7 +40,7 @@ function messageText(message: UIMessage): string {
 export function latestUserMessage(messages: UIMessage[]): string {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index]
-    if (message?.role !== 'user') continue
+    if (message.role !== 'user') continue
     const text = messageText(message)
     if (text) return text
   }
@@ -57,7 +62,13 @@ export function createFireflyChatTransport(
           chatSessionId: chatId
         })
       })
-      if (!result.receipt?.runtimeId || !result.receipt.traceId) {
+      const receipt = result.receipt
+      if (
+        !receipt?.runtimeId ||
+        !receipt.traceId ||
+        receipt.billingAuthority !== 'firefly' ||
+        !receipt.billingReference
+      ) {
         throw new FireflyChatTransportError(
           'Firefly runtime response is missing runtime or billing identity.'
         )
@@ -68,7 +79,7 @@ export function createFireflyChatTransport(
         start(controller) {
           controller.enqueue({
             type: 'start',
-            messageMetadata: { fireflyRuntimeReceipt: result.receipt }
+            messageMetadata: { fireflyRuntimeReceipt: receipt }
           })
           controller.enqueue({ type: 'text-start', id: partId })
           controller.enqueue({ type: 'text-delta', id: partId, delta: result.text })
@@ -76,7 +87,7 @@ export function createFireflyChatTransport(
           controller.enqueue({
             type: 'finish',
             finishReason: 'stop',
-            messageMetadata: { fireflyRuntimeReceipt: result.receipt }
+            messageMetadata: { fireflyRuntimeReceipt: receipt }
           })
           controller.close()
         }

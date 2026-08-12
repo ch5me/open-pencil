@@ -1,7 +1,7 @@
+import type { BlendMode, MaskType, SceneGraph } from '@open-pencil/scene-graph'
 import type { Rect } from '@open-pencil/scene-graph/primitives'
 
 import type { AssetId } from '#core/editor/assets'
-import type { BlendMode, MaskType, SceneGraph } from '#core/scene-graph'
 
 export const COMPOSITION_PLAN_VERSION = 'composition:1'
 
@@ -128,7 +128,7 @@ export function createCompositionPlan(
       maskType: node.isMask ? node.maskType : null,
       maskIsOutline: node.isMask ? node.maskIsOutline : false,
       maskDepth,
-      assetIds: (node.fills ?? [])
+      assetIds: node.fills
         .filter((fill) => fill.type === 'IMAGE' && fill.imageHash?.startsWith('asset:'))
         .map((fill) => fill.imageHash as AssetId),
       adjustmentHooks: [...(options.adjustmentHooks ?? [])]

@@ -491,13 +491,20 @@ export function validateAdjustmentLayerFilter(filter: EffectFilter): void {
   }
 }
 
+function requireEffectFilter(value: unknown): EffectFilter {
+  if (!value || typeof value !== 'object') {
+    throw new RangeError('missing effect filter')
+  }
+  return value as EffectFilter
+}
+
 export function reorderEffectStack(stack: EffectStack, from: number, to: number): EffectStack {
   if (from < 0 || to < 0 || from >= stack.filters.length || to >= stack.filters.length) {
     throw new RangeError('invalid effect reorder')
   }
   const filters = [...stack.filters]
-  const [filter] = filters.splice(from, 1)
-  if (!filter) throw new RangeError('missing effect filter')
+  const filter = requireEffectFilter((filters as readonly unknown[])[from])
+  filters.splice(from, 1)
   filters.splice(to, 0, filter)
   return { ...stack, filters }
 }
@@ -512,9 +519,10 @@ export type EffectFilterPatch = Partial<
 >
 
 export function validateEffectStack(stack: EffectStack): void {
+  const adjustmentScope: unknown = stack.adjustmentScope
   if (
     !stack.layerId ||
-    (stack.adjustmentScope !== 'layer' && stack.adjustmentScope !== 'group') ||
+    (adjustmentScope !== 'layer' && adjustmentScope !== 'group') ||
     typeof stack.smart !== 'boolean'
   ) {
     throw new RangeError('invalid effect stack identity')
@@ -540,8 +548,7 @@ export function updateEffectFilter(
   const index = stack.filters.findIndex((filter) => filter.id === filterId)
   if (index === -1) throw new RangeError('missing effect filter')
   const filters = [...stack.filters]
-  const current = filters[index]
-  if (!current) throw new RangeError('missing effect filter')
+  const current = requireEffectFilter((filters as readonly unknown[])[index])
   const next = { ...current, ...patch }
   validateEffectFilter(next)
   filters[index] = next

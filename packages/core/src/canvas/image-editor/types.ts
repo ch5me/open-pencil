@@ -40,7 +40,10 @@ export function createRendererResilienceContract(
   }
 }
 
-export function validateRendererResilienceContract(contract: RendererResilienceContract): void {
+export function validateRendererResilienceContract(contract: unknown): void {
+  if (!isUnknownRecord(contract)) {
+    throw new RendererResilienceContractError('invalid renderer resilience contract')
+  }
   if (contract.version !== 'renderer-resilience-v1') {
     throw new RendererResilienceContractError('invalid renderer resilience version')
   }
@@ -54,11 +57,13 @@ export function validateRendererResilienceContract(contract: RendererResilienceC
     contract.corruptedImageIsolation,
     contract.longSessionLeakGuard
   ]
-  if (
-    states.some((state) => state !== 'SUPPORTED' && state !== 'UNKNOWN' && state !== 'UNSUPPORTED')
-  ) {
+  if (states.some((state) => !['SUPPORTED', 'UNKNOWN', 'UNSUPPORTED'].includes(String(state)))) {
     throw new RendererResilienceContractError('invalid renderer resilience state')
   }
+}
+
+function isUnknownRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 export class UnsupportedImageBackendError extends Error {

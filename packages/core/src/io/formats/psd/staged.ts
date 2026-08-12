@@ -354,8 +354,9 @@ function readLayerMetadata(
     let layers: unknown = null
     if (Array.isArray(parsed)) {
       layers = parsed
-    } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.layers)) {
-      layers = parsed.layers
+    } else if (parsed && typeof parsed === 'object') {
+      const parsedLayers = Reflect.get(parsed, 'layers')
+      if (Array.isArray(parsedLayers)) layers = parsedLayers
     }
     if (!layers) throw new PsdUnsupportedError('invalid PSD layer metadata')
     if (!Array.isArray(layers) || layers.length > limits.maxLayers) {
@@ -419,20 +420,22 @@ function readDocumentMetadata(
       throw new PsdUnsupportedError('invalid PSD layer metadata')
     }
     const metadata = parsed
+    const dpi: unknown = Reflect.get(metadata, 'dpi')
+    const channels: unknown = Reflect.get(metadata, 'channels')
+    const spotColors: unknown = Reflect.get(metadata, 'spotColors')
+    const documentMetadata: unknown = Reflect.get(metadata, 'metadata')
     if (
-      metadata.dpi !== undefined &&
-      (!Array.isArray(metadata.dpi) ||
-        metadata.dpi.length !== 2 ||
-        metadata.dpi.some(
-          (value) => typeof value !== 'number' || !Number.isFinite(value) || value <= 0
-        ))
+      dpi !== undefined &&
+      (!Array.isArray(dpi) ||
+        dpi.length !== 2 ||
+        dpi.some((value) => typeof value !== 'number' || !Number.isFinite(value) || value <= 0))
     ) {
       throw new PsdUnsupportedError('invalid PSD DPI metadata')
     }
     if (
-      metadata.channels !== undefined &&
-      (!Array.isArray(metadata.channels) ||
-        metadata.channels.some(
+      channels !== undefined &&
+      (!Array.isArray(channels) ||
+        channels.some(
           (channel) =>
             !channel ||
             typeof channel !== 'object' ||
@@ -444,25 +447,23 @@ function readDocumentMetadata(
       throw new PsdUnsupportedError('invalid PSD channel metadata')
     }
     if (
-      metadata.spotColors !== undefined &&
-      (!Array.isArray(metadata.spotColors) ||
-        metadata.spotColors.some(
+      spotColors !== undefined &&
+      (!Array.isArray(spotColors) ||
+        spotColors.some(
           (spot) =>
             !spot ||
             typeof spot !== 'object' ||
             typeof spot.name !== 'string' ||
             !Array.isArray(spot.color) ||
             spot.color.length !== 3 ||
-            spot.color.some((value) => typeof value !== 'number' || value < 0 || value > 1)
+            spot.color.some((value: unknown) => typeof value !== 'number' || value < 0 || value > 1)
         ))
     ) {
       throw new PsdUnsupportedError('invalid PSD spot color metadata')
     }
     if (
-      metadata.metadata !== undefined &&
-      (!metadata.metadata ||
-        typeof metadata.metadata !== 'object' ||
-        Array.isArray(metadata.metadata))
+      documentMetadata !== undefined &&
+      (!documentMetadata || typeof documentMetadata !== 'object' || Array.isArray(documentMetadata))
     ) {
       throw new PsdUnsupportedError('invalid PSD document metadata')
     }

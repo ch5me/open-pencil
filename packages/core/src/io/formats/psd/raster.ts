@@ -1,3 +1,5 @@
+import type { Vector } from '@open-pencil/scene-graph'
+
 import { IS_BROWSER } from '#core/constants'
 import {
   createRasterEffectAdjustment,
@@ -5,7 +7,6 @@ import {
   type EffectPixelAdjustment
 } from '#core/editor/image-capabilities/effects'
 import { createAdaptiveWorkerGate } from '#core/editor/image-observability'
-import type { Vector } from '#core/types'
 
 import {
   PsdCancelledError,

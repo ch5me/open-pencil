@@ -1,3 +1,5 @@
+import type { ImportedTextMetadata } from '#core/editor/image-capabilities/text'
+
 export type PsdWarningCode =
   | 'unsupported-color-mode'
   | 'unsupported-bit-depth'
@@ -31,7 +33,7 @@ export type PsdExternalApplication = 'photoshop' | 'affinity' | 'krita' | 'photo
 export type PsdRoundTripStatus = 'UNKNOWN' | 'PASS' | 'FAIL'
 
 export interface PsdCorpusSource {
-  readonly kind: 'external'
+  readonly kind: string
   readonly repository: string
   readonly ref: string
   readonly license: string
@@ -55,7 +57,7 @@ export interface PsdCorpusCase {
   readonly capability: PsdCapabilityCode
   /** Warning required when the capability cannot be preserved. */
   readonly warning: PsdWarningCode
-  readonly source: 'external'
+  readonly source: string
   readonly fixture: string
   readonly sha256: string
   readonly externalReopen: 'UNKNOWN' | 'PASS' | 'FAIL'
@@ -158,7 +160,7 @@ export interface PsdLayerMetadata {
   readonly adjustments?: Readonly<Record<string, number>>
   readonly text?: ImportedTextMetadata
   readonly smartObjectId?: string
-  readonly smartObjectKind?: 'linked' | 'embedded' | string
+  readonly smartObjectKind?: string
   readonly linkedAssetId?: string
   readonly linkedAssetRevisionId?: string
   readonly embeddedDocumentId?: string
@@ -171,7 +173,7 @@ export interface PsdLayerMetadata {
 }
 
 export interface PsdVectorMetadata {
-  readonly form: 'rect' | 'ellipse' | 'polygon' | 'path' | string
+  readonly form: string
   readonly width: number
   readonly height: number
   readonly path: readonly string[]
@@ -190,7 +192,7 @@ export interface PsdPathMetadata {
 }
 
 export interface PsdLayerEffectMetadata {
-  readonly kind: 'shadow' | 'glow' | 'stroke' | 'overlay' | 'bevel' | 'pattern' | string
+  readonly kind: string
   readonly [key: string]: unknown
 }
 
@@ -243,12 +245,12 @@ export interface PsdExportInput {
   readonly height: number
   readonly layers: readonly PsdLayerMetadata[]
   /** PSD 1 or PSB 2 document version. */
-  readonly version?: 1 | 2
+  readonly version?: number
   /** Convenience alias for callers that select the interchange format. */
-  readonly format?: 'psd' | 'psb'
+  readonly format?: string
   readonly channels?: readonly PsdChannelMetadata[]
   readonly colorMode?: PsdColorMode
-  readonly bitsPerChannel?: PsdBitDepth
+  readonly bitsPerChannel?: number
   readonly dpi?: readonly [number, number]
   readonly iccProfile?: PsdIccProfile
   readonly spotColors?: readonly PsdSpotColor[]
@@ -269,4 +271,3 @@ export class PsdCancelledError extends Error {
   readonly code = 'psd-import-cancelled'
   override readonly name = 'PsdCancelledError'
 }
-import type { ImportedTextMetadata } from '#core/editor/image-capabilities/text'

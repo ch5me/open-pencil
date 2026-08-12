@@ -38,6 +38,7 @@ export interface RasterBackendCapability {
 
 export type RasterUnsupportedGapCode =
   | 'rgba16f-unavailable'
+  | 'rgba32f-unavailable'
   | 'skia-oracle-unavailable'
   | 'backend-unavailable'
   | 'malformed-rgba8'
@@ -274,18 +275,28 @@ function capability(
   }
 }
 
-export function validateRasterBackendCapability(capability: RasterBackendCapability): void {
+export function validateRasterBackendCapability(capability: unknown): void {
+  if (!isUnknownRecord(capability)) {
+    throw new RasterCompositionError('invalid raster backend capability')
+  }
+  const parity = isUnknownRecord(capability.parity) ? capability.parity : undefined
   if (
     capability.version !== 'raster-backend-capability-v1' ||
-    !['canvas2d', 'webgl2', 'webgpu', 'skia'].includes(capability.backend) ||
-    !['rgba8-srgb', 'rgba16f-linear-premultiplied'].includes(capability.format) ||
-    !['SUPPORTED', 'UNKNOWN', 'UNSUPPORTED'].includes(capability.state) ||
-    !['PARITY_PROVEN', 'NON_EQUIVALENT', 'UNKNOWN'].includes(capability.equivalence) ||
-    !Number.isFinite(capability.parity.maxChannelDelta) ||
-    !Number.isFinite(capability.parity.maxMeanBias)
+    !['canvas2d', 'webgl2', 'webgpu', 'skia'].includes(String(capability.backend)) ||
+    !['rgba8-srgb', 'rgba16f-linear-premultiplied', 'rgba32f-linear-premultiplied'].includes(
+      String(capability.format)
+    ) ||
+    !['SUPPORTED', 'UNKNOWN', 'UNSUPPORTED'].includes(String(capability.state)) ||
+    !['PARITY_PROVEN', 'NON_EQUIVALENT', 'UNKNOWN'].includes(String(capability.equivalence)) ||
+    !Number.isFinite(parity?.maxChannelDelta) ||
+    !Number.isFinite(parity?.maxMeanBias)
   ) {
     throw new RasterCompositionError('invalid raster backend capability')
   }
+}
+
+function isUnknownRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function numberMetadata(revision: AssetRevision, key: string): number | undefined {
@@ -776,7 +787,7 @@ export function composeRasterRGBA8(
   const backendCapability = capability(
     backend,
     gaps.length > 0 ? 'UNKNOWN' : 'SUPPORTED',
-    backend === 'canvas2d' ? 'NON_EQUIVALENT' : 'UNKNOWN',
+    'NON_EQUIVALENT',
     gaps,
     options.parity
   )
