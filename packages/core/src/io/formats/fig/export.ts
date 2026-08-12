@@ -13,7 +13,11 @@ import type { GUID } from '@open-pencil/scene-graph/primitives'
 import { decodeBase64 } from '#core/bytes'
 import type { SkiaRenderer } from '#core/canvas'
 import { CANVAS_BG_COLOR, IS_BROWSER, IS_TAURI } from '#core/constants'
-import { renderThumbnail } from '#core/io/formats/raster'
+import {
+  canUseRasterExportWorker,
+  renderFixedThumbnailViaWorker,
+  renderThumbnail
+} from '#core/io/formats/raster'
 import { populateAllLazyFigImportRoots } from '#core/kiwi/fig/lazy-import'
 import {
   sceneNodeToKiwi,
@@ -87,9 +91,21 @@ async function renderFigThumbnail(
   pageId: string | undefined,
   ck?: CanvasKit,
   renderer?: SkiaRenderer,
-  renderHeadless = false
+  renderHeadless = false,
+  signal?: AbortSignal
 ): Promise<Uint8Array> {
   if (!pageId) return THUMBNAIL_1X1
+  if (canUseRasterExportWorker()) {
+    return (
+      (await renderFixedThumbnailViaWorker(
+        graph,
+        pageId,
+        THUMBNAIL_WIDTH,
+        THUMBNAIL_HEIGHT,
+        signal
+      )) ?? THUMBNAIL_1X1
+    )
+  }
   if (ck && renderer) {
     return (
       renderThumbnail(ck, renderer, graph, pageId, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT) ??
@@ -384,7 +400,8 @@ export async function exportFigFile(
   ck?: CanvasKit,
   renderer?: SkiaRenderer,
   pageId?: string,
-  renderHeadlessThumbnail = false
+  renderHeadlessThumbnail = false,
+  signal?: AbortSignal
 ): Promise<Uint8Array> {
   // Lazy population synchronizes component trees and therefore mutates its graph. Saving must not
   // rewrite the live editor document or restore component values over edits made by the user.
@@ -538,7 +555,8 @@ export async function exportFigFile(
     currentPageId,
     ck,
     renderer,
-    renderHeadlessThumbnail
+    renderHeadlessThumbnail,
+    signal
   )
 
   const metaJSON = JSON.stringify({

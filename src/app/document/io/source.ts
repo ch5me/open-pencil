@@ -1,5 +1,6 @@
 import type { Editor, EditorState } from '@open-pencil/core/editor'
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import { canUseRasterExportWorker } from '@open-pencil/core/io/formats/raster'
 
 import { createAutosave } from '@/app/document/autosave'
 import {
@@ -47,7 +48,8 @@ export function createDocumentSourceActions({
   getRenderer
 }: DocumentSourceOptions) {
   function buildFigFile() {
-    return exportFigFile(editor.graph, undefined, getRenderer() ?? undefined, state.currentPageId)
+    const renderer = canUseRasterExportWorker() ? undefined : (getRenderer() ?? undefined)
+    return exportFigFile(editor.graph, undefined, renderer, state.currentPageId)
   }
 
   const { saveFigFile, saveFigFileAs, writeFile } = createSaveActions({
