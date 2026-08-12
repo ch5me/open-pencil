@@ -25,4 +25,10 @@ describe('Tauri ACP transport', () => {
 
     expect(transport.cwd).toBe('/Users/tester')
   })
+
+  test('fails loud when engine cutover is enabled before Gate 1', async () => {
+    await expect(createACPTransport('acp:claude-code', true)).rejects.toThrow(
+      '@ch5me/harness-engine-client is schema-compatible'
+    )
+  })
 })

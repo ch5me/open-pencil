@@ -1,19 +1,17 @@
 import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
-import type {
-  Client,
-  Agent,
-  SessionNotification,
-  RequestPermissionRequest,
-  RequestPermissionResponse
-} from '@agentclientprotocol/sdk'
+import type { Client, Agent, SessionNotification } from '@agentclientprotocol/sdk'
 import type { ChatTransport, UIMessage, UIMessageChunk } from 'ai'
 
-import { AUTOMATION_HTTP_PORT, type ACPAgentDef } from '@open-pencil/core/constants'
+import type { ACPAgentDef } from '@open-pencil/core/constants'
 
 import SYSTEM_PROMPT from '@/app/ai/chat/system-prompt.md?raw'
 
 import { mapUpdate } from './map-update'
+import { requestPermissionFromUser } from './permission'
+import type { ProductPermissionResponse } from './permission'
 import { spawnACPProcess } from './process'
+import { getOpenPencilMCPServers } from './product-policy'
+import type { ProductPermissionRequest } from './product-policy'
 
 type TauriChild = Awaited<ReturnType<typeof spawnACPProcess>>['child']
 
@@ -236,9 +234,8 @@ export class ACPChatTransport implements ChatTransport<UIMessage> {
 
     const clientImpl: Client = {
       async requestPermission(
-        params: RequestPermissionRequest
-      ): Promise<RequestPermissionResponse> {
-        const { requestPermissionFromUser } = await import('@/app/ai/acp/permission')
+        params: ProductPermissionRequest
+      ): Promise<ProductPermissionResponse> {
         return requestPermissionFromUser(params)
       },
 
@@ -248,10 +245,9 @@ export class ACPChatTransport implements ChatTransport<UIMessage> {
     }
 
     const connection = new ClientSideConnection((_agent: Agent) => clientImpl, stream)
-    const { getAutomationAuthToken } = await import('@/app/automation/mcp/spawn')
-    let automationAuthToken: string | null
+    let mcpServers
     try {
-      automationAuthToken = await getAutomationAuthToken()
+      mcpServers = await getOpenPencilMCPServers()
     } catch (e) {
       await child.kill().catch(() => undefined)
       throw new Error(formatConnectionError(e, this.agentDef))
@@ -271,16 +267,7 @@ export class ACPChatTransport implements ChatTransport<UIMessage> {
     try {
       sessionResult = await connection.newSession({
         cwd: this.cwd,
-        mcpServers: [
-          {
-            type: 'http' as const,
-            name: 'open-pencil',
-            url: `http://127.0.0.1:${AUTOMATION_HTTP_PORT}/mcp`,
-            headers: automationAuthToken
-              ? [{ name: 'Authorization', value: `Bearer ${automationAuthToken}` }]
-              : []
-          }
-        ]
+        mcpServers
       })
     } catch (e) {
       await child.kill().catch(() => undefined)

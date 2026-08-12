@@ -6,6 +6,7 @@ import type { ComputedRef, Ref } from 'vue'
 import { ACP_AGENTS } from '@open-pencil/core/constants'
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core/constants'
 
+import { useEngineTransport } from '@/app/ai/acp/feature'
 import { resolveLanguageModelID } from '@/app/ai/chat/model'
 import SYSTEM_PROMPT from '@/app/ai/chat/system-prompt.md?raw'
 import { createAIModelRuntime } from '@/app/ai/models'
@@ -43,11 +44,19 @@ function supportsAnthropicCaching(providerID: AIProviderID, modelID: string): bo
     (providerID === 'openrouter' && modelID.startsWith('anthropic/'))
   )
 }
-
-export async function createACPTransport(providerID: AIProviderID) {
+export async function createACPTransport(
+  providerID: AIProviderID,
+  engineTransportEnabled = useEngineTransport()
+) {
   const agentId = providerID.replace('acp:', '') as ACPAgentID
   const agentDef = ACP_AGENTS.find((a) => a.id === agentId)
   if (!agentDef) throw new Error(`Unknown ACP agent: ${agentId}`)
+
+  if (engineTransportEnabled) {
+    throw new Error(
+      'OpenPencil engine transport is enabled before @ch5me/harness-engine-client is schema-compatible. Disable VITE_OPENPENCIL_ENGINE_TRANSPORT until Gate 1 passes.'
+    )
+  }
 
   const { ACPChatTransport } = await import('@/app/ai/acp/transport')
   const { homeDir } = await import('@tauri-apps/api/path')
