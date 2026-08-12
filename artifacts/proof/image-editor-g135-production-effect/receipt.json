@@ -2,9 +2,9 @@
   "schema": "ch5.open-pencil.g135-production-effect/3",
   "status": "PASS",
   "identity": {
-    "repositoryHead": "6d107206eb953ba936ef0310eba10aba7ce5cb5d",
+    "repositoryHead": "a402d913f607ed9cef505e8c17109ffb1a21b137",
     "originMain": "6d107206eb953ba936ef0310eba10aba7ce5cb5d",
-    "proofInputDiffSha256": "cf95b1554e19a80224c4af9f586e91ca9f4862cef046707db06d1b62dd90d24c",
+    "proofInputDiffSha256": "602dd62c5a420216d466b095d4a4e489b6fab1ac104cb87cf2aa4f154f70d42a",
     "productionImplementationCommit": "39501fffc4d79a30114dcd21ee6c6b1fa220d94d",
     "runtime": {
       "node": "v24.3.0",
@@ -37,9 +37,9 @@
   "boundInputs": {
     "generator": {
       "path": "tools/image-editor-proof/src/g135-production-effect.ts",
-      "sha256": "5f48f42000cc6ad97d993b439b94283c3d3defb3e33f015f05b00e8a8909567d",
-      "bytes": 15310,
-      "gitBlob": "1b25e7f203222a8ea439c67755d31f92165227b3"
+      "sha256": "2c5ba2d4bed84c3fa51483663d22d54d1a2a90e41dfbf48889f2e33e4d771772",
+      "bytes": 16425,
+      "gitBlob": "48d732f9d50968fdc96ad7a86796c95e01bd0c2e"
     },
     "golden": {
       "path": "tests/helpers/image-editor/g135-production-effect.golden.json",

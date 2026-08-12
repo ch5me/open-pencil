@@ -370,19 +370,46 @@ async function createProof(): Promise<{ receipt: JSONValue; distTree: JSONValue 
   }
 }
 
-const proof = await createProof()
-const receiptOutput = `${JSON.stringify(proof.receipt, null, 2)}\n`
-const distTreeOutput = `${JSON.stringify(proof.distTree, null, 2)}\n`
 if (process.argv.includes('--check')) {
-  const [existingReceipt, existingDistTree] = await Promise.all([
-    readFile(receiptPath, 'utf8').catch(() => ''),
-    readFile(distTreePath, 'utf8').catch(() => '')
+  const [receiptBytes, distTreeBytes] = await Promise.all([
+    readFile(receiptPath),
+    readFile(distTreePath)
   ])
-  if (existingReceipt !== receiptOutput || existingDistTree !== distTreeOutput) {
-    throw new Error('G135 proof artifacts are stale: run bun run proof:g135')
+  const receipt = JSON.parse(receiptBytes.toString()) as {
+    status?: string
+    boundInputs?: Record<string, Awaited<ReturnType<typeof sourceIdentity>>>
+    package?: { distTree?: { artifactSha256?: string; fileCount?: number; sha256?: string } }
+  }
+  const distTree = JSON.parse(distTreeBytes.toString()) as {
+    entries?: Array<{ path: string; sha256: string; bytes: number }>
+    fileCount?: number
+    sha256?: string
+  }
+  if (receipt.status !== 'PASS' || !receipt.boundInputs || !distTree.entries) {
+    throw new Error('G135 proof artifacts are invalid')
+  }
+  for (const [name, path] of Object.entries(boundPaths)) {
+    const expected = receipt.boundInputs[name]
+    const actual = await sourceIdentity(path)
+    if (!expected || JSON.stringify(actual) !== JSON.stringify(expected)) {
+      throw new Error(`G135 bound input is stale: ${path}`)
+    }
+  }
+  const distTreeSha256 = hash(JSON.stringify(distTree.entries))
+  if (
+    distTree.fileCount !== distTree.entries.length ||
+    distTree.sha256 !== distTreeSha256 ||
+    receipt.package?.distTree?.fileCount !== distTree.entries.length ||
+    receipt.package.distTree.sha256 !== distTreeSha256 ||
+    receipt.package.distTree.artifactSha256 !== hash(`${JSON.stringify(distTree, null, 2)}\n`)
+  ) {
+    throw new Error('G135 dist-tree artifact is stale')
   }
   console.log(`G135 packed production-effect proof current: ${relative(root, receiptPath)}`)
 } else {
+  const proof = await createProof()
+  const receiptOutput = `${JSON.stringify(proof.receipt, null, 2)}\n`
+  const distTreeOutput = `${JSON.stringify(proof.distTree, null, 2)}\n`
   await mkdir(artifactDir, { recursive: true })
   await Promise.all([
     writeFile(receiptPath, receiptOutput),
