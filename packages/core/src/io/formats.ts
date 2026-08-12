@@ -4,7 +4,13 @@ import { sceneNodeToJSX, selectionToJSX } from '#core/design-jsx'
 
 import { exportFigFile, parseFigFile } from './formats/fig'
 import type { PPTXExportOptions } from './formats/pptx'
-import { headlessRenderNodes, renderNodesToImage, type RasterExportFormat } from './formats/raster'
+import {
+  canUseRasterExportWorker,
+  headlessRenderNodes,
+  renderNodesToImage,
+  renderRasterViaWorker,
+  type RasterExportFormat
+} from './formats/raster'
 import { renderNodesToSVG } from './formats/svg'
 import { extractExportGraph, findPageId } from './subgraph'
 import type {
@@ -68,6 +74,22 @@ async function renderRaster(
   const target = resolveExportNodes(request)
   if (!target) return null
   const scale = options.scale ?? 1
+  const renderOptions = {
+    scale,
+    format: options.format,
+    quality: options.quality,
+    trimTransparent: request.target.scope === 'page' || request.target.scope === 'document'
+  }
+
+  if (canUseRasterExportWorker()) {
+    return renderRasterViaWorker(
+      request.graph,
+      target.pageId,
+      target.nodeIds,
+      renderOptions,
+      context?.signal
+    )
+  }
 
   if (context?.canvasKit && context.renderer) {
     return renderNodesToImage(
@@ -76,21 +98,11 @@ async function renderRaster(
       request.graph,
       target.pageId,
       target.nodeIds,
-      {
-        scale,
-        format: options.format,
-        quality: options.quality,
-        trimTransparent: request.target.scope === 'page' || request.target.scope === 'document'
-      }
+      renderOptions
     )
   }
 
-  return headlessRenderNodes(request.graph, target.pageId, target.nodeIds, {
-    scale,
-    format: options.format,
-    quality: options.quality,
-    trimTransparent: request.target.scope === 'page' || request.target.scope === 'document'
-  })
+  return headlessRenderNodes(request.graph, target.pageId, target.nodeIds, renderOptions)
 }
 
 function rasterFormat(format: RasterExportFormat): IOFormatAdapter {
@@ -160,9 +172,12 @@ export const figFormat: IOFormatAdapter = {
   matchesFile(fileName) {
     return lowerExt(fileName) === 'fig'
   },
-  async readDocument(input) {
+  async readDocument(input, context) {
     const data = input.data.slice().buffer
-    const graph = await parseFigFile(data, { populate: 'first-page' })
+    const graph = await parseFigFile(data, {
+      populate: 'first-page',
+      signal: context?.signal
+    })
     return { graph, sourceFormat: 'fig' }
   },
   async writeDocument(graph, options?: FigWriteOptions, context?: IOContext) {

@@ -426,8 +426,8 @@ export class SkiaRenderer {
     return this.destroyed
   }
 
-  async loadFonts(onFallbackFontsLoaded?: () => void): Promise<void> {
-    await RendererFonts.loadFonts(this, onFallbackFontsLoaded)
+  async loadFonts(onFallbackFontsLoaded?: () => void, loadFallbacks = true): Promise<void> {
+    await RendererFonts.loadFonts(this, onFallbackFontsLoaded, loadFallbacks)
   }
 
   syncFontGeneration(): void {

@@ -1,13 +1,16 @@
 import { readFileSync } from 'node:fs'
 
+import type { Plugin } from 'rolldown'
 import { defineConfig } from 'tsdown'
-import type { Rolldown } from 'tsdown'
 
-const packageJSON = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+const packageJson = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+) as {
   dependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
 }
 
-function rawText(): Rolldown.Plugin {
+function rawText(): Plugin {
   return {
     name: 'raw-text',
     load(id) {
@@ -24,9 +27,23 @@ function rawText(): Rolldown.Plugin {
   }
 }
 
+function emittedWorkerUrls(): Plugin {
+  return {
+    name: 'emitted-worker-urls',
+    transform(code, id) {
+      if (id.endsWith('/io/formats/raster/worker-host.ts')) {
+        return code.replace(
+          'new URL("./worker.ts", import.meta.url)',
+          'new URL("./worker.js", import.meta.url)'
+        )
+      }
+    }
+  }
+}
+
 export default defineConfig({
   entry: ['src/**/*.ts', '!src/**/*.d.ts'],
-  plugins: [rawText()],
+  plugins: [rawText(), emittedWorkerUrls()],
   unbundle: true,
   platform: 'neutral',
   format: ['esm'],
@@ -35,7 +52,11 @@ export default defineConfig({
   clean: true,
   outDir: './dist',
   deps: {
-    neverBundle: [...Object.keys(packageJSON.dependencies ?? {}), /^node:/],
+    neverBundle: [
+      ...Object.keys(packageJson.dependencies ?? {}),
+      ...Object.keys(packageJson.peerDependencies ?? {}),
+      /^node:/
+    ],
     onlyBundle: false
   }
 })

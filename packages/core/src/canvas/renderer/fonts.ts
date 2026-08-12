@@ -68,7 +68,8 @@ export function getFontProvider(r: SkiaRenderer) {
 
 export async function loadFonts(
   r: SkiaRenderer,
-  onFallbackFontsLoaded?: () => void
+  onFallbackFontsLoaded?: () => void,
+  loadFallbacks = true
 ): Promise<void> {
   if (r.isDestroyed()) return
   r.onFontResolutionSettled = (snapshot, nodeIds) => {
@@ -105,6 +106,25 @@ export async function loadFonts(
   r.fontsLoaded = true
   syncFontGeneration(r)
   r.invalidateAllPictures()
+
+  if (!loadFallbacks) return
+
+  void fontManager.ensureCJKFallback().then((families) => {
+    if (!r.isDestroyed() && families.length > 0) {
+      syncFontGeneration(r)
+      r.invalidateAllPictures()
+      onFallbackFontsLoaded?.()
+    }
+    return undefined
+  })
+  void fontManager.ensureArabicFallback().then((families) => {
+    if (!r.isDestroyed() && families.length > 0) {
+      syncFontGeneration(r)
+      r.invalidateAllPictures()
+      onFallbackFontsLoaded?.()
+    }
+    return undefined
+  })
 }
 
 export async function prepareForExport(

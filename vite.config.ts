@@ -39,5 +39,11 @@ export default defineConfig(async ({ command }) => ({
   build: {
     chunkSizeWarningLimit: 2500
   },
+  worker: {
+    format: 'es'
+  },
+  optimizeDeps: {
+    include: ['prismjs', 'prismjs/components/prism-jsx']
+  },
   server: createDevServerOptions(host)
 }))
