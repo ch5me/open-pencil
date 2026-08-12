@@ -11,6 +11,8 @@ export { initCanvasKit, headlessRenderNodes, headlessRenderThumbnail } from './h
 export {
   canUseRasterExportWorker,
   RasterWorkerFontUnavailableError,
+  RasterWorkerProtocolError,
+  renderFixedThumbnailViaWorker,
   renderRasterViaWorker,
   type RasterWorkerOptions
 } from './worker-host'

@@ -321,8 +321,12 @@ test('concurrent raster exports stay caller-owned without detaching editor bytes
   expect(workers[0].transfer).toEqual([])
   expect(firstInput.image).toEqual(new Uint8Array([1, 2, 3, 4]))
 
-  workers[0].onmessage?.({ data: { bytes: new Uint8Array([3, 4]) } } as MessageEvent)
-  workers[1].onmessage?.({ data: { bytes: new Uint8Array([5, 6]) } } as MessageEvent)
+  workers[0].onmessage?.({
+    data: { kind: 'raster', bytes: new Uint8Array([3, 4]) }
+  } as MessageEvent)
+  workers[1].onmessage?.({
+    data: { kind: 'raster', bytes: new Uint8Array([5, 6]) }
+  } as MessageEvent)
   await expect(first).resolves.toEqual(new Uint8Array([3, 4]))
   await expect(second).resolves.toEqual(new Uint8Array([5, 6]))
 })
@@ -371,7 +375,7 @@ test('worker request carries exact loaded custom font bytes without detaching th
   expect(request?.fontSnapshot?.fonts[0]).toEqual({ family, style: 'Regular', data: bytes })
   expect(bytes.byteLength).toBe(8)
 
-  workers[0]?.onmessage?.({ data: { bytes: new Uint8Array([1]) } } as MessageEvent)
+  workers[0]?.onmessage?.({ data: { kind: 'raster', bytes: new Uint8Array([1]) } } as MessageEvent)
   await exporting
 })
 

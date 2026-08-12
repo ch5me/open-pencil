@@ -6,6 +6,8 @@ import { serializeSceneGraph } from '#core/kiwi/fig/parse/transfer'
 import { fontManager } from '#core/text/fonts'
 
 import type {
+  FixedThumbnailWorkerRequest,
+  RasterExportWorkerRequest,
   RasterWorkerOptions,
   RasterWorkerRequest,
   RasterWorkerResponse
@@ -17,6 +19,10 @@ export type { RasterWorkerOptions } from './worker-protocol'
 
 export class RasterWorkerFontUnavailableError extends Error {
   override name = 'RasterWorkerFontUnavailableError'
+}
+
+export class RasterWorkerProtocolError extends Error {
+  override name = 'RasterWorkerProtocolError'
 }
 
 export function canUseRasterExportWorker(): boolean {
@@ -44,14 +50,24 @@ function canvasKitWASMURL(): string {
   return new URL('canvaskit.wasm', ckPath).href
 }
 
-export async function renderRasterViaWorker(
+function workerNodeIds(
   graph: SceneGraph,
-  pageId: string,
-  nodeIds: string[],
-  options: RasterWorkerOptions,
+  request: Pick<RasterExportWorkerRequest, 'kind' | 'pageId'> & { nodeIds?: string[] }
+): string[] {
+  if (request.kind === 'raster') return request.nodeIds ?? []
+  return graph.getNode(request.pageId)?.childIds ?? []
+}
+
+async function dispatchRasterWorker(
+  graph: SceneGraph,
+  requestInfo: Pick<RasterExportWorkerRequest, 'kind' | 'pageId'> & { nodeIds?: string[] },
+  createRequest: (
+    graph: ReturnType<typeof serializeSceneGraph>,
+    fontSnapshot: Awaited<ReturnType<typeof fontManager.createExportSnapshot>>
+  ) => RasterExportWorkerRequest,
   signal?: AbortSignal,
   timeoutMs = RASTER_EXPORT_TIMEOUT_MS
-): Promise<Uint8Array | null> {
+): Promise<RasterWorkerResponse> {
   throwIfIOCancelled(signal)
   const exportController = new AbortController()
   const cancel = () => exportController.abort()
@@ -61,6 +77,7 @@ export async function renderRasterViaWorker(
   const exportSignal = exportController.signal
 
   try {
+    const nodeIds = workerNodeIds(graph, requestInfo)
     const fontSnapshot = await waitForAbortable(
       fontManager.createExportSnapshot(graph, nodeIds, exportSignal),
       exportSignal
@@ -106,10 +123,8 @@ export async function renderRasterViaWorker(
             reject(new IOCancelledError('IO export cancelled'))
           } else if (event.data.error) {
             reject(new Error(event.data.error))
-          } else if (event.data.bytes instanceof Uint8Array) {
-            resolve(event.data.bytes)
           } else {
-            resolve(null)
+            resolve(event.data)
           }
         })
       }
@@ -124,14 +139,9 @@ export async function renderRasterViaWorker(
       }
 
       try {
-        const request: RasterWorkerRequest = {
-          graph: serializeSceneGraph(graph),
-          pageId,
-          nodeIds: [...nodeIds],
-          options,
-          canvasKitWASMURL: canvasKitWASMURL(),
-          fontSnapshot
-        }
+        const serialized = serializeSceneGraph(graph)
+        throwIfIOCancelled(exportSignal)
+        const request = createRequest(serialized, fontSnapshot)
         // Structured clone preserves caller-owned image, document, and font buffers.
         worker.postMessage(request, [])
       } catch (error) {
@@ -142,4 +152,66 @@ export async function renderRasterViaWorker(
     clearTimeout(deadlineTimer)
     signal?.removeEventListener('abort', cancel)
   }
+}
+
+export async function renderRasterViaWorker(
+  graph: SceneGraph,
+  pageId: string,
+  nodeIds: string[],
+  options: RasterWorkerOptions,
+  signal?: AbortSignal,
+  timeoutMs = RASTER_EXPORT_TIMEOUT_MS
+): Promise<Uint8Array | null> {
+  const response = await dispatchRasterWorker(
+    graph,
+    { kind: 'raster', pageId, nodeIds },
+    (serialized, fontSnapshot): RasterWorkerRequest => ({
+      kind: 'raster',
+      graph: serialized,
+      pageId,
+      nodeIds: [...nodeIds],
+      options,
+      canvasKitWASMURL: canvasKitWASMURL(),
+      fontSnapshot
+    }),
+    signal,
+    timeoutMs
+  )
+  if (response.kind !== 'raster') {
+    throw new RasterWorkerProtocolError(`Expected raster result, received ${response.kind}`)
+  }
+  return response.bytes instanceof Uint8Array ? response.bytes : null
+}
+
+export async function renderFixedThumbnailViaWorker(
+  graph: SceneGraph,
+  pageId: string,
+  width: number,
+  height: number,
+  signal?: AbortSignal,
+  timeoutMs = RASTER_EXPORT_TIMEOUT_MS
+): Promise<Uint8Array | null> {
+  const response = await dispatchRasterWorker(
+    graph,
+    { kind: 'fixed-thumbnail', pageId },
+    (serialized, fontSnapshot): FixedThumbnailWorkerRequest => ({
+      kind: 'fixed-thumbnail',
+      graph: serialized,
+      pageId,
+      width,
+      height,
+      canvasKitWASMURL: canvasKitWASMURL(),
+      fontSnapshot
+    }),
+    signal,
+    timeoutMs
+  )
+  if (
+    response.kind !== 'fixed-thumbnail' ||
+    response.width !== width ||
+    response.height !== height
+  ) {
+    throw new RasterWorkerProtocolError('Fixed-thumbnail worker returned mismatched dimensions')
+  }
+  return response.bytes instanceof Uint8Array ? response.bytes : null
 }
