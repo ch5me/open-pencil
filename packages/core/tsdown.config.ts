@@ -28,13 +28,20 @@ function rawText(): Plugin {
 }
 
 function emittedWorkerUrls(): Plugin {
+  const workerHosts = [
+    '/io/formats/fig/read.ts',
+    '/io/formats/fig/export.ts',
+    '/io/formats/raster/worker-host.ts'
+  ]
   return {
     name: 'emitted-worker-urls',
-    transform(code) {
-      return code.replace(
+    transform(code, id) {
+      if (!workerHosts.some((suffix) => id.endsWith(suffix))) return
+      const transformed = code.replace(
         /new URL\((['"])([^'"]*\/)?([^/'"]*worker)\.ts\1, import\.meta\.url\)/g,
         'new URL($1$2$3.js$1, import.meta.url)'
       )
+      return transformed === code ? undefined : { code: transformed, map: null }
     }
   }
 }

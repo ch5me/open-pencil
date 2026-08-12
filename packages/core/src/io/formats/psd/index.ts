@@ -38,9 +38,4 @@ export {
   stagePsbImport,
   PSD_CAPABILITY_WARNING_CONTRACT
 } from './staged'
-export {
-  rasterizePsdLayers,
-  rasterizePsdLayersAdaptive,
-  rasterizePsdLayersInWorker,
-  type PsdRasterMetrics
-} from './raster'
+export { rasterizePsdLayers } from './raster'

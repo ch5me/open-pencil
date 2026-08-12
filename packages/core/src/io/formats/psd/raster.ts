@@ -1,15 +1,12 @@
 import type { Vector } from '@open-pencil/scene-graph'
 
-import { IS_BROWSER } from '#core/constants'
 import {
   createRasterEffectAdjustment,
   type AdjustmentLayerKind,
   type EffectPixelAdjustment
 } from '#core/editor/image-capabilities/effects'
-import { createAdaptiveWorkerGate } from '#core/editor/image-observability'
 
 import {
-  PsdCancelledError,
   PsdHostileFileError,
   PsdUnsupportedError,
   type PsdRasterInput,
@@ -240,157 +237,5 @@ export function rasterizePsdLayers(input: PsdRasterInput): Uint8Array {
       }
     }
   }
-  return result
-}
-
-const rasterWorkerGate = createAdaptiveWorkerGate()
-
-export interface PsdRasterMetrics {
-  readonly execution: 'main-thread' | 'worker'
-  readonly layerCount: number
-  readonly mainThreadMs: number
-  readonly workerMs: number | 'UNKNOWN'
-  readonly elapsedMs: number
-}
-
-interface PsdRasterWorkerResponse {
-  readonly pixels?: Uint8Array
-  readonly workerMs?: number
-  readonly error?: string
-  readonly code?: string
-}
-
-function isPsdRasterWorkerResponse(value: unknown): value is PsdRasterWorkerResponse {
-  return typeof value === 'object' && value !== null
-}
-
-function canUseRasterWorker(): boolean {
-  return IS_BROWSER && typeof Worker !== 'undefined'
-}
-
-function throwIfCancelled(signal?: AbortSignal): void {
-  if (signal?.aborted) throw new PsdCancelledError('PSD rasterization cancelled')
-}
-
-function workerError(response: PsdRasterWorkerResponse): Error {
-  if (response.code === 'hostile-psd-file') {
-    return new PsdHostileFileError(response.error ?? 'PSD raster worker rejected input')
-  }
-  if (response.code === 'unsupported-psd') {
-    return new PsdUnsupportedError(response.error ?? 'PSD raster worker rejected input')
-  }
-  return new Error(response.error ?? 'PSD raster worker failed')
-}
-
-export function rasterizePsdLayersInWorker(
-  input: PsdRasterInput,
-  signal?: AbortSignal
-): Promise<{ pixels: Uint8Array; metrics: PsdRasterMetrics }> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new PsdCancelledError('PSD rasterization cancelled'))
-      return
-    }
-    const startedAt = performance.now()
-    const worker = new Worker(new URL('./raster-worker.ts', import.meta.url), { type: 'module' })
-    let mainThreadMs = 0
-    let settled = false
-    const finish = () => {
-      settled = true
-      signal?.removeEventListener('abort', cancel)
-      worker.terminate()
-    }
-    const cancel = () => {
-      if (settled) return
-      finish()
-      reject(new PsdCancelledError('PSD rasterization cancelled'))
-    }
-    signal?.addEventListener('abort', cancel, { once: true })
-    if (signal?.aborted) {
-      cancel()
-      return
-    }
-    worker.onmessage = (event: MessageEvent<unknown>) => {
-      if (settled) return
-      const elapsedMs = performance.now() - startedAt
-      const response = event.data
-      finish()
-      if (!isPsdRasterWorkerResponse(response)) {
-        reject(new Error('PSD raster worker returned malformed response'))
-        return
-      }
-      const workerMs = response.workerMs
-      if (
-        response.error ||
-        !(response.pixels instanceof Uint8Array) ||
-        typeof workerMs !== 'number' ||
-        !Number.isFinite(workerMs)
-      ) {
-        reject(workerError(response))
-        return
-      }
-      if (signal?.aborted) {
-        reject(new PsdCancelledError('PSD rasterization cancelled'))
-        return
-      }
-      resolve({
-        pixels: response.pixels,
-        metrics: {
-          execution: 'worker',
-          layerCount: input.layers.length,
-          mainThreadMs,
-          workerMs,
-          elapsedMs
-        }
-      })
-    }
-    worker.onerror = (event) => {
-      if (settled) return
-      finish()
-      reject(new Error(event.message || 'PSD raster worker failed'))
-    }
-    try {
-      // Keep caller-owned buffers attached so cancellation and failures remain retryable.
-      worker.postMessage(input, [])
-      mainThreadMs = performance.now() - startedAt
-    } catch (error) {
-      finish()
-      reject(error instanceof Error ? error : new Error(String(error)))
-    }
-  })
-}
-
-/**
- * Use the PSD raster worker only after observed main-thread budget misses.
- * The synchronous path remains the deterministic fallback for Node, Tauri, and worker failure.
- */
-export async function rasterizePsdLayersAdaptive(
-  input: PsdRasterInput,
-  options: {
-    signal?: AbortSignal
-    onMetrics?: (metrics: PsdRasterMetrics) => void
-    workerAvailable?: boolean
-  } = {}
-): Promise<Uint8Array> {
-  throwIfCancelled(options.signal)
-  const workerAvailable = options.workerAvailable ?? canUseRasterWorker()
-  if (workerAvailable && rasterWorkerGate.policy(workerAvailable).useWorker) {
-    const result = await rasterizePsdLayersInWorker(input, options.signal)
-    throwIfCancelled(options.signal)
-    options.onMetrics?.(result.metrics)
-    return result.pixels
-  }
-  const start = performance.now()
-  const result = rasterizePsdLayers(input)
-  throwIfCancelled(options.signal)
-  const elapsedMs = performance.now() - start
-  rasterWorkerGate.record(elapsedMs)
-  options.onMetrics?.({
-    execution: 'main-thread',
-    layerCount: input.layers.length,
-    mainThreadMs: elapsedMs,
-    workerMs: 'UNKNOWN',
-    elapsedMs
-  })
   return result
 }

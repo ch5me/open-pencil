@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises'
 const workers = [
   ['io/formats/fig/read.js', '../../../kiwi/fig/parse/worker.js'],
   ['io/formats/fig/export.js', './export-worker.js'],
-  ['io/formats/psd/raster.js', './raster-worker.js'],
   ['io/formats/raster/worker-host.js', './worker.js']
 ] as const
 
