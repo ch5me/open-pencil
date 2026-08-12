@@ -9,5 +9,5 @@ test('production save and autosave omit the main-thread renderer when worker is 
   expect(source).toContain('signal?.throwIfAborted()')
   expect(source).toContain('buildFigFile,')
   expect(source).toContain('saveOperation.run')
-  expect(source).toContain('await writeFile(await buildFigFile())')
+  expect(source).toContain('writeFile(await buildFigFile(signal), signal)')
 })
