@@ -2,6 +2,7 @@ import { afterEach, beforeAll, expect, test } from 'bun:test'
 
 import { SceneGraph } from '@open-pencil/scene-graph'
 
+import { renderFigThumbnail } from '#core/io/formats/fig/export'
 import { headlessRenderThumbnail, renderFixedThumbnailViaWorker } from '#core/io/formats/raster'
 import { IOCancelledError } from '#core/io/limits'
 import { initCodec } from '#core/kiwi'
@@ -36,6 +37,29 @@ test('fixed-thumbnail worker matches exact direct bytes and dimensions', async (
   const worker = await renderFixedThumbnailViaWorker(graph, page.id, 400, 225)
 
   expect(worker).toEqual(direct)
+})
+
+test('FIG thumbnail falls back to exact direct headless bytes and observes cancellation', async () => {
+  Object.assign(globalThis, { Worker: undefined })
+  const { graph, page } = thumbnailGraph()
+  const direct = await headlessRenderThumbnail(graph, page.id, 400, 225)
+
+  await expect(renderFigThumbnail(graph, page.id, undefined, undefined, true)).resolves.toEqual(
+    direct
+  )
+
+  const controller = new AbortController()
+  const cancelled = renderFigThumbnail(
+    graph,
+    page.id,
+    undefined,
+    undefined,
+    true,
+    controller.signal
+  )
+  controller.abort()
+
+  await expect(cancelled).rejects.toBeInstanceOf(IOCancelledError)
 })
 
 test('fixed-thumbnail worker carries page fonts without detaching bytes', async () => {

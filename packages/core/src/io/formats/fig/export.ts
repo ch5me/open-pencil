@@ -18,7 +18,7 @@ import {
   renderFixedThumbnailViaWorker,
   renderThumbnail
 } from '#core/io/formats/raster'
-import { IOCancelledError } from '#core/io/limits'
+import { IOCancelledError, throwIfIOCancelled } from '#core/io/limits'
 import { populateAllLazyFigImportRoots } from '#core/kiwi/fig/lazy-import'
 import {
   sceneNodeToKiwi,
@@ -92,7 +92,7 @@ function collectImageEntries(graph: SceneGraph): Array<{ name: string; data: Uin
 const THUMBNAIL_WIDTH = 400
 const THUMBNAIL_HEIGHT = 225
 
-async function renderFigThumbnail(
+export async function renderFigThumbnail(
   graph: SceneGraph,
   pageId: string | undefined,
   ck?: CanvasKit,
@@ -119,11 +119,13 @@ async function renderFigThumbnail(
     )
   }
   if (!renderHeadless || IS_BROWSER || IS_TAURI) return THUMBNAIL_1X1
+  throwIfIOCancelled(signal)
   const { headlessRenderThumbnail } = await import('#core/io/formats/raster')
-  return (
+  const thumbnail =
     (await headlessRenderThumbnail(graph, pageId, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT)) ??
     THUMBNAIL_1X1
-  )
+  throwIfIOCancelled(signal)
+  return thumbnail
 }
 
 function assignVariableGuid(
