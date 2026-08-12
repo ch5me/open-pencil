@@ -1,5 +1,6 @@
 import type { Editor, EditorState } from "@open-pencil/core/editor";
 import type { ExportRequest, IORegistry } from "@open-pencil/core/io";
+import { useTimeoutFn as createTimeout } from "@vueuse/core";
 
 import {
   bundleExportFiles,
@@ -31,6 +32,11 @@ export function createDocumentExportActions(
   const { renderExportImage, getSelectionExportTarget, listSelectionExportFormats } =
     createExportTargetActions(editor, state, io);
   let activeExport: AbortController | null = null;
+  const { start: startAbortDeadline, stop: clearAbortDeadline } = createTimeout(
+    () => activeExport?.abort(),
+    EXPORT_TIMEOUT_MS,
+    { immediate: false },
+  );
 
   async function renderExportFile(
     target: ExportRequest["target"],
@@ -79,12 +85,14 @@ export function createDocumentExportActions(
     activeExport?.abort();
     const controller = new AbortController();
     activeExport = controller;
-    const timeout = setTimeout(() => controller.abort(), EXPORT_TIMEOUT_MS);
+    startAbortDeadline();
     try {
       return await exportTask(controller.signal);
     } finally {
-      clearTimeout(timeout);
-      if (activeExport === controller) activeExport = null;
+      if (activeExport === controller) {
+        clearAbortDeadline();
+        activeExport = null;
+      }
     }
   }
 

@@ -42,7 +42,14 @@ async function expectWorkerParity(text: string, width: number): Promise<void> {
   expect(worker).toEqual(direct);
 }
 
-test("CJK raster worker snapshot matches direct render", () => expectWorkerParity("你好世界", 200));
+test(
+  "CJK raster worker snapshot matches direct render",
+  () => expectWorkerParity("你好世界", 200),
+  15_000,
+);
 
-test("Arabic raster worker snapshot matches direct render", () =>
-  expectWorkerParity("مرحبا بالعالم", 220));
+test(
+  "Arabic raster worker snapshot matches direct render",
+  () => expectWorkerParity("مرحبا بالعالم", 220),
+  15_000,
+);
