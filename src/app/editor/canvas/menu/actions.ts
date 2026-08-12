@@ -3,6 +3,7 @@ import type { Ref } from 'vue'
 
 import { nodeToXPath } from '@open-pencil/core/xpath'
 
+import { EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
 import type { EditorStore } from '@/app/editor/active-store'
 import { pasteClipboardToReplace } from '@/app/editor/clipboard/paste-to-replace'
 import { executeClipboardCommand } from '@/app/editor/clipboard/system'
@@ -62,7 +63,13 @@ export function createCanvasMenuActions(store: EditorStore, selectedIds: Ref<Set
       toast.error('PNG clipboard export is not available in this browser')
       return
     }
-    const data = await store.renderExportImage(ids(), 2, 'PNG')
+    const data = await store.renderExportImage(
+      ids(),
+      2,
+      'PNG',
+      undefined,
+      AbortSignal.timeout(EXPORT_IMAGE_TIMEOUT_MS)
+    )
     if (!data) return
     const blob = new Blob([toArrayBuffer(data)], { type: 'image/png' })
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])

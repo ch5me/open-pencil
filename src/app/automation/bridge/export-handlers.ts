@@ -2,6 +2,7 @@ import { encodeBase64 } from '@open-pencil/core/bytes'
 import { selectionToJSX, sceneNodeToJSX, type RasterExportFormat } from '@open-pencil/core/io'
 
 import type { AutomationTarget } from '@/app/automation/bridge/target'
+import { EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
 
 export async function handleExport(target: AutomationTarget, args: unknown): Promise<unknown> {
   const store = target.store
@@ -11,7 +12,9 @@ export async function handleExport(target: AutomationTarget, args: unknown): Pro
   const data = await store.renderExportImage(
     nodeIds,
     exportArgs?.scale ?? 1,
-    (exportArgs?.format ?? 'PNG') as RasterExportFormat
+    (exportArgs?.format ?? 'PNG') as RasterExportFormat,
+    undefined,
+    AbortSignal.timeout(EXPORT_IMAGE_TIMEOUT_MS)
   )
   if (!data) throw new Error('Export failed')
   const base64 = encodeBase64(data)

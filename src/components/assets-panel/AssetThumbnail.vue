@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useElementVisibility, useObjectUrl } from '@vueuse/core'
-import { computed, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, onUnmounted, shallowRef, useTemplateRef, watch } from 'vue'
 
+import { EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
 import { useEditorStore } from '@/app/editor/active-store'
 import { findAssetPage } from '@/components/assets-panel/page'
 import { ASSET_GRID_THUMBNAIL_SIZE, ASSET_THUMBNAIL_RENDER_SCALE } from '@/constants'
@@ -19,11 +20,16 @@ const isVisible = useElementVisibility(thumbnail)
 const previewBlob = shallowRef<Blob | null>(null)
 const previewURL = useObjectUrl(previewBlob)
 let requestId = 0
+let previewController: AbortController | null = null
 
 async function updatePreview() {
+  previewController?.abort()
+  const controller = new AbortController()
+  previewController = controller
   const currentRequest = ++requestId
   const node = editor.graph.getNode(nodeId)
   if (!node) {
+    previewController = null
     previewBlob.value = null
     return
   }
@@ -35,12 +41,15 @@ async function updatePreview() {
       [nodeId],
       scale,
       'PNG',
-      findAssetPage(node, editor.graph)?.id ?? editor.state.currentPageId
+      findAssetPage(node, editor.graph)?.id ?? editor.state.currentPageId,
+      AbortSignal.any([controller.signal, AbortSignal.timeout(EXPORT_IMAGE_TIMEOUT_MS)])
     )
     if (currentRequest !== requestId) return
     previewBlob.value = data ? new Blob([data], { type: 'image/png' }) : null
   } catch {
     if (currentRequest === requestId) previewBlob.value = null
+  } finally {
+    if (previewController === controller) previewController = null
   }
 }
 
@@ -51,6 +60,7 @@ watch(
   },
   { immediate: true, flush: 'post' }
 )
+onUnmounted(() => previewController?.abort())
 </script>
 
 <template>

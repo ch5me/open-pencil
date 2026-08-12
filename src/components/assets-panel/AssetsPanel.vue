@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useObjectUrl } from '@vueuse/core'
-import { computed, ref, shallowRef, watch } from 'vue'
 import {
   ContextMenuContent,
   ContextMenuItem,
@@ -10,12 +9,14 @@ import {
   DialogClose,
   DialogTitle
 } from 'reka-ui'
+import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 
 import type { SceneNode } from '@open-pencil/scene-graph'
 import { useI18n } from '@open-pencil/vue'
 
-import { nodeIcon } from '@/app/editor/icons'
+import { EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
 import { useEditorStore } from '@/app/editor/active-store'
+import { nodeIcon } from '@/app/editor/icons'
 import { openExternalLink } from '@/app/shell/ui'
 import AssetThumbnail from '@/components/assets-panel/AssetThumbnail.vue'
 import { findAssetPage } from '@/components/assets-panel/page'
@@ -61,6 +62,7 @@ const previewBlob = shallowRef<Blob | null>(null)
 const previewURL = useObjectUrl(previewBlob)
 const previewLoading = ref(false)
 let previewRequestId = 0
+let previewController: AbortController | null = null
 const insertButton = useButtonUI({ tone: 'ghost', size: 'iconSm' })
 const primaryButton = useButtonUI({ tone: 'accent', size: 'md' })
 const dialog = useDialogUI()
@@ -160,15 +162,20 @@ function clearPreview() {
 }
 
 async function updatePreview() {
+  previewController?.abort()
+  const controller = new AbortController()
+  previewController = controller
   const requestId = ++previewRequestId
   const nodeId = selectedPreviewNodeId.value
   if (!detailsOpen.value || !nodeId) {
+    previewController = null
     clearPreview()
     return
   }
 
   const node = editor.getNode(nodeId)
   if (!node) {
+    previewController = null
     clearPreview()
     return
   }
@@ -177,12 +184,19 @@ async function updatePreview() {
   try {
     const maxSize = Math.max(node.width, node.height, 1)
     const scale = Math.min(176 / maxSize, 2)
-    const data = await editor.renderExportImage([nodeId], scale, 'PNG', selectedAsset.value?.pageId)
+    const data = await editor.renderExportImage(
+      [nodeId],
+      scale,
+      'PNG',
+      selectedAsset.value?.pageId,
+      AbortSignal.any([controller.signal, AbortSignal.timeout(EXPORT_IMAGE_TIMEOUT_MS)])
+    )
     if (requestId !== previewRequestId) return
     previewBlob.value = data ? new Blob([data], { type: 'image/png' }) : null
   } catch {
     if (requestId === previewRequestId) clearPreview()
   } finally {
+    if (previewController === controller) previewController = null
     if (requestId === previewRequestId) previewLoading.value = false
   }
 }
@@ -190,6 +204,7 @@ async function updatePreview() {
 watch([detailsOpen, selectedPreviewNodeId, () => editor.state.sceneVersion], updatePreview, {
   flush: 'post'
 })
+onUnmounted(() => previewController?.abort())
 
 function openDetails(asset: LocalAsset) {
   selectedAssetId.value = asset.id

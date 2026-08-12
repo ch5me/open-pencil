@@ -1,5 +1,6 @@
 import { FigmaAPI } from '@open-pencil/core/figma-api'
 
+import { EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
 import type { EditorStore } from '@/app/editor/active-store'
 import { listFamilies, listFonts } from '@/app/editor/fonts'
 
@@ -21,7 +22,13 @@ export function makeFigmaFromStore(
     zoom: store.state.zoom
   }
   api.exportImage = (nodeIds, opts) =>
-    store.renderExportImage(nodeIds, opts.scale ?? 1, opts.format ?? 'PNG')
+    store.renderExportImage(
+      nodeIds,
+      opts.scale ?? 1,
+      opts.format ?? 'PNG',
+      undefined,
+      AbortSignal.timeout(EXPORT_IMAGE_TIMEOUT_MS)
+    )
   api.listAvailableFontsAsync = async () => {
     const [systemFonts, familyOptions] = await Promise.all([listFonts(), listFamilies()])
     const fonts = systemFonts.flatMap(({ family, styles }) =>

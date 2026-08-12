@@ -1,18 +1,19 @@
 <script setup lang="ts">
 import { useObjectUrl } from '@vueuse/core'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, onUnmounted, ref, shallowRef, watch } from 'vue'
 
-import AppSelect from '@/components/ui/AppSelect.vue'
+import { useExport, useI18n } from '@open-pencil/vue'
+import type { ExportFormatId } from '@open-pencil/vue'
+
+import { EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
+import { useEditorStore } from '@/app/editor/active-store'
 import ExportScaleInput from '@/components/properties/ExportScaleInput.vue'
+import AppSelect from '@/components/ui/AppSelect.vue'
 import IconButton from '@/components/ui/IconButton.vue'
 import PanelItemRow from '@/components/ui/panel/PanelItemRow.vue'
 import PanelSection from '@/components/ui/panel/PanelSection.vue'
 import Tip from '@/components/ui/Tip.vue'
-import { useEditorStore } from '@/app/editor/active-store'
-import { useExport, useI18n } from '@open-pencil/vue'
 import { CHECKERBOARD_BACKGROUND } from '@/theme/checkerboard'
-
-import type { ExportFormatId } from '@open-pencil/vue'
 
 const editorStore = useEditorStore()
 const { panels } = useI18n()
@@ -43,6 +44,7 @@ const previewBlob = shallowRef<Blob | null>(null)
 const previewURL = useObjectUrl(previewBlob)
 const showPreview = ref(false)
 const exporting = ref(false)
+let previewController: AbortController | null = null
 
 const PREVIEW_WIDTH = 480
 
@@ -72,7 +74,13 @@ async function doExport() {
 }
 
 async function updatePreview() {
-  if (!showPreview.value) return
+  previewController?.abort()
+  const controller = new AbortController()
+  previewController = controller
+  if (!showPreview.value) {
+    previewController = null
+    return
+  }
 
   const ids =
     activeTarget.value === 'selection'
@@ -80,6 +88,7 @@ async function updatePreview() {
       : editorStore.graph.getChildren(editorStore.state.currentPageId).map((n) => n.id)
 
   if (ids.length === 0) {
+    previewController = null
     previewBlob.value = null
     return
   }
@@ -90,8 +99,19 @@ async function updatePreview() {
     if (node) maxW = Math.max(maxW, node.width)
   }
   const scale = maxW > 0 ? Math.min(PREVIEW_WIDTH / maxW, 2) : 1
-  const data = await editorStore.renderExportImage(ids, scale, 'PNG')
-  previewBlob.value = data ? new Blob([data], { type: 'image/png' }) : null
+  try {
+    const data = await editorStore.renderExportImage(
+      ids,
+      scale,
+      'PNG',
+      undefined,
+      AbortSignal.any([controller.signal, AbortSignal.timeout(EXPORT_IMAGE_TIMEOUT_MS)])
+    )
+    if (previewController !== controller) return
+    previewBlob.value = data ? new Blob([data], { type: 'image/png' }) : null
+  } finally {
+    if (previewController === controller) previewController = null
+  }
 }
 
 const previewKey = computed(
@@ -105,6 +125,7 @@ const previewKey = computed(
 
 watch(() => showPreview.value, updatePreview, { flush: 'post' })
 watch(previewKey, updatePreview, { flush: 'post' })
+onUnmounted(() => previewController?.abort())
 </script>
 
 <template>

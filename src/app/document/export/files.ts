@@ -7,7 +7,11 @@ import type {
   IORegistry,
   RasterExportFormat
 } from '@open-pencil/core/io'
-import { renderNodesToImage } from '@open-pencil/core/io/formats/raster'
+import {
+  canUseRasterExportWorker,
+  renderNodesToImage,
+  renderRasterViaWorker
+} from '@open-pencil/core/io/formats/raster'
 import type { SceneGraph } from '@open-pencil/scene-graph'
 
 import type { ExportOptions } from '@/app/document/export/types'
@@ -16,6 +20,8 @@ import { isTauri } from '@/app/tauri/env'
 type ExportData = string | ArrayBuffer | Uint8Array
 
 type DownloadBlob = (data: Uint8Array, filename: string, mime: string) => void
+
+export const EXPORT_IMAGE_TIMEOUT_MS = 60_000
 
 export interface ExportedFile {
   bytes: Uint8Array
@@ -100,17 +106,33 @@ export function getExportBytes(data: ExportData): Uint8Array {
   return typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data)
 }
 
-export function createExportTargetActions(editor: Editor, state: EditorState, io: IORegistry) {
+export function createExportTargetActions(
+  editor: Editor,
+  state: EditorState,
+  io: IORegistry,
+  worker = { available: canUseRasterExportWorker, render: renderRasterViaWorker }
+) {
   async function renderExportImage(
     nodeIds: string[],
     scale: number,
     format: RasterExportFormat,
-    pageId = state.currentPageId
+    pageId = state.currentPageId,
+    signal?: AbortSignal
   ): Promise<Uint8Array | null> {
     const renderer = editor.renderer
     if (!renderer) return null
     const ids = nodeIds.length > 0 ? nodeIds : editor.graph.getChildren(pageId).map((n) => n.id)
     if (ids.length === 0) return null
+    if (worker.available()) {
+      return worker.render(
+        editor.graph,
+        pageId,
+        ids,
+        { scale, format },
+        signal,
+        EXPORT_IMAGE_TIMEOUT_MS
+      )
+    }
     return renderNodesToImage(renderer.ck, renderer, editor.graph, pageId, ids, {
       scale,
       format
