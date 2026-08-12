@@ -2,8 +2,17 @@ import { defineCommand } from 'citty'
 
 import { allRules, createLinter, presets, type LintMessage } from '@open-pencil/core/lint'
 
+import {
+  checkedNodesForContext,
+  createCh5ReviewReceipt,
+  readCh5ReviewContext,
+  readStableDocument
+} from '#cli/ch5-review-receipt'
 import { bold, dim, fail, fmtList, ok } from '#cli/format'
-import { loadDocument } from '#cli/headless'
+import { loadDocument, loadDocumentBytes } from '#cli/headless'
+import { finalizeImplementationProvenance } from '#cli/implementation-provenance'
+
+const { version } = await import('../../package.json')
 
 function formatSeverity(severity: LintMessage['severity']) {
   if (severity === 'error') return fail('error')
@@ -40,9 +49,17 @@ export default defineCommand({
     },
     rule: { type: 'string', description: 'Run specific rule(s) only (repeatable)' },
     json: { type: 'boolean', default: false, description: 'Output as JSON' },
+    'ch5-review-context': {
+      type: 'string',
+      description: 'Emit strict ch5.open-pencil-lint/3 receipt using this context JSON'
+    },
     'list-rules': { type: 'boolean', default: false, description: 'List rules and exit' }
   },
   async run({ args }) {
+    const contextPath = args['ch5-review-context']
+    if (args['list-rules'] && contextPath) {
+      throw new Error('--list-rules cannot be combined with --ch5-review-context')
+    }
     if (args['list-rules']) {
       console.log('')
       console.log(bold('Available rules'))
@@ -61,11 +78,44 @@ export default defineCommand({
       return
     }
 
-    const graph = await loadDocument(args.file)
+    const startedAt = new Date().toISOString()
     const rules = args.rule ? (Array.isArray(args.rule) ? args.rule : [args.rule]) : undefined
-    const result = createLinter({ preset: args.preset, rules }).lintGraph(graph)
+    const context = contextPath ? await readCh5ReviewContext(contextPath) : undefined
+    const document = context
+      ? await readStableDocument(args.file, context.documentLocator)
+      : undefined
+    const graph = document
+      ? await loadDocumentBytes(document.locator, document.bytes)
+      : await loadDocument(args.file)
+    if (context && (args.preset !== 'recommended' || rules)) {
+      throw new Error(
+        'CH5 review receipt mode requires the fixed recommended preset and no --rule overrides'
+      )
+    }
+    const linter = createLinter({ preset: args.preset, rules })
+    const checkedNodes = context ? checkedNodesForContext(context) : undefined
+    const result = checkedNodes ? linter.lintChecks(graph, checkedNodes) : linter.lintGraph(graph)
+    const finishedAt = new Date().toISOString()
 
-    if (args.json) {
+    if (context && document && checkedNodes) {
+      const implementationDigest = await finalizeImplementationProvenance()
+      console.log(
+        JSON.stringify(
+          createCh5ReviewReceipt({
+            context,
+            document,
+            producerVersion: version,
+            implementationDigest,
+            startedAt,
+            finishedAt,
+            checkedNodes,
+            ...result
+          }),
+          null,
+          2
+        )
+      )
+    } else if (args.json) {
       console.log(JSON.stringify(result, null, 2))
     } else if (result.messages.length === 0) {
       console.log(ok('No lint issues found.'))

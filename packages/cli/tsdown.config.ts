@@ -8,7 +8,7 @@ export default defineConfig({
   format: ['esm'],
   sourcemap: true,
   clean: true,
-  outDir: './dist',
+  outDir: process.env.OPENPENCIL_CLI_OUT_DIR ?? './dist',
   treeshake: false,
   deps: {
     alwaysBundle: ['@open-pencil/mcp', /^@open-pencil\/mcp\//],
