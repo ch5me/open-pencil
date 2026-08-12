@@ -57,7 +57,6 @@ export function createSaveActions({
       else if (filePath && IS_TAURI) target = { path: filePath }
       else if (fileHandle) target = { handle: fileHandle }
       const wrote = await writeFile(await buildFigFile(signal), signal, target)
-      signal?.throwIfAborted()
       if (wrote && !storageBinding) setSourceIdentity({ handle: fileHandle, path: filePath })
     } else if (downloadName) {
       const write = await buildFigFile(signal)
@@ -77,13 +76,11 @@ export function createSaveActions({
       if (!path) return
       signal?.throwIfAborted()
       if (!(await writeFile(write, signal, { path }))) return
-      signal?.throwIfAborted()
       setStorageBinding(null)
       setFilePath(path)
       setFileHandle(null)
       state.documentName = documentNameFromFigPath(path)
       setSourceIdentity({ handle: null, path })
-      signal?.throwIfAborted()
       startWatchingFile()
       return
     }
@@ -93,13 +90,11 @@ export function createSaveActions({
       if (!handle) return
       signal?.throwIfAborted()
       if (!(await writeFile(write, signal, { handle }))) return
-      signal?.throwIfAborted()
       setStorageBinding(null)
       setFileHandle(handle)
       setFilePath(null)
       state.documentName = documentNameFromFigPath(handle.name)
       setSourceIdentity({ handle, path: null })
-      signal?.throwIfAborted()
       startWatchingFile()
       return
     }

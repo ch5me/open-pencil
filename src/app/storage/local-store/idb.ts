@@ -2,13 +2,15 @@ import { openIdb, reqToPromise, txDone } from '@/app/storage/idb-util'
 import { buildIndexMeta, buildWriteMeta, sortAndFilterMetas } from '@/app/storage/local-store/meta'
 import type { LocalCanvasStore } from '@/app/storage/local-store/store'
 import type { LocalCanvasMeta, LocalCanvasWriteInput } from '@/app/storage/local-store/types'
+import { buildOutboxJob, queueOutboxJob, type OutboxJob } from '@/app/storage/sync/types'
 
 const DB_NAME = 'open-pencil-cloud-local'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 const STORE_META = 'meta'
 const STORE_FIG = 'fig'
 const STORE_THUMB = 'thumb'
+const STORE_JOBS = 'jobs'
 
 function openDb(): Promise<IDBDatabase> {
   return openIdb(DB_NAME, DB_VERSION, (db) => {
@@ -20,6 +22,9 @@ function openDb(): Promise<IDBDatabase> {
     }
     if (!db.objectStoreNames.contains(STORE_THUMB)) {
       db.createObjectStore(STORE_THUMB)
+    }
+    if (!db.objectStoreNames.contains(STORE_JOBS)) {
+      db.createObjectStore(STORE_JOBS, { keyPath: 'id' })
     }
   })
 }
@@ -35,6 +40,18 @@ async function rowToBytes(row: unknown): Promise<Uint8Array | null> {
 
 function bytesToBuffer(bytes: Uint8Array) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+}
+
+async function readJobs(store: IDBObjectStore): Promise<OutboxJob[]> {
+  return (await reqToPromise(store.getAll())) as OutboxJob[]
+}
+
+function writeQueuedJob(store: IDBObjectStore, existing: OutboxJob[], job: OutboxJob) {
+  const next = queueOutboxJob(existing, job)
+  for (const current of existing) {
+    if (!next.some((candidate) => candidate.id === current.id)) store.delete(current.id)
+  }
+  store.put(job)
 }
 
 async function readMetaRow(store: IDBObjectStore, id: string): Promise<LocalCanvasMeta | null> {
@@ -112,6 +129,46 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
       return meta
     },
 
+    async publishCanvas(input, options) {
+      const database = await db()
+      const tx = database.transaction([STORE_META, STORE_FIG, STORE_THUMB, STORE_JOBS], 'readwrite')
+      const metaStore = tx.objectStore(STORE_META)
+      const existing = await readMetaRow(metaStore, input.id)
+      if (
+        options?.expectedRevision != null &&
+        (existing?.revision ?? 0) !== options.expectedRevision
+      ) {
+        await txDone(tx)
+        return null
+      }
+
+      const figStore = tx.objectStore(STORE_FIG)
+      const thumbStore = tx.objectStore(STORE_THUMB)
+      let hasThumb = existing?.hasThumb ?? false
+      figStore.put(bytesToBuffer(input.figBytes), input.id)
+      if (input.thumbBytes != null) {
+        if (input.thumbBytes.byteLength > 0) {
+          thumbStore.put(bytesToBuffer(input.thumbBytes), input.id)
+          hasThumb = true
+        } else {
+          thumbStore.delete(input.id)
+          hasThumb = false
+        }
+      }
+
+      const metadata = buildWriteMeta(input, existing, hasThumb)
+      metaStore.put(metadata)
+      const job = buildOutboxJob({
+        canvasId: input.id,
+        type: 'putCanvas',
+        revision: metadata.revision
+      })
+      const jobStore = tx.objectStore(STORE_JOBS)
+      writeQueuedJob(jobStore, await readJobs(jobStore), job)
+      await txDone(tx)
+      return { metadata, job }
+    },
+
     async upsertIndexMeta(input) {
       const database = await db()
       const tx = database.transaction(STORE_META, 'readwrite')
@@ -121,6 +178,34 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
       store.put(meta)
       await txDone(tx)
       return meta
+    },
+
+    async seedCanvas(input, options) {
+      const database = await db()
+      const tx = database.transaction([STORE_META, STORE_FIG, STORE_THUMB], 'readwrite')
+      const metaStore = tx.objectStore(STORE_META)
+      const existing = await readMetaRow(metaStore, input.id)
+      if ((existing?.revision ?? 0) !== options.expectedRevision) {
+        await txDone(tx)
+        return null
+      }
+      const figStore = tx.objectStore(STORE_FIG)
+      const thumbStore = tx.objectStore(STORE_THUMB)
+      let hasThumb = existing?.hasThumb ?? false
+      figStore.put(bytesToBuffer(input.figBytes), input.id)
+      if (input.thumbBytes != null) {
+        if (input.thumbBytes.byteLength > 0) {
+          thumbStore.put(bytesToBuffer(input.thumbBytes), input.id)
+          hasThumb = true
+        } else {
+          thumbStore.delete(input.id)
+          hasThumb = false
+        }
+      }
+      const metadata = buildWriteMeta(input, existing, hasThumb)
+      metaStore.put(metadata)
+      await txDone(tx)
+      return metadata
     },
 
     async writeThumb(id: string, thumbBytes: Uint8Array) {
@@ -197,10 +282,106 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
 
     async clearAll() {
       const database = await db()
-      const tx = database.transaction([STORE_META, STORE_FIG, STORE_THUMB], 'readwrite')
+      const tx = database.transaction([STORE_META, STORE_FIG, STORE_THUMB, STORE_JOBS], 'readwrite')
       tx.objectStore(STORE_META).clear()
       tx.objectStore(STORE_FIG).clear()
       tx.objectStore(STORE_THUMB).clear()
+      tx.objectStore(STORE_JOBS).clear()
+      await txDone(tx)
+    },
+
+    async listOutboxJobs() {
+      const database = await db()
+      const tx = database.transaction(STORE_JOBS, 'readonly')
+      const jobs = await readJobs(tx.objectStore(STORE_JOBS))
+      await txDone(tx)
+      return jobs.sort((a, b) => a.createdAt - b.createdAt)
+    },
+
+    async enqueueOutboxJob(partial) {
+      const job = buildOutboxJob(partial)
+      const database = await db()
+      const tx = database.transaction(STORE_JOBS, 'readwrite')
+      const store = tx.objectStore(STORE_JOBS)
+      writeQueuedJob(store, await readJobs(store), job)
+      await txDone(tx)
+      return job
+    },
+
+    async updateOutboxJob(job) {
+      const database = await db()
+      const tx = database.transaction(STORE_JOBS, 'readwrite')
+      tx.objectStore(STORE_JOBS).put(job)
+      await txDone(tx)
+    },
+
+    async removeOutboxJob(id) {
+      const database = await db()
+      const tx = database.transaction(STORE_JOBS, 'readwrite')
+      tx.objectStore(STORE_JOBS).delete(id)
+      await txDone(tx)
+    },
+
+    async settleOutboxJob(job, settlement) {
+      const database = await db()
+      const tx = database.transaction([STORE_META, STORE_JOBS], 'readwrite')
+      const jobStore = tx.objectStore(STORE_JOBS)
+      const stored = (await reqToPromise(jobStore.get(job.id))) as OutboxJob | undefined
+      if (
+        !stored ||
+        stored.canvasId !== job.canvasId ||
+        stored.type !== job.type ||
+        stored.revision !== job.revision
+      ) {
+        await txDone(tx)
+        return false
+      }
+
+      const metaStore = tx.objectStore(STORE_META)
+      const metadata = await readMetaRow(metaStore, job.canvasId)
+      const currentRevision = metadata?.revision === job.revision
+      if (!currentRevision) {
+        jobStore.delete(job.id)
+        await txDone(tx)
+        return false
+      }
+
+      if (settlement.kind === 'success') {
+        jobStore.delete(job.id)
+        if (job.type !== 'putThumb') {
+          metaStore.put({
+            ...metadata,
+            syncStatus: 'synced',
+            lastSyncedAt: settlement.syncedAt ?? new Date().toISOString(),
+            lastSyncError: null
+          })
+        }
+      } else {
+        jobStore.put({
+          ...stored,
+          attempts: settlement.kind === 'blocked' ? stored.attempts : settlement.attempts,
+          nextAttemptAt: settlement.nextAttemptAt
+        })
+        if (settlement.kind !== 'blocked') {
+          let syncStatus = metadata.syncStatus
+          if (job.type !== 'putThumb') {
+            syncStatus = settlement.kind === 'error' ? 'error' : 'pending'
+          }
+          metaStore.put({
+            ...metadata,
+            syncStatus,
+            lastSyncError: settlement.message
+          })
+        }
+      }
+      await txDone(tx)
+      return true
+    },
+
+    async clearOutbox() {
+      const database = await db()
+      const tx = database.transaction(STORE_JOBS, 'readwrite')
+      tx.objectStore(STORE_JOBS).clear()
       await txDone(tx)
     }
   }

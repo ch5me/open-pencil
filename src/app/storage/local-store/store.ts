@@ -5,6 +5,7 @@ import type {
   LocalCanvasMeta,
   LocalCanvasWriteInput
 } from '@/app/storage/local-store/types'
+import type { OutboxEnqueueInput, OutboxJob, OutboxSettlement } from '@/app/storage/sync/types'
 
 export type UpdateLocalCanvasMetaOptions = {
   /** Apply only if the row still has this revision. */
@@ -17,8 +18,18 @@ export type LocalCanvasStore = {
   readFig(id: string): Promise<Uint8Array | null>
   readThumb(id: string): Promise<Uint8Array | null>
   writeCanvas(input: LocalCanvasWriteInput): Promise<LocalCanvasMeta>
+  /** Atomically publish canvas bytes, metadata, and its durable sync job. */
+  publishCanvas(
+    input: LocalCanvasWriteInput,
+    options?: UpdateLocalCanvasMetaOptions
+  ): Promise<{ metadata: LocalCanvasMeta; job: OutboxJob } | null>
   /** Index-only row for remote canvases not yet downloaded (no fig body). */
   upsertIndexMeta(meta: LocalCanvasIndexInput): Promise<LocalCanvasMeta>
+  /** Seed only if the local revision has not changed since the remote read began. */
+  seedCanvas(
+    input: LocalCanvasWriteInput,
+    options: UpdateLocalCanvasMetaOptions
+  ): Promise<LocalCanvasMeta | null>
   writeThumb(id: string, thumbBytes: Uint8Array): Promise<LocalCanvasMeta | null>
   updateMeta(
     id: string,
@@ -30,6 +41,13 @@ export type LocalCanvasStore = {
   clearFig(id: string): Promise<LocalCanvasMeta | null>
   remove(id: string): Promise<void>
   clearAll(): Promise<void>
+  listOutboxJobs(): Promise<OutboxJob[]>
+  enqueueOutboxJob(job: OutboxEnqueueInput): Promise<OutboxJob>
+  updateOutboxJob(job: OutboxJob): Promise<void>
+  removeOutboxJob(id: string): Promise<void>
+  /** Atomically settle a job and revision-guarded metadata. */
+  settleOutboxJob(job: OutboxJob, settlement: OutboxSettlement): Promise<boolean>
+  clearOutbox(): Promise<void>
 }
 
 let singleton: LocalCanvasStore | null = null

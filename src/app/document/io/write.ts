@@ -37,7 +37,7 @@ export function createDocumentWriter({
     generation: number
     superseded: boolean
     commitInProgress: boolean
-    supersedeAfterCommit: boolean
+    committed: boolean
     abort?: () => void
     successor?: WriteOperation
     completion: Promise<void>
@@ -78,16 +78,14 @@ export function createDocumentWriter({
       generation: ++currentGeneration,
       superseded: false,
       commitInProgress: false,
-      supersedeAfterCommit: false,
+      committed: false,
       completion,
       complete,
       fail
     }
     if (currentOperation) {
       currentOperation.successor = operation
-      if (currentOperation.commitInProgress) {
-        currentOperation.supersedeAfterCommit = true
-      } else {
+      if (!currentOperation.committed) {
         currentOperation.superseded = true
         currentOperation.abort?.()
       }
@@ -100,14 +98,18 @@ export function createDocumentWriter({
         throw new DOMException('Save superseded', 'AbortError')
       }
     }
-    const commitIfCurrent = async <T>(commit: () => Promise<T>): Promise<T> => {
+    const commitIfCurrent = async <T>(
+      commit: (markCommitted: () => void, throwIfCancelled: () => void) => Promise<T>
+    ): Promise<T> => {
       throwIfCancelled()
       operation.commitInProgress = true
       try {
-        return await commit()
+        return await commit(() => {
+          throwIfCancelled()
+          operation.committed = true
+        }, throwIfCancelled)
       } finally {
         operation.commitInProgress = false
-        if (operation.supersedeAfterCommit) operation.superseded = true
       }
     }
 
@@ -133,7 +135,10 @@ export function createDocumentWriter({
         try {
           throwIfCancelled()
           await tauriWrite(temporaryPath, write.data)
-          await commitIfCurrent(() => rename(temporaryPath, resolvedTarget.path))
+          await commitIfCurrent((markCommitted) => {
+            markCommitted()
+            return rename(temporaryPath, resolvedTarget.path)
+          })
           if (!operation.superseded) setSavedVersion(write.sceneVersion)
           return true
         } catch (error) {
@@ -157,8 +162,12 @@ export function createDocumentWriter({
         await writable.write(new Uint8Array(write.data))
         throwIfCancelled()
         operation.abort = undefined
-        await commitIfCurrent(() => writable.close())
-        if (!operation.superseded) setSavedVersion(write.sceneVersion)
+        signal?.removeEventListener('abort', abortWritable)
+        await commitIfCurrent((markCommitted) => {
+          markCommitted()
+          return writable.close()
+        })
+        setSavedVersion(write.sceneVersion)
         return true
       } catch (error) {
         abortWritable()

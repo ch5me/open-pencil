@@ -147,7 +147,7 @@ describe('document persistence', () => {
     expect(setSavedVersion).not.toHaveBeenCalled()
   })
 
-  test('browser close waits for a mandatory successor overwrite before reporting supersession', async () => {
+  test('browser close is an irreversible commit point before a successor starts', async () => {
     const firstClose = deferred()
     const closeStarted = deferred()
     const committed: number[] = []
@@ -181,14 +181,15 @@ describe('document persistence', () => {
 
     expect(secondWrite).not.toHaveBeenCalled()
     firstClose.resolve()
+    await stale
     await latest
-    await expect(stale).rejects.toMatchObject({ name: 'AbortError' })
     expect(committed).toEqual([1, 2])
-    expect(setSavedVersion).toHaveBeenCalledTimes(1)
+    expect(setSavedVersion).toHaveBeenCalledTimes(2)
+    expect(setSavedVersion).toHaveBeenNthCalledWith(1, 1)
     expect(setSavedVersion).toHaveBeenCalledWith(2)
   })
 
-  test('failed browser replacement surfaces failure after the stale close committed', async () => {
+  test('failed browser replacement preserves the earlier committed write', async () => {
     const firstClose = deferred()
     const closeStarted = deferred()
     const committed: number[] = []
@@ -222,10 +223,42 @@ describe('document persistence', () => {
     })
 
     firstClose.resolve()
+    await stale
     await expect(replacement).rejects.toThrow('replacement failed')
-    await expect(stale).rejects.toThrow('replacement failed')
     expect(committed).toEqual([1])
-    expect(setSavedVersion).not.toHaveBeenCalled()
+    expect(setSavedVersion).toHaveBeenCalledTimes(1)
+    expect(setSavedVersion).toHaveBeenCalledWith(1)
+  })
+
+  test('late direct abort during browser close returns committed success', async () => {
+    const close = deferred()
+    const closeStarted = deferred()
+    const abort = vi.fn(async () => undefined)
+    const handle = {
+      kind: 'file',
+      name: 'committed.fig',
+      createWritable: vi.fn(async () => ({
+        write: vi.fn(async () => undefined),
+        close: vi.fn(() => {
+          closeStarted.resolve()
+          return close.promise
+        }),
+        abort
+      }))
+    } satisfies FileSystemFileHandle
+    const controller = new AbortController()
+    const { setSavedVersion, write } = createWriter()
+
+    const saving = write({ data: new Uint8Array([1]), sceneVersion: 1 }, controller.signal, {
+      handle
+    })
+    await closeStarted.promise
+    controller.abort()
+    close.resolve()
+
+    await expect(saving).resolves.toBe(true)
+    expect(abort).not.toHaveBeenCalled()
+    expect(setSavedVersion).toHaveBeenCalledWith(1)
   })
 
   test('native writes replace the target only from the current generation', async () => {

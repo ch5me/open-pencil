@@ -158,14 +158,21 @@ export async function openStorageDocumentInNewTab(document: StorageDocument): Pr
     let bytes = localBytes && localIsAuthoritative ? localBytes : null
 
     if (!bytes) {
+      const seedRevision = localMetadata?.revision ?? 0
       bytes = await createActiveStorageAdapter(providerId).getDocument(document.id)
       await seedStorageCanvasFromRemote({
         providerId,
         canvasId: document.id,
         name: document.name,
         updatedAt: document.updatedAt,
-        figBytes: bytes
+        figBytes: bytes,
+        expectedRevision: seedRevision
       })
+      const current = await local.getMeta(document.id)
+      if (current && current.revision !== seedRevision + 1) {
+        const currentBytes = current.hasFig ? await local.readFig(document.id) : null
+        if (currentBytes) bytes = currentBytes
+      }
     }
 
     const fileBytes = new Uint8Array(bytes.byteLength)

@@ -21,6 +21,13 @@ function makeWritableHandle(name: string): FileSystemFileHandle {
   } as FileSystemFileHandle
 }
 
+function setBrowserWindow(window: Pick<Window, 'showSaveFilePicker'>) {
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: window
+  })
+}
+
 function createSaveHarness(handle: FileSystemFileHandle) {
   const state = {
     ...createDefaultEditorState('page'),
@@ -141,9 +148,9 @@ describe('saved document identity', () => {
     const picker = new Promise<FileSystemFileHandle>((resolve) => {
       resolvePicker = resolve
     })
-    globalThis.window = {
+    setBrowserWindow({
       showSaveFilePicker: vi.fn(() => picker)
-    } as unknown as Window & typeof globalThis
+    })
     const state = {
       ...createDefaultEditorState('page'),
       documentName: 'Untitled'
@@ -181,5 +188,74 @@ describe('saved document identity', () => {
     expect(setSourceIdentity).not.toHaveBeenCalled()
     expect(startWatchingFile).not.toHaveBeenCalled()
     expect(state.documentName).toBe('Untitled')
+  })
+
+  test('publishes Save As identity after a late abort during browser close', async () => {
+    const close = (() => {
+      let resolve!: () => void
+      const promise = new Promise<void>((done) => {
+        resolve = done
+      })
+      return { promise, resolve }
+    })()
+    const closeStarted = (() => {
+      let resolve!: () => void
+      const promise = new Promise<void>((done) => {
+        resolve = done
+      })
+      return { promise, resolve }
+    })()
+    const handle = {
+      kind: 'file',
+      name: 'committed.fig',
+      createWritable: vi.fn(async () => ({
+        write: vi.fn(async () => undefined),
+        close: vi.fn(() => {
+          closeStarted.resolve()
+          return close.promise
+        }),
+        abort: vi.fn(async () => undefined)
+      }))
+    } satisfies FileSystemFileHandle
+    setBrowserWindow({
+      showSaveFilePicker: vi.fn(async () => handle)
+    })
+    const state = {
+      ...createDefaultEditorState('page'),
+      documentName: 'Untitled'
+    }
+    const setFileHandle = vi.fn()
+    const setSourceIdentity = vi.fn()
+    const setSavedVersion = vi.fn()
+    const startWatchingFile = vi.fn()
+    const actions = createSaveActions({
+      state,
+      buildFigFile: () => ({ data: new Uint8Array([1, 2, 3]), sceneVersion: 7 }),
+      getFilePath: () => null,
+      setFilePath: vi.fn(),
+      getFileHandle: () => null,
+      setFileHandle,
+      getDownloadName: () => null,
+      setDownloadName: vi.fn(),
+      getStorageBinding: () => null,
+      setStorageBinding: vi.fn(),
+      setSourceIdentity,
+      setSavedVersion,
+      setLastWriteTime: vi.fn(),
+      startWatchingFile
+    })
+    const controller = new AbortController()
+
+    const saving = actions.saveFigFileAs(controller.signal)
+    await closeStarted.promise
+    controller.abort()
+    close.resolve()
+
+    await expect(saving).resolves.toBeUndefined()
+    expect(setSavedVersion).toHaveBeenCalledWith(7)
+    expect(setFileHandle).toHaveBeenCalledWith(handle)
+    expect(setSourceIdentity).toHaveBeenCalledWith({ handle, path: null })
+    expect(startWatchingFile).toHaveBeenCalledTimes(1)
+    expect(state.documentName).toBe('committed')
   })
 })

@@ -38,6 +38,21 @@ describe('supersedePutCanvasJobs', () => {
     const next = supersedePutCanvasJobs(jobs, 'c1', 5)
     expect(next.map((j) => j.id).sort()).toEqual(['b', 'c'])
   })
+
+  test('recovery of an equal revision does not duplicate the durable job', () => {
+    const jobs: OutboxJob[] = [
+      {
+        id: 'existing',
+        canvasId: 'c1',
+        type: 'putCanvas',
+        revision: 5,
+        createdAt: 1,
+        attempts: 0,
+        nextAttemptAt: 1
+      }
+    ]
+    expect(supersedePutCanvasJobs(jobs, 'c1', 5)).toEqual([])
+  })
 })
 
 describe('sync wake scheduling', () => {

@@ -14,12 +14,13 @@ function deferred<T = void>() {
 }
 
 describe('local-first storage persistence', () => {
-  test('writes document bytes before enqueueing remote synchronization', async () => {
+  test('atomically publishes document bytes, metadata, and sync job', async () => {
     const store = createMemoryLocalCanvasStore()
     const observations: string[] = []
-    const enqueueCanvas = vi.fn(async (canvasId: string, revision: number) => {
-      const bytes = await store.readFig(canvasId)
-      observations.push(`${revision}:${bytes?.join(',')}`)
+    const kickSync = vi.fn(async () => {
+      const job = (await store.listOutboxJobs())[0]
+      const bytes = job ? await store.readFig(job.canvasId) : null
+      observations.push(`${job?.revision}:${bytes?.join(',')}`)
     })
 
     const result = await persistStorageCanvasLocally(
@@ -29,7 +30,7 @@ describe('local-first storage persistence', () => {
         name: 'Stored design',
         figBytes: new Uint8Array([1, 2, 3])
       },
-      { store, enqueueCanvas }
+      { store, kickSync }
     )
 
     expect(result.revision).toBe(1)
@@ -39,11 +40,11 @@ describe('local-first storage persistence', () => {
       syncStatus: 'pending',
       providerId: 's3-compatible'
     })
+    expect((await store.listOutboxJobs()).map((job) => job.revision)).toEqual([1])
   })
 
   test('stores the embedded preview with the document', async () => {
     const store = createMemoryLocalCanvasStore()
-    const enqueueCanvas = vi.fn(() => Promise.resolve())
     const figBytes = new Uint8Array(readFileSync('tests/fixtures/gold-preview.fig'))
 
     await persistStorageCanvasLocally(
@@ -53,7 +54,7 @@ describe('local-first storage persistence', () => {
         name: 'Preview design',
         figBytes
       },
-      { store, enqueueCanvas }
+      { store, kickSync: vi.fn() }
     )
 
     const thumbnail = await store.readThumb('canvas-preview')
@@ -63,9 +64,9 @@ describe('local-first storage persistence', () => {
     )
   })
 
-  test('superseded persistence cannot write, enqueue, or emit after staging', async () => {
+  test('superseded persistence cannot publish or emit after staging', async () => {
     const store = createMemoryLocalCanvasStore()
-    const enqueueCanvas = vi.fn(() => Promise.resolve())
+    const kickSync = vi.fn()
     const releaseGuard = deferred()
     const enteredGuard = deferred()
     const events: string[] = []
@@ -81,13 +82,14 @@ describe('local-first storage persistence', () => {
         commitIfCurrent: async (commit) => {
           enteredGuard.resolve()
           await releaseGuard.promise
-          if (currentGeneration !== 1) {
-            throw new DOMException('Save superseded', 'AbortError')
-          }
-          return commit()
+          if (currentGeneration !== 1) throw new DOMException('Save superseded', 'AbortError')
+          return commit(
+            () => undefined,
+            () => undefined
+          )
         }
       },
-      { store, enqueueCanvas }
+      { store, kickSync }
     )
     await enteredGuard.promise
     currentGeneration = 2
@@ -95,8 +97,45 @@ describe('local-first storage persistence', () => {
 
     await expect(stale).rejects.toMatchObject({ name: 'AbortError' })
     expect(await store.getMeta('canvas-race')).toBeNull()
-    expect(enqueueCanvas).not.toHaveBeenCalled()
+    expect(await store.listOutboxJobs()).toEqual([])
+    expect(kickSync).not.toHaveBeenCalled()
     expect(events).toEqual([])
     stop()
+  })
+
+  test('failed later save preserves prior durable revision and job', async () => {
+    const store = createMemoryLocalCanvasStore()
+    await store.publishCanvas({
+      id: 'canvas-race',
+      providerId: 's3-compatible',
+      name: 'Original design',
+      figBytes: new Uint8Array([9, 8, 7]),
+      syncStatus: 'pending'
+    })
+    const publishCanvas = store.publishCanvas.bind(store)
+    store.publishCanvas = async (input, options) => {
+      if (input.name === 'Replacement design') throw new Error('replacement failed')
+      return publishCanvas(input, options)
+    }
+
+    await expect(
+      persistStorageCanvasLocally(
+        {
+          providerId: 's3-compatible',
+          canvasId: 'canvas-race',
+          name: 'Replacement design',
+          figBytes: new Uint8Array(readFileSync('tests/fixtures/gold-preview.fig'))
+        },
+        { store, kickSync: vi.fn() }
+      )
+    ).rejects.toThrow('replacement failed')
+
+    expect(await store.getMeta('canvas-race')).toMatchObject({
+      name: 'Original design',
+      revision: 1,
+      syncStatus: 'pending'
+    })
+    expect(await store.readFig('canvas-race')).toEqual(new Uint8Array([9, 8, 7]))
+    expect((await store.listOutboxJobs()).map((job) => job.revision)).toEqual([1])
   })
 })

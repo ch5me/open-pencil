@@ -1,12 +1,14 @@
 import { buildIndexMeta, buildWriteMeta, sortAndFilterMetas } from '@/app/storage/local-store/meta'
 import type { LocalCanvasStore } from '@/app/storage/local-store/store'
 import type { LocalCanvasMeta, LocalCanvasWriteInput } from '@/app/storage/local-store/types'
+import { buildOutboxJob, queueOutboxJob, type OutboxJob } from '@/app/storage/sync/types'
 
 /** In-memory store for unit tests and environments without IndexedDB. */
 export function createMemoryLocalCanvasStore(): LocalCanvasStore {
   const metas = new Map<string, LocalCanvasMeta>()
   const figs = new Map<string, Uint8Array>()
   const thumbs = new Map<string, Uint8Array>()
+  let jobs: OutboxJob[] = []
 
   return {
     async listMetas(includeTombstones = false) {
@@ -47,10 +49,34 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
       return meta
     },
 
+    async publishCanvas(input, options) {
+      const existing = metas.get(input.id) ?? null
+      if (
+        options?.expectedRevision != null &&
+        (existing?.revision ?? 0) !== options.expectedRevision
+      ) {
+        return null
+      }
+      const metadata = await this.writeCanvas(input)
+      const job = buildOutboxJob({
+        canvasId: input.id,
+        type: 'putCanvas',
+        revision: metadata.revision
+      })
+      jobs = queueOutboxJob(jobs, job)
+      return { metadata, job }
+    },
+
     async upsertIndexMeta(input) {
       const meta = buildIndexMeta(input, metas.get(input.id) ?? null)
       metas.set(input.id, meta)
       return meta
+    },
+
+    async seedCanvas(input, options) {
+      const existing = metas.get(input.id) ?? null
+      if ((existing?.revision ?? 0) !== options.expectedRevision) return null
+      return this.writeCanvas(input)
     },
 
     async writeThumb(id: string, thumbBytes: Uint8Array) {
@@ -112,6 +138,79 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
       metas.clear()
       figs.clear()
       thumbs.clear()
+      jobs = []
+    },
+
+    async listOutboxJobs() {
+      return [...jobs].sort((a, b) => a.createdAt - b.createdAt)
+    },
+
+    async enqueueOutboxJob(partial) {
+      const job = buildOutboxJob(partial)
+      jobs = queueOutboxJob(jobs, job)
+      return job
+    },
+
+    async updateOutboxJob(job) {
+      jobs = jobs.map((current) => (current.id === job.id ? job : current))
+    },
+
+    async removeOutboxJob(id) {
+      jobs = jobs.filter((job) => job.id !== id)
+    },
+
+    async settleOutboxJob(job, settlement) {
+      const stored = jobs.find((candidate) => candidate.id === job.id)
+      if (
+        !stored ||
+        stored.canvasId !== job.canvasId ||
+        stored.type !== job.type ||
+        stored.revision !== job.revision
+      ) {
+        return false
+      }
+      const metadata = metas.get(job.canvasId)
+      if (metadata?.revision !== job.revision) {
+        jobs = jobs.filter((candidate) => candidate.id !== job.id)
+        return false
+      }
+      if (settlement.kind === 'success') {
+        jobs = jobs.filter((candidate) => candidate.id !== job.id)
+        if (job.type !== 'putThumb') {
+          metas.set(job.canvasId, {
+            ...metadata,
+            syncStatus: 'synced',
+            lastSyncedAt: settlement.syncedAt ?? new Date().toISOString(),
+            lastSyncError: null
+          })
+        }
+      } else {
+        jobs = jobs.map((candidate) =>
+          candidate.id === job.id
+            ? {
+                ...candidate,
+                attempts: settlement.kind === 'blocked' ? candidate.attempts : settlement.attempts,
+                nextAttemptAt: settlement.nextAttemptAt
+              }
+            : candidate
+        )
+        if (settlement.kind !== 'blocked') {
+          let syncStatus = metadata.syncStatus
+          if (job.type !== 'putThumb') {
+            syncStatus = settlement.kind === 'error' ? 'error' : 'pending'
+          }
+          metas.set(job.canvasId, {
+            ...metadata,
+            syncStatus,
+            lastSyncError: settlement.message
+          })
+        }
+      }
+      return true
+    },
+
+    async clearOutbox() {
+      jobs = []
     }
   }
 }

@@ -9,6 +9,7 @@ import {
 } from '@/app/integrations/storage'
 import { evictLocalFigCache } from '@/app/storage/cache-eviction'
 import { getLocalCanvasStore } from '@/app/storage/local-store'
+import { withCanvasSyncAuthority } from '@/app/storage/sync/authority-lock'
 import { getOutbox } from '@/app/storage/sync/outbox'
 import { setUploadProgress } from '@/app/storage/sync/progress'
 import { setPendingSyncCount, setSyncUI } from '@/app/storage/sync/status'
@@ -81,7 +82,6 @@ async function runJob(job: OutboxJob): Promise<void> {
     // Keep the tombstoned row: reconcile purges it once the remote listing
     // confirms the object is gone. Removing it here opened a race where a
     // concurrent reconcile re-seeded the canvas from a stale remote listing.
-    await store.updateMeta(job.canvasId, { syncStatus: 'synced', lastSyncError: null })
     return
   }
 
@@ -112,25 +112,6 @@ async function runJob(job: OutboxJob): Promise<void> {
     } finally {
       setUploadProgress(job.canvasId, null)
     }
-    // Only mark synced if still on this revision and no other pending work for newer rev
-    const latest = await store.getMeta(job.canvasId)
-    if (latest && latest.revision === job.revision && !latest.tombstoned) {
-      await store.updateMeta(
-        job.canvasId,
-        {
-          syncStatus: 'synced',
-          lastSyncedAt: new Date().toISOString(),
-          lastSyncError: null
-        },
-        { expectedRevision: job.revision }
-      )
-      await evictLocalFigCache(new Set([job.canvasId]))
-      emitStorageWorkspaceEvent({
-        providerId: providerID,
-        documentId: job.canvasId,
-        kind: 'synced'
-      })
-    }
     return
   }
 
@@ -139,6 +120,38 @@ async function runJob(job: OutboxJob): Promise<void> {
   const thumb = await store.readThumb(job.canvasId)
   if (!thumb) return
   await adapter.putThumbnail(job.canvasId, thumb)
+}
+
+export async function settleCompletedStorageJob(job: OutboxJob): Promise<boolean> {
+  const settled = await getLocalCanvasStore().settleOutboxJob(job, {
+    kind: 'success',
+    syncedAt: new Date().toISOString()
+  })
+  if (!settled || job.type !== 'putCanvas') return settled
+  await evictLocalFigCache(new Set([job.canvasId]))
+  const metadata = await getLocalCanvasStore().getMeta(job.canvasId)
+  if (metadata) {
+    emitStorageWorkspaceEvent({
+      providerId: metadata.providerId,
+      documentId: job.canvasId,
+      kind: 'synced'
+    })
+  }
+  return true
+}
+
+export async function settleFailedStorageJob(
+  job: OutboxJob,
+  message: string,
+  attempts: number,
+  permanent: boolean
+): Promise<boolean> {
+  return getLocalCanvasStore().settleOutboxJob(job, {
+    kind: permanent ? 'error' : 'retry',
+    message,
+    attempts,
+    nextAttemptAt: permanent ? Number.MAX_SAFE_INTEGER : Date.now() + backoffMs(attempts)
+  })
 }
 
 async function pumpOnce(): Promise<void> {
@@ -167,78 +180,52 @@ async function pumpOnce(): Promise<void> {
     return
   }
 
-  try {
-    await runJob(job)
-    await outbox.remove(job.id)
-    const remaining = await outbox.list()
-    setPendingSyncCount(remaining.length)
-    if (remaining.length === 0) setSyncUI('idle')
-    else scheduleWake(50)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (error instanceof StorageSyncBlockedError) {
-      await outbox.update({
-        ...job,
-        nextAttemptAt: Number.MAX_SAFE_INTEGER
-      })
-      setSyncUI('error', message)
-      return
-    }
-
-    const attempts = job.attempts + 1
-    const permanent = isPermanentError(error) || attempts >= MAX_ATTEMPTS
-    console.warn('[Storage sync] job failed:', job.type, job.canvasId, message)
-
-    if (permanent) {
-      // A failed thumbnail upload must not poison the document's sync status —
-      // only canvas/delete jobs reflect into the meta row.
-      if (job.type !== 'putThumb') {
-        await getLocalCanvasStore().updateMeta(job.canvasId, {
-          syncStatus: 'error',
-          lastSyncError: message
-        })
-        setSyncUI('error', message.slice(0, 120))
-      } else {
-        // Keep a record without touching syncStatus so the stale remote
-        // thumbnail is at least diagnosable.
-        await getLocalCanvasStore().updateMeta(job.canvasId, { lastSyncError: message })
-      }
-      if (job.type === 'putThumb') {
-        await outbox.remove(job.id)
-        const remaining = await outbox.list()
-        setPendingSyncCount(remaining.length)
-        if (remaining.length > 0) scheduleWake(1000)
-        else setSyncUI('idle')
-      } else {
-        // Never discard a document mutation. Keep it durable until the user
-        // repairs credentials/permissions and explicitly wakes synchronization.
-        await outbox.update({
-          ...job,
-          attempts,
+  await withCanvasSyncAuthority(job.canvasId, async () => {
+    try {
+      await runJob(job)
+      await settleCompletedStorageJob(job)
+      const remaining = await outbox.list()
+      setPendingSyncCount(remaining.length)
+      if (remaining.length === 0) setSyncUI('idle')
+      else scheduleWake(50)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (error instanceof StorageSyncBlockedError) {
+        await getLocalCanvasStore().settleOutboxJob(job, {
+          kind: 'blocked',
           nextAttemptAt: Number.MAX_SAFE_INTEGER
         })
+        setSyncUI('error', message)
+        return
       }
-      return
-    }
 
-    const updated: OutboxJob = {
-      ...job,
-      attempts,
-      nextAttemptAt: Date.now() + backoffMs(attempts)
+      const attempts = job.attempts + 1
+      const permanent = isPermanentError(error) || attempts >= MAX_ATTEMPTS
+      console.warn('[Storage sync] job failed:', job.type, job.canvasId, message)
+
+      if (permanent) {
+        const settled = await settleFailedStorageJob(job, message, attempts, true)
+        if (settled && job.type !== 'putThumb') {
+          setSyncUI('error', message.slice(0, 120))
+        }
+        if (job.type === 'putThumb') {
+          await outbox.remove(job.id)
+          const remaining = await outbox.list()
+          setPendingSyncCount(remaining.length)
+          if (remaining.length > 0) scheduleWake(1000)
+          else setSyncUI('idle')
+        }
+        return
+      }
+
+      await settleFailedStorageJob(job, message, attempts, false)
+      // Wake for the next ready job across the whole queue — not this job's
+      // full backoff, which starved other jobs that were ready sooner.
+      const all = await outbox.list()
+      const nextAt = Math.min(...all.map((j) => j.nextAttemptAt))
+      scheduleWake(Math.max(250, nextAt - Date.now()))
     }
-    await outbox.update(updated)
-    if (job.type !== 'putThumb') {
-      await getLocalCanvasStore().updateMeta(job.canvasId, {
-        syncStatus: 'pending',
-        lastSyncError: message
-      })
-    }
-    // Wake for the next ready job across the whole queue — not this job's
-    // full backoff, which starved other jobs that were ready sooner.
-    const all = await outbox.list()
-    const nextAt = Math.min(...all.map((j) => j.nextAttemptAt))
-    scheduleWake(Math.max(250, nextAt - Date.now()))
-  }
+  })
 }
 
 function scheduleWake(ms: number) {
