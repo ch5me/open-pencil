@@ -608,6 +608,9 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       !state.lastEventId
     )
       return null
+    // The AI SDK discards an interrupted response's open text parts. Let resumed
+    // deltas establish fresh parts while retaining tool-call replay guards.
+    state.textParts.clear()
     const pending = state.pendingContinuations.values().next().value
     if (pending) {
       const response = await this.response(
