@@ -12,6 +12,7 @@ import { assertInputWithinLimit } from '#core/io/registry'
 import { importNodeChanges } from '#core/kiwi/fig/import'
 import { deserializeSceneGraph } from '#core/kiwi/fig/parse/transfer'
 import type { SerializedSceneGraph } from '#core/kiwi/fig/parse/transfer'
+import { registerFigPopulationWorker } from '#core/kiwi/fig/population/client'
 
 export interface ParseFigFileOptions {
   populate?: 'all' | 'first-page'
@@ -53,11 +54,11 @@ export function parseFigViaWorker(
       type: 'module'
     })
     let settled = false
-    const finish = (callback: () => void) => {
+    const finish = (callback: () => void, terminate = true) => {
       if (settled) return
       settled = true
       options.signal?.removeEventListener('abort', cancel)
-      worker.terminate()
+      if (terminate) worker.terminate()
       callback()
     }
     const cancel = () => {
@@ -65,15 +66,25 @@ export function parseFigViaWorker(
     }
 
     worker.onmessage = (e: MessageEvent<WorkerParseResult>) => {
-      finish(() => {
-        if (options.signal?.aborted) {
-          reject(new IOCancelledError('IO import cancelled'))
-        } else if (e.data.error || !e.data.graph) {
-          reject(new Error(e.data.error ?? 'Worker failed to parse .fig file'))
-        } else {
-          resolve(deserializeSceneGraph(e.data.graph))
-        }
-      })
+      if (options.signal?.aborted) {
+        finish(() => reject(new IOCancelledError('IO import cancelled')))
+        return
+      }
+      if (e.data.error || !e.data.graph) {
+        finish(() => reject(new Error(e.data.error ?? 'Worker failed to parse .fig file')))
+        return
+      }
+      try {
+        const graph = deserializeSceneGraph(e.data.graph)
+        const retainWorker = options.populate === 'first-page'
+        finish(() => {
+          if (retainWorker) registerFigPopulationWorker(graph, worker)
+          resolve(graph)
+        }, !retainWorker)
+      } catch (error) {
+        const cause = error instanceof Error ? error : new Error(String(error))
+        finish(() => reject(cause))
+      }
     }
 
     worker.onerror = (err) => {
