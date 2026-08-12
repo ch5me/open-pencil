@@ -1,0 +1,5 @@
+{
+  "bootstrapCommand": "bun install --frozen-lockfile",
+  "verifyCommand": "bun run check",
+  "cloudRemote": "codex-cloud"
+}
