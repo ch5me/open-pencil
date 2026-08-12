@@ -48,6 +48,52 @@ describe('canvas context recovery', () => {
     result.glContext?.delete()
   })
 
+  test('returns without retrieving WebGL2 when CanvasKit handle acquisition fails', () => {
+    const getContext = mock(() => ({}) as WebGL2RenderingContext)
+    const target = Object.assign(new EventTarget(), {
+      width: 800,
+      height: 600,
+      getContext
+    }) as HTMLCanvasElement
+    const ck = {
+      GetWebGLContext: () => 0
+    }
+
+    expect(makeGLSurface(ck as CanvasKit, target, createEditor(), undefined, null)).toEqual({
+      surface: null,
+      glContext: null,
+      webglContext: null,
+      contextCreated: false,
+      contextDeleted: false
+    })
+    expect(getContext).not.toHaveBeenCalled()
+  })
+
+  test('deletes a failed CanvasKit handle without retrieving WebGL2', () => {
+    const getContext = mock(() => ({}) as WebGL2RenderingContext)
+    const deleteContext = mock(() => undefined)
+    const target = Object.assign(new EventTarget(), {
+      width: 800,
+      height: 600,
+      getContext
+    }) as HTMLCanvasElement
+    const ck = {
+      GetWebGLContext: () => 7,
+      MakeGrContext: () => null,
+      deleteContext
+    }
+
+    expect(makeGLSurface(ck as CanvasKit, target, createEditor(), undefined, null)).toEqual({
+      surface: null,
+      glContext: null,
+      webglContext: null,
+      contextCreated: true,
+      contextDeleted: true
+    })
+    expect(deleteContext).toHaveBeenCalledWith(7)
+    expect(getContext).not.toHaveBeenCalled()
+  })
+
   test('prevents default on loss and restores once', () => {
     const target = canvas()
     let restored = 0

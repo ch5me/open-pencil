@@ -43,7 +43,7 @@ export function makeGLSurface(
       return {
         surface: null,
         glContext: context,
-        webglContext,
+        webglContext: null,
         contextCreated: false,
         contextDeleted: false
       }
@@ -54,7 +54,7 @@ export function makeGLSurface(
       return {
         surface: null,
         glContext: null,
-        webglContext,
+        webglContext: null,
         contextCreated: true,
         contextDeleted: true
       }
