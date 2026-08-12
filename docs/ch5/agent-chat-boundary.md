@@ -3,191 +3,142 @@
 ## Decision
 
 OpenPencil is an agent-chat client and a design-action host. It does not own or
-model agent infrastructure.
+model agent infrastructure. Hosted agent chat is an independent capability,
+`hostedAgent`; it is not implied by ELF authentication, hosted documents, or
+collaboration.
 
-ELF authentication is the only Firefly-specific concern in the OpenPencil
-frontend. A hosted deployment may route agent requests through a Firefly-owned
-service, but the application contract remains independent of that service's
-runtime, provider, model, billing, worker, container, image, or registry choices.
+ELF authenticates a user to the hosted OpenPencil product. The generic agent
+gateway is a separate service boundary. An ELF session admits a hosted request,
+but ELF does not define the gateway protocol and no ELF credential is sent to a
+model provider. The gateway may make its own provider, model, billing, worker,
+runtime, container, image, or registry choices; none are OpenPencil contract
+fields.
 
 ## Ownership
 
-| Concern                                                                       | Owner                                             |
-| ----------------------------------------------------------------------------- | ------------------------------------------------- |
-| ELF sign-in and OpenPencil session                                            | OpenPencil hosted shell and API                   |
-| Design state and mutations                                                    | OpenPencil editor and existing `ToolDef` registry |
-| Chat UI, transcript, cancellation, approval, and tool-result display          | OpenPencil                                        |
-| Agent loop, routing, models, providers, billing, and execution infrastructure | Remote agent gateway                              |
-| Service admission and deployment                                              | Firefly/Agent Hub/Fabric or another backend       |
+| Concern                                                                       | Owner                                              |
+| ----------------------------------------------------------------------------- | -------------------------------------------------- |
+| ELF sign-in and OpenPencil session                                            | OpenPencil hosted shell and API                    |
+| Hosted-agent capability and transport selection                               | OpenPencil app configuration                       |
+| Design state and mutations                                                    | OpenPencil editor and canonical `ToolDef` registry |
+| Chat UI, transcript, cancellation, resume, approval, and tool-result display  | OpenPencil                                         |
+| Agent loop, routing, models, providers, billing, and execution infrastructure | Agent gateway                                      |
+| Gateway deployment and admission beyond the OpenPencil session                | Gateway operator                                   |
 
-OpenPencil consumes observable agent behavior. It never claims or provisions a
-runtime and never selects a concrete model, provider, worker, container, image,
-or registry.
+OpenPencil consumes observable agent behavior. It never claims, provisions, or
+health-checks a runtime and never selects a hosted model, provider, worker,
+container, image, registry, or billing authority.
 
 ## Stable contract
 
-The browser talks only to a same-origin OpenPencil API. The first implementation
-uses a versioned run endpoint and Server-Sent Events:
+The browser talks only to the configured OpenPencil API boundary and never calls
+the agent gateway directly. The versioned contract has a run route plus explicit
+continuation, cancellation, and current-run reconnect operations.
+The exact route declarations and environment binding live at the API boundary,
+not in editor or chat components.
 
-```text
-POST /api/agent/runs
-POST /api/agent/sessions/:sessionId/runs/:runId/tool-results
-```
-
-The run request contains product-level data:
+A run contains only product-level data:
 
 - Stable request, idempotency, conversation, and message IDs.
 - User input.
 - Target document, page, and selection context.
-- OpenPencil action-manifest identity and supported client capabilities.
+- Action-manifest identity and supported client capabilities.
 
-The response stream uses an ordered, versioned event envelope with opaque
-session, run, event, and trace IDs. Event types cover:
+The ordered event envelope contains opaque session, run, and event IDs.
+Events represent session/run lifecycle, streamed assistant text, action and
+approval requests, correlated action results or typed errors, and terminal
+completion or failure. Reconnect continues after the last accepted event ID
+while the current run identity remains in memory; cancellation addresses the
+opaque run. Each tool call uses a stable call ID, and its approval outcome plus
+execution result use one correlated, idempotent continuation.
 
-- Session and run start.
-- Message start, text delta, and message finish.
-- Action request with a stable call ID, action name, and validated arguments.
-- Approval request.
-- Action result or typed action error linked to the call ID.
-- Run completion, failure, and receipt.
-
-The contract does not expose runtime IDs, billing authorities, model names,
-provider names, container state, image references, registry coordinates, or
-deployment regions. Those may exist behind the gateway but are not OpenPencil
-concepts.
+The request, event, continuation, receipt, and error schemas do not accept or
+return runtime IDs, model or provider names, billing data, worker/container
+state, image references, registry coordinates, or deployment regions. Such
+details may exist behind the gateway but are not OpenPencil concepts.
 
 ## Action model
 
-`packages/core/src/tools/**` remains the canonical definition of design
-operations. Do not add a second set of chat-only or agent-native actions.
+`packages/core/src/tools/**` is the single definition of design operations.
+Remote exposure is default-off and currently resolved from `ToolDef.remote` or
+the bounded `GATEWAY_REMOTE_POLICIES` compatibility allowlist. The hosted
+manifest adapter projects only enabled definitions to JSON Schema, while the
+existing AI adapter, MCP, and CLI continue to project the same definitions for
+their transports.
 
-Add adapters that project existing `ToolDef` definitions into:
+Gateway action calls are untrusted. OpenPencil validates the action name and
+arguments, requests approval when policy requires it, and executes through the
+existing app tool wrapper. This preserves active document/page targeting, undo,
+layout, rendering, flashing, tool logs, and current step-budget checks. It then posts the
+correlated result or typed action error as a continuation. The gateway never
+mutates the scene graph directly.
 
-1. The hosted gateway action manifest.
-2. The existing AI SDK tool shape for local BYOK chat.
-3. MCP and CLI through their existing adapters.
-4. Agent-native actions or A2A skills at the gateway edge when useful.
+ACP and the hosted gateway share a product permission abstraction so the UI has
+one fail-closed approval queue and response model. ACP process permissions and
+hosted design-action approvals remain different transport inputs; neither is
+allowed to bypass the action policy.
 
-Action execution remains inside OpenPencil so mutations use the active editor,
-targeted document/page, undo/history, validation, layout, render, and tool-log
-lifecycle. Gateway action calls are untrusted requests. OpenPencil validates,
-authorizes, executes, and returns the correlated result.
+## Transport selection
 
-Remote exposure must be explicit. Extend `ToolDef` with opt-in transport policy,
-including whether the action is remotely callable and whether it requires
-approval. Default new and unclassified actions to remote-disabled.
+The app selects the hosted gateway when `hostedAgent` is enabled. This decision
+is independent of `hostedAuth`, `hostedDocs`, and `hostedCollab`; deployments
+must configure the combination deliberately. A hosted-agent request without an
+authenticated hosted session or gateway configuration fails explicitly.
 
-## Transport choices
+When `hostedAgent` is disabled, local browser/desktop users may select direct
+BYOK chat or a local ACP agent using their existing settings. The hosted
+transport never silently falls back to BYOK or ACP, including after a gateway
+error, malformed event, interrupted stream, failed resume, rejected approval,
+or cancellation.
 
-### Hosted browser
+An opt-in local E2E lane uses a deterministic gateway fixture and requires the
+local API and gateway services. Unit and contract tests cover protocol behavior
+without external providers. The fixture is not a production fallback.
 
-Use the same-origin agent gateway contract. The OpenPencil API authenticates the
-ELF session and forwards a verified principal plus product-level request. Any
-downstream credential exchange or routing stays inside the server adapter.
+## Lifecycle and failure policy
 
-### Local browser or desktop
+- Stream events are versioned and ordered; unknown versions and event gaps fail
+  explicitly rather than downgrading.
+- Cancellation aborts local stream consumption, rejects pending approval for the
+  run, prevents later local execution, and sends the run cancellation operation
+  when a run ID is known.
+- In-process reconnect uses the canonical gateway session/run identity and last
+  event ID. Unknown cursors fail explicitly. Reload-persistent resume is not
+  implemented.
+- Approval rejects by default when no handler answers. A rejection is returned
+  as a continuation, not flattened into assistant text.
+- Duplicate identical continuations are idempotent; a conflicting result for
+  the same call ID fails.
+- Service, protocol, approval, and action errors remain typed.
+- Trace identity is opaque. Infrastructure and billing identity are neither
+  required nor accepted.
+- There is no hosted-to-local fallback.
 
-Keep direct BYOK models and local ACP sessions as separate transports behind the
-same app chat interface. Hosted-agent capability selection is independent of
-hosted auth, documents, or collaboration. When selected, it must not silently
-fall back to BYOK or ACP.
+## Reconciliation surface
 
-### Agent-native and A2A
+Additive CH5 surfaces include the shared agent-contract package, hosted transport
+and execution modules, hosted flag resolver, API gateway modules, deployment
+configuration, and deterministic gateway tooling.
 
-Agent-native actions are suitable for implementing the gateway without adding
-`@agent-native/core` to OpenPencil.
+Edits to upstream-owned files are named by exact path and symbol in
+`docs/ch5/upstream-drift.md`, with an invalidation signal, replay rule, and
+focused proof. Do not infer that an additive module needs an upstream drift row.
 
-A2A is optional and belongs at the gateway edge. Add it for discovery,
-resumable/background tasks, or cross-agent interoperability. Do not make the
-initial browser chat depend on A2A task lifecycle; interactive chat first needs
-ordered streaming, client-side action continuation, cancellation, and approval.
+## Verification boundary
 
-## Failure policy
-
-- Fail closed when the gateway is unavailable or malformed.
-- Preserve typed service and action errors; do not flatten them into assistant
-  text.
-- Permission requests reject by default when no handler answers.
-- Cancellation aborts the stream and any pending action.
-- Unknown protocol versions fail explicitly; no silent downgrade.
-- Reconnect uses the last event ID; unknown or expired sessions fail explicitly.
-- Duplicate identical action results are idempotent; conflicting results fail.
-- Opaque trace identity is required. Infrastructure and billing identity are
-  neither required nor accepted by the OpenPencil contract.
-- No hosted-to-local fallback.
-
-## Implementation plan
-
-### Phase 1: Contract and text streaming
-
-- Add provider-neutral request, event, receipt, and error schemas under
-  `api/src/agent/`.
-- Replace `/api/runtime/chat` with versioned agent run and continuation routes.
-- Replace `src/app/ai/runtime/firefly.ts` with
-  `src/app/ai/agent-service/transport.ts`.
-- Add an independent hosted-agent capability flag instead of using
-  `isHostedMode()`.
-- Map gateway events to the normalized `UIMessageChunk` vocabulary already used
-  by ACP.
-- Test ordered streaming, cancellation, malformed events, typed errors,
-  reconnect, receipt validation, and no fallback.
-
-### Phase 2: Client-executed actions
-
-- Add a JSON-schema manifest and remote-policy adapter beside the existing
-  `ToolDef` adapters.
-- Execute requested actions through the existing app AI tool wrapper, not raw
-  `ToolDef.execute`, so undo, layout, render, flashing, logs, and usage limits
-  remain intact.
-- Send correlated action results through the continuation endpoint.
-- Test action allowlisting, argument validation, document/page targeting,
-  approval rejection, duplicate/conflicting results, undo, and rendering.
-
-### Phase 3: Session durability
-
-- Persist the gateway-issued canonical session ID separately from the
-  client-generated conversation ID.
-- Implement `Last-Event-ID`, explicit session expiry, abort-to-cancel, and
-  interrupted-stream recovery.
-- Add an end-to-end test: hosted prompt, streamed action request, local design
-  mutation, action result, and final assistant response.
-
-### Phase 4: Optional interoperability
-
-- Expose the gateway run operation as an agent-native action when that reduces
-  gateway duplication.
-- Add an A2A skill/task adapter for durable background design jobs if required.
-- Keep both protocol choices invisible to OpenPencil components, editor core,
-  and `ToolDef` definitions.
-
-### Phase 5: Delete legacy coupling
-
-- Delete runtime claim/status/health calls and billing receipt validation.
-- Replace Firefly-runtime names and configuration with generic agent-gateway
-  names.
-- Update focused tests and drift-ledger entries.
-- Verify repository-wide searches contain no external hosting vendor, registry,
-  image, container-provisioning, runtime-provisioning, provider-selection, or
-  billing claims for agent chat.
-
-## Acceptance
-
-- Hosted chat requires only ELF session state plus a configured agent gateway.
-- OpenPencil request and response schemas contain no infrastructure fields.
-- The same canonical design actions remain available through local chat, hosted
-  chat, MCP, and CLI.
-- Hosted runs stream text, action calls, action results, errors, approval, and
-  cancellation.
-- A fake conforming gateway passes the complete contract suite without any
-  Firefly-specific implementation.
-- Replacing the backend requires changing one API adapter, not the editor, chat
-  components, or `ToolDef` registry.
+Contract coverage should use a deterministic conforming gateway to exercise
+ordered streaming, malformed events, typed failures, cancellation, resume,
+approval, action continuation, duplicate/conflicting results, and the
+no-fallback rule. A complete integration proof also needs a hosted prompt that
+requests an approved local design mutation, receives its result, and finishes
+the assistant response. Documentation of this architecture is not evidence
+that a live external gateway or deployment has passed that proof.
 
 ## Non-goals
 
-- Runtime provisioning or health management.
-- Container, worker, image, or registry management.
-- Provider, model, or account selection.
-- Billing calculation or billing-authority validation.
+- Runtime provisioning, status, or health management.
+- Worker, container, image, or registry management.
+- Hosted provider, model, or account selection.
+- Billing calculation, receipt validation, or billing authority.
 - Reimplementing Agent Hub, Agent Fabric, ACP, A2A, or agent-native internals.
 - Sending ELF credentials directly to third-party model providers.

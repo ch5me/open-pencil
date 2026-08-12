@@ -28,4 +28,4 @@ test('hosted agent chat does not require or expose BYOK provider controls', asyn
   await expect(page.getByTestId('provider-setup')).toBeHidden()
   await expect(page.getByTestId('provider-settings-trigger')).toBeHidden()
   await expect(page.locator('[data-model-id]')).toHaveCount(0)
-}
+})

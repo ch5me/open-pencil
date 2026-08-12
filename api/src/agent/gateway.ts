@@ -41,16 +41,30 @@ function gatewayOrigin(env: AgentGatewayEnv): string {
   try {
     url = new URL(origin)
   } catch {
-    throw new AgentGatewayError(500, 'agent-gateway-origin-invalid', 'Agent gateway origin is invalid.')
+    throw new AgentGatewayError(
+      500,
+      'agent-gateway-origin-invalid',
+      'Agent gateway origin is invalid.'
+    )
   }
   if (
     url.protocol !== 'https:' &&
     url.hostname !== 'localhost' &&
-    url.hostname !== '127.0.0.1'
+    url.hostname !== '127.0.0.1' &&
+    !url.hostname.endsWith('.localhost')
   ) {
-    throw new AgentGatewayError(500, 'agent-gateway-origin-invalid', 'Agent gateway origin must use HTTPS.')
+    throw new AgentGatewayError(
+      500,
+      'agent-gateway-origin-invalid',
+      'Agent gateway origin must use HTTPS.'
+    )
   }
   return origin.replace(/\/+$/, '')
+}
+
+function loopbackOrigin(origin: string): boolean {
+  const hostname = new URL(origin).hostname
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost')
 }
 
 async function gatewayError(response: Response): Promise<AgentGatewayError> {
@@ -58,11 +72,14 @@ async function gatewayError(response: Response): Promise<AgentGatewayError> {
   const body = value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined
   const code = typeof body?.code === 'string' ? body.code : 'agent-gateway-request-failed'
   const message =
-    typeof body?.message === 'string' ? body.message : `Agent gateway request failed: ${response.status}`
+    typeof body?.message === 'string'
+      ? body.message
+      : `Agent gateway request failed: ${response.status}`
   return new AgentGatewayError(response.status, code, message)
 }
 
 export async function requestAgentGateway(input: AgentGatewayRequest): Promise<Response> {
+  const origin = gatewayOrigin(input.env)
   const headers = new Headers({
     Accept: 'text/event-stream',
     'X-OpenPencil-Principal': input.principalId
@@ -70,10 +87,17 @@ export async function requestAgentGateway(input: AgentGatewayRequest): Promise<R
   if (input.body !== undefined) headers.set('Content-Type', 'application/json')
   if (input.lastEventId) headers.set('Last-Event-ID', input.lastEventId)
   const token = input.env.OPENPENCIL_AGENT_GATEWAY_TOKEN?.trim()
+  if (!token && !loopbackOrigin(origin)) {
+    throw new AgentGatewayError(
+      503,
+      'agent-gateway-not-configured',
+      'Agent gateway service authentication is not configured.'
+    )
+  }
   if (token) headers.set('Authorization', `Bearer ${token}`)
   let response: Response
   try {
-    response = await (input.fetch ?? fetch)(`${gatewayOrigin(input.env)}${input.path}`, {
+    response = await (input.fetch ?? fetch)(`${origin}${input.path}`, {
       method: input.method,
       headers,
       body: input.body === undefined ? undefined : JSON.stringify(input.body),
@@ -109,6 +133,12 @@ function validateAgentEventStream(
   let identity: { sessionId: string; runId: string } | undefined
   let previousSequence: number | undefined
   let previousEventId: string | undefined
+  let newRunPhase: 'session' | 'started' | 'active' = 'session'
+  let terminal = false
+  const validatesNewRunLifecycle =
+    expectedIdentity?.requestId !== undefined &&
+    expectedIdentity.sessionId === undefined &&
+    expectedIdentity.runId === undefined
 
   const transform = new TransformStream<Uint8Array, Uint8Array>({
     transform(chunk, controller) {
@@ -121,7 +151,10 @@ function validateAgentEventStream(
           continue
         }
         const lines = frame.split('\n')
-        const id = lines.find((line) => line.startsWith('id:'))?.slice(3).trim()
+        const id = lines
+          .find((line) => line.startsWith('id:'))
+          ?.slice(3)
+          .trim()
         const dataLines = lines
           .filter((line) => line.startsWith('data:'))
           .map((line) => line.slice(5).trimStart())
@@ -138,6 +171,12 @@ function validateAgentEventStream(
           throw new AgentContractError('malformed-gateway-event', 'SSE event data must be JSON.')
         }
         const event = parseAgentEvent(value)
+        if (terminal) {
+          throw new AgentContractError(
+            'event-sequence-invalid',
+            'Agent stream continued after a terminal event.'
+          )
+        }
         if (event.eventId !== id) {
           throw new AgentContractError('event-identity-mismatch', 'SSE id does not match eventId.')
         }
@@ -156,17 +195,44 @@ function validateAgentEventStream(
         }
         if (!identity) {
           identity = event
-        } else if (
-          identity.sessionId !== event.sessionId ||
-          identity.runId !== event.runId
-        ) {
+        } else if (identity.sessionId !== event.sessionId || identity.runId !== event.runId) {
           throw new AgentContractError(
             'event-identity-mismatch',
             'Agent event identity changed within a stream.'
           )
         }
         if (previousSequence !== undefined && event.seq !== previousSequence + 1) {
-          throw new AgentContractError('event-sequence-invalid', 'Agent event sequence is not contiguous.')
+          throw new AgentContractError(
+            'event-sequence-invalid',
+            'Agent event sequence is not contiguous.'
+          )
+        }
+        if (validatesNewRunLifecycle) {
+          if (
+            previousSequence === undefined &&
+            (event.seq !== 0 || event.type !== 'session.created')
+          ) {
+            throw new AgentContractError(
+              'event-sequence-invalid',
+              'New agent runs must begin with session.created at sequence 0.'
+            )
+          }
+          if (newRunPhase === 'session') {
+            newRunPhase = 'started'
+          } else if (newRunPhase === 'started') {
+            if (event.type !== 'run.started') {
+              throw new AgentContractError(
+                'event-sequence-invalid',
+                'New agent runs must start before emitting run activity.'
+              )
+            }
+            newRunPhase = 'active'
+          } else if (event.type === 'session.created' || event.type === 'run.started') {
+            throw new AgentContractError(
+              'event-sequence-invalid',
+              'Agent run lifecycle markers cannot repeat.'
+            )
+          }
         }
         if (
           expectedIdentity?.requestId &&
@@ -178,6 +244,16 @@ function validateAgentEventStream(
             'Agent event request identity does not match the requested run.'
           )
         }
+        if (event.type === 'receipt') {
+          throw new AgentContractError(
+            'event-sequence-invalid',
+            'Standalone receipt events are not supported.'
+          )
+        }
+        terminal =
+          event.type === 'run.completed' ||
+          event.type === 'run.cancelled' ||
+          event.type === 'run.failed'
         if (
           (event.type === 'run.completed' ||
             event.type === 'run.cancelled' ||
@@ -203,7 +279,10 @@ function validateAgentEventStream(
         throw new AgentContractError('malformed-gateway-event', 'Agent SSE stream ended mid-event.')
       }
       if (previousSequence === undefined) {
-        throw new AgentContractError('malformed-gateway-event', 'Agent SSE stream contained no events.')
+        throw new AgentContractError(
+          'malformed-gateway-event',
+          'Agent SSE stream contained no events.'
+        )
       }
     }
   })

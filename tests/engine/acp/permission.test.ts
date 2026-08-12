@@ -5,7 +5,8 @@ import {
   currentPermission,
   requestPermissionFromUser,
   respondToPermission,
-  rejectCurrentPermission
+  rejectCurrentPermission,
+  rejectPermissionsForSession
 } from '@/app/ai/acp/permission'
 import type { ProductPermissionRequest } from '@/app/ai/acp/product-policy'
 
@@ -73,12 +74,12 @@ describe('acp-permission', () => {
     expect(result.outcome.optionId).toBe('reject')
   })
 
-  test('rejectCurrentPermission falls back to first option when no reject kind', async () => {
+  test('rejectCurrentPermission never falls back to an allow option', async () => {
     const req = makeRequest([{ optionId: 'only-allow', kind: 'allow_once', name: 'Allow' }])
     const promise = requestPermissionFromUser(req)
     rejectCurrentPermission()
     const result = await promise
-    expect(result.outcome.optionId).toBe('only-allow')
+    expect(result.outcome.optionId).toBe('')
   })
 
   test('queue handles multiple concurrent requests in order', async () => {
@@ -112,6 +113,20 @@ describe('acp-permission', () => {
     expect(permissionQueue.value).toHaveLength(0)
     rejectCurrentPermission()
     expect(permissionQueue.value).toHaveLength(0)
+  })
+
+  test('rejectPermissionsForSession rejects only matching entries', async () => {
+    const first = requestPermissionFromUser(makeRequest())
+    const second = requestPermissionFromUser({ ...makeRequest(), sessionId: 'session-2' })
+    rejectPermissionsForSession('session-1')
+
+    await expect(first).resolves.toEqual({
+      outcome: { outcome: 'selected', optionId: 'reject' }
+    })
+    expect(permissionQueue.value).toHaveLength(1)
+    expect(currentPermission.value?.request.sessionId).toBe('session-2')
+    respondToPermission('reject')
+    await second
   })
 
   test('timer cleared on manual resolution (no double resolve)', async () => {

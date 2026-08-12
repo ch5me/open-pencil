@@ -6,6 +6,7 @@ import {
   AlertDialogTitle
 } from 'reka-ui'
 import { computed } from 'vue'
+
 import { acpPermissionOptionTestId, useI18n, vTestId } from '@open-pencil/vue'
 
 import {
@@ -14,6 +15,9 @@ import {
   respondToPermission
 } from '@/app/ai/acp/permission'
 import { AppAlertDialogRoot } from '@/components/ui/dialog'
+
+defineProps<{ showCancelRun?: boolean }>()
+const emit = defineEmits<{ cancelRun: [] }>()
 
 const open = computed(() => currentPermission.value !== null)
 const { dialogs } = useI18n()
@@ -49,6 +53,11 @@ const rejectOptions = computed(
 function handleDismiss() {
   rejectCurrentPermission()
 }
+
+function handleCancelRun() {
+  rejectCurrentPermission()
+  emit('cancelRun')
+}
 </script>
 
 <template>
@@ -74,6 +83,14 @@ function handleDismiss() {
     >
 
     <div class="mt-4 flex flex-col gap-2">
+      <AlertDialogCancel
+        v-if="showCancelRun"
+        class="w-full rounded border border-red-400/40 bg-red-400/10 px-3 py-1.5 text-xs text-red-300 hover:bg-red-400/20"
+        @click="handleCancelRun"
+      >
+        {{ dialogs.stopGenerating }}
+      </AlertDialogCancel>
+
       <AlertDialogAction
         v-for="opt in allowOptions"
         :key="opt.optionId"

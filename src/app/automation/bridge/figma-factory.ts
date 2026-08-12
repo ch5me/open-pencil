@@ -3,13 +3,14 @@ import { FigmaAPI } from '@open-pencil/core/figma-api'
 import { EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
 import type { EditorStore } from '@/app/editor/active-store'
 import { listFamilies, listFonts } from '@/app/editor/fonts'
+import { IS_BROWSER } from '@/constants'
 
 export function makeFigmaFromStore(
   store: EditorStore,
   pageId = store.state.currentPageId
 ): FigmaAPI {
-  const viewportWidth = typeof window === 'undefined' ? 0 : window.innerWidth
-  const viewportHeight = typeof window === 'undefined' ? 0 : window.innerHeight
+  const viewportWidth = IS_BROWSER ? window.innerWidth : 0
+  const viewportHeight = IS_BROWSER ? window.innerHeight : 0
   const api = new FigmaAPI(store.graph)
   api.setRenderer(store.renderer ?? null)
   api.currentPage = api.wrapNode(pageId)

@@ -5,8 +5,11 @@ import type { UIMessage } from 'ai'
 import {
   AGENT_EVENT_SCHEMA,
   AGENT_RECEIPT_SCHEMA,
-  AGENT_RUN_SCHEMA
+  AGENT_RUN_SCHEMA,
+  parseAgentRunRequest,
+  parseAgentToolResultContinuation
 } from '@open-pencil/core/agent'
+import type { AgentRunRequest, AgentToolResultContinuation } from '@open-pencil/core/agent'
 
 import {
   AgentServiceChatTransport,
@@ -73,6 +76,19 @@ function transport(fetch: typeof globalThis.fetch) {
   })
 }
 
+function requestBody(init?: RequestInit): unknown {
+  if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body')
+  return JSON.parse(init.body) as unknown
+}
+
+function runRequest(init?: RequestInit): AgentRunRequest {
+  return parseAgentRunRequest(requestBody(init))
+}
+
+function continuationRequest(init?: RequestInit): AgentToolResultContinuation {
+  return parseAgentToolResultContinuation(requestBody(init))
+}
+
 describe('hosted agent service transport', () => {
   test('extracts latest user turn and sends the canonical shared request', async () => {
     expect(latestUserMessage([userMessage('first'), userMessage('latest')]).parts).toEqual([
@@ -80,10 +96,10 @@ describe('hosted agent service transport', () => {
     ])
     expect(() => latestUserMessage([])).toThrow(AgentServiceTransportError)
 
-    let requestBody: Record<string, unknown> | undefined
-    const hosted = transport((async (_input, init) => {
-      requestBody = JSON.parse(String(init?.body)) as Record<string, unknown>
-      const requestId = requestBody.requestId as string
+    let capturedRequest: AgentRunRequest | undefined
+    const requestFetch: typeof globalThis.fetch = async (_input, init) => {
+      capturedRequest = runRequest(init)
+      const { requestId } = capturedRequest
       return sse([
         event(0, 'session.created', { requestId }),
         event(1, 'message.delta', { messageId: 'message-1', text: 'Hel' }),
@@ -91,7 +107,8 @@ describe('hosted agent service transport', () => {
         event(3, 'message.end', { messageId: 'message-1' }),
         event(4, 'run.completed', { receipt: { ...receipt(4), requestId } })
       ])
-    }) as unknown as typeof globalThis.fetch)
+    }
+    const hosted = transport(requestFetch)
     const stream = await hosted.sendMessages({
       trigger: 'submit-message',
       chatId: 'client-chat',
@@ -100,10 +117,12 @@ describe('hosted agent service transport', () => {
       abortSignal: undefined
     })
     const output = await chunks(stream)
-    expect(requestBody?.schema).toBe(AGENT_RUN_SCHEMA)
-    expect((requestBody?.conversation as { clientId: string }).clientId).toBe('client-chat')
-    expect((requestBody?.context as { documentId: string }).documentId).toBe('document-1')
-    expect(output.filter((chunk) => (chunk as { type: string }).type === 'text-start')).toHaveLength(1)
+    expect(capturedRequest?.schema).toBe(AGENT_RUN_SCHEMA)
+    expect(capturedRequest?.conversation.clientId).toBe('client-chat')
+    expect(capturedRequest?.context.documentId).toBe('document-1')
+    expect(
+      output.filter((chunk) => (chunk as { type: string }).type === 'text-start')
+    ).toHaveLength(1)
     expect(output).toContainEqual({ type: 'text-delta', id: 'message-1', delta: 'Hel' })
     expect(output.at(-1)).toMatchObject({
       type: 'finish',
@@ -118,11 +137,12 @@ describe('hosted agent service transport', () => {
   })
 
   test('rejects out-of-order events as a typed transport failure', async () => {
-    const hosted = transport((async () =>
+    const requestFetch: typeof globalThis.fetch = async () =>
       sse([
         event(0, 'run.started', { requestId: 'request-1' }),
         event(2, 'run.completed', { receipt: receipt(2) })
-      ])) as unknown as typeof globalThis.fetch)
+      ])
+    const hosted = transport(requestFetch)
     const stream = await hosted.sendMessages({
       trigger: 'submit-message',
       chatId: 'chat',
@@ -136,7 +156,7 @@ describe('hosted agent service transport', () => {
   test('reconnects with canonical run identity and Last-Event-ID', async () => {
     const requests: Array<{ input: string; lastEventId: string | null }> = []
     let call = 0
-    const hosted = transport((async (input, init) => {
+    const requestFetch: typeof globalThis.fetch = async (input, init) => {
       requests.push({
         input: String(input),
         lastEventId: new Headers(init?.headers).get('Last-Event-ID')
@@ -145,7 +165,8 @@ describe('hosted agent service transport', () => {
       return call === 1
         ? sse([event(0, 'run.started', { requestId: 'request-1' })])
         : sse([event(1, 'run.completed', { receipt: receipt(1) })])
-    }) as unknown as typeof globalThis.fetch)
+    }
+    const hosted = transport(requestFetch)
     const first = await hosted.sendMessages({
       trigger: 'submit-message',
       chatId: 'client-chat',
@@ -157,7 +178,8 @@ describe('hosted agent service transport', () => {
     const resumed = await hosted.reconnectToStream()
     expect(resumed).not.toBeNull()
     if (resumed) await chunks(resumed)
-    expect(requests[1]).toEqual({
+    const reconnectRequest = requests[1]
+    expect(reconnectRequest).toEqual({
       input: 'https://agent.test/api/agent/sessions/session-1/runs/run-1/events',
       lastEventId: 'event-0'
     })
@@ -167,7 +189,7 @@ describe('hosted agent service transport', () => {
     const methods: string[] = []
     const paths: string[] = []
     const abort = new AbortController()
-    const hosted = transport((async (input, init) => {
+    const requestFetch: typeof globalThis.fetch = async (input, init) => {
       methods.push(init?.method ?? 'GET')
       paths.push(new URL(String(input)).pathname)
       if (String(input).endsWith('/cancel')) {
@@ -194,7 +216,8 @@ describe('hosted agent service transport', () => {
         }),
         { status: 200, headers: { 'Content-Type': 'text/event-stream' } }
       )
-    }) as unknown as typeof globalThis.fetch)
+    }
+    const hosted = transport(requestFetch)
     const stream = await hosted.sendMessages({
       trigger: 'submit-message',
       chatId: 'chat',
@@ -202,8 +225,10 @@ describe('hosted agent service transport', () => {
       messages: [userMessage('Design')],
       abortSignal: abort.signal
     })
-    await expect(chunks(stream)).rejects.toBeInstanceOf(Error)
-    await Bun.sleep(0)
+    await expect(chunks(stream)).resolves.toBeDefined()
+    for (let attempt = 0; methods.length < 2 && attempt < 20; attempt++) {
+      await Bun.sleep(5)
+    }
     expect(methods).toEqual(['POST', 'POST'])
     expect(paths[1]).toBe('/api/agent/sessions/session-1/runs/run-1/cancel')
   })
@@ -217,14 +242,15 @@ describe('hosted agent service transport', () => {
       store,
       documentId: 'document-1',
       approve: async () => true,
-      fetch: (async (input, init) => {
+      fetch: async (input, init) => {
         const path = new URL(String(input)).pathname
-        const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : undefined
+        const body = call === 0 ? runRequest(init) : continuationRequest(init)
         requests.push({ path, body })
         call++
         if (call === 1) {
-          const requestId = body?.requestId as string
-          const manifestId = (body?.tools as { manifestId: string }).manifestId
+          const request = body as AgentRunRequest
+          const { requestId } = request
+          const { manifestId } = request.tools
           return sse([
             event(0, 'run.started', { requestId }),
             event(1, 'tool.call', {
@@ -237,7 +263,7 @@ describe('hosted agent service transport', () => {
             })
           ])
         }
-        const continuation = body as { requestId: string }
+        const continuation = body as AgentToolResultContinuation
         return sse([
           event(2, 'message.delta', { messageId: 'message-1', text: 'Created.' }),
           event(3, 'message.end', { messageId: 'message-1' }),
@@ -245,7 +271,7 @@ describe('hosted agent service transport', () => {
             receipt: { ...receipt(4), requestId: continuation.requestId }
           })
         ])
-      }) as unknown as typeof globalThis.fetch
+      }
     })
 
     const before = store.graph.getChildren(pageId).length
@@ -269,4 +295,121 @@ describe('hosted agent service transport', () => {
     expect(store.graph.getChildren(pageId)).toHaveLength(before)
   })
 
+  test('retries a stranded continuation without executing the action twice', async () => {
+    const store = createEditorStore()
+    const pageId = store.state.currentPageId
+    let continuationAttempts = 0
+    let started = false
+    const hosted = new AgentServiceChatTransport({
+      apiOrigin: 'https://agent.test',
+      store,
+      documentId: 'document-1',
+      approve: async () => true,
+      fetch: async (_input, init) => {
+        if (!started) {
+          started = true
+          const body = runRequest(init)
+          const { requestId } = body
+          const { manifestId } = body.tools
+          return sse([
+            event(0, 'run.started', { requestId }),
+            event(1, 'tool.call', {
+              callId: 'call-1',
+              continuationId: 'continue-1',
+              manifestId,
+              name: 'create_shape',
+              arguments: { type: 'RECTANGLE', x: 10, y: 20, width: 100, height: 80 },
+              target: { documentId: 'document-1', pageId }
+            })
+          ])
+        }
+        const body = continuationRequest(init)
+        continuationAttempts++
+        if (continuationAttempts === 1) throw new Error('connection lost')
+        return sse([
+          event(2, 'run.completed', {
+            receipt: { ...receipt(2), requestId: body.requestId }
+          })
+        ])
+      }
+    })
+
+    const before = store.graph.getChildren(pageId).length
+    const stream = await hosted.sendMessages({
+      trigger: 'submit-message',
+      chatId: 'chat',
+      messageId: undefined,
+      messages: [userMessage('Create a rectangle')],
+      abortSignal: undefined
+    })
+    await expect(chunks(stream)).rejects.toBeInstanceOf(Error)
+    expect(store.graph.getChildren(pageId)).toHaveLength(before + 1)
+
+    const resumed = await hosted.reconnectToStream()
+    expect(resumed).not.toBeNull()
+    if (resumed) await chunks(resumed)
+    expect(continuationAttempts).toBe(2)
+    expect(store.graph.getChildren(pageId)).toHaveLength(before + 1)
+  })
+
+  test('rejects mutation calls when the active document changed', async () => {
+    const store = createEditorStore()
+    const pageId = store.state.currentPageId
+    let active = true
+    let continuation: AgentToolResultContinuation | undefined
+    let started = false
+    const hosted = new AgentServiceChatTransport({
+      apiOrigin: 'https://agent.test',
+      store,
+      documentId: 'document-1',
+      isTargetActive: () => active,
+      approve: async () => {
+        active = false
+        return true
+      },
+      fetch: async (_input, init) => {
+        if (!started) {
+          started = true
+          const body = runRequest(init)
+          const { requestId } = body
+          const { manifestId } = body.tools
+          return sse([
+            event(0, 'run.started', { requestId }),
+            event(1, 'tool.call', {
+              callId: 'call-1',
+              continuationId: 'continue-1',
+              manifestId,
+              name: 'create_shape',
+              arguments: { type: 'RECTANGLE', x: 10, y: 20, width: 100, height: 80 },
+              target: { documentId: 'document-1', pageId }
+            })
+          ])
+        }
+        continuation = continuationRequest(init)
+        return sse([
+          event(2, 'run.failed', {
+            error: {
+              schema: 'openpencil.agent.error.v1',
+              code: 'tool-target-mismatch',
+              message: 'Target changed.',
+              retryable: false,
+              phase: 'tool'
+            }
+          })
+        ])
+      }
+    })
+
+    const before = store.graph.getChildren(pageId).length
+    const stream = await hosted.sendMessages({
+      trigger: 'submit-message',
+      chatId: 'chat',
+      messageId: undefined,
+      messages: [userMessage('Create a rectangle')],
+      abortSignal: undefined
+    })
+    await expect(chunks(stream)).rejects.toBeInstanceOf(Error)
+    expect(continuation).toMatchObject({ status: 'error' })
+    expect(store.graph.getChildren(pageId)).toHaveLength(before)
+  })
 })

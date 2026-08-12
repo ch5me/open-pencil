@@ -26,7 +26,7 @@ const FORBIDDEN_FIELDS = new Set([
 ])
 
 type JsonPrimitive = boolean | number | string | null
-export type AgentJsonValue = JsonPrimitive | AgentJsonValue[] | { [key: string]: AgentJsonValue }
+export type AgentJSONValue = JsonPrimitive | AgentJSONValue[] | { [key: string]: AgentJSONValue }
 
 export interface AgentRunRequest {
   schema: typeof AGENT_RUN_SCHEMA
@@ -73,7 +73,7 @@ export interface AgentError {
   requestId?: string
   sessionId?: string
   runId?: string
-  details?: AgentJsonValue
+  details?: AgentJSONValue
 }
 
 export interface AgentRunReceipt {
@@ -102,7 +102,7 @@ export type AgentEventData =
         continuationId: string
         manifestId: string
         name: string
-        arguments: AgentJsonValue
+        arguments: AgentJSONValue
         target: { documentId: string; pageId?: string }
       }
     }
@@ -133,7 +133,7 @@ export interface AgentToolResultContinuation {
   manifestId: string
   target: { documentId: string; pageId?: string }
   status: 'ok' | 'error' | 'rejected'
-  output?: AgentJsonValue
+  output?: AgentJSONValue
   error?: AgentError
   approvalId?: string
 }
@@ -150,7 +150,9 @@ function exact(value: unknown, required: readonly string[], optional: readonly s
   const object = record(value)
   if (!object) return false
   const allowed = new Set([...required, ...optional])
-  return required.every((key) => key in object) && Object.keys(object).every((key) => allowed.has(key))
+  return (
+    required.every((key) => key in object) && Object.keys(object).every((key) => allowed.has(key))
+  )
 }
 
 function identifier(value: unknown): value is string {
@@ -167,13 +169,12 @@ function timestamp(value: unknown): value is string {
 
 function forbiddenField(key: string): boolean {
   const normalized = key.replaceAll(/[-_]/gu, '').toLowerCase()
-  if (normalized === 'constructor' || normalized === 'prototype' || normalized === 'proto') return true
-  return [...FORBIDDEN_FIELDS].some(
-    (field) => normalized === field || normalized === `${field}id` || normalized === `${field}name`
-  )
+  if (normalized === 'constructor' || normalized === 'prototype' || normalized === 'proto')
+    return true
+  return [...FORBIDDEN_FIELDS].some((field) => normalized.includes(field))
 }
 
-function safeJson(value: unknown): value is AgentJsonValue {
+function safeJSON(value: unknown): value is AgentJSONValue {
   let entries = 0
   const visit = (current: unknown, depth: number): boolean => {
     if (++entries > MAX_DETAIL_ENTRIES || depth > MAX_DETAIL_DEPTH) return false
@@ -224,7 +225,8 @@ function validTarget(value: unknown, includeSelection: boolean): boolean {
   const required = includeSelection ? ['documentId', 'selectedNodeIds'] : ['documentId']
   const target = record(value)
   if (!target || !exact(target, required, ['pageId'])) return false
-  if (!identifier(target.documentId) || ('pageId' in target && !identifier(target.pageId))) return false
+  if (!identifier(target.documentId) || ('pageId' in target && !identifier(target.pageId)))
+    return false
   return (
     !includeSelection ||
     (Array.isArray(target.selectedNodeIds) &&
@@ -250,10 +252,8 @@ function validError(value: unknown): value is AgentError {
     shortText(error.message, 4_096) &&
     typeof error.retryable === 'boolean' &&
     ERROR_PHASES.has(error.phase as AgentErrorPhase) &&
-    ['requestId', 'sessionId', 'runId'].every(
-      (key) => !(key in error) || identifier(error[key])
-    ) &&
-    (!('details' in error) || safeJson(error.details))
+    ['requestId', 'sessionId', 'runId'].every((key) => !(key in error) || identifier(error[key])) &&
+    (!('details' in error) || safeJSON(error.details))
   )
 }
 
@@ -279,12 +279,18 @@ function validReceipt(value: unknown): value is AgentRunReceipt {
   }
   const receipt = value as Record<string, unknown>
   const gateway = record(receipt.gateway)
+  const status = receipt.status as AgentRunReceipt['status']
+  const acceptedAt = Date.parse(receipt.acceptedAt as string)
+  const completedAt =
+    'completedAt' in receipt ? Date.parse(receipt.completedAt as string) : undefined
   return (
     receipt.schema === AGENT_RECEIPT_SCHEMA &&
     [receipt.receiptId, receipt.requestId, receipt.sessionId, receipt.runId].every(identifier) &&
-    ['accepted', 'cancelled', 'completed', 'failed'].includes(receipt.status as string) &&
+    ['accepted', 'cancelled', 'completed', 'failed'].includes(status) &&
     timestamp(receipt.acceptedAt) &&
-    (!('completedAt' in receipt) || timestamp(receipt.completedAt)) &&
+    (status === 'accepted'
+      ? !('completedAt' in receipt)
+      : timestamp(receipt.completedAt) && completedAt !== undefined && completedAt >= acceptedAt) &&
     Number.isSafeInteger(receipt.lastSequence) &&
     (receipt.lastSequence as number) >= 0 &&
     !!gateway &&
@@ -333,22 +339,13 @@ function validRequest(value: unknown): value is AgentRunRequest {
     !!capabilities &&
     exact(capabilities, ['toolResults', 'reconnect', 'cancellation', 'approvals']) &&
     Object.values(capabilities).every((capability) => typeof capability === 'boolean') &&
-    safeJson(value)
+    safeJSON(value)
   )
 }
 
 function validEvent(value: unknown): value is AgentEvent {
   if (
-    !exact(value, [
-      'schema',
-      'sessionId',
-      'runId',
-      'seq',
-      'eventId',
-      'timestamp',
-      'type',
-      'data'
-    ])
+    !exact(value, ['schema', 'sessionId', 'runId', 'seq', 'eventId', 'timestamp', 'type', 'data'])
   ) {
     return false
   }
@@ -388,16 +385,9 @@ function validEvent(value: unknown): value is AgentEvent {
       return exact(data, ['messageId']) && identifier(data.messageId)
     case 'tool.call':
       return (
-        exact(data, [
-          'callId',
-          'continuationId',
-          'manifestId',
-          'name',
-          'arguments',
-          'target'
-        ]) &&
+        exact(data, ['callId', 'continuationId', 'manifestId', 'name', 'arguments', 'target']) &&
         [data.callId, data.continuationId, data.manifestId, data.name].every(identifier) &&
-        safeJson(data.arguments) &&
+        safeJSON(data.arguments) &&
         validTarget(data.target, false)
       )
     case 'approval.required':
@@ -409,7 +399,19 @@ function validEvent(value: unknown): value is AgentEvent {
     case 'tool.result':
       return exact(data, ['callId']) && identifier(data.callId)
     case 'run.completed':
+      return (
+        exact(data, ['receipt']) &&
+        validReceipt(data.receipt) &&
+        data.receipt.status === 'completed' &&
+        data.receipt.lastSequence === event.seq
+      )
     case 'run.cancelled':
+      return (
+        exact(data, ['receipt']) &&
+        validReceipt(data.receipt) &&
+        data.receipt.status === 'cancelled' &&
+        data.receipt.lastSequence === event.seq
+      )
     case 'receipt':
       return exact(data, ['receipt']) && validReceipt(data.receipt)
     case 'run.failed':
@@ -459,13 +461,9 @@ function validContinuation(value: unknown): value is AgentToolResultContinuation
     return false
   }
   if (continuation.status === 'ok') {
-    return 'output' in continuation && !('error' in continuation) && safeJson(continuation.output)
+    return 'output' in continuation && !('error' in continuation) && safeJSON(continuation.output)
   }
-  return (
-    !('output' in continuation) &&
-    'error' in continuation &&
-    validError(continuation.error)
-  )
+  return !('output' in continuation) && 'error' in continuation && validError(continuation.error)
 }
 
 function parser<T>(label: string, guard: (value: unknown) => value is T) {

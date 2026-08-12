@@ -85,7 +85,9 @@ describe('agent gateway contracts', () => {
   })
 
   test('fails closed on unknown versions and recursively forbidden infrastructure', () => {
-    expect(() => parseAgentRunReceipt({ ...receipt, schema: 'openpencil.agent.receipt.v2' })).toThrow()
+    expect(() =>
+      parseAgentRunReceipt({ ...receipt, schema: 'openpencil.agent.receipt.v2' })
+    ).toThrow()
     expect(() =>
       parseAgentEvent({
         schema: AGENT_EVENT_SCHEMA,
@@ -106,6 +108,50 @@ describe('agent gateway contracts', () => {
       })
     ).toThrow()
     expect(() => parseAgentError({ ...error, details: { runtime_id: 'hidden' } })).toThrow()
+    for (const key of [
+      'providerAccount',
+      'billingAuthority',
+      'runtimeUrl',
+      'containerImage',
+      'workerPool',
+      'modelAlias',
+      'registryHost',
+      'machineType',
+      'deploymentTarget',
+      'regionCode'
+    ]) {
+      expect(() => parseAgentError({ ...error, details: { [key]: 'hidden' } })).toThrow()
+    }
+  })
+
+  test('binds terminal events to terminal receipt truth', () => {
+    expect(() =>
+      parseAgentEvent({
+        schema: AGENT_EVENT_SCHEMA,
+        sessionId: 'session',
+        runId: 'run',
+        seq: 9,
+        eventId: 'event-9',
+        timestamp: '2026-08-12T12:00:01.000Z',
+        type: 'run.completed',
+        data: { receipt: { ...receipt, status: 'failed' } }
+      })
+    ).toThrow()
+    expect(() =>
+      parseAgentEvent({
+        schema: AGENT_EVENT_SCHEMA,
+        sessionId: 'session',
+        runId: 'run',
+        seq: 9,
+        eventId: 'event-9',
+        timestamp: '2026-08-12T12:00:01.000Z',
+        type: 'run.completed',
+        data: { receipt: { ...receipt, lastSequence: 8 } }
+      })
+    ).toThrow()
+    expect(() =>
+      parseAgentRunReceipt({ ...receipt, completedAt: '2026-08-12T11:59:59.000Z' })
+    ).toThrow()
   })
 
   test('rejects malformed and oversized payloads', () => {

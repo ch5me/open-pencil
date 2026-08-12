@@ -9,7 +9,7 @@ import {
 import type {
   AgentErrorCode,
   AgentEvent,
-  AgentJsonValue,
+  AgentJSONValue,
   AgentRunReceipt,
   AgentToolResultContinuation
 } from '@open-pencil/core/agent'
@@ -17,8 +17,8 @@ import { ALL_TOOLS, createGatewayManifest } from '@open-pencil/core/tools'
 import type { GatewayActionManifest } from '@open-pencil/core/tools'
 
 import type { EditorStore } from '@/app/editor/active-store'
-import type { HostedRequestOptions } from '@/app/hosted/http'
 import { getHostedConfig } from '@/app/hosted/flags'
+import type { HostedRequestOptions } from '@/app/hosted/http'
 import { IS_BROWSER } from '@/constants'
 
 import { requestToolApprovalFromUser } from './approval'
@@ -35,13 +35,16 @@ type RunState = {
   receipt?: AgentRunReceipt
   executeTool?: ReturnType<typeof createGatewayToolExecutor>
   finished: boolean
+  interrupted: boolean
   textParts: Set<string>
   toolCalls: Set<string>
+  pendingContinuations: Map<string, AgentToolResultContinuation>
 }
 
 export type AgentServiceTransportOptions = HostedRequestOptions & {
   store: EditorStore
   documentId: string
+  isTargetActive?: () => boolean
   approve?: GatewayToolExecutorOptions['approve']
 }
 
@@ -72,12 +75,19 @@ export function latestUserMessage(messages: UIMessage[]): UIMessage {
     const message = messages[index]
     if (message.role === 'user' && messageText(message)) return message
   }
-  throw new AgentServiceTransportError('invalid-request', 'Hosted agent chat requires a user message.')
+  throw new AgentServiceTransportError(
+    'invalid-request',
+    'Hosted agent chat requires a user message.'
+  )
 }
 
-function toAgentJson(value: unknown): AgentJsonValue {
+function toAgentJSON(value: unknown): AgentJSONValue {
   const serialized = JSON.stringify(value ?? null)
-  return JSON.parse(serialized) as AgentJsonValue
+  return JSON.parse(serialized) as AgentJSONValue
+}
+
+function agentArguments(value: AgentJSONValue): Record<string, AgentJSONValue> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
 }
 
 function errorCode(result: GatewayToolResult): AgentErrorCode {
@@ -101,10 +111,7 @@ function metadata(state: RunState) {
 }
 
 function validateOrder(event: AgentEvent, state: RunState) {
-  if (
-    state.sequence !== undefined &&
-    event.seq !== state.sequence + 1
-  ) {
+  if (state.sequence !== undefined && event.seq !== state.sequence + 1) {
     throw new AgentServiceTransportError(
       'stream-interrupted',
       `Expected agent event sequence ${state.sequence + 1}, received ${event.seq}.`
@@ -114,7 +121,10 @@ function validateOrder(event: AgentEvent, state: RunState) {
     (state.sessionId && event.sessionId !== state.sessionId) ||
     (state.runId && event.runId !== state.runId)
   ) {
-    throw new AgentServiceTransportError('session-conflict', 'Agent event identity changed mid-run.')
+    throw new AgentServiceTransportError(
+      'session-conflict',
+      'Agent event identity changed mid-run.'
+    )
   }
   state.sessionId = event.sessionId
   state.runId = event.runId
@@ -147,13 +157,15 @@ function mapEvent(event: AgentEvent, state: RunState): UIMessageChunk[] {
     case 'tool.call':
       if (state.toolCalls.has(event.data.callId)) return []
       state.toolCalls.add(event.data.callId)
-      return [{
-        type: 'tool-input-available',
-        toolCallId: event.data.callId,
-        toolName: event.data.name,
-        input: event.data.arguments,
-        providerExecuted: false
-      }]
+      return [
+        {
+          type: 'tool-input-available',
+          toolCallId: event.data.callId,
+          toolName: event.data.name,
+          input: event.data.arguments,
+          providerExecuted: false
+        }
+      ]
     case 'tool.result':
       return []
     case 'approval.required':
@@ -181,13 +193,19 @@ async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Agen
   const decoder = new TextDecoder()
   let buffer = ''
   try {
-    while (true) {
-      const { done, value } = await reader.read()
-      buffer += decoder.decode(value, { stream: !done }).replaceAll('\r\n', '\n')
+    let done = false
+    while (!done) {
+      const result = await reader.read()
+      done = result.done
+      buffer += decoder.decode(result.value, { stream: !done }).replaceAll('\r\n', '\n')
       const frames = buffer.split('\n\n')
       buffer = frames.pop() ?? ''
       for (const frame of frames) {
-        const id = frame.split('\n').find((line) => line.startsWith('id:'))?.slice(3).trim()
+        const id = frame
+          .split('\n')
+          .find((line) => line.startsWith('id:'))
+          ?.slice(3)
+          .trim()
         const data = frame
           .split('\n')
           .filter((line) => line.startsWith('data:'))
@@ -196,11 +214,13 @@ async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncGenerator<Agen
         if (!data) continue
         const event = parseAgentEvent(JSON.parse(data) as unknown)
         if (!id || event.eventId !== id) {
-          throw new AgentServiceTransportError('stream-interrupted', 'SSE event identity is invalid.')
+          throw new AgentServiceTransportError(
+            'stream-interrupted',
+            'SSE event identity is invalid.'
+          )
         }
         yield event
       }
-      if (done) break
     }
     if (buffer.trim()) {
       throw new AgentServiceTransportError('stream-interrupted', 'Agent stream ended mid-event.')
@@ -216,7 +236,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
   private manifest?: GatewayActionManifest
 
   constructor(private readonly options: AgentServiceTransportOptions) {
-    this.requestFetch = options.fetch ?? fetch
+    this.requestFetch = options.fetch ?? globalThis.fetch.bind(globalThis)
   }
 
   private headers(extra?: HeadersInit): Headers {
@@ -231,16 +251,18 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
 
   private async response(path: string, init: RequestInit): Promise<Response> {
     const origin = this.options.apiOrigin ?? getHostedConfig().apiOrigin
-    if (!origin) throw new AgentServiceTransportError('gateway-unavailable', 'Agent API is not configured.')
+    if (!origin)
+      throw new AgentServiceTransportError('gateway-unavailable', 'Agent API is not configured.')
     const response = await this.requestFetch(`${origin}${path}`, {
       ...init,
       credentials: 'include',
       headers: this.headers(init.headers)
     })
     if (!response.ok || !response.body) {
-      const error = (await response.json().catch(() => null)) as
-        | { code?: string; message?: string }
-        | null
+      const error = (await response.json().catch(() => null)) as {
+        code?: string
+        message?: string
+      } | null
       throw new AgentServiceTransportError(
         error?.code ?? 'gateway-unavailable',
         error?.message ?? response.statusText,
@@ -266,7 +288,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       target: event.data.target
     } as const
     if (result.ok) {
-      return { ...base, status: 'ok', output: toAgentJson(result.output) }
+      return { ...base, status: 'ok', output: toAgentJSON(result.output) }
     }
     const rejected = result.error.code === 'approval_rejected'
     return {
@@ -290,34 +312,38 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     state: RunState,
     controller: ReadableStreamDefaultController<UIMessageChunk>
   ): Promise<void> {
-    if (!response.body) throw new AgentServiceTransportError('stream-interrupted', 'Missing stream body.')
+    if (!response.body)
+      throw new AgentServiceTransportError('stream-interrupted', 'Missing stream body.')
     for await (const event of sseEvents(response.body)) {
       validateOrder(event, state)
       const duplicateToolCall = event.type === 'tool.call' && state.toolCalls.has(event.data.callId)
       for (const chunk of mapEvent(event, state)) controller.enqueue(chunk)
-      if (event.type !== 'tool.call' || duplicateToolCall) continue
+      if (event.type !== 'tool.call') continue
 
       const manifest = this.manifest
-      if (!manifest) throw new AgentServiceTransportError('capability-mismatch', 'Tool manifest is missing.')
+      if (!manifest)
+        throw new AgentServiceTransportError('capability-mismatch', 'Tool manifest is missing.')
       state.executeTool ??= createGatewayToolExecutor({
         store: this.options.store,
         runId: event.runId,
-        target: () => ({
-          documentId: this.options.documentId,
-          pageId: this.options.store.state.currentPageId
-        }),
+        target: () =>
+          this.options.isTargetActive?.() === false
+            ? { documentId: '', pageId: '' }
+            : {
+                documentId: this.options.documentId,
+                pageId: this.options.store.state.currentPageId
+              },
         manifest: {
           id: manifest.manifestId,
           actions: manifest.actions.map(({ name, mutates }) => ({ name, mutates }))
         },
         approve: this.options.approve ?? requestToolApprovalFromUser
       })
-      const input =
-        event.data.arguments &&
-        typeof event.data.arguments === 'object' &&
-        !Array.isArray(event.data.arguments)
-          ? event.data.arguments as Record<string, unknown>
-          : {}
+      const input = agentArguments(event.data.arguments)
+      const manifestAction = manifest.actions.find((action) => action.name === event.data.name)
+      const eventPageId =
+        event.data.target.pageId ??
+        (manifestAction?.mutates ? '' : this.options.store.state.currentPageId)
       const result = await state.executeTool({
         runId: event.runId,
         callId: event.data.callId,
@@ -325,34 +351,39 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
         manifestId: event.data.manifestId,
         target: {
           documentId: event.data.target.documentId,
-          pageId: event.data.target.pageId ?? this.options.store.state.currentPageId
+          pageId: eventPageId
         },
         toolName: event.data.name,
         input
       })
-      controller.enqueue(
-        result.ok
-          ? {
-              type: 'tool-output-available',
-              toolCallId: result.callId,
-              output: result.output,
-              providerExecuted: false
-            }
-          : {
-              type: 'tool-output-error',
-              toolCallId: result.callId,
-              errorText: result.error.message,
-              providerExecuted: false
-            }
-      )
+      if (!duplicateToolCall) {
+        controller.enqueue(
+          result.ok
+            ? {
+                type: 'tool-output-available',
+                toolCallId: result.callId,
+                output: result.output,
+                providerExecuted: false
+              }
+            : {
+                type: 'tool-output-error',
+                toolCallId: result.callId,
+                errorText: result.error.message,
+                providerExecuted: false
+              }
+        )
+      }
+      const continuation = this.continuation(event, result)
+      state.pendingContinuations.set(event.data.callId, continuation)
       const continuationResponse = await this.response(
         `/api/agent/sessions/${encodeURIComponent(event.sessionId)}/runs/${encodeURIComponent(event.runId)}/tool-results`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.continuation(event, result))
+          body: JSON.stringify(continuation)
         }
       )
+      state.pendingContinuations.delete(event.data.callId)
       await this.consumeInto(continuationResponse, state, controller)
     }
   }
@@ -361,6 +392,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     return new ReadableStream<UIMessageChunk>({
       start: async (controller) => {
         try {
+          state.interrupted = false
           await this.consumeInto(response, state, controller)
           if (!state.finished) {
             throw new AgentServiceTransportError(
@@ -370,6 +402,14 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
           }
           controller.close()
         } catch (error) {
+          if (
+            (error instanceof AgentServiceTransportError && error.code === 'stream-interrupted') ||
+            state.pendingContinuations.size > 0
+          ) {
+            state.interrupted = true
+          } else {
+            state.finished = true
+          }
           controller.error(error)
         }
       }
@@ -382,7 +422,10 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     abortSignal
   }: Parameters<ChatTransport<UIMessage>['sendMessages']>[0]) {
     if (this.active && !this.active.finished) {
-      throw new AgentServiceTransportError('session-conflict', 'An agent run is already active.')
+      if (!this.active.interrupted) {
+        throw new AgentServiceTransportError('session-conflict', 'An agent run is already active.')
+      }
+      await this.cancel(this.active)
     }
     const message = latestUserMessage(messages)
     this.manifest ??= await createGatewayManifest(ALL_TOOLS)
@@ -391,8 +434,10 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       requestId,
       idempotencyKey: crypto.randomUUID(),
       finished: false,
+      interrupted: false,
       textParts: new Set(),
-      toolCalls: new Set()
+      toolCalls: new Set(),
+      pendingContinuations: new Map()
     }
     this.active = state
     abortSignal?.addEventListener('abort', () => void this.cancel(state), { once: true })
@@ -425,7 +470,28 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
 
   async reconnectToStream(): Promise<ReadableStream<UIMessageChunk> | null> {
     const state = this.active
-    if (!state || state.finished || !state.sessionId || !state.runId || !state.lastEventId) return null
+    if (
+      !state ||
+      state.finished ||
+      !state.interrupted ||
+      !state.sessionId ||
+      !state.runId ||
+      !state.lastEventId
+    )
+      return null
+    const pending = state.pendingContinuations.values().next().value
+    if (pending) {
+      const response = await this.response(
+        `/api/agent/sessions/${encodeURIComponent(state.sessionId)}/runs/${encodeURIComponent(state.runId)}/tool-results`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pending)
+        }
+      )
+      state.pendingContinuations.delete(pending.callId)
+      return this.stream(response, state)
+    }
     const response = await this.response(
       `/api/agent/sessions/${encodeURIComponent(state.sessionId)}/runs/${encodeURIComponent(state.runId)}/events`,
       { method: 'GET', headers: { 'Last-Event-ID': state.lastEventId } }
@@ -434,11 +500,17 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
   }
 
   private async cancel(state: RunState) {
-    if (!state.sessionId || !state.runId || state.finished) return
+    if (state.finished) return
+    state.finished = true
+    state.interrupted = false
+    if (!state.runId) return
+    const { rejectPermissionsForSession } = await import('@/app/ai/acp/permission')
+    rejectPermissionsForSession(state.runId)
+    if (!state.sessionId) return
     await this.response(
       `/api/agent/sessions/${encodeURIComponent(state.sessionId)}/runs/${encodeURIComponent(state.runId)}/cancel`,
       { method: 'POST' }
-    ).catch(() => undefined)
+    )
   }
 }
 

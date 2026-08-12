@@ -22,7 +22,7 @@ export interface GatewayActionManifest {
 }
 
 /** Deliberately narrow initial exposure; all unlisted ToolDefs remain remote-disabled. */
-export const GATEWAY_REMOTE_POLICIES: Readonly<Record<string, ToolRemotePolicy>> = {
+export const GATEWAY_REMOTE_POLICIES: Readonly<Partial<Record<string, ToolRemotePolicy>>> = {
   create_shape: { enabled: true, requiresApproval: true },
   get_node: { enabled: true },
   get_selection: { enabled: true },
@@ -30,9 +30,12 @@ export const GATEWAY_REMOTE_POLICIES: Readonly<Record<string, ToolRemotePolicy>>
 }
 
 function paramSchema(param: ParamDef): Record<string, unknown> {
+  let type: string = param.type
+  if (param.type === 'color') type = 'string'
+  if (param.type === 'string[]') type = 'array'
   const schema: Record<string, unknown> = {
     description: param.description,
-    type: param.type === 'color' ? 'string' : param.type === 'string[]' ? 'array' : param.type
+    type
   }
   if (param.type === 'string[]') schema.items = { type: 'string' }
   if (param.enum) schema.enum = [...param.enum]
@@ -43,7 +46,9 @@ function paramSchema(param: ParamDef): Record<string, unknown> {
 }
 
 export function toolToGatewayAction(tool: ToolDef): GatewayActionSchema | undefined {
-  const policy = tool.remote?.enabled ? tool.remote : GATEWAY_REMOTE_POLICIES[tool.name]
+  const declaredPolicy = tool.remote
+  const policy =
+    declaredPolicy?.enabled === true ? declaredPolicy : GATEWAY_REMOTE_POLICIES[tool.name]
   if (!policy?.enabled) return undefined
   const entries = Object.entries(tool.params).sort(([left], [right]) => left.localeCompare(right))
   return {
@@ -60,12 +65,17 @@ export function toolToGatewayAction(tool: ToolDef): GatewayActionSchema | undefi
   }
 }
 
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function canonicalJSON(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJSON).join(',')}]`
   if (value && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
+    if (!isPlainRecord(value)) throw new TypeError('Gateway manifest content must be plain JSON.')
+    const entries = Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`)
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJSON(item)}`)
     return `{${entries.join(',')}}`
   }
   return JSON.stringify(value)
@@ -76,11 +86,13 @@ async function sha256(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-export async function createGatewayManifest(tools: readonly ToolDef[]): Promise<GatewayActionManifest> {
+export async function createGatewayManifest(
+  tools: readonly ToolDef[]
+): Promise<GatewayActionManifest> {
   const actions = tools
     .map(toolToGatewayAction)
     .filter((action): action is GatewayActionSchema => action !== undefined)
     .sort((left, right) => left.name.localeCompare(right.name))
   const content = { schemaVersion: GATEWAY_MANIFEST_VERSION, actions }
-  return { ...content, manifestId: `sha256:${await sha256(canonicalJson(content))}` }
+  return { ...content, manifestId: `sha256:${await sha256(canonicalJSON(content))}` }
 }

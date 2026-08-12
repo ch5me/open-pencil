@@ -7,10 +7,10 @@ import { ACP_AGENTS } from '@open-pencil/core/constants'
 import type { ACPAgentID, AIProviderID } from '@open-pencil/core/constants'
 
 import { useEngineTransport } from '@/app/ai/acp/feature'
+import { createAgentServiceChatTransport } from '@/app/ai/agent-service/transport'
 import { resolveLanguageModelID } from '@/app/ai/chat/model'
 import SYSTEM_PROMPT from '@/app/ai/chat/system-prompt.md?raw'
 import { createAIModelRuntime } from '@/app/ai/models'
-import { createAgentServiceChatTransport } from '@/app/ai/agent-service/transport'
 import { MAX_AGENT_STEPS, createAITools, recordStepUsage, resetRunSteps } from '@/app/ai/tools'
 import type { getActiveEditorStore } from '@/app/editor/active-store'
 import { isHostedAgentEnabled } from '@/app/hosted/flags'
@@ -172,9 +172,11 @@ export function createChatSessionManager({
       const messages = currentChatMessages.get(store)
       let transport: ChatTransport<UIMessage>
       if (useHostedAgent) {
+        const documentId = getActiveTabId()
         transport = createAgentServiceChatTransport({
           store,
-          documentId: getActiveTabId()
+          documentId,
+          isTargetActive: () => getActiveTabId() === documentId && getActiveEditorStore() === store
         })
       } else if (isACPProvider.value) {
         transport = await createActiveACPTransport()

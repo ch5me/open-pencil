@@ -1,0 +1,11 @@
+{
+  "name": "@open-pencil/agent-gateway-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@open-pencil/agent-contracts": "file:../../packages/agent-contracts"
+  }
+}

@@ -10,6 +10,11 @@ import {
 import { parseAgentRunRequest, parseAgentToolResultContinuation } from './contracts'
 import { AgentGatewayError, requestAgentGateway } from './gateway'
 
+const REMOTE_GATEWAY_ENV = {
+  OPENPENCIL_AGENT_GATEWAY_ORIGIN: 'https://gateway.example',
+  OPENPENCIL_AGENT_GATEWAY_TOKEN: 'service-token'
+}
+
 function event(overrides: Record<string, unknown> = {}) {
   return {
     schema: AGENT_EVENT_SCHEMA,
@@ -41,7 +46,9 @@ function receipt(overrides: Record<string, unknown> = {}) {
 }
 
 function sse(...events: Array<Record<string, unknown>>): Response {
-  const body = events.map((item) => `id: ${item.eventId}\ndata: ${JSON.stringify(item)}\n\n`).join('')
+  const body = events
+    .map((item) => `id: ${item.eventId}\ndata: ${JSON.stringify(item)}\n\n`)
+    .join('')
   return new Response(body, { headers: { 'Content-Type': 'text/event-stream' } })
 }
 
@@ -49,7 +56,7 @@ describe('agent gateway contract', () => {
   test('forwards only the verified principal and product request', async () => {
     let captured: Request | undefined
     const response = await requestAgentGateway({
-      env: { OPENPENCIL_AGENT_GATEWAY_ORIGIN: 'https://gateway.example' },
+      env: REMOTE_GATEWAY_ENV,
       principalId: 'user-1',
       path: '/v1/runs',
       method: 'POST',
@@ -57,12 +64,12 @@ describe('agent gateway contract', () => {
       expectedIdentity: { requestId: 'request-1' },
       fetch: (async (input, init) => {
         captured = new Request(input, init)
-        return sse(event())
+        return sse(event({ eventId: 'event-0', seq: 0, type: 'session.created' }), event())
       }) as typeof fetch
     })
 
     expect(captured?.headers.get('x-openpencil-principal')).toBe('user-1')
-    expect(captured?.headers.get('authorization')).toBeNull()
+    expect(captured?.headers.get('authorization')).toBe('Bearer service-token')
     expect(await captured?.json()).toEqual({ schema: AGENT_RUN_SCHEMA, requestId: 'request-1' })
     expect(await response.text()).toContain('"type":"run.started"')
   })
@@ -70,7 +77,7 @@ describe('agent gateway contract', () => {
   test('preserves Last-Event-ID and accepts a contiguous resumed stream', async () => {
     let lastEventId: string | null = null
     const response = await requestAgentGateway({
-      env: { OPENPENCIL_AGENT_GATEWAY_ORIGIN: 'https://gateway.example' },
+      env: REMOTE_GATEWAY_ENV,
       principalId: 'user-1',
       path: '/v1/sessions/session-1/runs/run-1/events',
       method: 'GET',
@@ -109,10 +116,11 @@ describe('agent gateway contract', () => {
       ]
     ]) {
       const response = await requestAgentGateway({
-        env: { OPENPENCIL_AGENT_GATEWAY_ORIGIN: 'https://gateway.example' },
+        env: REMOTE_GATEWAY_ENV,
         principalId: 'user-1',
         path: '/v1/runs',
         method: 'POST',
+        expectedIdentity: { sessionId: 'session-1', runId: 'run-1' },
         fetch: (async () => sse(...invalid)) as unknown as typeof fetch
       })
       await expect(response.text()).rejects.toBeInstanceOf(Error)
@@ -122,7 +130,7 @@ describe('agent gateway contract', () => {
   test('preserves typed gateway errors and fails closed without configuration', async () => {
     await expect(
       requestAgentGateway({
-        env: { OPENPENCIL_AGENT_GATEWAY_ORIGIN: 'https://gateway.example' },
+        env: REMOTE_GATEWAY_ENV,
         principalId: 'user-1',
         path: '/v1/runs',
         method: 'POST',
@@ -137,6 +145,84 @@ describe('agent gateway contract', () => {
     await expect(
       requestAgentGateway({ env: {}, principalId: 'user-1', path: '/v1/runs', method: 'POST' })
     ).rejects.toBeInstanceOf(AgentGatewayError)
+  })
+
+  test('allows HTTP only for loopback development origins', async () => {
+    for (const origin of [
+      'http://localhost:1435',
+      'http://127.0.0.1:1435',
+      'http://agent-gateway.tree.localhost:7300'
+    ]) {
+      await expect(
+        requestAgentGateway({
+          env: { OPENPENCIL_AGENT_GATEWAY_ORIGIN: origin },
+          principalId: 'user-1',
+          path: '/v1/runs',
+          method: 'POST',
+          fetch: (async () => sse(event())) as unknown as typeof fetch
+        }).then((response) => response.text())
+      ).resolves.toContain('run.started')
+    }
+
+    await expect(
+      requestAgentGateway({
+        env: { OPENPENCIL_AGENT_GATEWAY_ORIGIN: 'http://gateway.example' },
+        principalId: 'user-1',
+        path: '/v1/runs',
+        method: 'POST'
+      })
+    ).rejects.toMatchObject({ code: 'agent-gateway-origin-invalid' })
+  })
+
+  test('requires service authentication for remote gateway origins', async () => {
+    await expect(
+      requestAgentGateway({
+        env: { OPENPENCIL_AGENT_GATEWAY_ORIGIN: 'https://gateway.example' },
+        principalId: 'user-1',
+        path: '/v1/runs',
+        method: 'POST'
+      })
+    ).rejects.toMatchObject({ code: 'agent-gateway-not-configured' })
+  })
+
+  test('rejects invalid initial lifecycle and contradictory terminal receipts', async () => {
+    for (const invalid of [
+      [event({ eventId: 'event-0', seq: 0, type: 'tool.call', data: {} })],
+      [
+        event({ eventId: 'event-0', seq: 0, type: 'session.created' }),
+        event(),
+        event({ eventId: 'event-2', seq: 2, type: 'run.started' })
+      ],
+      [
+        event({ eventId: 'event-0', seq: 0, type: 'session.created' }),
+        event(),
+        event({
+          eventId: 'event-2',
+          seq: 2,
+          type: 'receipt',
+          data: { receipt: receipt({ lastSequence: 2 }) }
+        })
+      ],
+      [
+        event({ eventId: 'event-0', seq: 0, type: 'session.created' }),
+        event({
+          eventId: 'event-1',
+          seq: 1,
+          type: 'run.completed',
+          data: { receipt: receipt({ status: 'failed', lastSequence: 1 }) }
+        })
+      ]
+    ]) {
+      const response = await requestAgentGateway({
+        env: REMOTE_GATEWAY_ENV,
+        principalId: 'user-1',
+        path: '/v1/runs',
+        method: 'POST',
+        expectedIdentity: { requestId: 'request-1' },
+        fetch: (async () => sse(...invalid)) as unknown as typeof fetch
+      })
+      await expect(response.text()).rejects.toBeInstanceOf(Error)
+    }
   })
 
   test('uses the shared request and continuation contract authority', () => {

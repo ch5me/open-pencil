@@ -86,8 +86,16 @@ Deep integration does not require deep edits throughout upstream.
 - Keep documents, assets, rooms, and persistence behind CH5-owned service
   interfaces.
 - Keep hosted agent chat behind one typed app transport and one API adapter.
-  OpenPencil must not provision runtimes or model provider, billing, worker,
-  container, image, or registry concepts.
+  `hostedAgent` is independent from hosted auth/docs/collaboration, and the
+  selector runs before BYOK/ACP selection with no fallback. ELF authenticates
+  admission; it does not define the generic gateway.
+- Limit upstream-owned agent edits to the exact path/symbol rows in the drift
+  ledger. Keep protocol, transport, API adapter, deterministic fixture, and
+  hosted contract modules additive.
+- Preserve ordered streaming, run cancellation/current-run reconnect, approval and tool-result
+  continuation, typed failures, opaque IDs, and a deterministic local gateway.
+  OpenPencil must not provision or expose runtime, model, provider, billing,
+  worker, container, image, or registry concepts.
 - Keep deployment, Hush, Forgejo, and promotion additive.
 - Isolate image-editor/PSD/persistence in CH5-owned packages or narrow core
   extension points. Upstream-file edits require a drift-ledger row and focused
@@ -103,6 +111,9 @@ Deep integration does not require deep edits throughout upstream.
 - Merge commit has CH5 main and exact upstream tip as parents.
 - Drift ledger names every surviving upstream-file edit.
 - No duplicate CH5/upstream implementation remains.
+- Hosted gateway contracts contain product context and opaque lifecycle IDs,
+  not provider/model/billing/runtime/container/image/registry fields, and a
+  gateway failure cannot select a local transport.
 - `bun run upstream:inspect -- --json` no longer returns `program`.
 - Full configured verification passes from a clean Grove Tree.
 - Private main push and staging effect are proven; production remains explicit.

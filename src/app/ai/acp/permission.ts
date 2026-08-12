@@ -59,3 +59,13 @@ export function rejectCurrentPermission() {
     outcome: { outcome: 'selected', optionId: findRejectOption(entry.request) }
   })
 }
+
+export function rejectPermissionsForSession(sessionId: string) {
+  const entries = permissionQueue.value.filter((entry) => entry.request.sessionId === sessionId)
+  for (const entry of entries) {
+    removeEntry(entry)
+    entry.resolve({
+      outcome: { outcome: 'selected', optionId: findRejectOption(entry.request) }
+    })
+  }
+}

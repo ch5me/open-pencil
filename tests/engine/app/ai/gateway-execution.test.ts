@@ -1,12 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import type { ToolSet } from 'ai'
 
-import type { EditorStore } from '@/app/editor/active-store'
 import {
   createGatewayToolExecutor,
   type GatewayToolCall,
   type GatewayToolManifest
 } from '@/app/ai/agent-service/execution'
+import type { EditorStore } from '@/app/editor/active-store'
 
 const manifest: GatewayToolManifest = {
   id: 'manifest-1',
@@ -27,12 +26,12 @@ function setup(options: { approve?: () => boolean | Promise<boolean> } = {}) {
   let executions = 0
   const tools = {
     create_shape: {
-      execute: async () => {
+      execute: async (_input: unknown) => {
         executions++
         return { id: 'created-1' }
       }
     }
-  } as unknown as ToolSet
+  }
   const execute = createGatewayToolExecutor({
     store: {} as EditorStore,
     runId: baseCall.runId,
@@ -111,7 +110,7 @@ describe('gateway tool execution', () => {
       runId: baseCall.runId,
       target: () => baseCall.target,
       manifest,
-      createTools: () => ({ create_shape: { execute: async () => ({}) } }) as unknown as ToolSet
+      createTools: () => ({ create_shape: { execute: async (_input: unknown) => ({}) } })
     })
     const rejected = await noApproval(baseCall)
     const timedOut = await createGatewayToolExecutor({
@@ -119,9 +118,12 @@ describe('gateway tool execution', () => {
       runId: baseCall.runId,
       target: () => baseCall.target,
       manifest,
-      approve: () => new Promise<boolean>(() => undefined),
+      approve: () =>
+        new Promise<boolean>((resolve) => {
+          void resolve
+        }),
       approvalTimeoutMs: 1,
-      createTools: () => ({ create_shape: { execute: async () => ({}) } }) as unknown as ToolSet
+      createTools: () => ({ create_shape: { execute: async (_input: unknown) => ({}) } })
     })({ ...baseCall, callId: 'timeout', continuationId: 'timeout' })
 
     expect(rejected).toMatchObject({ ok: false, error: { code: 'approval_rejected' } })

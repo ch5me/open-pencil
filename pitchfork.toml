@@ -13,6 +13,18 @@ dir = "packages/docs"
 port = { expect = [5173], bump = 20 }
 ready_port = { port = 5173, timeout = "30s" }
 
+[daemons.agent-gateway]
+run = "bun tools/agent-gateway/src/index.ts"
+dir = "."
+port = { expect = [1435], bump = 20 }
+ready_port = { port = 1435, timeout = "10s" }
+
+[daemons.api]
+run = "bun tools/agent-gateway/src/api.ts"
+dir = "."
+port = { expect = [8787], bump = 20 }
+ready_port = { port = 8787, timeout = "10s" }
+
 # Serves the generated `openwiki/` wiki as an interactive graph + reader at
 # http://openwiki.<tree>.localhost:7300/. Read-only: it never calls a model.
 # Managed by `ch5-openwiki install`.

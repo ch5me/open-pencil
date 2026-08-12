@@ -38,10 +38,24 @@ instead of asking users for model credentials. OpenPencil sends product-level
 chat messages and receives streamed text and design-action requests. The service
 chooses how the agent runs.
 
+ELF sign-in authenticates the hosted OpenPencil session; it is separate from the
+generic agent service. When the deployment enables hosted agent chat, the app
+uses that service without requiring a provider or model profile. This setting is
+independent of hosted document storage and collaboration.
+
 The editor does not select or manage the service's model provider, billing,
-workers, containers, images, or deployment infrastructure. Design actions still
-execute inside OpenPencil through the same validated tool registry used by local
-chat and MCP.
+runtimes, workers, containers, images, registries, or deployment infrastructure.
+Design actions still execute inside OpenPencil through a remote-enabled subset
+of the validated tool registry used by local chat and MCP. The hosted flow
+supports streamed replies, correlated approval and tool-result continuation,
+run cancellation, and in-process reconnect while the current run identity
+remains in memory.
+
+Hosted chat fails explicitly if its service is unavailable or a run cannot
+reconnect. Reload-persistent session recovery is not implemented. Hosted mode
+never sends the prompt to a configured BYOK provider or local ACP
+agent as a fallback. Local and desktop installations can continue to select
+BYOK or ACP directly when hosted agent chat is not enabled.
 
 ## What It Can Do
 

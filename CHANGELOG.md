@@ -5,6 +5,7 @@
 ### Added
 
 - Add a hosted Apple Pencil pressure canvas, native-first diagnostics, hardware scenario tracking, and exact device-evidence JSON export.
+- Add the initial provider-neutral hosted-agent client/API contract and opt-in deterministic local proof lane, with guarded design actions, run cancellation, current-run reconnect, and no fallback to local model or ACP transports. Hosted-agent mode remains disabled by default.
 
 ### Fixed
 

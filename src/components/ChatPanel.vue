@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
+import type { Chat } from '@ai-sdk/vue'
 import { refAutoReset, useClipboard } from '@vueuse/core'
+import type { UIMessage } from 'ai'
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
 import { computed, markRaw, nextTick, ref, watch } from 'vue'
 
+import type { JSONObject } from '@open-pencil/scene-graph/primitives'
+import { useI18n } from '@open-pencil/vue'
+
 import { getACPDebugText, clearACPDebugLog, hasACPDebugEntries } from '@/app/ai/acp/transport'
+import { useAIChat } from '@/app/ai/chat/use'
 import { copyChatLog } from '@/app/ai/debug'
 import { clearToolLogEntries, didHitStepLimit } from '@/app/ai/tools'
-import { activeTab } from '@/app/tabs'
 import { isHostedAgentEnabled } from '@/app/hosted/flags'
+import { toast } from '@/app/shell/ui'
+import { activeTab } from '@/app/tabs'
 import ACPPermissionDialog from '@/components/chat/ACPPermissionDialog.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
+import ProviderSetup from '@/components/chat/ProviderSetup.vue'
 import AppPlaceholder from '@/components/ui/AppPlaceholder.vue'
 import AppTextButton from '@/components/ui/AppTextButton.vue'
-import ProviderSetup from '@/components/chat/ProviderSetup.vue'
-import { useAIChat } from '@/app/ai/chat/use'
-import { toast } from '@/app/shell/ui'
-import { useI18n } from '@open-pencil/vue'
-
-import type { Chat } from '@ai-sdk/vue'
-import type { UIMessage } from 'ai'
-import type { JSONObject } from '@open-pencil/scene-graph/primitives'
 
 const IS_DEV = import.meta.env.DEV
 
@@ -31,16 +31,10 @@ interface TypedChatError extends Error {
   status?: string
 }
 
-const TERMINAL_STATUS_LABELS: Record<AgentTerminalStatus, string> = {
-  interrupted: 'Agent connection interrupted',
-  expired: 'Agent session expired',
-  cancelled: 'Agent run cancelled',
-  failed: 'Agent run failed'
-}
-
 function terminalStatusFromError(error: Error): AgentTerminalStatus {
   const typedError = error as TypedChatError
-  const discriminator = `${typedError.code ?? ''} ${typedError.status ?? ''} ${error.name}`.toLowerCase()
+  const discriminator =
+    `${typedError.code ?? ''} ${typedError.status ?? ''} ${error.name}`.toLowerCase()
   if (discriminator.includes('expired')) return 'expired'
   if (discriminator.includes('interrupt')) return 'interrupted'
   if (discriminator.includes('cancel')) return 'cancelled'
@@ -116,6 +110,9 @@ watch(
 watch(
   () => activeTab.value?.id,
   async () => {
+    await chat.value?.stop()
+    terminalStatus.value = null
+    terminalStatusDetail.value = ''
     const nextChat = await ensureChat()
     chat.value = nextChat ? markRaw(nextChat) : null
   }
@@ -159,7 +156,8 @@ async function handleCopyACPLog() {
   acpLogCopied.value = true
 }
 
-function handleClearChat() {
+async function handleClearChat() {
+  await chat.value?.stop()
   chat.value = null
   resetChat()
   clearToolLogEntries()
@@ -234,8 +232,7 @@ function handleClearChat() {
             :data-agent-status="terminalStatus"
             class="mt-3 rounded border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs"
           >
-            <div class="font-medium text-red-400">{{ TERMINAL_STATUS_LABELS[terminalStatus] }}</div>
-            <div v-if="terminalStatusDetail" class="mt-0.5 text-muted">
+            <div v-if="terminalStatusDetail" class="text-muted">
               {{ terminalStatusDetail }}
             </div>
           </div>
@@ -284,7 +281,7 @@ function handleClearChat() {
         @stop="handleStop"
       />
 
-      <ACPPermissionDialog />
+      <ACPPermissionDialog :show-cancel-run="isHostedAgent" @cancel-run="handleStop" />
     </template>
   </div>
 </template>

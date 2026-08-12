@@ -60,15 +60,22 @@ export interface GatewayToolExecutorOptions {
   manifest: GatewayToolManifest
   approve?: ToolApprovalHandler
   approvalTimeoutMs?: number
-  createTools?: (store: EditorStore) => ToolSet
+  createTools?: (store: EditorStore) => GatewayToolSet
 }
+
+type GatewayToolExecute = NonNullable<ToolSet[string]['execute']>
+type GatewayToolSet = Partial<Record<string, { execute?: GatewayToolExecute }>>
 
 interface StoredCall {
   fingerprint: string
   result: Promise<GatewayToolResult>
 }
 
-function failure(call: GatewayToolCall, code: GatewayToolErrorCode, message: string): GatewayToolResult {
+function failure(
+  call: GatewayToolCall,
+  code: GatewayToolErrorCode,
+  message: string
+): GatewayToolResult {
   return {
     ok: false,
     callId: call.callId,
@@ -85,7 +92,7 @@ function stableValue(value: unknown): string {
       .map(([key, child]) => `${JSON.stringify(key)}:${stableValue(child)}`)
       .join(',')}}`
   }
-  return JSON.stringify(value) ?? 'undefined'
+  return value === undefined ? 'undefined' : JSON.stringify(value)
 }
 
 function paramIsValid(value: unknown, param: ParamDef): boolean {
@@ -112,11 +119,9 @@ function inputIsValid(input: Record<string, unknown>, definition: ToolDef): bool
   )
 }
 
-function executable(tools: ToolSet, name: string) {
+function executable(tools: GatewayToolSet, name: string) {
   const selected = tools[name]
-  return selected && 'execute' in selected && typeof selected.execute === 'function'
-    ? selected.execute
-    : undefined
+  return typeof selected?.execute === 'function' ? selected.execute : undefined
 }
 
 export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
@@ -161,7 +166,11 @@ export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
       }
       const current = options.target()
       if (current.documentId !== target.documentId || current.pageId !== target.pageId) {
-        return failure(call, 'target_mismatch', 'Document or page changed while approval was pending.')
+        return failure(
+          call,
+          'target_mismatch',
+          'Document or page changed while approval was pending.'
+        )
       }
     }
 
@@ -188,7 +197,11 @@ export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
     const fingerprint = stableValue(call)
     const continuationCall = continuations.get(call.continuationId)
     if (continuationCall && continuationCall !== call.callId) {
-      return failure(call, 'call_conflict', 'Continuation identifier was already used by another call.')
+      return failure(
+        call,
+        'call_conflict',
+        'Continuation identifier was already used by another call.'
+      )
     }
     const existing = calls.get(call.callId)
     if (existing) {

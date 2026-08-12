@@ -1,0 +1,260 @@
+import {
+  AGENT_ERROR_SCHEMA,
+  AGENT_EVENT_SCHEMA,
+  AGENT_RECEIPT_SCHEMA,
+  parseAgentRunRequest,
+  parseAgentToolResultContinuation
+} from '@open-pencil/agent-contracts'
+import type {
+  AgentEvent,
+  AgentRunReceipt,
+  AgentRunRequest,
+  AgentToolResultContinuation
+} from '@open-pencil/agent-contracts'
+
+interface RunState {
+  request: AgentRunRequest
+  sessionId: string
+  runId: string
+  events: AgentEvent[]
+  continuation?: AgentToolResultContinuation
+  cancelled: boolean
+}
+
+export interface FakeGateway {
+  fetch(request: Request): Promise<Response>
+  reset(): void
+}
+
+type RunRoute = {
+  state: RunState
+  action: 'tool-results' | 'cancel' | 'events'
+}
+
+function json(data: unknown, status = 200): Response {
+  return Response.json(data, { status })
+}
+
+function receipt(state: RunState, status: AgentRunReceipt['status']): AgentRunReceipt {
+  return {
+    schema: AGENT_RECEIPT_SCHEMA,
+    receiptId: `receipt-${state.runId}`,
+    requestId: state.request.requestId,
+    sessionId: state.sessionId,
+    runId: state.runId,
+    status,
+    acceptedAt: '2026-08-12T12:00:00.000Z',
+    ...(status === 'accepted' ? {} : { completedAt: '2026-08-12T12:00:01.000Z' }),
+    lastSequence: Math.max(0, state.events.length),
+    gateway: { service: 'openpencil-local-agent-gateway', protocolVersion: '1' }
+  }
+}
+
+function push(
+  state: RunState,
+  event: Omit<AgentEvent, 'schema' | 'sessionId' | 'runId' | 'seq' | 'eventId' | 'timestamp'>
+): AgentEvent {
+  const seq = state.events.length
+  const value = {
+    schema: AGENT_EVENT_SCHEMA,
+    sessionId: state.sessionId,
+    runId: state.runId,
+    seq,
+    eventId: `event-${seq}`,
+    timestamp: `2026-08-12T12:00:${String(seq).padStart(2, '0')}.000Z`,
+    ...event
+  } as AgentEvent
+  state.events.push(value)
+  return value
+}
+
+function sse(events: AgentEvent[], malformed = false): Response {
+  const body = malformed
+    ? 'id: broken\ndata: {not-json}\n\n'
+    : events.map((event) => `id: ${event.eventId}\ndata: ${JSON.stringify(event)}\n\n`).join('')
+  return new Response(body, {
+    headers: {
+      'cache-control': 'no-cache, no-transform',
+      'content-type': 'text/event-stream; charset=utf-8',
+      'x-accel-buffering': 'no'
+    }
+  })
+}
+
+function runKey(sessionId: string, runId: string): string {
+  return `${sessionId}/${runId}`
+}
+
+function resolveRunRoute(url: URL, runs: Map<string, RunState>): RunRoute | Response {
+  const match = url.pathname.match(
+    /^\/v1\/sessions\/([^/]+)\/runs\/([^/]+)\/(tool-results|cancel|events)$/
+  )
+  if (!match) return json({ code: 'session-not-found', message: 'Run not found.' }, 404)
+  const state = runs.get(runKey(decodeURIComponent(match[1]), decodeURIComponent(match[2])))
+  if (!state) return json({ code: 'session-not-found', message: 'Run not found.' }, 404)
+  return { state, action: match[3] as RunRoute['action'] }
+}
+
+async function startRun(
+  request: Request,
+  runs: Map<string, RunState>,
+  idempotency: Map<string, RunState>
+): Promise<Response> {
+  let body: AgentRunRequest
+  try {
+    body = parseAgentRunRequest(await request.json())
+  } catch {
+    return json({ code: 'invalid-request', message: 'Malformed run request.' }, 400)
+  }
+  const existing = idempotency.get(body.idempotencyKey)
+  if (existing) return sse(existing.events)
+  const principal = request.headers.get('x-openpencil-principal')
+  if (!principal)
+    return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
+
+  const state: RunState = {
+    request: body,
+    sessionId: body.conversation.sessionId ?? `session-${body.conversation.clientId}`,
+    runId: `run-${body.requestId}`,
+    events: [],
+    cancelled: false
+  }
+  runs.set(runKey(state.sessionId, state.runId), state)
+  idempotency.set(body.idempotencyKey, state)
+  if (body.input.text.includes('[malformed]')) return sse([], true)
+
+  push(state, { type: 'session.created', data: { requestId: body.requestId } })
+  push(state, { type: 'run.started', data: { requestId: body.requestId } })
+  push(state, {
+    type: 'message.start',
+    data: { messageId: 'assistant-1', role: 'assistant' }
+  })
+  push(state, {
+    type: 'message.delta',
+    data: { messageId: 'assistant-1', text: 'I can make ' }
+  })
+  push(state, {
+    type: 'message.delta',
+    data: { messageId: 'assistant-1', text: 'that change. ' }
+  })
+  push(state, {
+    type: 'tool.call',
+    data: {
+      callId: 'call-1',
+      continuationId: 'continuation-1',
+      manifestId: body.tools.manifestId,
+      name: 'create_shape',
+      arguments: {
+        type: 'RECTANGLE',
+        x: 120,
+        y: 120,
+        width: 240,
+        height: 160,
+        name: 'Gateway rectangle'
+      },
+      target: { documentId: body.context.documentId, pageId: body.context.pageId }
+    }
+  })
+  return sse(state.events)
+}
+
+function resumeRun(request: Request, state: RunState): Response {
+  const lastEventId = request.headers.get('last-event-id')
+  const matchedIndex = lastEventId
+    ? state.events.findIndex((event) => event.eventId === lastEventId)
+    : -1
+  if (lastEventId && matchedIndex === -1) {
+    return json({ code: 'session-expired', message: 'Resume cursor is unknown.' }, 410)
+  }
+  return sse(state.events.slice(matchedIndex + 1))
+}
+
+function cancelRun(state: RunState): Response {
+  const existing = state.events.find((event) => event.type === 'run.cancelled')
+  if (existing) return sse([existing])
+  state.cancelled = true
+  const event = push(state, {
+    type: 'run.cancelled',
+    data: { receipt: receipt(state, 'cancelled') }
+  })
+  return sse([event])
+}
+
+async function continueRun(request: Request, state: RunState): Promise<Response> {
+  if (state.cancelled) {
+    return json({ code: 'session-conflict', message: 'Cancelled run cannot continue.' }, 409)
+  }
+  let continuation: AgentToolResultContinuation
+  try {
+    continuation = parseAgentToolResultContinuation(await request.json())
+  } catch {
+    return json({ code: 'invalid-request', message: 'Malformed tool result.' }, 400)
+  }
+  if (continuation.sessionId !== state.sessionId || continuation.runId !== state.runId) {
+    return json({ code: 'session-conflict', message: 'Run identity conflicts.' }, 409)
+  }
+  if (state.continuation) {
+    return JSON.stringify(state.continuation) === JSON.stringify(continuation)
+      ? sse(state.events.filter((event) => event.seq > 5))
+      : json({ code: 'session-conflict', message: 'Conflicting tool result.' }, 409)
+  }
+  state.continuation = continuation
+  if (continuation.status !== 'ok') {
+    const failed = push(state, {
+      type: 'run.failed',
+      data: {
+        error: continuation.error ?? {
+          schema: AGENT_ERROR_SCHEMA,
+          code: 'tool-rejected',
+          message: 'Tool was rejected.',
+          retryable: false,
+          phase: 'tool'
+        }
+      }
+    })
+    return sse([failed])
+  }
+  const next = [
+    push(state, { type: 'tool.result', data: { callId: continuation.callId } }),
+    push(state, {
+      type: 'message.delta',
+      data: { messageId: 'assistant-1', text: 'The rectangle is ready.' }
+    }),
+    push(state, { type: 'message.end', data: { messageId: 'assistant-1' } })
+  ]
+  const completed = push(state, {
+    type: 'run.completed',
+    data: { receipt: receipt(state, 'completed') }
+  })
+  return sse([...next, completed])
+}
+
+export function createFakeGateway(): FakeGateway {
+  const runs = new Map<string, RunState>()
+  const idempotency = new Map<string, RunState>()
+
+  return {
+    async fetch(request) {
+      const url = new URL(request.url)
+      if (url.pathname === '/health') return json({ ok: true })
+
+      if (request.method === 'POST' && url.pathname === '/v1/runs') {
+        return startRun(request, runs, idempotency)
+      }
+
+      const route = resolveRunRoute(url, runs)
+      if (route instanceof Response) return route
+      if (request.method === 'GET' && route.action === 'events')
+        return resumeRun(request, route.state)
+      if (request.method === 'POST' && route.action === 'cancel') return cancelRun(route.state)
+      if (request.method === 'POST' && route.action === 'tool-results') {
+        return continueRun(request, route.state)
+      }
+      return json({ code: 'invalid-request', message: 'Method not allowed.' }, 405)
+    },
+    reset() {
+      runs.clear()
+      idempotency.clear()
+    }
+  }
+}

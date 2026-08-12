@@ -28,7 +28,8 @@ are intentional. Agent execution stays behind a provider-neutral gateway.
   integration.
 - Hosted document, asset, persistence, collaboration-room, and ownership
   services.
-- Provider-neutral hosted agent chat with ELF-authenticated admission.
+- Provider-neutral hosted agent chat with ELF-authenticated admission,
+  deterministic local contract execution, and no hosted-to-local fallback.
 - Hush, Forgejo, Cloudflare, Grove, Pitchfork, staging, promotion, and release
   operations.
 - PSD import, raster composition, image-editor sessions, texture/resource
@@ -44,31 +45,31 @@ upstream.
 
 ## Replay decisions
 
-| Capability                                                    | Current CH5 surface                                                | Replay decision                                                     | Required proof                                                                 |
-| ------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Fork provenance and read-only upstream                        | `AGENTS.md`, README, remote policy                                 | Preserve                                                            | Upstream push URL remains disabled; attribution remains explicit               |
-| CH5 build, Hush, Forgejo, Cloudflare, Grove, and dev services | `.ch5`, `.forgejo`, `.hush`, deployment scripts, `pitchfork.toml`  | Preserve additively                                                 | Local gates; private CI syntax; staging remains separate from production       |
-| ELF hosted authentication                                     | `api/src/auth.ts`, login/callback views, hosted session client     | Recreate on upstream router/app seams                               | RS256/JWKS tests; unauthenticated route gate; callback/session tests           |
-| Hosted documents, assets, and collaboration rooms             | `api/src/documents`, document backends, hosted collaboration tests | Recreate through adapters                                           | CRUD, ownership, room derivation, persistence, and browser collaboration tests |
-| Provider-neutral hosted agent gateway                         | Hosted topology, AI transport adapter, API proxy, proof scripts     | Recreate only at the product/API boundary                           | Typed failure; opaque trace identity; cancellation; no local fallback; no infrastructure fields |
-| Image editor, PSD import, persistence, and layer model        | Large additions under core editor/canvas/IO plus tests             | Preserve as a required CH5 product program, not a blind fork replay | Capability-by-capability tests and explicit upstream-equivalence review        |
-| CLI review receipts and implementation provenance             | CLI additive modules and review tests                              | Recreate against upstream CLI APIs                                  | Machine-readable receipt and Git-lock-free tests                               |
-| MCP/automation targeting                                      | MCP sessions, stdio bridge, live document/page targeting           | Re-evaluate against upstream v0.14 APIs                             | MCP path scoping, session, and target-selection tests                          |
-| UI/editor fixes and performance work                          | App shell, menu, layer tree, input coalescing, canvas recovery     | Re-evaluate test-first                                              | Port only failures still reproducible on upstream                              |
-| Core/scene-graph/Kiwi/package refactors                       | Hundreds of edits in upstream-owned packages                       | Drop historical shape; use upstream v0.14 topology                  | Upstream package build plus focused CH5 contract tests                         |
-| Generated OpenWiki, authority receipts, benchmark records     | `openwiki`, `docs/image-editor` evidence                           | Regenerate after code decisions                                     | Evidence points at the replay candidate, not old private main                  |
+| Capability                                                    | Current CH5 surface                                                                                            | Replay decision                                                     | Required proof                                                                                                                                                                   |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fork provenance and read-only upstream                        | `AGENTS.md`, README, remote policy                                                                             | Preserve                                                            | Upstream push URL remains disabled; attribution remains explicit                                                                                                                 |
+| CH5 build, Hush, Forgejo, Cloudflare, Grove, and dev services | `.ch5`, `.forgejo`, `.hush`, deployment scripts, `pitchfork.toml`                                              | Preserve additively                                                 | Local gates; private CI syntax; staging remains separate from production                                                                                                         |
+| ELF hosted authentication                                     | `api/src/auth.ts`, login/callback views, hosted session client                                                 | Recreate on upstream router/app seams                               | RS256/JWKS tests; unauthenticated route gate; callback/session tests                                                                                                             |
+| Hosted documents, assets, and collaboration rooms             | `api/src/documents`, document backends, hosted collaboration tests                                             | Recreate through adapters                                           | CRUD, ownership, room derivation, persistence, and browser collaboration tests                                                                                                   |
+| Provider-neutral hosted agent gateway                         | Additive protocol/client/API modules plus exact upstream edits recorded by path and symbol in the drift ledger | Preserve only these narrow product/API integration surfaces         | Ordered streaming; typed failure; opaque IDs; run cancellation and in-process reconnect; approval/tool continuation; deterministic gateway; no fallback or infrastructure fields |
+| Image editor, PSD import, persistence, and layer model        | Large additions under core editor/canvas/IO plus tests                                                         | Preserve as a required CH5 product program, not a blind fork replay | Capability-by-capability tests and explicit upstream-equivalence review                                                                                                          |
+| CLI review receipts and implementation provenance             | CLI additive modules and review tests                                                                          | Recreate against upstream CLI APIs                                  | Machine-readable receipt and Git-lock-free tests                                                                                                                                 |
+| MCP/automation targeting                                      | MCP sessions, stdio bridge, live document/page targeting                                                       | Re-evaluate against upstream v0.14 APIs                             | MCP path scoping, session, and target-selection tests                                                                                                                            |
+| UI/editor fixes and performance work                          | App shell, menu, layer tree, input coalescing, canvas recovery                                                 | Re-evaluate test-first                                              | Port only failures still reproducible on upstream                                                                                                                                |
+| Core/scene-graph/Kiwi/package refactors                       | Hundreds of edits in upstream-owned packages                                                                   | Drop historical shape; use upstream v0.14 topology                  | Upstream package build plus focused CH5 contract tests                                                                                                                           |
+| Generated OpenWiki, authority receipts, benchmark records     | `openwiki`, `docs/image-editor` evidence                                                                       | Regenerate after code decisions                                     | Evidence points at the replay candidate, not old private main                                                                                                                    |
 
 ## Upstream overlap
 
-| Capability                                              | Upstream status                                                | Policy                                                     |
-| ------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------- |
-| DOM/CSS, Design JSX, Kiwi, Fig, Vue SDK                 | Fully or mostly present, often with newer architecture         | Use upstream; retain only failing CH5 contract tests       |
-| Layer virtualization and input coalescing               | Present upstream                                               | Drop old patches unless their focused tests fail           |
-| Storage workspace, local-first sync, S3, previews       | Present upstream, but not equivalent to CH5 hosted persistence | Use upstream UI/storage; keep hosted backend as an adapter |
-| MCP, CLI, automation                                    | Present but CH5 targeting and provenance differ                | Rebuild only CH5 targeting and receipt contracts           |
-| Canvas recovery and resource resilience                 | Partly present                                                 | Re-test each failure; keep only remaining gaps             |
-| PSD and image-editor runtime                            | No equivalent upstream subsystem                               | Separate CH5 product program                               |
-| ELF auth, hosted API, agent-gateway boundary, CH5 deployment | No equivalent upstream authority                             | Keep additive and explicit                                 |
+| Capability                                                   | Upstream status                                                | Policy                                                     |
+| ------------------------------------------------------------ | -------------------------------------------------------------- | ---------------------------------------------------------- |
+| DOM/CSS, Design JSX, Kiwi, Fig, Vue SDK                      | Fully or mostly present, often with newer architecture         | Use upstream; retain only failing CH5 contract tests       |
+| Layer virtualization and input coalescing                    | Present upstream                                               | Drop old patches unless their focused tests fail           |
+| Storage workspace, local-first sync, S3, previews            | Present upstream, but not equivalent to CH5 hosted persistence | Use upstream UI/storage; keep hosted backend as an adapter |
+| MCP, CLI, automation                                         | Present but CH5 targeting and provenance differ                | Rebuild only CH5 targeting and receipt contracts           |
+| Canvas recovery and resource resilience                      | Partly present                                                 | Re-test each failure; keep only remaining gaps             |
+| PSD and image-editor runtime                                 | No equivalent upstream subsystem                               | Separate CH5 product program                               |
+| ELF auth, hosted API, agent-gateway boundary, CH5 deployment | No equivalent upstream authority                               | Keep additive and explicit                                 |
 
 ## Current replay candidate
 
@@ -84,9 +85,9 @@ Replayed:
 - Core hosted contract and focused auth/API tests.
 - Hosted document frontend through upstream storage adapters, tabs, and
   local-first sync.
-- Existing Firefly runtime/billing transport as a temporary migration source;
-  replace it with the provider-neutral contract in
-  `docs/ch5/agent-chat-boundary.md`.
+- Provider-neutral gateway boundary: independent `hostedAgent` selection,
+  generic run lifecycle, guarded client-side actions, shared product approval,
+  and narrow API/config integration. ELF remains authentication only.
 - Strict CLI review receipts and implementation provenance.
 - Additive PSD staging/rasterization, image composition/resilience, and atomic
   image-persistence extension APIs with focused regressions.
@@ -112,7 +113,9 @@ The candidate is aligned to the inspected `upstream/master`
 2. Seed only additive CH5 operations and hosted API files.
 3. Recreate hosted flags, routing, auth, document backend, and collaboration
    seams against upstream's current app architecture.
-4. Run hosted contract tests before any product-extension replay.
+4. Reconcile every exact upstream-owned agent path/symbol row in the drift
+   ledger and run deterministic gateway contract tests before any
+   product-extension replay.
 5. Treat image extensions as a bounded program. Keep proven PSD, raster,
    resilience, and persistence primitives additive; do not restore parallel
    product authorities.
