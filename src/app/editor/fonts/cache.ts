@@ -5,6 +5,7 @@ import {
   readCacheJson,
   removeCacheEntry,
   removeCachePrefix,
+  renameCacheEntry,
   writeCacheBytes,
   writeCacheJson,
 } from "@/app/cache";
@@ -34,6 +35,16 @@ const MANIFEST_PATH = `${CACHE_DIR}/manifest`;
 const FILE_DIR = `${CACHE_DIR}/files`;
 const EMPTY_MANIFEST: FontCacheManifest = { version: 1, entries: {} };
 const textEncoder = new TextEncoder();
+let transactionTail = Promise.resolve();
+
+function serialize<T>(operation: () => Promise<T>): Promise<T> {
+  const result = transactionTail.then(operation, operation);
+  transactionTail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  return result;
+}
 
 async function cacheKey(family: string, style: string) {
   return hashText(`${family}\0${style}`);
@@ -59,38 +70,68 @@ async function readManifest(): Promise<FontCacheManifest> {
   return { version: 1, entries: manifest.entries };
 }
 
-async function writeManifest(manifest: FontCacheManifest) {
-  await writeCacheJson(MANIFEST_PATH, manifest);
+async function writeManifest(path: string, manifest: FontCacheManifest) {
+  await writeCacheJson(path, manifest);
+}
+
+async function waitForAbortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  signal.throwIfAborted();
+
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", abort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", abort);
+        reject(error);
+      },
+    );
+  });
+}
+
+async function removeFileIfUnreferenced(file: string) {
+  const manifest = await readManifest();
+  const referenced = Object.values(manifest.entries).some((entry) => entry?.file === file);
+  if (!referenced) await removeCacheEntry(`${FILE_DIR}/${file}`);
 }
 
 export async function downloadedFontCacheSummary(): Promise<DownloadedFontCacheSummary> {
-  const manifest = await readManifest();
-  const entries = Object.values(manifest.entries).filter(
-    (entry): entry is FontCacheEntry => !!entry,
-  );
-  return {
-    count: entries.length,
-    byteLength: entries.reduce((sum, entry) => sum + entry.byteLength, 0),
-    updatedAt: entries.length > 0 ? Math.max(...entries.map((entry) => entry.updatedAt)) : null,
-  };
+  return serialize(async () => {
+    const manifest = await readManifest();
+    const entries = Object.values(manifest.entries).filter(
+      (entry): entry is FontCacheEntry => !!entry,
+    );
+    return {
+      count: entries.length,
+      byteLength: entries.reduce((sum, entry) => sum + entry.byteLength, 0),
+      updatedAt: entries.length > 0 ? Math.max(...entries.map((entry) => entry.updatedAt)) : null,
+    };
+  });
 }
 
 export async function clearDownloadedFontCache(): Promise<void> {
-  await removeCachePrefix(CACHE_DIR);
+  await serialize(() => removeCachePrefix(CACHE_DIR));
 }
 
 export function createTauriDownloadedFontCache(): DownloadedFontCache {
   return {
     async read(family, style) {
-      const manifest = await readManifest();
-      const entry = manifest.entries[await cacheKey(family, style)];
-      if (!entry) return null;
+      return serialize(async () => {
+        const manifest = await readManifest();
+        const entry = manifest.entries[await cacheKey(family, style)];
+        if (!entry) return null;
 
-      const buffer = await readCacheBytes(`${FILE_DIR}/${entry.file}`);
-      if (!buffer) return null;
-      if (buffer.byteLength !== entry.byteLength) return null;
-      if ((await hashBytes(buffer)) !== entry.sha256) return null;
-      return buffer;
+        const buffer = await readCacheBytes(`${FILE_DIR}/${entry.file}`);
+        if (!buffer) return null;
+        if (buffer.byteLength !== entry.byteLength) return null;
+        if ((await hashBytes(buffer)) !== entry.sha256) return null;
+        return buffer;
+      });
     },
 
     async write(family, style, data, signal) {
@@ -101,39 +142,52 @@ export function createTauriDownloadedFontCache(): DownloadedFontCache {
       signal?.throwIfAborted();
       const file = `${key}-${sha256}.ttf`;
       const filePath = `${FILE_DIR}/${file}`;
-      const previousManifest = await readManifest();
-      signal?.throwIfAborted();
-      const previousEntry = previousManifest.entries[key];
-      const manifest: FontCacheManifest = {
-        version: 1,
-        entries: { ...previousManifest.entries },
-      };
-
-      manifest.entries[key] = {
-        family,
-        style,
-        file,
-        byteLength: data.byteLength,
-        sha256,
-        updatedAt: Date.now(),
-      };
-
-      let manifestWriteStarted = false;
-      try {
-        await writeCacheBytes(filePath, data);
+      await serialize(async () => {
         signal?.throwIfAborted();
-        manifestWriteStarted = true;
-        await writeManifest(manifest);
+        const previousManifest = await readManifest();
         signal?.throwIfAborted();
-      } catch (error) {
-        if (manifestWriteStarted) await writeManifest(previousManifest);
-        await removeCacheEntry(filePath);
-        throw error;
-      }
+        const previousEntry = previousManifest.entries[key];
+        const manifest: FontCacheManifest = {
+          version: 1,
+          entries: {
+            ...previousManifest.entries,
+            [key]: {
+              family,
+              style,
+              file,
+              byteLength: data.byteLength,
+              sha256,
+              updatedAt: Date.now(),
+            },
+          },
+        };
+        const stagedManifestPath = `${CACHE_DIR}/manifest-${crypto.randomUUID()}`;
 
-      if (previousEntry && previousEntry.file !== file) {
-        await removeCacheEntry(`${FILE_DIR}/${previousEntry.file}`);
-      }
+        try {
+          await writeCacheBytes(filePath, data);
+          signal?.throwIfAborted();
+          const stagedWrite = writeManifest(stagedManifestPath, manifest);
+          try {
+            await waitForAbortable(stagedWrite, signal);
+          } catch (error) {
+            void stagedWrite.then(
+              () => removeCacheEntry(stagedManifestPath),
+              () => undefined,
+            );
+            throw error;
+          }
+          signal?.throwIfAborted();
+          await renameCacheEntry(stagedManifestPath, MANIFEST_PATH);
+        } catch (error) {
+          await removeCacheEntry(stagedManifestPath);
+          await removeFileIfUnreferenced(file);
+          throw error;
+        }
+
+        if (previousEntry && previousEntry.file !== file) {
+          await removeFileIfUnreferenced(previousEntry.file);
+        }
+      });
     },
   };
 }
