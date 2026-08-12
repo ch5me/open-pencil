@@ -102,9 +102,11 @@ without external providers. The fixture is not a production fallback.
 - Cancellation aborts local stream consumption, rejects pending approval for the
   run, prevents later local execution, and sends the run cancellation operation
   when a run ID is known.
-- In-process reconnect uses the canonical gateway session/run identity and last
-  event ID. Unknown cursors fail explicitly. Reload-persistent resume is not
-  implemented.
+- Reconnect uses the canonical gateway session/run identity and last event ID.
+  Browser reload recovery persists only bounded, expiring, document-scoped
+  provider-neutral run identity and one pending continuation in session
+  storage. Unknown cursors, corrupt state, and identity conflicts fail
+  explicitly.
 - Approval rejects by default when no handler answers. A rejection is returned
   as a continuation, not flattened into assistant text.
 - Duplicate identical continuations are idempotent; a conflicting result for

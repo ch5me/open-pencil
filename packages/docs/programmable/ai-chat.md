@@ -48,14 +48,14 @@ runtimes, workers, containers, images, registries, or deployment infrastructure.
 Design actions still execute inside OpenPencil through a remote-enabled subset
 of the validated tool registry used by local chat and MCP. The hosted flow
 supports streamed replies, correlated approval and tool-result continuation,
-run cancellation, and in-process reconnect while the current run identity
-remains in memory.
+run cancellation, and reconnect after a transient disconnect or browser reload.
+Reload recovery keeps only bounded, expiring, document-scoped run identity and
+one pending provider-neutral continuation in session storage.
 
 Hosted chat fails explicitly if its service is unavailable or a run cannot
-reconnect. Reload-persistent session recovery is not implemented. Hosted mode
-never sends the prompt to a configured BYOK provider or local ACP
-agent as a fallback. Local and desktop installations can continue to select
-BYOK or ACP directly when hosted agent chat is not enabled.
+reconnect. Hosted mode never sends the prompt to a configured BYOK provider or
+local ACP agent as a fallback. Local and desktop installations can continue to
+select BYOK or ACP directly when hosted agent chat is not enabled.
 
 ## What It Can Do
 

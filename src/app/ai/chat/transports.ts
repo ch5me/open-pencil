@@ -176,6 +176,7 @@ export function createChatSessionManager({
         transport = createAgentServiceChatTransport({
           store,
           documentId,
+          clientId: documentId,
           isTargetActive: () => getActiveTabId() === documentId && getActiveEditorStore() === store
         })
       } else if (isACPProvider.value) {

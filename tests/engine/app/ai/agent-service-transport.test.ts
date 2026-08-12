@@ -11,6 +11,8 @@ import {
 } from '@open-pencil/core/agent'
 import type { AgentRunRequest, AgentToolResultContinuation } from '@open-pencil/core/agent'
 
+import { loadAgentSession, saveAgentSession } from '@/app/ai/agent-service/session'
+import type { AgentResumeStore } from '@/app/ai/agent-service/session'
 import {
   AgentServiceChatTransport,
   AgentServiceTransportError,
@@ -76,6 +78,22 @@ function transport(fetch: typeof globalThis.fetch) {
   })
 }
 
+class MemorySessionStorage implements AgentResumeStore {
+  readonly values = new Map<string, string>()
+
+  getItem(key: string) {
+    return this.values.get(key) ?? null
+  }
+
+  setItem(key: string, value: string) {
+    this.values.set(key, value)
+  }
+
+  removeItem(key: string) {
+    this.values.delete(key)
+  }
+}
+
 function requestBody(init?: RequestInit): unknown {
   if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body')
   return JSON.parse(init.body) as unknown
@@ -90,6 +108,31 @@ function continuationRequest(init?: RequestInit): AgentToolResultContinuation {
 }
 
 describe('hosted agent service transport', () => {
+  test('deletes corrupt and expired bounded resume state', () => {
+    const resumeStore = new MemorySessionStorage()
+    const state = {
+      documentId: 'document-1',
+      clientId: 'chat',
+      requestId: 'request-1',
+      idempotencyKey: 'idempotency-1',
+      sessionId: 'session-1',
+      runId: 'run-1',
+      lastEventId: 'event-1',
+      sequence: 1
+    }
+    expect(saveAgentSession(resumeStore, state, 100)).toBeTrue()
+    expect(loadAgentSession(resumeStore, 'document-1', 'chat', 101)).toMatchObject(state)
+    expect(loadAgentSession(resumeStore, 'document-1', 'chat', 86_400_101)).toBeUndefined()
+    expect(resumeStore.values.size).toBe(0)
+
+    expect(saveAgentSession(resumeStore, state, 100)).toBeTrue()
+    const key = resumeStore.values.keys().next().value
+    if (!key) throw new Error('Expected persisted resume key')
+    resumeStore.values.set(key, '{corrupt')
+    expect(loadAgentSession(resumeStore, 'document-1', 'chat', 101)).toBeUndefined()
+    expect(resumeStore.values.size).toBe(0)
+  })
+
   test('extracts latest user turn and sends the canonical shared request', async () => {
     expect(latestUserMessage([userMessage('first'), userMessage('latest')]).parts).toEqual([
       { type: 'text', text: 'latest' }
@@ -338,41 +381,45 @@ describe('hosted agent service transport', () => {
 
   test('retries a stranded continuation without executing the action twice', async () => {
     const store = createEditorStore()
+    const resumeStore = new MemorySessionStorage()
     const pageId = store.state.currentPageId
     let continuationAttempts = 0
     let started = false
+    const requestFetch: typeof globalThis.fetch = async (_input, init) => {
+      if (!started) {
+        started = true
+        const body = runRequest(init)
+        const { requestId } = body
+        const { manifestId } = body.tools
+        return sse([
+          event(0, 'run.started', { requestId }),
+          event(1, 'tool.call', {
+            callId: 'call-1',
+            continuationId: 'continue-1',
+            manifestId,
+            name: 'create_shape',
+            arguments: { type: 'RECTANGLE', x: 10, y: 20, width: 100, height: 80 },
+            target: { documentId: 'document-1', pageId }
+          })
+        ])
+      }
+      const body = continuationRequest(init)
+      continuationAttempts++
+      if (continuationAttempts === 1) throw new Error('connection lost')
+      return sse([
+        event(2, 'run.completed', {
+          receipt: { ...receipt(2), requestId: body.requestId }
+        })
+      ])
+    }
     const hosted = new AgentServiceChatTransport({
       apiOrigin: 'https://agent.test',
       store,
       documentId: 'document-1',
+      clientId: 'chat',
+      resumeStore,
       approve: async () => true,
-      fetch: async (_input, init) => {
-        if (!started) {
-          started = true
-          const body = runRequest(init)
-          const { requestId } = body
-          const { manifestId } = body.tools
-          return sse([
-            event(0, 'run.started', { requestId }),
-            event(1, 'tool.call', {
-              callId: 'call-1',
-              continuationId: 'continue-1',
-              manifestId,
-              name: 'create_shape',
-              arguments: { type: 'RECTANGLE', x: 10, y: 20, width: 100, height: 80 },
-              target: { documentId: 'document-1', pageId }
-            })
-          ])
-        }
-        const body = continuationRequest(init)
-        continuationAttempts++
-        if (continuationAttempts === 1) throw new Error('connection lost')
-        return sse([
-          event(2, 'run.completed', {
-            receipt: { ...receipt(2), requestId: body.requestId }
-          })
-        ])
-      }
+      fetch: requestFetch
     })
 
     const before = store.graph.getChildren(pageId).length
@@ -386,11 +433,29 @@ describe('hosted agent service transport', () => {
     await expect(chunks(stream)).rejects.toBeInstanceOf(Error)
     expect(store.graph.getChildren(pageId)).toHaveLength(before + 1)
 
-    const resumed = await hosted.reconnectToStream()
+    const reloaded = new AgentServiceChatTransport({
+      apiOrigin: 'https://agent.test',
+      store,
+      documentId: 'document-1',
+      clientId: 'chat',
+      resumeStore,
+      fetch: requestFetch
+    })
+    await expect(
+      reloaded.sendMessages({
+        trigger: 'submit-message',
+        chatId: 'chat',
+        messageId: undefined,
+        messages: [userMessage('Do not start again')],
+        abortSignal: undefined
+      })
+    ).rejects.toMatchObject({ code: 'session-conflict' })
+    const resumed = await reloaded.reconnectToStream()
     expect(resumed).not.toBeNull()
     if (resumed) await chunks(resumed)
     expect(continuationAttempts).toBe(2)
     expect(store.graph.getChildren(pageId)).toHaveLength(before + 1)
+    expect(resumeStore.values.size).toBe(0)
   })
 
   test('rejects mutation calls when the active document changed', async () => {
