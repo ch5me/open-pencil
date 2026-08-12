@@ -1,5 +1,17 @@
 export { createImageRenderAdapter, type ImageRenderAdapterOptions } from './adapter'
 export {
+  createImageResilienceSession,
+  ImageResilienceSessionBusyError,
+  ImageResilienceSourceError,
+  type ImageMeasuredRenderOptions,
+  type ImageProgressiveOpenOptions,
+  type ImageResilienceOpenReport,
+  type ImageResilienceRenderReport,
+  type ImageResilienceSession,
+  type ImageResilienceSessionOptions,
+  type ImageResilienceStageReport
+} from './session'
+export {
   chooseProxyScale,
   chooseTextureScale,
   createImageTilePlan,
