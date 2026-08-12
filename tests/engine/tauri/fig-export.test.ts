@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 type FixtureMode = 'ordinary' | 'pre-abort' | 'active-boundary'
 
 describe('Tauri fig export', () => {
-  test('delegates fig archive construction to the Tauri Rust command', async () => {
+  test('allows signal-bearing Tauri export when cancellation is not requested', async () => {
     const result = await runFixture('ordinary')
     expect(result).toEqual({ exitCode: 0, stdout: '', stderr: '' })
   })
@@ -13,7 +13,7 @@ describe('Tauri fig export', () => {
     expect(result).toEqual({ exitCode: 0, stdout: '', stderr: '' })
   })
 
-  test('fails loud before dispatch when active Tauri compression must be cancellable', async () => {
+  test('fails loud when cancellation is requested during active Tauri compression', async () => {
     const result = await runFixture('active-boundary')
     expect(result).toEqual({ exitCode: 0, stdout: '', stderr: '' })
   })

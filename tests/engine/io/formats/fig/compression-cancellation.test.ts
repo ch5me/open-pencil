@@ -33,9 +33,15 @@ class FakeWorker {
 
 Object.assign(globalThis, { window: {}, Worker: FakeWorker })
 
-const [{ exportFigFile, compressFigData }, { IOCancelledError }, { initCodec }] = await Promise.all(
-  [import('#core/io/formats/fig'), import('#core/io/limits'), import('#core/kiwi')]
-)
+const [
+  { exportFigFile, compressFigData, FigCompressionCancellationUnsupportedError },
+  { IOCancelledError },
+  { initCodec }
+] = await Promise.all([
+  import('#core/io/formats/fig/export'),
+  import('#core/io/limits'),
+  import('#core/kiwi')
+])
 await initCodec()
 
 afterAll(() => {
@@ -108,6 +114,39 @@ test('pre-aborted non-worker compression rejects before synchronous work', async
         controller.signal
       )
     ).rejects.toBeInstanceOf(IOCancelledError)
+  } finally {
+    Object.assign(globalThis, { Worker: FakeWorker })
+  }
+})
+
+test('worker-unavailable compression rejects cancellable work before synchronous fallback', async () => {
+  const controller = new AbortController()
+  Object.assign(globalThis, { Worker: undefined })
+
+  try {
+    await expect(
+      compressFigData(
+        new Uint8Array(),
+        new Uint8Array(),
+        new Uint8Array(),
+        '{}',
+        [],
+        undefined,
+        controller.signal
+      )
+    ).rejects.toBeInstanceOf(FigCompressionCancellationUnsupportedError)
+  } finally {
+    Object.assign(globalThis, { Worker: FakeWorker })
+  }
+})
+
+test('worker-unavailable compression preserves no-signal synchronous fallback', async () => {
+  Object.assign(globalThis, { Worker: undefined })
+
+  try {
+    await expect(
+      compressFigData(new Uint8Array(), new Uint8Array(), new Uint8Array(), '{}', [])
+    ).resolves.toBeInstanceOf(Uint8Array)
   } finally {
     Object.assign(globalThis, { Worker: FakeWorker })
   }

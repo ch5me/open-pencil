@@ -411,22 +411,46 @@ async function compressViaTauri(
   signal?: AbortSignal
 ): Promise<Uint8Array> {
   if (signal?.aborted) throw new IOCancelledError('IO export cancelled')
-  if (signal) {
-    throw new FigCompressionCancellationUnsupportedError(
-      'Abortable FIG compression is unsupported by the Tauri invoke boundary'
-    )
-  }
   const { invoke } = await import('@tauri-apps/api/core')
-  return new Uint8Array(
-    await invoke<number[]>('build_fig_file', {
-      schemaDeflated: Array.from(schemaDeflated),
-      kiwiData: Array.from(kiwiData),
-      thumbnailPng: Array.from(thumbnailPNG),
-      metaJson: metaJSON,
-      images: imageEntries.map((e) => ({ name: e.name, data: Array.from(e.data) })),
-      figKiwiVersion
-    })
-  )
+  if (signal?.aborted) throw new IOCancelledError('IO export cancelled')
+  const compression = invoke<number[]>('build_fig_file', {
+    schemaDeflated: Array.from(schemaDeflated),
+    kiwiData: Array.from(kiwiData),
+    thumbnailPng: Array.from(thumbnailPNG),
+    metaJson: metaJSON,
+    images: imageEntries.map((e) => ({ name: e.name, data: Array.from(e.data) })),
+    figKiwiVersion
+  })
+  if (!signal) return new Uint8Array(await compression)
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const finish = (callback: () => void) => {
+      if (settled) return
+      settled = true
+      signal.removeEventListener('abort', cancel)
+      callback()
+    }
+    const cancel = () =>
+      finish(() =>
+        reject(
+          new FigCompressionCancellationUnsupportedError(
+            'Active FIG compression cannot be cancelled across the Tauri invoke boundary'
+          )
+        )
+      )
+
+    signal.addEventListener('abort', cancel, { once: true })
+    if (signal.aborted) {
+      cancel()
+      return
+    }
+    void compression
+      .then((bytes) => finish(() => resolve(new Uint8Array(bytes))))
+      .catch((error: unknown) =>
+        finish(() => reject(error instanceof Error ? error : new Error(String(error))))
+      )
+  })
 }
 
 export async function exportFigFile(
@@ -740,6 +764,11 @@ export function compressFigData(
       figKiwiVersion,
       signal,
       timeoutMs
+    )
+  }
+  if (signal) {
+    return Promise.reject(
+      new FigCompressionCancellationUnsupportedError('Abortable FIG compression requires a worker')
     )
   }
   return Promise.resolve(
