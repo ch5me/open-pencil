@@ -30,16 +30,10 @@ function rawText(): Plugin {
 function emittedWorkerUrls(): Plugin {
   return {
     name: 'emitted-worker-urls',
-    transform(code, id) {
-      if (
-        !id.endsWith('/io/formats/raster/worker-host.ts') &&
-        !id.endsWith('/io/formats/fig/export.ts')
-      )
-        return
-
+    transform(code) {
       return code.replace(
-        /new URL\((['"])(\.\/(?:worker|export-worker))\.ts\1, import\.meta\.url\)/g,
-        'new URL($1$2.js$1, import.meta.url)'
+        /new URL\((['"])([^'"]*\/)?([^/'"]*worker)\.ts\1, import\.meta\.url\)/g,
+        'new URL($1$2$3.js$1, import.meta.url)'
       )
     }
   }
