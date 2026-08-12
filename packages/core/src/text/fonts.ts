@@ -24,7 +24,7 @@ export interface FontFamilyOption {
 
 export interface DownloadedFontCache {
   read(family: string, style: string): Promise<ArrayBuffer | null>;
-  write(family: string, style: string, data: ArrayBuffer): Promise<void>;
+  write(family: string, style: string, data: ArrayBuffer, signal?: AbortSignal): Promise<void>;
 }
 
 export interface LoadedFontData {
@@ -558,7 +558,7 @@ export class FontManager {
     signal?.throwIfAborted();
     if (!this.downloadedFontCache) return;
     try {
-      await this.downloadedFontCache.write(family, style, data);
+      await this.downloadedFontCache.write(family, style, data, signal);
     } catch (e) {
       console.warn(`Downloaded font cache write failed for "${family}" ${style}:`, e);
     }

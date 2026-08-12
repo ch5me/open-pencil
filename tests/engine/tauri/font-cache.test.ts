@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
 import { clearTauriMocks, mockTauriIPC } from "#tests/helpers/tauri/mocks";
-import { clearDownloadedFontCache, downloadedFontCacheSummary } from "@/app/editor/fonts/cache";
+import {
+  clearDownloadedFontCache,
+  createTauriDownloadedFontCache,
+  downloadedFontCacheSummary,
+} from "@/app/editor/fonts/cache";
 
 const encoder = new TextEncoder();
 
@@ -83,5 +87,49 @@ describe("Tauri downloaded font cache helpers", () => {
         },
       },
     ]);
+  });
+
+  test("removes staged bytes and skips manifest publication after mid-write abort", async () => {
+    const calls: Array<{ cmd: string; path?: string }> = [];
+    let releaseByteWrite: (() => void) | undefined;
+    let byteWriteStarted: (() => void) | undefined;
+    const byteWrite = new Promise<void>((resolve) => {
+      byteWriteStarted = resolve;
+    });
+    const byteWriteRelease = new Promise<void>((resolve) => {
+      releaseByteWrite = resolve;
+    });
+    let writes = 0;
+    await mockTauriIPC(async (cmd, args, options) => {
+      const path =
+        (args as { path?: string }).path ??
+        (options as { headers?: { path?: string } } | undefined)?.headers?.path;
+      calls.push({ cmd, path });
+      if (cmd === "plugin:fs|read_file") throw new Error("missing");
+      if (cmd === "plugin:fs|write_file" && writes++ === 0) {
+        byteWriteStarted?.();
+        await byteWriteRelease;
+      }
+      return null;
+    });
+
+    const controller = new AbortController();
+    const writing = createTauriDownloadedFontCache().write(
+      "Abort Cache",
+      "Regular",
+      new Uint8Array([1, 2, 3, 4]).buffer,
+      controller.signal,
+    );
+    await byteWrite;
+    controller.abort();
+    releaseByteWrite?.();
+
+    await expect(writing).rejects.toBeInstanceOf(DOMException);
+    expect(
+      calls.some(({ cmd, path }) => cmd === "plugin:fs|remove" && path?.includes("/files/")),
+    ).toBe(true);
+    expect(
+      calls.some(({ cmd, path }) => cmd === "plugin:fs|write_file" && path?.endsWith("/manifest")),
+    ).toBe(false);
   });
 });

@@ -168,80 +168,62 @@ test("timeout still terminates raster work with a caller signal", async () => {
   expect(terminated).toBe(true);
 });
 
-async function expectNoLateFontPublication(cancel: (controller: AbortController) => void) {
-  let resolveFontBytes: ((data: ArrayBuffer) => void) | undefined;
-  let fontRequestStarted: (() => void) | undefined;
-  const fontRequest = new Promise<void>((resolve) => {
-    fontRequestStarted = resolve;
+async function expectNoLateFontPublication(signal: AbortSignal, cancel?: () => void) {
+  let releaseCacheWrite: (() => void) | undefined;
+  let cacheWriteStarted: (() => void) | undefined;
+  const cacheWrite = new Promise<void>((resolve) => {
+    cacheWriteStarted = resolve;
   });
-  let writes = 0;
+  const cacheWriteRelease = new Promise<void>((resolve) => {
+    releaseCacheWrite = resolve;
+  });
+  let cacheSignal: AbortSignal | undefined;
+  let published = false;
   fontManager.setDownloadedFontCache({
     read: () => Promise.resolve(null),
-    write: async () => {
-      writes++;
+    write: async (_family, _style, _data, signal) => {
+      cacheSignal = signal;
+      cacheWriteStarted?.();
+      await cacheWriteRelease;
+      signal?.throwIfAborted();
+      published = true;
     },
   });
+  const family = `LateCacheWrite_${Date.now()}`;
+  const data = new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer;
   Object.assign(globalThis, {
-    fetch: (input: string | URL | Request) => {
-      if (String(input).includes("www.googleapis.com")) {
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              items: [
-                {
-                  family: "Late Cancelled Export",
-                  files: { regular: "https://fonts.example/font.ttf" },
-                },
-              ],
-            }),
-            { status: 200 },
-          ),
-        );
-      }
-      fontRequestStarted?.();
-      return Promise.resolve({
-        ok: true,
-        arrayBuffer: () =>
-          new Promise<ArrayBuffer>((resolve) => {
-            resolveFontBytes = resolve;
-          }),
-      } as Response);
-    },
+    fetch: (input: string | URL | Request) =>
+      String(input).includes("www.googleapis.com")
+        ? Promise.resolve(
+            new Response(
+              JSON.stringify({
+                items: [{ family, files: { regular: "https://fonts.example/font.ttf" } }],
+              }),
+              { status: 200 },
+            ),
+          )
+        : Promise.resolve(new Response(data, { status: 200 })),
   });
-
-  const graph = new SceneGraph();
-  const page = graph.getPages()[0];
-  const family = "Late Cancelled Export";
-  const text = graph.createNode("TEXT", page.id, {
-    text: "Cancelled",
-    fontFamily: family,
-    fontWeight: 400,
+  const loading = fontManager.loadFont(family, "Regular", signal);
+  await cacheWrite;
+  cancel?.();
+  await new Promise<void>((resolve) => {
+    if (cacheSignal?.aborted) resolve();
+    else cacheSignal?.addEventListener("abort", () => resolve(), { once: true });
   });
-  const controller = new AbortController();
-  const exporting = renderRasterViaWorker(
-    graph,
-    page.id,
-    [text.id],
-    { format: "PNG" },
-    controller.signal,
-    1,
-  );
-  await fontRequest;
-  cancel(controller);
-
-  await expect(exporting).rejects.toBeInstanceOf(IOCancelledError);
-  resolveFontBytes?.(new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer);
-  await waitForWorkerDispatch();
-  expect(writes).toBe(0);
+  releaseCacheWrite?.();
+  await expect(loading).rejects.toBeInstanceOf(DOMException);
+  expect(published).toBe(false);
   expect(fontManager.isStyleLoaded(family, "Regular")).toBe(false);
 }
 
 test("cancelled font acquisition publishes no cache or loaded state after settling", () => {
-  return expectNoLateFontPublication((controller) => controller.abort());
+  const controller = new AbortController();
+  return expectNoLateFontPublication(controller.signal, () => controller.abort());
 });
 
 test("timed-out font acquisition publishes no cache or loaded state after settling", () => {
-  return expectNoLateFontPublication(() => undefined);
+  return expectNoLateFontPublication(AbortSignal.timeout(25));
 });
 
 test("concurrent raster exports stay caller-owned without detaching editor bytes", async () => {

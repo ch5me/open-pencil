@@ -3,6 +3,7 @@ import type { DownloadedFontCache } from "@open-pencil/core/text";
 import {
   readCacheBytes,
   readCacheJson,
+  removeCacheEntry,
   removeCachePrefix,
   writeCacheBytes,
   writeCacheJson,
@@ -92,13 +93,22 @@ export function createTauriDownloadedFontCache(): DownloadedFontCache {
       return buffer;
     },
 
-    async write(family, style, data) {
+    async write(family, style, data, signal) {
+      signal?.throwIfAborted();
       const key = await cacheKey(family, style);
+      signal?.throwIfAborted();
       const sha256 = await hashBytes(data);
-      const file = `${key}.ttf`;
-      await writeCacheBytes(`${FILE_DIR}/${file}`, data);
+      signal?.throwIfAborted();
+      const file = `${key}-${sha256}.ttf`;
+      const filePath = `${FILE_DIR}/${file}`;
+      const previousManifest = await readManifest();
+      signal?.throwIfAborted();
+      const previousEntry = previousManifest.entries[key];
+      const manifest: FontCacheManifest = {
+        version: 1,
+        entries: { ...previousManifest.entries },
+      };
 
-      const manifest = await readManifest();
       manifest.entries[key] = {
         family,
         style,
@@ -107,7 +117,23 @@ export function createTauriDownloadedFontCache(): DownloadedFontCache {
         sha256,
         updatedAt: Date.now(),
       };
-      await writeManifest(manifest);
+
+      let manifestWriteStarted = false;
+      try {
+        await writeCacheBytes(filePath, data);
+        signal?.throwIfAborted();
+        manifestWriteStarted = true;
+        await writeManifest(manifest);
+        signal?.throwIfAborted();
+      } catch (error) {
+        if (manifestWriteStarted) await writeManifest(previousManifest);
+        await removeCacheEntry(filePath);
+        throw error;
+      }
+
+      if (previousEntry && previousEntry.file !== file) {
+        await removeCacheEntry(`${FILE_DIR}/${previousEntry.file}`);
+      }
     },
   };
 }
