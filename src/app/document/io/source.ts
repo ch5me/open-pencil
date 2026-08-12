@@ -2,7 +2,7 @@ import type { Editor, EditorState } from '@open-pencil/core/editor'
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { canUseRasterExportWorker } from '@open-pencil/core/io/formats/raster'
 
-import { createAutosave } from '@/app/document/autosave'
+import { createAbortableSaveOperation, createAutosave } from '@/app/document/autosave/create'
 import {
   documentNameFromFigPath,
   downloadNameFromPath,
@@ -47,12 +47,28 @@ export function createDocumentSourceActions({
   setLastWriteTime,
   getRenderer
 }: DocumentSourceOptions) {
-  function buildFigFile() {
+  const saveOperation = createAbortableSaveOperation()
+  let currentSaveSignal: AbortSignal | undefined
+
+  async function buildFigFile(signal = currentSaveSignal) {
     const renderer = canUseRasterExportWorker() ? undefined : (getRenderer() ?? undefined)
-    return exportFigFile(editor.graph, undefined, renderer, state.currentPageId)
+    const data = await exportFigFile(
+      editor.graph,
+      undefined,
+      renderer,
+      state.currentPageId,
+      false,
+      signal
+    )
+    signal?.throwIfAborted()
+    return data
   }
 
-  const { saveFigFile, saveFigFileAs, writeFile } = createSaveActions({
+  const {
+    saveFigFile: saveFigFileUncontrolled,
+    saveFigFileAs: saveFigFileAsUncontrolled,
+    writeFile
+  } = createSaveActions({
     state,
     buildFigFile,
     getFilePath,
@@ -71,13 +87,25 @@ export function createDocumentSourceActions({
     }
   })
 
+  function runSave<T>(save: () => Promise<T>) {
+    return saveOperation.run(async (signal) => {
+      currentSaveSignal = signal
+      try {
+        return await save()
+      } finally {
+        currentSaveSignal = undefined
+      }
+    })
+  }
+
+  const saveFigFile = () => runSave(saveFigFileUncontrolled)
+  const saveFigFileAs = () => runSave(saveFigFileAsUncontrolled)
+
   const { disposeAutosave } = createAutosave({
     state,
     getSavedVersion,
     hasWritableSource: () => !!getFileHandle() || !!getFilePath() || !!getStorageBinding(),
-    saveCurrentDocument: async () => {
-      await writeFile(await buildFigFile())
-    }
+    saveCurrentDocument: () => runSave(async () => void (await writeFile(await buildFigFile())))
   })
 
   function setDocumentSource(
@@ -128,6 +156,7 @@ export function createDocumentSourceActions({
   function disposeDocumentIO() {
     stopWatchingFile()
     disposeAutosave()
+    saveOperation.dispose()
   }
 
   return {

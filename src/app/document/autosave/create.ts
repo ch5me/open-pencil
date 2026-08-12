@@ -11,6 +11,40 @@ type AutosaveOptions = {
   saveCurrentDocument: () => Promise<void>
 }
 
+export function createAbortableSaveOperation() {
+  let activeController: AbortController | null = null
+  let tail: Promise<void> = Promise.resolve()
+
+  function run<T>(operation: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    activeController?.abort()
+    const controller = new AbortController()
+    activeController = controller
+    const result = tail.then(() => operation(controller.signal))
+    tail = result.then(
+      () => undefined,
+      () => undefined
+    )
+    void result.then(
+      () => {
+        if (activeController === controller) activeController = null
+        return undefined
+      },
+      () => {
+        if (activeController === controller) activeController = null
+        return undefined
+      }
+    )
+    return result
+  }
+
+  function dispose() {
+    activeController?.abort()
+    activeController = null
+  }
+
+  return { run, dispose }
+}
+
 export function createAutosave({
   state,
   getSavedVersion,
@@ -26,6 +60,7 @@ export function createAutosave({
       try {
         await saveCurrentDocument()
       } catch (e) {
+        if (e instanceof Error && (e.name === 'IOCancelledError' || e.name === 'AbortError')) return
         console.warn('Autosave failed:', e)
       }
     },
