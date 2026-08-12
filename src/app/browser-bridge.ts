@@ -9,6 +9,7 @@ export interface OpenPencilTestHooks {
   hostedAuthToken?: string
   hostedApiOrigin?: string
   forceHostedCollab?: boolean
+  forceHostedAgent?: boolean
   savedOpen?: Window['open']
 }
 

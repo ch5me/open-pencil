@@ -7,6 +7,7 @@ import { getACPDebugText, clearACPDebugLog, hasACPDebugEntries } from '@/app/ai/
 import { copyChatLog } from '@/app/ai/debug'
 import { clearToolLogEntries, didHitStepLimit } from '@/app/ai/tools'
 import { activeTab } from '@/app/tabs'
+import { isHostedAgentEnabled } from '@/app/hosted/flags'
 import ACPPermissionDialog from '@/components/chat/ACPPermissionDialog.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
@@ -23,11 +24,37 @@ import type { JSONObject } from '@open-pencil/scene-graph/primitives'
 
 const IS_DEV = import.meta.env.DEV
 
+type AgentTerminalStatus = 'interrupted' | 'expired' | 'cancelled' | 'failed'
+
+interface TypedChatError extends Error {
+  code?: string
+  status?: string
+}
+
+const TERMINAL_STATUS_LABELS: Record<AgentTerminalStatus, string> = {
+  interrupted: 'Agent connection interrupted',
+  expired: 'Agent session expired',
+  cancelled: 'Agent run cancelled',
+  failed: 'Agent run failed'
+}
+
+function terminalStatusFromError(error: Error): AgentTerminalStatus {
+  const typedError = error as TypedChatError
+  const discriminator = `${typedError.code ?? ''} ${typedError.status ?? ''} ${error.name}`.toLowerCase()
+  if (discriminator.includes('expired')) return 'expired'
+  if (discriminator.includes('interrupt')) return 'interrupted'
+  if (discriminator.includes('cancel')) return 'cancelled'
+  return 'failed'
+}
+
 const { isConfigured, ensureChat, resetChat } = useAIChat()
 const { copy } = useClipboard()
 const { dialogs } = useI18n()
 
 const chat = ref<Chat<UIMessage> | null>(null)
+const isHostedAgent = isHostedAgentEnabled()
+const terminalStatus = ref<AgentTerminalStatus | null>(null)
+const terminalStatusDetail = ref('')
 
 void ensureChat()
   .then((c) => {
@@ -35,6 +62,10 @@ void ensureChat()
     return undefined
   })
   .catch((error: unknown) => {
+    if (isHostedAgent && error instanceof Error) {
+      terminalStatus.value = terminalStatusFromError(error)
+      terminalStatusDetail.value = error.message
+    }
     toast.error(error instanceof Error ? error.message : 'Failed to initialize chat')
   })
 const messagesEnd = ref<HTMLDivElement>()
@@ -75,7 +106,11 @@ watch(messages, scrollToBottom, { deep: true })
 watch(
   () => chat.value?.error,
   (error) => {
-    if (error) toast.error(error.message)
+    if (error && isHostedAgent) {
+      terminalStatus.value = terminalStatusFromError(error)
+      terminalStatusDetail.value = error.message
+      toast.error(error.message)
+    }
   }
 )
 watch(
@@ -88,11 +123,17 @@ watch(
 
 async function handleSubmit(text: string) {
   if (status.value === 'streaming' || status.value === 'submitted') return
+  terminalStatus.value = null
+  terminalStatusDetail.value = ''
   try {
     const c = await ensureChat()
     if (c) chat.value = markRaw(c)
   } catch (e) {
     console.error('Failed to initialize chat:', e)
+    if (isHostedAgent) {
+      terminalStatus.value = e instanceof Error ? terminalStatusFromError(e) : 'failed'
+      terminalStatusDetail.value = e instanceof Error ? e.message : String(e)
+    }
     toast.error(e instanceof Error ? e.message : String(e))
     return
   }
@@ -102,8 +143,8 @@ async function handleSubmit(text: string) {
   })
 }
 
-function handleStop() {
-  chat.value?.stop()
+async function handleStop() {
+  await chat.value?.stop()
 }
 
 async function handleCopyDebug() {
@@ -123,12 +164,14 @@ function handleClearChat() {
   resetChat()
   clearToolLogEntries()
   clearACPDebugLog()
+  terminalStatus.value = null
+  terminalStatusDetail.value = ''
 }
 </script>
 
 <template>
   <div data-test-id="chat-panel" class="flex min-w-0 flex-1 flex-col overflow-hidden select-text">
-    <ProviderSetup v-if="!isConfigured" />
+    <ProviderSetup v-if="!isConfigured && !isHostedAgent" />
 
     <template v-else>
       <ScrollAreaRoot class="min-h-0 flex-1">
@@ -184,6 +227,18 @@ function handleClearChat() {
 
             <div ref="messagesEnd" />
           </div>
+
+          <div
+            v-if="terminalStatus"
+            role="status"
+            :data-agent-status="terminalStatus"
+            class="mt-3 rounded border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs"
+          >
+            <div class="font-medium text-red-400">{{ TERMINAL_STATUS_LABELS[terminalStatus] }}</div>
+            <div v-if="terminalStatusDetail" class="mt-0.5 text-muted">
+              {{ terminalStatusDetail }}
+            </div>
+          </div>
         </ScrollAreaViewport>
         <ScrollAreaScrollbar orientation="vertical" class="flex w-1.5 touch-none p-px select-none">
           <ScrollAreaThumb class="relative flex-1 rounded-full bg-muted/30" />
@@ -222,7 +277,12 @@ function handleClearChat() {
         </AppTextButton>
       </div>
 
-      <ChatInput :status="status" @submit="handleSubmit" @stop="handleStop" />
+      <ChatInput
+        :status="status"
+        :hosted-agent="isHostedAgent"
+        @submit="handleSubmit"
+        @stop="handleStop"
+      />
 
       <ACPPermissionDialog />
     </template>

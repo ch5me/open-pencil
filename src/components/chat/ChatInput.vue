@@ -19,6 +19,7 @@ const { dialogs } = useI18n()
 
 const { status } = defineProps<{
   status: 'ready' | 'submitted' | 'streaming' | 'error'
+  hostedAgent?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -80,7 +81,7 @@ function handleSubmit(e: Event) {
   <TooltipProvider>
     <div class="shrink-0 border-t border-border px-3 py-2">
       <!-- Model selector & settings -->
-      <div class="mb-1.5 flex items-center gap-1">
+      <div v-if="!hostedAgent" class="mb-1.5 flex items-center gap-1">
         <template v-if="isACPProvider">
           <div class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-muted">
             <icon-lucide-bot class="size-3" />
