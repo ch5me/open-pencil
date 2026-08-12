@@ -23,6 +23,7 @@ export interface GatewayActionManifest {
 
 /** Deliberately narrow initial exposure; all unlisted ToolDefs remain remote-disabled. */
 export const GATEWAY_REMOTE_POLICIES: Readonly<Record<string, ToolRemotePolicy>> = {
+  create_shape: { enabled: true, requiresApproval: true },
   get_node: { enabled: true },
   get_selection: { enabled: true },
   node_resize: { enabled: true, requiresApproval: true }

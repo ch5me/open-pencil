@@ -4,7 +4,7 @@ import * as v from 'valibot'
 
 import { computeAllLayouts } from '@open-pencil/core/layout'
 import { CORE_TOOLS, toolsToAI } from '@open-pencil/core/tools'
-import type { StepBudget, ToolLogEntry } from '@open-pencil/core/tools'
+import type { StepBudget, ToolDef, ToolLogEntry } from '@open-pencil/core/tools'
 import type { SceneNode } from '@open-pencil/scene-graph'
 
 import { makeFigmaFromStore } from '@/app/automation/bridge/figma-factory'
@@ -82,12 +82,12 @@ export function clearToolLogEntries(store?: EditorStore): void {
   getRunState(store).clear()
 }
 
-export function createAITools(store: EditorStore) {
+export function createAITools(store: EditorStore, definitions: ToolDef[] = CORE_TOOLS) {
   let beforeSnapshot: Map<string, SceneNode> | null = null
   const runState = getRunState(store)
 
   return toolsToAI(
-    CORE_TOOLS,
+    definitions,
     {
       getFigma: () => makeFigmaFromStore(store),
       onBeforeExecute: (def) => {
