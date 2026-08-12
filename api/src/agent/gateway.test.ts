@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import {
   AGENT_CONTINUATION_SCHEMA,
+  AGENT_ERROR_SCHEMA,
   AGENT_EVENT_SCHEMA,
   AGENT_RECEIPT_SCHEMA,
   AGENT_RUN_SCHEMA
@@ -136,11 +137,45 @@ describe('agent gateway contract', () => {
         method: 'POST',
         fetch: (async () =>
           Response.json(
-            { code: 'session-expired', message: 'Resume window expired.' },
+            {
+              schema: AGENT_ERROR_SCHEMA,
+              code: 'session-expired',
+              message: 'Resume window expired.',
+              retryable: false,
+              phase: 'resume',
+              sessionId: 'session-1',
+              runId: 'run-1'
+            },
             { status: 410 }
           )) as unknown as typeof fetch
       })
-    ).rejects.toMatchObject({ status: 410, code: 'session-expired' })
+    ).rejects.toMatchObject({
+      status: 410,
+      error: { schema: AGENT_ERROR_SCHEMA, code: 'session-expired', phase: 'resume' }
+    })
+
+    await expect(
+      requestAgentGateway({
+        env: REMOTE_GATEWAY_ENV,
+        principalId: 'user-1',
+        path: '/v1/runs',
+        method: 'POST',
+        fetch: (async () =>
+          Response.json(
+            { code: 'session-expired', message: 'Private detail', runtimeId: 'leaked' },
+            { status: 418 }
+          )) as unknown as typeof fetch
+      })
+    ).rejects.toMatchObject({
+      status: 502,
+      error: {
+        schema: AGENT_ERROR_SCHEMA,
+        code: 'gateway-unavailable',
+        message: 'Agent gateway returned an invalid error response.',
+        retryable: true,
+        phase: 'request'
+      }
+    })
 
     await expect(
       requestAgentGateway({ env: {}, principalId: 'user-1', path: '/v1/runs', method: 'POST' })
@@ -171,7 +206,7 @@ describe('agent gateway contract', () => {
         path: '/v1/runs',
         method: 'POST'
       })
-    ).rejects.toMatchObject({ code: 'agent-gateway-origin-invalid' })
+    ).rejects.toMatchObject({ code: 'gateway-unavailable' })
   })
 
   test('requires service authentication for remote gateway origins', async () => {
@@ -182,7 +217,7 @@ describe('agent gateway contract', () => {
         path: '/v1/runs',
         method: 'POST'
       })
-    ).rejects.toMatchObject({ code: 'agent-gateway-not-configured' })
+    ).rejects.toMatchObject({ code: 'gateway-unavailable' })
   })
 
   test('rejects invalid initial lifecycle and contradictory terminal receipts', async () => {
@@ -192,6 +227,28 @@ describe('agent gateway contract', () => {
         event({ eventId: 'event-0', seq: 0, type: 'session.created' }),
         event(),
         event({ eventId: 'event-2', seq: 2, type: 'run.started' })
+      ],
+      [
+        event({ eventId: 'event-0', seq: 0, type: 'session.created' }),
+        event(),
+        event({
+          eventId: 'event-2',
+          seq: 2,
+          type: 'run.failed',
+          data: {
+            error: {
+              schema: AGENT_ERROR_SCHEMA,
+              code: 'run-failed',
+              message: 'Run failed.',
+              retryable: false,
+              phase: 'stream',
+              requestId: 'request-1',
+              sessionId: 'session-1',
+              runId: 'run-1'
+            },
+            receipt: receipt({ status: 'failed', lastSequence: 2, runId: 'run-2' })
+          }
+        })
       ],
       [
         event({ eventId: 'event-0', seq: 0, type: 'session.created' }),

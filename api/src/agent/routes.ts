@@ -1,5 +1,8 @@
 import { Hono, type Context } from 'hono'
 
+import { AGENT_ERROR_SCHEMA } from '@open-pencil/agent-contracts'
+import type { AgentError, AgentErrorCode, AgentErrorPhase } from '@open-pencil/agent-contracts'
+
 import { requireSession } from '../auth'
 import {
   AgentContractError,
@@ -32,16 +35,20 @@ async function jsonBody(request: Request): Promise<unknown> {
 
 function gatewayResponseError(error: unknown): Response | undefined {
   if (error instanceof AgentContractError) {
-    return Response.json(
-      { error: error.code, code: error.code, message: error.message },
-      { status: 400 }
-    )
+    const code: AgentErrorCode =
+      error.code === 'invalid-request' ? 'invalid-request' : 'gateway-unavailable'
+    const phase: AgentErrorPhase = error.code === 'invalid-request' ? 'request' : 'stream'
+    const body: AgentError = {
+      schema: AGENT_ERROR_SCHEMA,
+      code,
+      message: error.message,
+      retryable: code === 'gateway-unavailable',
+      phase
+    }
+    return Response.json(body, { status: 400 })
   }
   if (error instanceof AgentGatewayError) {
-    return Response.json(
-      { error: error.code, code: error.code, message: error.message },
-      { status: error.status }
-    )
+    return Response.json(error.error, { status: error.status })
   }
   return undefined
 }
@@ -90,11 +97,16 @@ agentRoutes.post('/sessions/:sessionId/runs/:runId/tool-results', async (c) => {
     const sessionId = c.req.param('sessionId')
     const runId = c.req.param('runId')
     if (body.sessionId !== sessionId || body.runId !== runId) {
-      throw new AgentGatewayError(
-        409,
-        'session-conflict',
-        'Tool result identity does not match the requested session and run.'
-      )
+      throw new AgentGatewayError(409, {
+        schema: AGENT_ERROR_SCHEMA,
+        code: 'session-conflict',
+        message: 'Tool result identity does not match the requested session and run.',
+        retryable: false,
+        phase: 'tool',
+        requestId: body.requestId,
+        sessionId,
+        runId
+      })
     }
     return await streamRequest(
       c,

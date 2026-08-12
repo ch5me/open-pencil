@@ -253,3 +253,47 @@ test('denies cross-principal access to a fake-gateway run', async () => {
     message: 'Run not found.'
   })
 })
+
+test('returns receipt-backed failure truth', async () => {
+  const initial = events(await (await startRun()).text())
+  const call = initial.find((event) => event.type === 'tool.call')
+  if (!call || call.type !== 'tool.call') throw new Error('Missing tool call')
+  const response = await gateway.fetch(
+    gatewayRequest(`/v1/sessions/${call.sessionId}/runs/${call.runId}/tool-results`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        schema: AGENT_CONTINUATION_SCHEMA,
+        requestId: runRequest.requestId,
+        idempotencyKey: 'failed-result',
+        sessionId: call.sessionId,
+        runId: call.runId,
+        callId: call.data.callId,
+        continuationId: call.data.continuationId,
+        manifestId: call.data.manifestId,
+        target: call.data.target,
+        status: 'rejected',
+        error: {
+          schema: 'openpencil.agent.error.v1',
+          code: 'tool-rejected',
+          message: 'Tool was rejected.',
+          retryable: false,
+          phase: 'tool',
+          requestId: runRequest.requestId,
+          sessionId: call.sessionId,
+          runId: call.runId
+        }
+      })
+    })
+  )
+  const failed = events(await response.text())[0]
+  expect(failed?.type).toBe('run.failed')
+  if (!failed || failed.type !== 'run.failed') throw new Error('Missing failure')
+  expect(failed.data.receipt).toMatchObject({
+    requestId: runRequest.requestId,
+    sessionId: failed.sessionId,
+    runId: failed.runId,
+    status: 'failed',
+    lastSequence: failed.seq
+  })
+})

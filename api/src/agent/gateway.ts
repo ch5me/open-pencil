@@ -1,3 +1,6 @@
+import { AGENT_ERROR_SCHEMA, parseAgentError } from '@open-pencil/agent-contracts'
+import type { AgentError } from '@open-pencil/agent-contracts'
+
 import { AgentContractError, parseAgentEvent } from './contracts'
 
 export type AgentGatewayEnv = {
@@ -8,11 +11,14 @@ export type AgentGatewayEnv = {
 export class AgentGatewayError extends Error {
   constructor(
     readonly status: number,
-    readonly code: string,
-    message: string
+    readonly error: AgentError
   ) {
-    super(message)
+    super(error.message)
     this.name = 'AgentGatewayError'
+  }
+
+  get code(): AgentError['code'] {
+    return this.error.code
   }
 }
 
@@ -31,21 +37,13 @@ export type AgentGatewayRequest = {
 function gatewayOrigin(env: AgentGatewayEnv): string {
   const origin = env.OPENPENCIL_AGENT_GATEWAY_ORIGIN?.trim()
   if (!origin) {
-    throw new AgentGatewayError(
-      503,
-      'agent-gateway-not-configured',
-      'Agent gateway is not configured.'
-    )
+    throw gatewayUnavailable(503, 'Agent gateway is not configured.')
   }
   let url: URL
   try {
     url = new URL(origin)
   } catch {
-    throw new AgentGatewayError(
-      500,
-      'agent-gateway-origin-invalid',
-      'Agent gateway origin is invalid.'
-    )
+    throw gatewayUnavailable(500, 'Agent gateway origin is invalid.')
   }
   if (
     url.protocol !== 'https:' &&
@@ -53,11 +51,7 @@ function gatewayOrigin(env: AgentGatewayEnv): string {
     url.hostname !== '127.0.0.1' &&
     !url.hostname.endsWith('.localhost')
   ) {
-    throw new AgentGatewayError(
-      500,
-      'agent-gateway-origin-invalid',
-      'Agent gateway origin must use HTTPS.'
-    )
+    throw gatewayUnavailable(500, 'Agent gateway origin must use HTTPS.')
   }
   return origin.replace(/\/+$/, '')
 }
@@ -69,13 +63,21 @@ function loopbackOrigin(origin: string): boolean {
 
 async function gatewayError(response: Response): Promise<AgentGatewayError> {
   const value = await response.json().catch(() => null)
-  const body = value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined
-  const code = typeof body?.code === 'string' ? body.code : 'agent-gateway-request-failed'
-  const message =
-    typeof body?.message === 'string'
-      ? body.message
-      : `Agent gateway request failed: ${response.status}`
-  return new AgentGatewayError(response.status, code, message)
+  try {
+    return new AgentGatewayError(response.status, parseAgentError(value))
+  } catch {
+    return gatewayUnavailable(502, 'Agent gateway returned an invalid error response.')
+  }
+}
+
+function gatewayUnavailable(status: number, message: string): AgentGatewayError {
+  return new AgentGatewayError(status, {
+    schema: AGENT_ERROR_SCHEMA,
+    code: 'gateway-unavailable',
+    message,
+    retryable: true,
+    phase: 'request'
+  })
 }
 
 export async function requestAgentGateway(input: AgentGatewayRequest): Promise<Response> {
@@ -88,11 +90,7 @@ export async function requestAgentGateway(input: AgentGatewayRequest): Promise<R
   if (input.lastEventId) headers.set('Last-Event-ID', input.lastEventId)
   const token = input.env.OPENPENCIL_AGENT_GATEWAY_TOKEN?.trim()
   if (!token && !loopbackOrigin(origin)) {
-    throw new AgentGatewayError(
-      503,
-      'agent-gateway-not-configured',
-      'Agent gateway service authentication is not configured.'
-    )
+    throw gatewayUnavailable(503, 'Agent gateway service authentication is not configured.')
   }
   if (token) headers.set('Authorization', `Bearer ${token}`)
   let response: Response
@@ -106,18 +104,21 @@ export async function requestAgentGateway(input: AgentGatewayRequest): Promise<R
   } catch (error) {
     if (error instanceof AgentGatewayError) throw error
     if (input.signal?.aborted) {
-      throw new AgentGatewayError(499, 'agent-run-cancelled', 'Agent run request was cancelled.')
+      throw new AgentGatewayError(499, {
+        schema: AGENT_ERROR_SCHEMA,
+        code: 'stream-interrupted',
+        message: 'Agent run request was cancelled.',
+        retryable: false,
+        phase: 'stream',
+        ...input.expectedIdentity
+      })
     }
-    throw new AgentGatewayError(502, 'agent-gateway-unavailable', 'Agent gateway is unavailable.')
+    throw gatewayUnavailable(502, 'Agent gateway is unavailable.')
   }
   if (!response.ok) throw await gatewayError(response)
   const contentType = response.headers.get('content-type') ?? ''
   if (!contentType.toLowerCase().includes('text/event-stream') || !response.body) {
-    throw new AgentGatewayError(
-      502,
-      'agent-gateway-invalid-stream',
-      'Agent gateway did not return an SSE stream.'
-    )
+    throw gatewayUnavailable(502, 'Agent gateway did not return a valid SSE response.')
   }
   return validateAgentEventStream(response, response.body, input.expectedIdentity)
 }
@@ -257,6 +258,7 @@ function validateAgentEventStream(
         if (
           (event.type === 'run.completed' ||
             event.type === 'run.cancelled' ||
+            event.type === 'run.failed' ||
             event.type === 'receipt') &&
           (event.data.receipt.sessionId !== event.sessionId ||
             event.data.receipt.runId !== event.runId ||

@@ -214,6 +214,40 @@ describe('agent gateway contracts', () => {
     expect(() =>
       parseAgentRunReceipt({ ...receipt, completedAt: '2026-08-12T11:59:59.000Z' })
     ).toThrow()
+
+    const failedReceipt = { ...receipt, status: 'failed' }
+    const failedEvent = {
+      schema: AGENT_EVENT_SCHEMA,
+      sessionId: 'session',
+      runId: 'run',
+      seq: 9,
+      eventId: 'event-9',
+      timestamp: '2026-08-12T12:00:01.000Z',
+      type: 'run.failed',
+      data: {
+        error: { ...error, requestId: 'request', sessionId: 'session', runId: 'run' },
+        receipt: failedReceipt
+      }
+    }
+    expect(parseAgentEvent(failedEvent).type).toBe('run.failed')
+    expect(() =>
+      parseAgentEvent({
+        ...failedEvent,
+        data: { ...failedEvent.data, receipt: { ...failedReceipt, lastSequence: 8 } }
+      })
+    ).toThrow()
+    expect(() =>
+      parseAgentEvent({
+        ...failedEvent,
+        data: { ...failedEvent.data, receipt: { ...failedReceipt, runId: 'other' } }
+      })
+    ).toThrow()
+    expect(() =>
+      parseAgentEvent({
+        ...failedEvent,
+        data: { ...failedEvent.data, error: { ...failedEvent.data.error, requestId: 'other' } }
+      })
+    ).toThrow()
   })
 
   test('rejects malformed and oversized payloads', () => {

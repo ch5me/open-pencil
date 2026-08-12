@@ -140,7 +140,7 @@ export type AgentEventData =
   | { type: 'approval.required'; data: { callId: string; prompt: string } }
   | { type: 'tool.result'; data: { callId: string } }
   | { type: 'run.completed'; data: { receipt: AgentRunReceipt } }
-  | { type: 'run.failed'; data: { error: AgentError } }
+  | { type: 'run.failed'; data: { error: AgentError; receipt: AgentRunReceipt } }
   | { type: 'run.cancelled'; data: { receipt: AgentRunReceipt } }
   | { type: 'receipt'; data: { receipt: AgentRunReceipt } }
 
@@ -573,7 +573,18 @@ function validEvent(value: unknown): value is AgentEvent {
     case 'receipt':
       return exact(data, ['receipt']) && validReceipt(data.receipt)
     case 'run.failed':
-      return exact(data, ['error']) && validError(data.error)
+      return (
+        exact(data, ['error', 'receipt']) &&
+        validError(data.error) &&
+        validReceipt(data.receipt) &&
+        data.receipt.status === 'failed' &&
+        data.receipt.sessionId === event.sessionId &&
+        data.receipt.runId === event.runId &&
+        data.receipt.lastSequence === event.seq &&
+        (!data.error.requestId || data.error.requestId === data.receipt.requestId) &&
+        (!data.error.sessionId || data.error.sessionId === event.sessionId) &&
+        (!data.error.runId || data.error.runId === event.runId)
+      )
     default:
       return false
   }

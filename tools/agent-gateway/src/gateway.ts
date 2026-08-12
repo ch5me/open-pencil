@@ -280,13 +280,19 @@ async function continueRun(request: Request, state: RunState): Promise<Response>
     const failed = push(state, {
       type: 'run.failed',
       data: {
-        error: continuation.error ?? {
-          schema: AGENT_ERROR_SCHEMA,
-          code: 'tool-rejected',
-          message: 'Tool was rejected.',
-          retryable: false,
-          phase: 'tool'
-        }
+        error: {
+          ...(continuation.error ?? {
+            schema: AGENT_ERROR_SCHEMA,
+            code: 'tool-rejected',
+            message: 'Tool was rejected.',
+            retryable: false,
+            phase: 'tool'
+          }),
+          requestId: state.request.requestId,
+          sessionId: state.sessionId,
+          runId: state.runId
+        },
+        receipt: receipt(state, 'failed')
       }
     })
     return sse([failed])
