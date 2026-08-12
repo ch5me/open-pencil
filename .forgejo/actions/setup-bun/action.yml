@@ -19,6 +19,10 @@ runs:
       if: inputs.lfs == 'true'
       shell: bash
       run: |
+        if ! command -v git-lfs >/dev/null 2>&1; then
+          apt-get update
+          apt-get install -y --no-install-recommends git-lfs
+        fi
         git lfs install --force
         git lfs pull
         head -c 4 tests/fixtures/material3.fig | xxd
@@ -32,7 +36,7 @@ runs:
           echo "Forgejo/GitHub PATH environment file missing" >&2
           exit 1
         }
-        curl -fsSL https://bun.sh/install | bash -s -- bun-v1.3.10
+        curl -fsSL https://bun.sh/install | bash -s -- bun-v1.3.14
         echo "$HOME/.bun/bin" >> "$PATH_FILE"
         "$HOME/.bun/bin/bun" --version
 
