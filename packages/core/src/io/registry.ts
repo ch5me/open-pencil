@@ -77,11 +77,14 @@ export class IORegistry {
   }
 
   async writeDocument(formatId: string, graph: SceneGraph, options?: unknown, context?: IOContext) {
+    throwIfIOCancelled(context?.signal);
     const adapter = this.getFormat(formatId);
     if (!adapter?.writeDocument) {
       throw new Error(`Format does not support writeDocument: ${formatId}`);
     }
-    return adapter.writeDocument(graph, options, context);
+    const result = await adapter.writeDocument(graph, options, context);
+    throwIfIOCancelled(context?.signal);
+    return result;
   }
 
   async exportContent(
@@ -90,10 +93,13 @@ export class IORegistry {
     options?: unknown,
     context?: IOContext,
   ) {
+    throwIfIOCancelled(context?.signal);
     const adapter = this.getFormat(formatId);
     if (!adapter?.exportContent) {
       throw new Error(`Format does not support exportContent: ${formatId}`);
     }
-    return adapter.exportContent(request, options, context);
+    const result = await adapter.exportContent(request, options, context);
+    throwIfIOCancelled(context?.signal);
+    return result;
   }
 }

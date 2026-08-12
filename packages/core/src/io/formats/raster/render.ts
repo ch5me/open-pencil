@@ -17,6 +17,17 @@ interface RenderOptions {
   trimTransparent?: boolean;
 }
 
+export interface RasterRenderResult {
+  bytes: Uint8Array | null;
+  fallback?: {
+    pixels: Uint8Array;
+    width: number;
+    height: number;
+    format: "JPG" | "WEBP";
+    quality: number;
+  };
+}
+
 function ensureSinglePageSelection(graph: SceneGraph, pageId: string, nodeIds: string[]): boolean {
   return nodeIds.every((nodeId) => findPageId(graph, nodeId) === pageId);
 }
@@ -108,7 +119,7 @@ function renderToSurface(
   quality: number,
   setup: (canvas: Canvas) => void,
   trimTransparent = false,
-): Uint8Array | null {
+): RasterRenderResult | null {
   const renderScale = 2;
   const renderWidth = width * renderScale;
   const renderHeight = height * renderScale;
@@ -184,6 +195,7 @@ function renderToSurface(
       : downsampleSurface.makeImageSnapshot();
     const encoded = image.encodeToBytes(ckImageFormat(ck, format), quality);
     let resultBytes: Uint8Array | null = encoded ? new Uint8Array(encoded) : null;
+    let fallback: RasterRenderResult["fallback"];
 
     // CanvasKit's `encodeToBytes` returns null for JPEG/WEBP in this build, so
     // fall back to encoding the raw pixels through the browser canvas.
@@ -202,20 +214,20 @@ function renderToSurface(
       });
 
       if (rawPixels instanceof Uint8Array) {
-        resultBytes = renderer.encodeRasterFallback(
-          rawPixels,
-          exportWidth,
-          exportHeight,
+        fallback = {
+          pixels: new Uint8Array(rawPixels),
+          width: exportWidth,
+          height: exportHeight,
           format,
           quality,
-        );
+        };
       }
     }
 
     image.delete();
     downsampleSurface.delete();
     ck.Free(downsamplePixels);
-    return resultBytes;
+    return { bytes: resultBytes, fallback };
   } finally {
     surface.delete();
     ck.Free(pixels);
@@ -230,6 +242,26 @@ export function renderNodesToImage(
   nodeIds: string[],
   options: RenderOptions,
 ): Uint8Array | null {
+  const result = renderNodesToRaster(ck, renderer, graph, pageId, nodeIds, options);
+  if (!result) return null;
+  if (result.bytes || !result.fallback) return result.bytes;
+  return renderer.encodeRasterFallback(
+    result.fallback.pixels,
+    result.fallback.width,
+    result.fallback.height,
+    result.fallback.format,
+    result.fallback.quality,
+  );
+}
+
+export function renderNodesToRaster(
+  ck: CanvasKit,
+  renderer: SkiaRenderer,
+  graph: SceneGraph,
+  pageId: string,
+  nodeIds: string[],
+  options: RenderOptions,
+): RasterRenderResult | null {
   if (!ensureSinglePageSelection(graph, pageId, nodeIds)) {
     throw new Error("Raster export selection must stay on a single page");
   }
@@ -292,11 +324,13 @@ export function renderThumbnail(
 
   const scale = Math.min(width / contentW, height / contentH, 2);
 
-  return renderToSurface(ck, renderer, graph, pageId, width, height, "PNG", 100, (canvas) => {
-    canvas.clear(ck.Color4f(renderer.pageColor.r, renderer.pageColor.g, renderer.pageColor.b, 1));
-    const offsetX = (width - contentW * scale) / 2 - bounds.minX * scale;
-    const offsetY = (height - contentH * scale) / 2 - bounds.minY * scale;
-    canvas.translate(offsetX, offsetY);
-    canvas.scale(scale, scale);
-  });
+  return (
+    renderToSurface(ck, renderer, graph, pageId, width, height, "PNG", 100, (canvas) => {
+      canvas.clear(ck.Color4f(renderer.pageColor.r, renderer.pageColor.g, renderer.pageColor.b, 1));
+      const offsetX = (width - contentW * scale) / 2 - bounds.minX * scale;
+      const offsetY = (height - contentH * scale) / 2 - bounds.minY * scale;
+      canvas.translate(offsetX, offsetY);
+      canvas.scale(scale, scale);
+    })?.bytes ?? null
+  );
 }

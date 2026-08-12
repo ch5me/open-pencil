@@ -14,6 +14,7 @@ import {
 import type { ExportOptions } from "@/app/document/export/types";
 
 type DownloadBlob = (data: Uint8Array, filename: string, mime: string) => void;
+const EXPORT_TIMEOUT_MS = 60_000;
 
 export interface ExportTargetRequest {
   target: ExportRequest["target"];
@@ -29,11 +30,13 @@ export function createDocumentExportActions(
 ) {
   const { renderExportImage, getSelectionExportTarget, listSelectionExportFormats } =
     createExportTargetActions(editor, state, io);
+  let activeExport: AbortController | null = null;
 
   async function renderExportFile(
     target: ExportRequest["target"],
     formatId: string,
     options?: ExportOptions,
+    signal?: AbortSignal,
   ): Promise<ExportedFile> {
     const format = io.getFormat(formatId);
     if (!format) throw new Error(`Unknown export format: ${formatId}`);
@@ -44,7 +47,11 @@ export function createDocumentExportActions(
       formatId,
       { graph: editor.graph, target },
       exportOptions,
-      editor.renderer ? { canvasKit: editor.renderer.ck, renderer: editor.renderer } : undefined,
+      {
+        canvasKit: editor.renderer?.ck,
+        renderer: editor.renderer ?? undefined,
+        signal,
+      },
     );
 
     const baseName = getExportBaseName(editor.graph, target);
@@ -68,12 +75,27 @@ export function createDocumentExportActions(
     );
   }
 
+  async function runExport<T>(exportTask: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    activeExport?.abort();
+    const controller = new AbortController();
+    activeExport = controller;
+    const timeout = setTimeout(() => controller.abort(), EXPORT_TIMEOUT_MS);
+    try {
+      return await exportTask(controller.signal);
+    } finally {
+      clearTimeout(timeout);
+      if (activeExport === controller) activeExport = null;
+    }
+  }
+
   async function exportTarget(
     target: ExportRequest["target"],
     formatId: string,
     options?: ExportOptions,
   ) {
-    await saveExportFile(await renderExportFile(target, formatId, options));
+    await runExport(async (signal) => {
+      await saveExportFile(await renderExportFile(target, formatId, options, signal));
+    });
   }
 
   // Export a batch of targets. A single file downloads directly; multiple files
@@ -81,26 +103,30 @@ export function createDocumentExportActions(
   async function exportTargets(requests: ExportTargetRequest[]) {
     if (requests.length === 0) return;
 
-    const files: ExportedFile[] = [];
-    for (const request of requests) {
-      files.push(await renderExportFile(request.target, request.formatId, request.options));
-    }
+    await runExport(async (signal) => {
+      const files: ExportedFile[] = [];
+      for (const request of requests) {
+        files.push(
+          await renderExportFile(request.target, request.formatId, request.options, signal),
+        );
+      }
 
-    if (files.length === 1) {
-      await saveExportFile(files[0]);
-      return;
-    }
+      if (files.length === 1) {
+        await saveExportFile(files[0]);
+        return;
+      }
 
-    const baseNames = new Set(requests.map((r) => getExportBaseName(editor.graph, r.target)));
-    const zipBaseName = baseNames.size === 1 ? [...baseNames][0] : "export";
-    await saveExportedFile(
-      bundleExportFiles(files),
-      `${zipBaseName}.zip`,
-      "ZIP",
-      ".zip",
-      "application/zip",
-      downloadBlob,
-    );
+      const baseNames = new Set(requests.map((r) => getExportBaseName(editor.graph, r.target)));
+      const zipBaseName = baseNames.size === 1 ? [...baseNames][0] : "export";
+      await saveExportedFile(
+        bundleExportFiles(files),
+        `${zipBaseName}.zip`,
+        "ZIP",
+        ".zip",
+        "application/zip",
+        downloadBlob,
+      );
+    });
   }
 
   async function exportSelection(

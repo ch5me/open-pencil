@@ -2,7 +2,13 @@ import { sceneNodeToJSX, selectionToJSX } from "#core/design-jsx";
 
 import { exportFigFile, parseFigFile } from "./formats/fig";
 import { parsePenFile } from "./formats/pen";
-import { headlessRenderNodes, renderNodesToImage, type RasterExportFormat } from "./formats/raster";
+import {
+  canUseRasterExportWorker,
+  headlessRenderNodes,
+  renderNodesToImage,
+  renderRasterViaWorker,
+  type RasterExportFormat,
+} from "./formats/raster";
 import { renderNodesToSVG } from "./formats/svg";
 import { extractExportGraph, findPageId } from "./subgraph";
 import type {
@@ -66,6 +72,22 @@ async function renderRaster(
   const target = resolveExportNodes(request);
   if (!target) return null;
   const scale = options.scale ?? 1;
+  const renderOptions = {
+    scale,
+    format: options.format,
+    quality: options.quality,
+    trimTransparent: request.target.scope === "page" || request.target.scope === "document",
+  };
+
+  if (canUseRasterExportWorker()) {
+    return renderRasterViaWorker(
+      request.graph,
+      target.pageId,
+      target.nodeIds,
+      renderOptions,
+      context?.signal,
+    );
+  }
 
   if (context?.canvasKit && context.renderer) {
     return renderNodesToImage(
@@ -74,21 +96,11 @@ async function renderRaster(
       request.graph,
       target.pageId,
       target.nodeIds,
-      {
-        scale,
-        format: options.format,
-        quality: options.quality,
-        trimTransparent: request.target.scope === "page" || request.target.scope === "document",
-      },
+      renderOptions,
     );
   }
 
-  return headlessRenderNodes(request.graph, target.pageId, target.nodeIds, {
-    scale,
-    format: options.format,
-    quality: options.quality,
-    trimTransparent: request.target.scope === "page" || request.target.scope === "document",
-  });
+  return headlessRenderNodes(request.graph, target.pageId, target.nodeIds, renderOptions);
 }
 
 function rasterFormat(format: RasterExportFormat): IOFormatAdapter {
