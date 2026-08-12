@@ -1,6 +1,21 @@
 import type { SceneGraph } from '@open-pencil/scene-graph'
 
+import { throwIfIOCancelled } from './limits'
 import type { ExportRequest, IOContext, IOFormatAdapter, ReadDocumentInput } from './types'
+
+export class IOInputLimitError extends Error {
+  readonly code = 'io-input-limit'
+}
+
+export function assertInputWithinLimit(byteLength: number, maxInputBytes?: number): void {
+  if (maxInputBytes === undefined) return
+  if (!Number.isSafeInteger(maxInputBytes) || maxInputBytes < 0) {
+    throw new IOInputLimitError('maxInputBytes must be a non-negative safe integer')
+  }
+  if (byteLength > maxInputBytes) {
+    throw new IOInputLimitError(`input exceeds maxInputBytes: ${byteLength} > ${maxInputBytes}`)
+  }
+}
 
 export class IORegistry {
   constructor(private readonly adapters: IOFormatAdapter[]) {}
@@ -50,11 +65,15 @@ export class IORegistry {
   }
 
   async readDocument(input: ReadDocumentInput, context?: IOContext) {
+    throwIfIOCancelled(context?.signal)
+    assertInputWithinLimit(input.data.byteLength, context?.maxInputBytes)
     const reader = this.findReader(input.name ?? '', input.mimeType)
     if (!reader?.readDocument) {
       throw new Error(`Unsupported document format: ${input.name ?? 'unknown'}`)
     }
-    return reader.readDocument(input, context)
+    const result = await reader.readDocument(input, context)
+    throwIfIOCancelled(context?.signal)
+    return result
   }
 
   async writeDocument(formatId: string, graph: SceneGraph, options?: unknown, context?: IOContext) {
