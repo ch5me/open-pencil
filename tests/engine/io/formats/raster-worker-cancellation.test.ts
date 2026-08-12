@@ -7,9 +7,11 @@ import { fontManager } from "#core/text/fonts";
 
 const originalWorker = globalThis.Worker;
 const originalFetch = globalThis.fetch;
+const originalCreateExportSnapshot = fontManager.createExportSnapshot;
 
 afterEach(() => {
   Object.assign(globalThis, { Worker: originalWorker, fetch: originalFetch });
+  fontManager.createExportSnapshot = originalCreateExportSnapshot;
 });
 
 function graphWithImage() {
@@ -22,8 +24,7 @@ function graphWithImage() {
 }
 
 async function waitForWorkerDispatch(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
+  await Bun.sleep(0);
 }
 
 test("pre-cancelled raster export never dispatches", async () => {
@@ -90,6 +91,36 @@ test("abort terminates active raster work and ignores late settlement", async ()
   expect(workers[0]?.terminated).toBe(true);
   workers[0]?.onmessage?.({ data: { bytes: new Uint8Array([9]) } } as MessageEvent);
   workers[0]?.onerror?.({ message: "late error" } as ErrorEvent);
+});
+
+test("abort during font acquisition settles immediately and never dispatches late load", async () => {
+  let constructed = false;
+  let resolveFonts: (() => void) | undefined;
+  fontManager.createExportSnapshot = () =>
+    new Promise((resolve) => {
+      resolveFonts = () => resolve({ fonts: [], fallbackFamilies: { cjk: [], arabic: [] } });
+    });
+  function FakeWorker() {
+    constructed = true;
+  }
+  Object.assign(globalThis, { Worker: FakeWorker });
+
+  const controller = new AbortController();
+  const { graph, pageId, nodeId } = graphWithImage();
+  const exporting = renderRasterViaWorker(
+    graph,
+    pageId,
+    [nodeId],
+    { format: "PNG" },
+    controller.signal,
+  );
+  controller.abort();
+
+  await expect(exporting).rejects.toBeInstanceOf(IOCancelledError);
+  expect(constructed).toBe(false);
+  resolveFonts?.();
+  await waitForWorkerDispatch();
+  expect(constructed).toBe(false);
 });
 
 test("timeout terminates raster work", async () => {
@@ -159,7 +190,13 @@ test("concurrent raster exports stay caller-owned without detaching editor bytes
 });
 
 test("worker request carries exact loaded custom font bytes without detaching them", async () => {
-  let request: { fonts?: Array<{ family: string; style: string; data: ArrayBuffer }> } | undefined;
+  let request:
+    | {
+        fontSnapshot?: {
+          fonts: Array<{ family: string; style: string; data: ArrayBuffer }>;
+        };
+      }
+    | undefined;
   const workers: FakeWorker[] = [];
   class FakeWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
@@ -192,8 +229,8 @@ test("worker request carries exact loaded custom font bytes without detaching th
 
   const exporting = renderRasterViaWorker(graph, page.id, [text.id], { format: "PNG" });
   await waitForWorkerDispatch();
-  expect(request?.fonts).toHaveLength(1);
-  expect(request?.fonts?.[0]).toEqual({ family, style: "Regular", data: bytes });
+  expect(request?.fontSnapshot?.fonts).toHaveLength(1);
+  expect(request?.fontSnapshot?.fonts[0]).toEqual({ family, style: "Regular", data: bytes });
   expect(bytes.byteLength).toBe(8);
 
   workers[0]?.onmessage?.({ data: { bytes: new Uint8Array([1]) } } as MessageEvent);

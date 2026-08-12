@@ -17,6 +17,7 @@ export function getFontProvider(r: SkiaRenderer) {
 export async function loadFonts(
   r: SkiaRenderer,
   onFallbackFontsLoaded?: () => void,
+  loadFallbacks = true,
 ): Promise<void> {
   if (r.isDestroyed()) return;
   r.fontProvider?.delete();
@@ -47,6 +48,8 @@ export async function loadFonts(
 
   r.fontsLoaded = true;
   r.invalidateAllPictures();
+
+  if (!loadFallbacks) return;
 
   void fontManager.ensureCJKFallback().then((families) => {
     if (!r.isDestroyed() && families.length > 0) {

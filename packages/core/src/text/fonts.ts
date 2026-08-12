@@ -33,6 +33,11 @@ export interface LoadedFontData {
   data: ArrayBuffer;
 }
 
+export interface FontExportSnapshot {
+  fonts: LoadedFontData[];
+  fallbackFamilies: Record<FontFallbackScript, string[]>;
+}
+
 type FindLocalFontOptions = { allowVariable?: boolean };
 
 type LocalFontMatch = Pick<FontInfo, "family" | "style">;
@@ -320,6 +325,38 @@ export class FontManager {
     });
   }
 
+  async createExportSnapshot(graph: SceneGraph, nodeIds: string[]): Promise<FontExportSnapshot> {
+    const fontKeys = this.collectFontKeys(graph, nodeIds);
+    const scripts = this.collectFallbackScripts(graph, nodeIds);
+    await Promise.all([
+      ...fontKeys.map(([family, style]) => this.loadFont(family, style)),
+      this.ensureFallbackPack(scripts),
+    ]);
+
+    const fallbackFamilies = {
+      cjk: scripts.includes("cjk") ? [...this.cjkFallbackFamilies] : [],
+      arabic: scripts.includes("arabic") ? [...this.arabicFallbackFamilies] : [],
+    };
+    const keys = new Map(
+      fontKeys.map(([family, style]) => [`${family}\0${style}`, [family, style]]),
+    );
+    for (const family of [...fallbackFamilies.cjk, ...fallbackFamilies.arabic]) {
+      keys.set(`${family}\0Regular`, [family, "Regular"]);
+    }
+    const fonts = [...keys.values()].flatMap(([family, style]) => {
+      const data = this.loadedData(family, style);
+      return data ? [{ family, style, data }] : [];
+    });
+
+    return { fonts, fallbackFamilies };
+  }
+
+  applyExportSnapshot(snapshot: FontExportSnapshot): void {
+    for (const font of snapshot.fonts) this.markLoaded(font.family, font.style, font.data);
+    for (const family of snapshot.fallbackFamilies.cjk) this.setCJKFallbackFamily(family);
+    for (const family of snapshot.fallbackFamilies.arabic) this.setArabicFallbackFamily(family);
+  }
+
   renderFamily(family: string, style: string): string {
     const data = this.loadedData(family, style);
     if (!data) return family;
@@ -355,6 +392,27 @@ export class FontManager {
     for (const id of nodeIds) collect(id);
 
     return [...fontKeys].map((k) => k.split("\0") as [string, string]);
+  }
+
+  collectFallbackScripts(graph: SceneGraph, nodeIds: string[]): FontFallbackScript[] {
+    const scripts = new Set<FontFallbackScript>();
+    const collect = (id: string) => {
+      const node = graph.getNode(id);
+      if (!node) return;
+      if (node.type === "TEXT") {
+        if (/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/u.test(node.text)) {
+          scripts.add("cjk");
+        }
+        if (
+          /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]/u.test(node.text)
+        ) {
+          scripts.add("arabic");
+        }
+      }
+      for (const childId of node.childIds) collect(childId);
+    };
+    for (const id of nodeIds) collect(id);
+    return [...scripts];
   }
 
   async ensureCJKFallback(): Promise<string[]> {

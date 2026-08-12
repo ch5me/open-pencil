@@ -13,7 +13,14 @@ type WorkerScope = typeof self & {
 
 self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
   try {
-    const { graph: serialized, pageId, nodeIds, options, canvasKitWasmUrl, fonts } = event.data;
+    const {
+      graph: serialized,
+      pageId,
+      nodeIds,
+      options,
+      canvasKitWasmUrl,
+      fontSnapshot,
+    } = event.data;
     const ck = await CanvasKitInit({ locateFile: () => canvasKitWasmUrl });
     const surface = ck.MakeSurface(1, 1);
     if (!surface) throw new Error("Failed to create CanvasKit surface");
@@ -22,8 +29,8 @@ self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
     renderer.viewportHeight = 1;
     renderer.dpr = 1;
     const graph = deserializeSceneGraph(serialized);
-    for (const font of fonts) fontManager.markLoaded(font.family, font.style, font.data);
-    await renderer.loadFonts();
+    fontManager.applyExportSnapshot(fontSnapshot);
+    await renderer.loadFonts(undefined, false);
     renderer.invalidateAllPictures();
     const restoreTextMeasurer = await renderer.prepareForExport(graph, pageId, nodeIds);
     let result;
