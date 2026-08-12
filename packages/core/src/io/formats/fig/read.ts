@@ -44,28 +44,40 @@ interface WorkerParseResult {
   error?: string;
 }
 
-function parseViaWorker(buffer: ArrayBuffer, options: ParseFigFileOptions): Promise<SceneGraph> {
+export function parseFigViaWorker(
+  buffer: ArrayBuffer,
+  options: ParseFigFileOptions,
+): Promise<SceneGraph> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("../../../kiwi/fig/parse/worker.ts", import.meta.url), {
       type: "module",
     });
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      options.signal?.removeEventListener("abort", cancel);
+      worker.terminate();
+      callback();
+    };
+    const cancel = () => {
+      finish(() => reject(new IOCancelledError("IO import cancelled")));
+    };
 
     worker.onmessage = (e: MessageEvent<WorkerParseResult>) => {
-      worker.terminate();
-      if (options.signal?.aborted) {
-        reject(new IOCancelledError("IO import cancelled"));
-        return;
-      }
-      if (e.data.error || !e.data.graph) {
-        reject(new Error(e.data.error ?? "Worker failed to parse .fig file"));
-        return;
-      }
-      resolve(deserializeSceneGraph(e.data.graph));
+      finish(() => {
+        if (options.signal?.aborted) {
+          reject(new IOCancelledError("IO import cancelled"));
+        } else if (e.data.error || !e.data.graph) {
+          reject(new Error(e.data.error ?? "Worker failed to parse .fig file"));
+        } else {
+          resolve(deserializeSceneGraph(e.data.graph));
+        }
+      });
     };
 
     worker.onerror = (err) => {
-      worker.terminate();
-      reject(new Error(err.message || "Worker failed to parse .fig file"));
+      finish(() => reject(new Error(err.message || "Worker failed to parse .fig file")));
     };
 
     const workerOptions = {
@@ -74,7 +86,16 @@ function parseViaWorker(buffer: ArrayBuffer, options: ParseFigFileOptions): Prom
       maxDecodedBytes: options.maxDecodedBytes,
       maxExpansionRatio: options.maxExpansionRatio,
     };
-    worker.postMessage({ buffer, options: workerOptions }, [buffer]);
+    options.signal?.addEventListener("abort", cancel, { once: true });
+    if (options.signal?.aborted) {
+      cancel();
+      return;
+    }
+    try {
+      worker.postMessage({ buffer, options: workerOptions }, [buffer]);
+    } catch (error) {
+      finish(() => reject(error));
+    }
   });
 }
 
@@ -89,7 +110,7 @@ export async function parseFigFile(
   if (typeof Worker !== "undefined" && IS_BROWSER) {
     const copy = buffer.slice(0);
     try {
-      return await parseViaWorker(buffer, options);
+      return await parseFigViaWorker(buffer, options);
     } catch (error) {
       throwIfIOCancelled(options.signal);
       console.warn("Worker parsing failed, falling back to main thread:", error);
