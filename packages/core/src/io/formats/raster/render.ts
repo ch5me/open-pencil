@@ -194,7 +194,7 @@ function renderToSurface(
         ])
       : downsampleSurface.makeImageSnapshot();
     const encoded = image.encodeToBytes(ckImageFormat(ck, format), quality);
-    let resultBytes: Uint8Array | null = encoded ? new Uint8Array(encoded) : null;
+    const resultBytes: Uint8Array | null = encoded ? new Uint8Array(encoded) : null;
     let fallback: RasterRenderResult["fallback"];
 
     // CanvasKit's `encodeToBytes` returns null for JPEG/WEBP in this build, so

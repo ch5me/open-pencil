@@ -27,6 +27,12 @@ export interface DownloadedFontCache {
   write(family: string, style: string, data: ArrayBuffer): Promise<void>;
 }
 
+export interface LoadedFontData {
+  family: string;
+  style: string;
+  data: ArrayBuffer;
+}
+
 type FindLocalFontOptions = { allowVariable?: boolean };
 
 type LocalFontMatch = Pick<FontInfo, "family" | "style">;
@@ -305,6 +311,13 @@ export class FontManager {
 
   loadedData(family: string, style: string): ArrayBuffer | null {
     return this.loadedFamilies.get(`${family}|${style}`) ?? null;
+  }
+
+  loadedDataForGraph(graph: SceneGraph, nodeIds: string[]): LoadedFontData[] {
+    return this.collectFontKeys(graph, nodeIds).flatMap(([family, style]) => {
+      const data = this.loadedData(family, style);
+      return data ? [{ family, style, data }] : [];
+    });
   }
 
   renderFamily(family: string, style: string): string {

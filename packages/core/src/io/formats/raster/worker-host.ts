@@ -2,6 +2,7 @@ import { IS_BROWSER } from "#core/constants";
 import { IOCancelledError, throwIfIOCancelled } from "#core/io/limits";
 import { serializeSceneGraph } from "#core/kiwi/fig/parse/transfer";
 import type { SceneGraph } from "#core/scene-graph";
+import { fontManager } from "#core/text/fonts";
 
 import type {
   RasterWorkerOptions,
@@ -11,13 +12,11 @@ import type {
 
 const RASTER_EXPORT_TIMEOUT_MS = 60_000;
 
-interface ActiveRasterExport {
-  cancel(message: string): void;
-}
-
-let activeRasterExport: ActiveRasterExport | null = null;
-
 export type { RasterWorkerOptions } from "./worker-protocol";
+
+export class RasterWorkerFontUnavailableError extends Error {
+  override name = "RasterWorkerFontUnavailableError";
+}
 
 export function canUseRasterExportWorker(): boolean {
   return IS_BROWSER && typeof Worker !== "undefined";
@@ -33,7 +32,7 @@ function canvasKitWasmUrl(): string {
   return new URL("../bin/full/canvaskit.wasm", ckPath).href;
 }
 
-export function renderRasterViaWorker(
+export async function renderRasterViaWorker(
   graph: SceneGraph,
   pageId: string,
   nodeIds: string[],
@@ -42,28 +41,38 @@ export function renderRasterViaWorker(
   timeoutMs = RASTER_EXPORT_TIMEOUT_MS,
 ): Promise<Uint8Array | null> {
   throwIfIOCancelled(signal);
-  activeRasterExport?.cancel("IO export superseded");
+  const fontKeys = fontManager.collectFontKeys(graph, nodeIds);
+  await Promise.all(fontKeys.map(([family, style]) => fontManager.loadFont(family, style)));
+  const fonts = fontManager.loadedDataForGraph(graph, nodeIds);
+  if (fonts.length !== fontKeys.length) {
+    const loaded = new Set(fonts.map(({ family, style }) => `${family}\0${style}`));
+    const missing = fontKeys
+      .filter(([family, style]) => !loaded.has(`${family}\0${style}`))
+      .map(([family, style]) => `"${family}" ${style}`)
+      .join(", ");
+    throw new RasterWorkerFontUnavailableError(
+      `Abortable raster export requires loaded font bytes: ${missing}`,
+    );
+  }
+  throwIfIOCancelled(signal);
 
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
     let settled = false;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
 
     const finish = (callback: () => void) => {
       if (settled) return;
       settled = true;
       signal?.removeEventListener("abort", cancel);
-      if (timeout !== undefined) clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       worker.terminate();
-      if (activeRasterExport === task) activeRasterExport = null;
       callback();
     };
     const cancelWith = (message: string) => {
       finish(() => reject(new IOCancelledError(message)));
     };
     const cancel = () => cancelWith("IO export cancelled");
-    const task: ActiveRasterExport = { cancel: cancelWith };
-    activeRasterExport = task;
 
     worker.onmessage = (event: MessageEvent<RasterWorkerResponse>) => {
       finish(() => {
@@ -95,6 +104,7 @@ export function renderRasterViaWorker(
       nodeIds: [...nodeIds],
       options,
       canvasKitWasmUrl: canvasKitWasmUrl(),
+      fonts,
     };
     try {
       // Structured clone preserves caller-owned image and document buffers.

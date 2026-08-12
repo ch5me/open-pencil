@@ -1,13 +1,15 @@
 import { afterEach, expect, test } from "bun:test";
 
-import { renderRasterViaWorker } from "#core/io/formats/raster";
+import { RasterWorkerFontUnavailableError, renderRasterViaWorker } from "#core/io/formats/raster";
 import { IOCancelledError } from "#core/io/limits";
 import { SceneGraph } from "#core/scene-graph";
+import { fontManager } from "#core/text/fonts";
 
 const originalWorker = globalThis.Worker;
+const originalFetch = globalThis.fetch;
 
 afterEach(() => {
-  Object.assign(globalThis, { Worker: originalWorker });
+  Object.assign(globalThis, { Worker: originalWorker, fetch: originalFetch });
 });
 
 function graphWithImage() {
@@ -19,11 +21,22 @@ function graphWithImage() {
   return { graph, image, pageId: page.id, nodeId: node.id };
 }
 
+async function waitForWorkerDispatch(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 test("pre-cancelled raster export never dispatches", async () => {
   let constructed = false;
   class FakeWorker {
     constructor() {
       constructed = true;
+    }
+    postMessage() {
+      throw new Error("unexpected dispatch");
+    }
+    terminate() {
+      throw new Error("unexpected termination");
     }
   }
   Object.assign(globalThis, { Worker: FakeWorker });
@@ -41,17 +54,19 @@ test("pre-cancelled raster export never dispatches", async () => {
 });
 
 test("abort terminates active raster work and ignores late settlement", async () => {
-  let worker: FakeWorker | undefined;
+  const workers: FakeWorker[] = [];
   class FakeWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
     onerror: ((event: ErrorEvent) => void) | null = null;
     terminated = false;
 
     constructor() {
-      worker = this;
+      workers.push(this);
     }
 
-    postMessage() {}
+    postMessage() {
+      return undefined;
+    }
 
     terminate() {
       this.terminated = true;
@@ -68,12 +83,13 @@ test("abort terminates active raster work and ignores late settlement", async ()
     { format: "PNG" },
     controller.signal,
   );
+  await waitForWorkerDispatch();
   controller.abort();
 
   await expect(exporting).rejects.toBeInstanceOf(IOCancelledError);
-  expect(worker?.terminated).toBe(true);
-  worker?.onmessage?.({ data: { bytes: new Uint8Array([9]) } } as MessageEvent);
-  worker?.onerror?.({ message: "late error" } as ErrorEvent);
+  expect(workers[0]?.terminated).toBe(true);
+  workers[0]?.onmessage?.({ data: { bytes: new Uint8Array([9]) } } as MessageEvent);
+  workers[0]?.onerror?.({ message: "late error" } as ErrorEvent);
 });
 
 test("timeout terminates raster work", async () => {
@@ -81,7 +97,9 @@ test("timeout terminates raster work", async () => {
   class FakeWorker {
     onmessage = null;
     onerror = null;
-    postMessage() {}
+    postMessage() {
+      return undefined;
+    }
     terminate() {
       terminated = true;
     }
@@ -95,7 +113,7 @@ test("timeout terminates raster work", async () => {
   expect(terminated).toBe(true);
 });
 
-test("new raster export cancels overlap without detaching editor bytes", async () => {
+test("concurrent raster exports stay caller-owned without detaching editor bytes", async () => {
   const workers: FakeWorker[] = [];
   class FakeWorker {
     onmessage: ((event: MessageEvent) => void) | null = null;
@@ -128,14 +146,89 @@ test("new raster export cancels overlap without detaching editor bytes", async (
     [secondInput.nodeId],
     { format: "PNG" },
   );
+  await waitForWorkerDispatch();
 
-  await expect(first).rejects.toBeInstanceOf(IOCancelledError);
-  expect(workers[0].terminated).toBe(true);
+  expect(workers[0].terminated).toBe(false);
   expect(workers[0].transfer).toEqual([]);
   expect(firstInput.image).toEqual(new Uint8Array([1, 2, 3, 4]));
 
+  workers[0].onmessage?.({ data: { bytes: new Uint8Array([3, 4]) } } as MessageEvent);
   workers[1].onmessage?.({ data: { bytes: new Uint8Array([5, 6]) } } as MessageEvent);
+  await expect(first).resolves.toEqual(new Uint8Array([3, 4]));
   await expect(second).resolves.toEqual(new Uint8Array([5, 6]));
+});
+
+test("worker request carries exact loaded custom font bytes without detaching them", async () => {
+  let request: { fonts?: Array<{ family: string; style: string; data: ArrayBuffer }> } | undefined;
+  const workers: FakeWorker[] = [];
+  class FakeWorker {
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    onerror = null;
+
+    constructor() {
+      workers.push(this);
+    }
+
+    postMessage(value: typeof request) {
+      request = value;
+    }
+
+    terminate() {
+      return undefined;
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker });
+
+  const graph = new SceneGraph();
+  const page = graph.getPages()[0];
+  const family = `CustomExport_${Date.now()}`;
+  const bytes = new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer;
+  const text = graph.createNode("TEXT", page.id, {
+    text: "Custom",
+    fontFamily: family,
+    fontWeight: 400,
+  });
+  fontManager.markLoaded(family, "Regular", bytes);
+
+  const exporting = renderRasterViaWorker(graph, page.id, [text.id], { format: "PNG" });
+  await waitForWorkerDispatch();
+  expect(request?.fonts).toHaveLength(1);
+  expect(request?.fonts?.[0]).toEqual({ family, style: "Regular", data: bytes });
+  expect(bytes.byteLength).toBe(8);
+
+  workers[0]?.onmessage?.({ data: { bytes: new Uint8Array([1]) } } as MessageEvent);
+  await exporting;
+});
+
+test("text export fails loud when exact font bytes are unavailable", async () => {
+  let constructed = false;
+  class FakeWorker {
+    constructor() {
+      constructed = true;
+    }
+    postMessage() {
+      throw new Error("unexpected dispatch");
+    }
+    terminate() {
+      throw new Error("unexpected termination");
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker });
+  Reflect.deleteProperty(globalThis, "fetch");
+
+  const graph = new SceneGraph();
+  const page = graph.getPages()[0];
+  const family = `UnavailableExport_${Date.now()}`;
+  const text = graph.createNode("TEXT", page.id, {
+    text: "Missing",
+    fontFamily: family,
+    fontWeight: 400,
+  });
+
+  await expect(
+    renderRasterViaWorker(graph, page.id, [text.id], { format: "PNG" }),
+  ).rejects.toBeInstanceOf(RasterWorkerFontUnavailableError);
+  expect(constructed).toBe(false);
 });
 
 test("dispatch failure terminates worker", async () => {

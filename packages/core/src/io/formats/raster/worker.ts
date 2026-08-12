@@ -2,6 +2,7 @@ import CanvasKitInit from "canvaskit-wasm/full";
 
 import { SkiaRenderer } from "#core/canvas";
 import { deserializeSceneGraph } from "#core/kiwi/fig/parse/transfer";
+import { fontManager } from "#core/text/fonts";
 
 import { renderNodesToRaster } from "./render";
 import type { RasterWorkerRequest } from "./worker-protocol";
@@ -12,7 +13,7 @@ type WorkerScope = typeof self & {
 
 self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
   try {
-    const { graph: serialized, pageId, nodeIds, options, canvasKitWasmUrl } = event.data;
+    const { graph: serialized, pageId, nodeIds, options, canvasKitWasmUrl, fonts } = event.data;
     const ck = await CanvasKitInit({ locateFile: () => canvasKitWasmUrl });
     const surface = ck.MakeSurface(1, 1);
     if (!surface) throw new Error("Failed to create CanvasKit surface");
@@ -21,6 +22,7 @@ self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
     renderer.viewportHeight = 1;
     renderer.dpr = 1;
     const graph = deserializeSceneGraph(serialized);
+    for (const font of fonts) fontManager.markLoaded(font.family, font.style, font.data);
     await renderer.loadFonts();
     renderer.invalidateAllPictures();
     const restoreTextMeasurer = await renderer.prepareForExport(graph, pageId, nodeIds);
@@ -40,11 +42,11 @@ self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
     let bytes = result?.bytes ?? null;
     if (!bytes && result?.fallback) {
       if (typeof OffscreenCanvas === "undefined") {
-        throw new Error(`Raster worker cannot encode ${result.fallback.format}`);
+        throw new TypeError(`Raster worker cannot encode ${result.fallback.format}`);
       }
       const canvas = new OffscreenCanvas(result.fallback.width, result.fallback.height);
       const context = canvas.getContext("2d");
-      if (!context) throw new Error("Raster worker could not create encoding canvas");
+      if (!context) throw new TypeError("Raster worker could not create encoding canvas");
       const image = new ImageData(
         new Uint8ClampedArray(result.fallback.pixels),
         result.fallback.width,

@@ -10,6 +10,7 @@ export {
 export { initCanvasKit, headlessRenderNodes, headlessRenderThumbnail } from "./headless";
 export {
   canUseRasterExportWorker,
+  RasterWorkerFontUnavailableError,
   renderRasterViaWorker,
   type RasterWorkerOptions,
 } from "./worker-host";
