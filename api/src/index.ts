@@ -281,6 +281,7 @@ app.put('/api/documents/:documentId/snapshot', requireSession(), async (c) => {
     snapshotId: string
     snapshotBytesBase64: string
     reason?: string
+    title?: string
   }>()
 
   if (!body.snapshotId || !body.snapshotBytesBase64) {
@@ -295,7 +296,8 @@ app.put('/api/documents/:documentId/snapshot', requireSession(), async (c) => {
       documentId,
       snapshotId: body.snapshotId,
       snapshotBytesBase64: body.snapshotBytesBase64,
-      reason: (body.reason as any) ?? 'manual-save'
+      reason: (body.reason as any) ?? 'manual-save',
+      title: body.title
     })
     return c.json(result)
   } catch (e) {

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+
 import {
   createHostedDocument,
   saveHostedDocumentSnapshot,
@@ -24,7 +25,9 @@ function createMockBucket(store: Record<string, Uint8Array>) {
     async get(key: string) {
       const bytes = store[key]
       if (!bytes) return null
-      return { arrayBuffer: () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
+      return {
+        arrayBuffer: () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      }
     },
     async delete(keys: string | string[]) {
       const ks = Array.isArray(keys) ? keys : [keys]
@@ -55,12 +58,16 @@ function createMockDb(rows: Record<string, any[]>) {
               if (sql.includes('WHERE owner_user_id = ?') && sql.includes('lifecycle_state')) {
                 const ownerId = bindings[0]
                 const state = bindings[1]
-                tableRows = tableRows.filter((r: any) => r.owner_user_id === ownerId && r.lifecycle_state === state)
+                tableRows = tableRows.filter(
+                  (r: any) => r.owner_user_id === ownerId && r.lifecycle_state === state
+                )
               } else if (sql.includes('WHERE owner_user_id = ?')) {
                 tableRows = tableRows.filter((r: any) => r.owner_user_id === bindings[0])
               }
               if (sql.includes('ORDER BY updated_at DESC')) {
-                tableRows.sort((a: any, b: any) => (b.updated_at ?? '').localeCompare(a.updated_at ?? ''))
+                tableRows.sort((a: any, b: any) =>
+                  (b.updated_at ?? '').localeCompare(a.updated_at ?? '')
+                )
               }
               const limitMatch = sql.match(/LIMIT\s+\?/)
               if (limitMatch && bindings.length > 0) {
@@ -76,19 +83,27 @@ function createMockDb(rows: Record<string, any[]>) {
               if (sql.startsWith('INSERT INTO')) {
                 const tableName = sql.match(/INTO\s+(\w+)/)?.[1]
                 if (tableName && !rows[tableName]) rows[tableName] = []
-                const cols = sql.match(/\(([^)]+)\)/)?.[1]?.split(',').map(s => s.trim()) ?? []
+                const cols =
+                  sql
+                    .match(/\(([^)]+)\)/)?.[1]
+                    ?.split(',')
+                    .map((s) => s.trim()) ?? []
                 const obj: Record<string, any> = {}
-                cols.forEach((c, i) => { obj[c] = bindings[i] })
+                cols.forEach((c, i) => {
+                  obj[c] = bindings[i]
+                })
                 if (tableName) rows[tableName].push(obj)
               }
               if (sql.startsWith('UPDATE hosted_documents')) {
-                const docId = bindings[3]
+                const hasTitle = sql.includes('COALESCE')
+                const docId = bindings[hasTitle ? 4 : 3]
                 const tableRows = rows.hosted_documents ?? []
                 const row = tableRows.find((r: any) => r.id === docId)
                 if (row) {
                   row.current_snapshot_id = bindings[0]
                   row.current_snapshot_storage_key = bindings[1]
-                  row.updated_at = bindings[2]
+                  if (hasTitle && bindings[2] != null) row.title = bindings[2]
+                  row.updated_at = bindings[hasTitle ? 3 : 2]
                 }
               }
               if (sql.startsWith('DELETE')) {
@@ -172,17 +187,19 @@ describe('hosted document CRUD', () => {
   test('save updates snapshot pointer and writes new R2 object', async () => {
     const store: Record<string, Uint8Array> = {}
     const rows: Record<string, any[]> = {
-      hosted_documents: [{
-        id: 'doc-003',
-        owner_user_id: TEST_USER,
-        title: 'Saved Doc',
-        source_format: 'fig',
-        current_snapshot_id: 'snap-old',
-        current_snapshot_storage_key: 'documents/doc-003/snapshots/snap-old.fig',
-        lifecycle_state: 'active',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
-      }],
+      hosted_documents: [
+        {
+          id: 'doc-003',
+          owner_user_id: TEST_USER,
+          title: 'Saved Doc',
+          source_format: 'fig',
+          current_snapshot_id: 'snap-old',
+          current_snapshot_storage_key: 'documents/doc-003/snapshots/snap-old.fig',
+          lifecycle_state: 'active',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
+        }
+      ],
       hosted_snapshots: []
     }
     const bucket = createMockBucket(store)
@@ -203,20 +220,48 @@ describe('hosted document CRUD', () => {
     expect(rows.hosted_documents[0].current_snapshot_id).toBe('snap-new')
   })
 
+  test('save updates document title when provided', async () => {
+    const store: Record<string, Uint8Array> = {}
+    const rows: Record<string, any[]> = {
+      hosted_documents: [
+        {
+          id: 'doc-title',
+          owner_user_id: TEST_USER,
+          title: 'Before',
+          current_snapshot_id: 'snap-old',
+          current_snapshot_storage_key: 'old-key'
+        }
+      ],
+      hosted_snapshots: []
+    }
+    const db = createMockDb(rows)
+
+    await saveHostedDocumentSnapshot(db as any, createMockBucket(store) as any, TEST_USER, {
+      documentId: 'doc-title',
+      snapshotId: 'snap-title',
+      snapshotBytesBase64: encodeBase64(SAMPLE_BYTES),
+      title: 'After'
+    })
+
+    expect(rows.hosted_documents[0].title).toBe('After')
+  })
+
   test('save rejects wrong user', async () => {
     const store: Record<string, Uint8Array> = {}
     const rows: Record<string, any[]> = {
-      hosted_documents: [{
-        id: 'doc-004',
-        owner_user_id: 'other-user',
-        title: 'Not Mine',
-        source_format: 'fig',
-        current_snapshot_id: 'snap-001',
-        current_snapshot_storage_key: 'k',
-        lifecycle_state: 'active',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
-      }]
+      hosted_documents: [
+        {
+          id: 'doc-004',
+          owner_user_id: 'other-user',
+          title: 'Not Mine',
+          source_format: 'fig',
+          current_snapshot_id: 'snap-001',
+          current_snapshot_storage_key: 'k',
+          lifecycle_state: 'active',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
+        }
+      ]
     }
     const bucket = createMockBucket(store)
     const db = createMockDb(rows)
@@ -248,9 +293,33 @@ describe('hosted document CRUD', () => {
   test('list returns documents for owner', async () => {
     const rows: Record<string, any[]> = {
       hosted_documents: [
-        { id: 'doc-a', owner_user_id: TEST_USER, title: 'A', source_format: 'fig', current_snapshot_id: 's1', lifecycle_state: 'active', updated_at: '2026-05-01T00:00:00Z' },
-        { id: 'doc-b', owner_user_id: TEST_USER, title: 'B', source_format: 'pen', current_snapshot_id: 's2', lifecycle_state: 'active', updated_at: '2026-05-02T00:00:00Z' },
-        { id: 'doc-c', owner_user_id: 'other', title: 'C', source_format: 'fig', current_snapshot_id: 's3', lifecycle_state: 'active', updated_at: '2026-05-03T00:00:00Z' }
+        {
+          id: 'doc-a',
+          owner_user_id: TEST_USER,
+          title: 'A',
+          source_format: 'fig',
+          current_snapshot_id: 's1',
+          lifecycle_state: 'active',
+          updated_at: '2026-05-01T00:00:00Z'
+        },
+        {
+          id: 'doc-b',
+          owner_user_id: TEST_USER,
+          title: 'B',
+          source_format: 'pen',
+          current_snapshot_id: 's2',
+          lifecycle_state: 'active',
+          updated_at: '2026-05-02T00:00:00Z'
+        },
+        {
+          id: 'doc-c',
+          owner_user_id: 'other',
+          title: 'C',
+          source_format: 'fig',
+          current_snapshot_id: 's3',
+          lifecycle_state: 'active',
+          updated_at: '2026-05-03T00:00:00Z'
+        }
       ]
     }
     const db = createMockDb(rows)
@@ -271,17 +340,19 @@ describe('hosted document CRUD', () => {
       'documents/doc-005/assets/img-2': new Uint8Array([88])
     }
     const rows: Record<string, any[]> = {
-      hosted_documents: [{
-        id: 'doc-005',
-        owner_user_id: TEST_USER,
-        title: 'To Delete',
-        source_format: 'fig',
-        current_snapshot_id: 'snap-002',
-        current_snapshot_storage_key: 'documents/doc-005/snapshots/snap-002.fig',
-        lifecycle_state: 'active',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
-      }],
+      hosted_documents: [
+        {
+          id: 'doc-005',
+          owner_user_id: TEST_USER,
+          title: 'To Delete',
+          source_format: 'fig',
+          current_snapshot_id: 'snap-002',
+          current_snapshot_storage_key: 'documents/doc-005/snapshots/snap-002.fig',
+          lifecycle_state: 'active',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
+        }
+      ],
       hosted_snapshots: [
         { storage_key: 'documents/doc-005/snapshots/snap-001.fig' },
         { storage_key: 'documents/doc-005/snapshots/snap-002.fig' }
@@ -305,17 +376,19 @@ describe('hosted document CRUD', () => {
   test('write asset creates R2 object and D1 record', async () => {
     const assetStore: Record<string, Uint8Array> = {}
     const rows: Record<string, any[]> = {
-      hosted_documents: [{
-        id: 'doc-006',
-        owner_user_id: TEST_USER,
-        title: 'Asset Doc',
-        source_format: 'fig',
-        current_snapshot_id: 'snap-006',
-        current_snapshot_storage_key: 'documents/doc-006/snapshots/snap-006.fig',
-        lifecycle_state: 'active',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
-      }]
+      hosted_documents: [
+        {
+          id: 'doc-006',
+          owner_user_id: TEST_USER,
+          title: 'Asset Doc',
+          source_format: 'fig',
+          current_snapshot_id: 'snap-006',
+          current_snapshot_storage_key: 'documents/doc-006/snapshots/snap-006.fig',
+          lifecycle_state: 'active',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
+        }
+      ]
     }
     const assetsBucket = createMockBucket(assetStore)
     const db = createMockDb(rows)
@@ -341,17 +414,19 @@ describe('hosted document CRUD', () => {
   test('write asset rejects wrong user', async () => {
     const assetStore: Record<string, Uint8Array> = {}
     const rows: Record<string, any[]> = {
-      hosted_documents: [{
-        id: 'doc-007',
-        owner_user_id: 'other-user',
-        title: 'Not Mine',
-        source_format: 'fig',
-        current_snapshot_id: 'snap-x',
-        current_snapshot_storage_key: 'k',
-        lifecycle_state: 'active',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
-      }]
+      hosted_documents: [
+        {
+          id: 'doc-007',
+          owner_user_id: 'other-user',
+          title: 'Not Mine',
+          source_format: 'fig',
+          current_snapshot_id: 'snap-x',
+          current_snapshot_storage_key: 'k',
+          lifecycle_state: 'active',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
+        }
+      ]
     }
     const assetsBucket = createMockBucket(assetStore)
     const db = createMockDb(rows)
@@ -373,26 +448,36 @@ describe('hosted document CRUD', () => {
       'documents/doc-008/assets/img-del': new Uint8Array([55])
     }
     const rows: Record<string, any[]> = {
-      hosted_documents: [{
-        id: 'doc-008',
-        owner_user_id: TEST_USER,
-        title: 'Delete Asset Doc',
-        source_format: 'fig',
-        current_snapshot_id: 'snap-008',
-        current_snapshot_storage_key: 'documents/doc-008/snapshots/snap-008.fig',
-        lifecycle_state: 'active',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
-      }],
-      hosted_assets: [{
-        id: 'img-del',
-        storage_key: 'documents/doc-008/assets/img-del'
-      }]
+      hosted_documents: [
+        {
+          id: 'doc-008',
+          owner_user_id: TEST_USER,
+          title: 'Delete Asset Doc',
+          source_format: 'fig',
+          current_snapshot_id: 'snap-008',
+          current_snapshot_storage_key: 'documents/doc-008/snapshots/snap-008.fig',
+          lifecycle_state: 'active',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
+        }
+      ],
+      hosted_assets: [
+        {
+          id: 'img-del',
+          storage_key: 'documents/doc-008/assets/img-del'
+        }
+      ]
     }
     const assetsBucket = createMockBucket(assetStore)
     const db = createMockDb(rows)
 
-    const result = await deleteHostedAsset(db as any, assetsBucket as any, TEST_USER, 'doc-008', 'img-del')
+    const result = await deleteHostedAsset(
+      db as any,
+      assetsBucket as any,
+      TEST_USER,
+      'doc-008',
+      'img-del'
+    )
 
     expect(result.assetId).toBe('img-del')
     expect(Object.keys(assetStore)).toEqual([])
@@ -402,17 +487,19 @@ describe('hosted document CRUD', () => {
   test('delete asset rejects when asset not found', async () => {
     const assetStore: Record<string, Uint8Array> = {}
     const rows: Record<string, any[]> = {
-      hosted_documents: [{
-        id: 'doc-009',
-        owner_user_id: TEST_USER,
-        title: 'Doc',
-        source_format: 'fig',
-        current_snapshot_id: 'snap-x',
-        current_snapshot_storage_key: 'k',
-        lifecycle_state: 'active',
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
-      }]
+      hosted_documents: [
+        {
+          id: 'doc-009',
+          owner_user_id: TEST_USER,
+          title: 'Doc',
+          source_format: 'fig',
+          current_snapshot_id: 'snap-x',
+          current_snapshot_storage_key: 'k',
+          lifecycle_state: 'active',
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z'
+        }
+      ]
     }
     const assetsBucket = createMockBucket(assetStore)
     const db = createMockDb(rows)

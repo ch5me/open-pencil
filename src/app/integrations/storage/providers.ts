@@ -1,3 +1,8 @@
+import {
+  createHostedStorageAdapter,
+  ELF_HOSTED_STORAGE_PROVIDER_ID
+} from '@/app/hosted/storage/adapter'
+
 import { defineStorageProvider, StorageProviderRegistry } from './registry'
 import { createS3StorageAdapter } from './s3/adapter'
 
@@ -17,4 +22,16 @@ export const S3_STORAGE_PROVIDER = defineStorageProvider({
   createAdapter: createS3StorageAdapter
 })
 
-export const storageProviderRegistry = new StorageProviderRegistry([S3_STORAGE_PROVIDER])
+export const ELF_HOSTED_STORAGE_PROVIDER = defineStorageProvider({
+  id: ELF_HOSTED_STORAGE_PROVIDER_ID,
+  label: 'ELF hosted storage',
+  description: 'Firefly-managed OpenPencil documents for the current ELF identity',
+  preferenceFields: [],
+  credentialFields: [],
+  createAdapter: createHostedStorageAdapter
+})
+
+export const storageProviderRegistry = new StorageProviderRegistry([
+  S3_STORAGE_PROVIDER,
+  ELF_HOSTED_STORAGE_PROVIDER
+])

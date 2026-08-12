@@ -188,6 +188,13 @@ export async function openStorageDocumentInNewTab(document: StorageDocument): Pr
   }
 }
 
+export async function openStorageDocumentByIdInNewTab(documentId: string): Promise<void> {
+  const adapter = createActiveStorageAdapter()
+  const metadata = await adapter.getDocumentMetadata?.(documentId)
+  if (!metadata) throw new Error(`Storage document not found: ${documentId}`)
+  await openStorageDocumentInNewTab({ id: documentId, ...metadata, metadataAuthoritative: true })
+}
+
 export async function openFileInNewTab(
   file: File,
   handle?: FileSystemFileHandle,
@@ -281,6 +288,7 @@ export function useTabsStore() {
     getTabForStore,
     getTabsSnapshot,
     openFileInNewTab,
+    openStorageDocumentByIdInNewTab,
     openStorageDocumentInNewTab,
     getActiveStore,
     tabCount

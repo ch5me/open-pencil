@@ -1,10 +1,11 @@
 import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
+
+import { createHostedDocumentMetadata } from './migration'
 import {
   type HostedDocumentMetadataBundle,
   type HostedSnapshotReason,
-  documentSnapshotStorageKey,
+  documentSnapshotStorageKey
 } from './schema'
-import { createHostedDocumentMetadata } from './migration'
 import { writeSnapshotToR2, writeAssetToR2 } from './storage'
 
 export type CreateHostedDocumentRequest = {
@@ -25,6 +26,7 @@ export type SaveHostedDocumentRequest = {
   snapshotId: string
   snapshotBytesBase64: string
   reason?: HostedSnapshotReason
+  title?: string
 }
 
 export type WriteHostedAssetRequest = {
@@ -110,49 +112,55 @@ export async function createHostedDocument(
 
   // Persist D1 records in a transaction
   await db.batch([
-    db.prepare(
-      'INSERT INTO hosted_documents (id, owner_user_id, title, source_format, current_snapshot_id, current_snapshot_storage_key, lifecycle_state, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(
-      metadata.document.id,
-      metadata.document.ownerUserId,
-      metadata.document.title,
-      metadata.document.sourceFormat,
-      metadata.document.currentSnapshotId,
-      metadata.document.currentSnapshotStorageKey,
-      metadata.document.lifecycleState,
-      metadata.document.createdAt,
-      metadata.document.updatedAt
-    ),
-    db.prepare(
-      'INSERT INTO hosted_snapshots (id, document_id, owner_user_id, parent_snapshot_id, storage_key, byte_length, content_hash, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(
-      metadata.snapshot.id,
-      metadata.snapshot.documentId,
-      metadata.snapshot.ownerUserId,
-      metadata.snapshot.parentSnapshotId,
-      metadata.snapshot.storageKey,
-      metadata.snapshot.byteLength,
-      metadata.snapshot.contentHash,
-      metadata.snapshot.reason,
-      metadata.snapshot.createdAt
-    ),
-    db.prepare(
-      'INSERT INTO hosted_document_migrations (id, document_id, owner_user_id, kind, source_kind, source_format, source_name, source_fingerprint, initial_snapshot_id, state, error_code, created_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(
-      metadata.migration.id,
-      metadata.migration.documentId,
-      metadata.migration.ownerUserId,
-      metadata.migration.kind,
-      metadata.migration.sourceKind,
-      metadata.migration.sourceFormat,
-      metadata.migration.sourceName,
-      metadata.migration.sourceFingerprint,
-      metadata.migration.initialSnapshotId,
-      metadata.migration.state,
-      metadata.migration.errorCode,
-      metadata.migration.createdAt,
-      metadata.migration.completedAt
-    )
+    db
+      .prepare(
+        'INSERT INTO hosted_documents (id, owner_user_id, title, source_format, current_snapshot_id, current_snapshot_storage_key, lifecycle_state, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .bind(
+        metadata.document.id,
+        metadata.document.ownerUserId,
+        metadata.document.title,
+        metadata.document.sourceFormat,
+        metadata.document.currentSnapshotId,
+        metadata.document.currentSnapshotStorageKey,
+        metadata.document.lifecycleState,
+        metadata.document.createdAt,
+        metadata.document.updatedAt
+      ),
+    db
+      .prepare(
+        'INSERT INTO hosted_snapshots (id, document_id, owner_user_id, parent_snapshot_id, storage_key, byte_length, content_hash, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .bind(
+        metadata.snapshot.id,
+        metadata.snapshot.documentId,
+        metadata.snapshot.ownerUserId,
+        metadata.snapshot.parentSnapshotId,
+        metadata.snapshot.storageKey,
+        metadata.snapshot.byteLength,
+        metadata.snapshot.contentHash,
+        metadata.snapshot.reason,
+        metadata.snapshot.createdAt
+      ),
+    db
+      .prepare(
+        'INSERT INTO hosted_document_migrations (id, document_id, owner_user_id, kind, source_kind, source_format, source_name, source_fingerprint, initial_snapshot_id, state, error_code, created_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .bind(
+        metadata.migration.id,
+        metadata.migration.documentId,
+        metadata.migration.ownerUserId,
+        metadata.migration.kind,
+        metadata.migration.sourceKind,
+        metadata.migration.sourceFormat,
+        metadata.migration.sourceName,
+        metadata.migration.sourceFingerprint,
+        metadata.migration.initialSnapshotId,
+        metadata.migration.state,
+        metadata.migration.errorCode,
+        metadata.migration.createdAt,
+        metadata.migration.completedAt
+      )
   ])
 
   return {
@@ -180,15 +188,22 @@ export async function saveHostedDocumentSnapshot(
   }
 
   // Verify document ownership
-  const doc = await db.prepare(
-    'SELECT id, owner_user_id FROM hosted_documents WHERE id = ?'
-  ).bind(request.documentId).first<{ id: string; owner_user_id: string }>()
+  const doc = await db
+    .prepare('SELECT id, owner_user_id FROM hosted_documents WHERE id = ?')
+    .bind(request.documentId)
+    .first<{ id: string; owner_user_id: string }>()
 
   if (!doc) {
-    throw new HostedDocumentStoreError('not-found', `Hosted document ${request.documentId} not found.`)
+    throw new HostedDocumentStoreError(
+      'not-found',
+      `Hosted document ${request.documentId} not found.`
+    )
   }
   if (doc.owner_user_id !== userId) {
-    throw new HostedDocumentStoreError('unauthorized', 'Cannot save a document owned by another user.')
+    throw new HostedDocumentStoreError(
+      'unauthorized',
+      'Cannot save a document owned by another user.'
+    )
   }
 
   // Write new snapshot to R2
@@ -203,27 +218,26 @@ export async function saveHostedDocumentSnapshot(
   // Update D1: insert snapshot row + update document pointer
   // parent_snapshot_id is null for a fresh PUT save — we don't track snapshot lineage here
   await db.batch([
-    db.prepare(
-      'INSERT INTO hosted_snapshots (id, document_id, owner_user_id, parent_snapshot_id, storage_key, byte_length, content_hash, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(
-      request.snapshotId,
-      request.documentId,
-      userId,
-      null,
-      storageKey,
-      snapshotBytes.byteLength,
-      computeContentHash(snapshotBytes),
-      reason,
-      createdAt
-    ),
-    db.prepare(
-      'UPDATE hosted_documents SET current_snapshot_id = ?, current_snapshot_storage_key = ?, updated_at = ? WHERE id = ?'
-    ).bind(
-      request.snapshotId,
-      storageKey,
-      createdAt,
-      request.documentId
-    )
+    db
+      .prepare(
+        'INSERT INTO hosted_snapshots (id, document_id, owner_user_id, parent_snapshot_id, storage_key, byte_length, content_hash, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      )
+      .bind(
+        request.snapshotId,
+        request.documentId,
+        userId,
+        null,
+        storageKey,
+        snapshotBytes.byteLength,
+        computeContentHash(snapshotBytes),
+        reason,
+        createdAt
+      ),
+    db
+      .prepare(
+        'UPDATE hosted_documents SET current_snapshot_id = ?, current_snapshot_storage_key = ?, title = COALESCE(?, title), updated_at = ? WHERE id = ?'
+      )
+      .bind(request.snapshotId, storageKey, request.title ?? null, createdAt, request.documentId)
   ])
 
   return {
@@ -241,16 +255,21 @@ export async function listHostedDocuments(
   db: D1Database,
   userId: string,
   limit = 50
-): Promise<Array<{
-  id: string
-  title: string
-  sourceFormat: string
-  currentSnapshotId: string
-  updatedAt: string
-}>> {
-  const results = await db.prepare(
-    'SELECT id, title, source_format, current_snapshot_id, updated_at FROM hosted_documents WHERE owner_user_id = ? AND lifecycle_state = ? ORDER BY updated_at DESC LIMIT ?'
-  ).bind(userId, 'active', limit).all()
+): Promise<
+  Array<{
+    id: string
+    title: string
+    sourceFormat: string
+    currentSnapshotId: string
+    updatedAt: string
+  }>
+> {
+  const results = await db
+    .prepare(
+      'SELECT id, title, source_format, current_snapshot_id, updated_at FROM hosted_documents WHERE owner_user_id = ? AND lifecycle_state = ? ORDER BY updated_at DESC LIMIT ?'
+    )
+    .bind(userId, 'active', limit)
+    .all()
 
   return (results.results ?? []).map((row: any) => ({
     id: row.id as string,
@@ -271,27 +290,39 @@ export async function deleteHostedDocument(
   userId: string,
   documentId: string
 ): Promise<void> {
-  const doc = await db.prepare(
-    'SELECT id, owner_user_id, current_snapshot_storage_key FROM hosted_documents WHERE id = ?'
-  ).bind(documentId).first<{ id: string; owner_user_id: string; current_snapshot_storage_key: string }>()
+  const doc = await db
+    .prepare(
+      'SELECT id, owner_user_id, current_snapshot_storage_key FROM hosted_documents WHERE id = ?'
+    )
+    .bind(documentId)
+    .first<{ id: string; owner_user_id: string; current_snapshot_storage_key: string }>()
 
   if (!doc) {
     throw new HostedDocumentStoreError('not-found', `Hosted document ${documentId} not found.`)
   }
   if (doc.owner_user_id !== userId) {
-    throw new HostedDocumentStoreError('unauthorized', 'Cannot delete a document owned by another user.')
+    throw new HostedDocumentStoreError(
+      'unauthorized',
+      'Cannot delete a document owned by another user.'
+    )
   }
 
   const [snapshots, assets] = await Promise.all([
-    db.prepare('SELECT storage_key FROM hosted_snapshots WHERE document_id = ?').bind(documentId).all<{ storage_key: string }>(),
-    db.prepare('SELECT storage_key FROM hosted_assets WHERE document_id = ?').bind(documentId).all<{ storage_key: string }>()
+    db
+      .prepare('SELECT storage_key FROM hosted_snapshots WHERE document_id = ?')
+      .bind(documentId)
+      .all<{ storage_key: string }>(),
+    db
+      .prepare('SELECT storage_key FROM hosted_assets WHERE document_id = ?')
+      .bind(documentId)
+      .all<{ storage_key: string }>()
   ])
 
   const docKeys = [doc.current_snapshot_storage_key]
   for (const row of snapshots.results ?? []) {
     if (row.storage_key !== doc.current_snapshot_storage_key) docKeys.push(row.storage_key)
   }
-  const assetKeys = assets.results?.map(r => r.storage_key) ?? []
+  const assetKeys = assets.results?.map((r) => r.storage_key) ?? []
 
   await Promise.all([
     docKeys.length > 0 ? documentsBucket.delete(docKeys) : Promise.resolve(),
@@ -316,15 +347,22 @@ export async function writeHostedAsset(
     throw new HostedDocumentStoreError('empty-asset', 'Asset bytes must not be empty.')
   }
 
-  const doc = await db.prepare(
-    'SELECT id, owner_user_id FROM hosted_documents WHERE id = ?'
-  ).bind(request.documentId).first<{ id: string; owner_user_id: string }>()
+  const doc = await db
+    .prepare('SELECT id, owner_user_id FROM hosted_documents WHERE id = ?')
+    .bind(request.documentId)
+    .first<{ id: string; owner_user_id: string }>()
 
   if (!doc) {
-    throw new HostedDocumentStoreError('not-found', `Hosted document ${request.documentId} not found.`)
+    throw new HostedDocumentStoreError(
+      'not-found',
+      `Hosted document ${request.documentId} not found.`
+    )
   }
   if (doc.owner_user_id !== userId) {
-    throw new HostedDocumentStoreError('unauthorized', 'Cannot write assets for a document owned by another user.')
+    throw new HostedDocumentStoreError(
+      'unauthorized',
+      'Cannot write assets for a document owned by another user.'
+    )
   }
 
   const assetResult = await writeAssetToR2({
@@ -335,20 +373,23 @@ export async function writeHostedAsset(
     mediaType: request.mediaType
   })
 
-  await db.prepare(
-    'INSERT INTO hosted_assets (id, document_id, owner_user_id, snapshot_id, kind, storage_key, content_hash, byte_length, media_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(
-    request.assetId,
-    request.documentId,
-    userId,
-    request.snapshotId,
-    request.kind,
-    assetResult.storageKey,
-    computeContentHash(assetBytes),
-    assetBytes.byteLength,
-    request.mediaType,
-    new Date().toISOString()
-  ).run()
+  await db
+    .prepare(
+      'INSERT INTO hosted_assets (id, document_id, owner_user_id, snapshot_id, kind, storage_key, content_hash, byte_length, media_type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )
+    .bind(
+      request.assetId,
+      request.documentId,
+      userId,
+      request.snapshotId,
+      request.kind,
+      assetResult.storageKey,
+      computeContentHash(assetBytes),
+      assetBytes.byteLength,
+      request.mediaType,
+      new Date().toISOString()
+    )
+    .run()
 
   return {
     assetId: request.assetId,
@@ -364,23 +405,31 @@ export async function deleteHostedAsset(
   documentId: string,
   assetId: string
 ): Promise<{ assetId: string }> {
-  const doc = await db.prepare(
-    'SELECT id, owner_user_id FROM hosted_documents WHERE id = ?'
-  ).bind(documentId).first<{ id: string; owner_user_id: string }>()
+  const doc = await db
+    .prepare('SELECT id, owner_user_id FROM hosted_documents WHERE id = ?')
+    .bind(documentId)
+    .first<{ id: string; owner_user_id: string }>()
 
   if (!doc) {
     throw new HostedDocumentStoreError('not-found', `Hosted document ${documentId} not found.`)
   }
   if (doc.owner_user_id !== userId) {
-    throw new HostedDocumentStoreError('unauthorized', 'Cannot delete assets for a document owned by another user.')
+    throw new HostedDocumentStoreError(
+      'unauthorized',
+      'Cannot delete assets for a document owned by another user.'
+    )
   }
 
-  const asset = await db.prepare(
-    'SELECT id, storage_key FROM hosted_assets WHERE id = ? AND document_id = ?'
-  ).bind(assetId, documentId).first<{ id: string; storage_key: string }>()
+  const asset = await db
+    .prepare('SELECT id, storage_key FROM hosted_assets WHERE id = ? AND document_id = ?')
+    .bind(assetId, documentId)
+    .first<{ id: string; storage_key: string }>()
 
   if (!asset) {
-    throw new HostedDocumentStoreError('not-found', `Asset ${assetId} not found in document ${documentId}.`)
+    throw new HostedDocumentStoreError(
+      'not-found',
+      `Asset ${assetId} not found in document ${documentId}.`
+    )
   }
 
   await assetsBucket.delete(asset.storage_key)

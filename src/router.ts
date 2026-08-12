@@ -20,13 +20,12 @@ const router = createRouter({
     { path: '/login', component: LoginView },
     { path: '/auth/callback', component: AuthCallbackView },
     { path: '/', component: EditorView, beforeEnter: requireHostedAuth },
-    { path: '/storage', component: StorageView },
+    { path: '/storage', component: StorageView, beforeEnter: requireHostedAuth },
     { path: '/demo', component: EditorView, meta: { demo: true }, beforeEnter: requireHostedAuth },
     { path: '/share/:roomId', component: EditorView, beforeEnter: requireHostedAuth },
     {
       path: '/hosted',
-      component: EditorView,
-      meta: { hostedOnly: true },
+      redirect: '/storage',
       beforeEnter: requireHostedAuth
     },
     {

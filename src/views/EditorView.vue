@@ -12,11 +12,18 @@ import { openFileFromPath, useMenu } from '@/app/shell/menu/use'
 import { useCollab, COLLAB_KEY } from '@/app/collab/use'
 import { connectAutomation } from '@/app/automation/bridge/server'
 import { spawnMCPIfNeeded } from '@/app/automation/mcp/spawn'
+import { openHostedRouteDocument } from '@/app/hosted/navigation'
 import { isTauri } from '@/app/tauri/env'
 import { appMenuShortcut } from '@/app/shell/menu/shortcut'
 import { createDemoShapes } from '@/app/demo/document'
 import { useEditorStore } from '@/app/editor/active-store'
-import { createTab, activeTab, getActiveStore, tabCount } from '@/app/tabs'
+import {
+  createTab,
+  activeTab,
+  getActiveStore,
+  openStorageDocumentByIdInNewTab,
+  tabCount
+} from '@/app/tabs'
 
 import CollabPanel from '@/components/CollabPanel/CollabPanel.vue'
 import EditorCanvas from '@/components/EditorCanvas.vue'
@@ -87,6 +94,8 @@ async function bindAssociatedFileOpen() {
 }
 
 onMounted(async () => {
+  await openHostedRouteDocument(route, openStorageDocumentByIdInNewTab)
+
   const mcp = await spawnMCPIfNeeded()
   mcpCleanup.value = mcp?.disconnect ?? null
   const tauri = isTauri()

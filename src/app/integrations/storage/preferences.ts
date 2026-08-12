@@ -1,14 +1,32 @@
 import { useLocalStorage } from '@vueuse/core'
+import { computed } from 'vue'
+
+import { isHostedDocsEnabled } from '@/app/hosted/flags'
+import { ELF_HOSTED_STORAGE_PROVIDER_ID } from '@/app/hosted/storage/adapter'
 
 import { storageProviderRegistry } from './providers'
 import type { StorageFieldID, StorageProviderID } from './types'
 
 export type StoragePreferences = Record<StorageProviderID, Record<StorageFieldID, string>>
 
-export const activeStorageProviderID = useLocalStorage<StorageProviderID>(
+const selectedStorageProviderID = useLocalStorage<StorageProviderID>(
   'open-pencil:storage:provider',
   's3-compatible'
 )
+
+export function resolveActiveStorageProviderID(
+  selectedProviderID: StorageProviderID,
+  hostedDocsEnabled: boolean
+): StorageProviderID {
+  return hostedDocsEnabled ? ELF_HOSTED_STORAGE_PROVIDER_ID : selectedProviderID
+}
+
+export const activeStorageProviderID = computed<StorageProviderID>({
+  get: () => resolveActiveStorageProviderID(selectedStorageProviderID.value, isHostedDocsEnabled()),
+  set: (providerID) => {
+    if (!isHostedDocsEnabled()) selectedStorageProviderID.value = providerID
+  }
+})
 
 const storedPreferences = useLocalStorage<StoragePreferences>('open-pencil:storage:preferences', {})
 
