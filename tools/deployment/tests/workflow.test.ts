@@ -33,10 +33,13 @@ describe('deployment workflow', () => {
       join(root, '.forgejo/workflows/promote-production.yml'),
       'utf8'
     )
+    const viteConfig = readFileSync(join(root, 'vite.config.ts'), 'utf8')
 
     expect(stagingWorkflow).toContain('--project-name open-pencil-staging --branch main')
     expect(stagingWorkflow).not.toContain('--project-name open-pencil --branch main')
     expect(productionWorkflow).toContain('--project-name open-pencil --branch main')
+    expect(viteConfig).toContain("'import.meta.env.OPENPENCIL_HOSTED_ENV'")
+    expect(viteConfig).toContain('process.env.OPENPENCIL_HOSTED_ENV')
   })
 
   test('records the current commit and branch as the staging candidate', () => {
