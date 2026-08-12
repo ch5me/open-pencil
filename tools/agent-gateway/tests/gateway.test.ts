@@ -166,7 +166,7 @@ test('rejects identity, tool, policy, and schema divergence', async () => {
   }
 })
 
-test('supports malformed failure, cancellation, and Last-Event-ID resume', async () => {
+test('returns a malformed stream fixture', async () => {
   expect(
     await (
       await startRun({
@@ -176,7 +176,9 @@ test('supports malformed failure, cancellation, and Last-Event-ID resume', async
       })
     ).text()
   ).toContain('data: {not-json}')
+})
 
+test('supports cancellation and Last-Event-ID resume', async () => {
   const initial = events(await (await startRun()).text())
   const run = initial[0]
   if (!run) throw new Error('Missing run')
@@ -209,4 +211,45 @@ test('supports malformed failure, cancellation, and Last-Event-ID resume', async
     })
   )
   expect(unknownCursor.status).toBe(410)
+})
+
+test('disconnects once after streamed text and resumes from Last-Event-ID', async () => {
+  const response = await startRun({
+    ...runRequest,
+    idempotencyKey: 'disconnect-once',
+    input: { ...runRequest.input, text: '[disconnect-once]' }
+  })
+  const reader = response.body?.getReader()
+  if (!reader) throw new Error('Missing response body')
+  const first = await reader.read()
+  const initial = events(new TextDecoder().decode(first.value))
+  expect(initial.at(-1)?.type).toBe('message.delta')
+  await expect(reader.read()).rejects.toThrow('Deterministic gateway disconnect')
+
+  const lastEvent = initial.at(-1)
+  if (!lastEvent) throw new Error('Missing streamed event')
+  const resumed = await gateway.fetch(
+    gatewayRequest(`/v1/sessions/${lastEvent.sessionId}/runs/${lastEvent.runId}/events`, {
+      headers: { 'last-event-id': lastEvent.eventId }
+    })
+  )
+  const replay = events(await resumed.text())
+  expect(replay.map((event) => event.type)).toEqual(['tool.call'])
+})
+
+test('denies cross-principal access to a fake-gateway run', async () => {
+  const initial = events(await (await startRun()).text())
+  const run = initial[0]
+  if (!run) throw new Error('Missing run')
+  const denied = await gateway.fetch(
+    new Request(`http://gateway.test/v1/sessions/${run.sessionId}/runs/${run.runId}/events`, {
+      headers: { 'x-openpencil-principal': 'stub-user-002' }
+    })
+  )
+
+  expect(denied.status).toBe(404)
+  expect(await denied.json()).toEqual({
+    code: 'session-not-found',
+    message: 'Run not found.'
+  })
 })

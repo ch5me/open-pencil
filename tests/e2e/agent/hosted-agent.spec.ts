@@ -53,6 +53,30 @@ test.describe('hosted agent gateway', () => {
     await expect(agentInput(page)).toBeEnabled()
   })
 
+  test('resumes an interrupted stream without duplicating text or actions', async ({ page }) => {
+    await agentInput(page).fill('Create a rectangle [disconnect-once]')
+    await page.getByTestId('chat-send-button').click()
+
+    const interrupted = page.locator('[data-agent-status="interrupted"]')
+    await expect(page.getByText('I can make that change.', { exact: true })).toBeVisible()
+    await expect(interrupted).toBeVisible()
+    await interrupted.getByRole('button', { name: 'Resume' }).click()
+
+    await expect(page.getByTestId('acp-permission-dialog')).toBeVisible()
+    await page.getByTestId(acpPermissionOptionTestId('allow_once')).click()
+    await expect(
+      page.getByText('I can make that change. The rectangle is ready.', { exact: true })
+    ).toBeVisible()
+    await expect(interrupted).toHaveCount(0)
+    await expect(page.getByText('I can make', { exact: false })).toHaveCount(1)
+
+    const matchingNodeCount = await page.evaluate(() => {
+      const nodes = window.openPencil?.getStore?.()?.graph.nodes.values()
+      return nodes ? [...nodes].filter((node) => node.name === 'Gateway rectangle').length : 0
+    })
+    expect(matchingNodeCount).toBe(1)
+  })
+
   test('shows malformed stream failure without local fallback', async ({ page }) => {
     await agentInput(page).fill('[malformed]')
     await page.getByTestId('chat-send-button').click()

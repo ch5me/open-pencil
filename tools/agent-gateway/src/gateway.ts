@@ -102,6 +102,36 @@ function sse(events: AgentEvent[], malformed = false): Response {
   })
 }
 
+function interruptedSse(events: AgentEvent[]): Response {
+  const encoder = new TextEncoder()
+  let sent = false
+  return new Response(
+    new ReadableStream({
+      pull(controller) {
+        if (sent) {
+          controller.error(new Error('Deterministic gateway disconnect'))
+          return
+        }
+        sent = true
+        controller.enqueue(
+          encoder.encode(
+            events
+              .map((event) => `id: ${event.eventId}\ndata: ${JSON.stringify(event)}\n\n`)
+              .join('')
+          )
+        )
+      }
+    }),
+    {
+      headers: {
+        'cache-control': 'no-cache, no-transform',
+        'content-type': 'text/event-stream; charset=utf-8',
+        'x-accel-buffering': 'no'
+      }
+    }
+  )
+}
+
 function runKey(principal: string, sessionId: string, runId: string): string {
   return `${principal}/${sessionId}/${runId}`
 }
@@ -201,6 +231,7 @@ async function startRun(
       target: { documentId: body.context.documentId, pageId: body.context.pageId }
     }
   })
+  if (body.input.text.includes('[disconnect-once]')) return interruptedSse(state.events.slice(0, 5))
   return sse(state.events)
 }
 
