@@ -43,6 +43,11 @@ interface CanvasExportEntry {
   canvasNc: KiwiNodeChange
 }
 
+export class FigCompressionCancellationUnsupportedError extends Error {
+  readonly code = 'fig-compression-cancellation-unsupported'
+  override readonly name = 'FigCompressionCancellationUnsupportedError'
+}
+
 function variableValueToKiwi(
   value: VariableValue,
   type: string,
@@ -396,6 +401,34 @@ function appendInternalResources(context: InternalResourceContext): void {
   }
 }
 
+async function compressViaTauri(
+  schemaDeflated: Uint8Array,
+  kiwiData: Uint8Array,
+  thumbnailPNG: Uint8Array,
+  metaJSON: string,
+  imageEntries: Array<{ name: string; data: Uint8Array }>,
+  figKiwiVersion: number | undefined,
+  signal?: AbortSignal
+): Promise<Uint8Array> {
+  if (signal?.aborted) throw new IOCancelledError('IO export cancelled')
+  if (signal) {
+    throw new FigCompressionCancellationUnsupportedError(
+      'Abortable FIG compression is unsupported by the Tauri invoke boundary'
+    )
+  }
+  const { invoke } = await import('@tauri-apps/api/core')
+  return new Uint8Array(
+    await invoke<number[]>('build_fig_file', {
+      schemaDeflated: Array.from(schemaDeflated),
+      kiwiData: Array.from(kiwiData),
+      thumbnailPng: Array.from(thumbnailPNG),
+      metaJson: metaJSON,
+      images: imageEntries.map((e) => ({ name: e.name, data: Array.from(e.data) })),
+      figKiwiVersion
+    })
+  )
+}
+
 export async function exportFigFile(
   sourceGraph: SceneGraph,
   ck?: CanvasKit,
@@ -571,16 +604,14 @@ export async function exportFigFile(
   const version = graph.figKiwiVersion ?? undefined
 
   if (IS_TAURI) {
-    const { invoke } = await import('@tauri-apps/api/core')
-    return new Uint8Array(
-      await invoke<number[]>('build_fig_file', {
-        schemaDeflated: Array.from(schemaDeflated),
-        kiwiData: Array.from(kiwiData),
-        thumbnailPng: Array.from(thumbnailPNG),
-        metaJson: metaJSON,
-        images: imageEntries.map((e) => ({ name: e.name, data: Array.from(e.data) })),
-        figKiwiVersion: version
-      })
+    return compressViaTauri(
+      schemaDeflated,
+      kiwiData,
+      thumbnailPNG,
+      metaJSON,
+      imageEntries,
+      version,
+      signal
     )
   }
 
