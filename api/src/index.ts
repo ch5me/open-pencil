@@ -35,6 +35,7 @@ export interface Env {
   ELF_AUDIENCE?: string
   ALLOW_DEV_STUB_AUTH?: string
   FIREFLY_API_ORIGIN?: string
+  FIREFLY_AUTH_ORIGIN?: string
 }
 
 export const app = new Hono<{ Bindings: Env }>()

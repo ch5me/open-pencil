@@ -15,10 +15,17 @@ describe('Firefly runtime gateway', () => {
     let statusCalls = 0
     const result = await sendFireflyRuntimeChat(
       {
-        env: { FIREFLY_API_ORIGIN: 'https://api.elf.test' },
+        env: {
+          FIREFLY_API_ORIGIN: 'https://api.elf.test',
+          FIREFLY_AUTH_ORIGIN: 'https://app.elf.test'
+        },
         sessionToken: 'delegated-token',
         fetch: (async (url, init) => {
           paths.push(`${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`)
+          if (String(url).endsWith('/api/firefly-auth/exchange')) {
+            expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer delegated-token')
+            return json({ token: 'runtime-token' })
+          }
           if (String(url).endsWith('/runtime/status')) {
             statusCalls++
             return json(
@@ -30,7 +37,7 @@ describe('Firefly runtime gateway', () => {
           if (String(url).endsWith('/runtime/claim')) {
             return json({ ok: true, runtimeId: 'runtime-1' })
           }
-          expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer delegated-token')
+          expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer runtime-token')
           return json({ ok: true, traceId: 'trace-1', response: 'done' })
         }) as typeof fetch
       },
@@ -38,6 +45,7 @@ describe('Firefly runtime gateway', () => {
     )
 
     expect(paths).toEqual([
+      'POST /api/firefly-auth/exchange',
       'GET /runtime/status',
       'POST /runtime/claim',
       'GET /runtime/status',
@@ -55,10 +63,19 @@ describe('Firefly runtime gateway', () => {
     await expect(
       sendFireflyRuntimeChat(
         {
-          env: { FIREFLY_API_ORIGIN: 'https://api.elf.test' },
+          env: {
+            FIREFLY_API_ORIGIN: 'https://api.elf.test',
+            FIREFLY_AUTH_ORIGIN: 'https://app.elf.test'
+          },
           sessionToken: 'token',
-          fetch: (async () =>
-            json({ runtimeId: 'runtime-1', state: 'starting', health: 'degraded' })) as typeof fetch
+          fetch: (async (url) =>
+            String(url).endsWith('/api/firefly-auth/exchange')
+              ? json({ token: 'runtime-token' })
+              : json({
+                  runtimeId: 'runtime-1',
+                  state: 'starting',
+                  health: 'degraded'
+                })) as typeof fetch
         },
         { message: 'Build it' }
       )
@@ -68,9 +85,15 @@ describe('Firefly runtime gateway', () => {
     await expect(
       sendFireflyRuntimeChat(
         {
-          env: { FIREFLY_API_ORIGIN: 'https://api.elf.test' },
+          env: {
+            FIREFLY_API_ORIGIN: 'https://api.elf.test',
+            FIREFLY_AUTH_ORIGIN: 'https://app.elf.test'
+          },
           sessionToken: 'token',
-          fetch: (async () => {
+          fetch: (async (url) => {
+            if (String(url).endsWith('/api/firefly-auth/exchange')) {
+              return json({ token: 'runtime-token' })
+            }
             call++
             return call === 1
               ? json({ runtimeId: 'runtime-1', state: 'ready', health: 'healthy' })
@@ -80,5 +103,21 @@ describe('Firefly runtime gateway', () => {
         { message: 'Build it' }
       )
     ).rejects.toBeInstanceOf(FireflyRuntimeError)
+  })
+
+  test('fails closed when runtime token exchange is rejected', async () => {
+    await expect(
+      sendFireflyRuntimeChat(
+        {
+          env: {
+            FIREFLY_API_ORIGIN: 'https://api.elf.test',
+            FIREFLY_AUTH_ORIGIN: 'https://app.elf.test'
+          },
+          sessionToken: 'openpencil-token',
+          fetch: (async () => json({ error: 'invalid' }, 401)) as typeof fetch
+        },
+        { message: 'Build it' }
+      )
+    ).rejects.toMatchObject({ code: 'runtime-token-exchange-failed', status: 401 })
   })
 })

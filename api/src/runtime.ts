@@ -1,5 +1,6 @@
 export type FireflyRuntimeEnv = {
   FIREFLY_API_ORIGIN?: string
+  FIREFLY_AUTH_ORIGIN?: string
 }
 
 export type FireflyRuntimeReceipt = {
@@ -37,6 +38,10 @@ type ChatResponse = {
   response: string
 }
 
+type RuntimeTokenExchange = {
+  token: string
+}
+
 export type FireflyRuntimeDependencies = {
   env: FireflyRuntimeEnv
   sessionToken: string
@@ -50,6 +55,18 @@ function runtimeOrigin(env: FireflyRuntimeEnv): string {
       500,
       'runtime-origin-missing',
       'Firefly runtime origin is not configured.'
+    )
+  }
+  return value.replace(/\/+$/, '')
+}
+
+function authOrigin(env: FireflyRuntimeEnv): string {
+  const value = env.FIREFLY_AUTH_ORIGIN?.trim()
+  if (!value) {
+    throw new FireflyRuntimeError(
+      500,
+      'auth-origin-missing',
+      'Firefly auth origin is not configured.'
     )
   }
   return value.replace(/\/+$/, '')
@@ -87,6 +104,37 @@ async function fireflyRequest<T>(
   return (await response.json()) as T
 }
 
+async function exchangeRuntimeToken(
+  dependencies: FireflyRuntimeDependencies
+): Promise<FireflyRuntimeDependencies> {
+  const response = await (dependencies.fetch ?? fetch)(
+    `${authOrigin(dependencies.env)}/api/firefly-auth/exchange`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${dependencies.sessionToken}`,
+        Accept: 'application/json'
+      }
+    }
+  )
+  if (!response.ok) {
+    throw new FireflyRuntimeError(
+      response.status,
+      'runtime-token-exchange-failed',
+      `Firefly runtime token exchange failed: ${response.status}`
+    )
+  }
+  const exchanged = (await response.json()) as RuntimeTokenExchange
+  if (!exchanged.token) {
+    throw new FireflyRuntimeError(
+      502,
+      'runtime-token-missing',
+      'Firefly runtime token exchange returned no token.'
+    )
+  }
+  return { ...dependencies, sessionToken: exchanged.token }
+}
+
 async function ensureRuntime(dependencies: FireflyRuntimeDependencies): Promise<string> {
   let status = await fireflyRequest<RuntimeStatus>(dependencies, '/runtime/status')
   if (!status.runtimeId) {
@@ -117,8 +165,9 @@ export async function sendFireflyRuntimeChat(
   dependencies: FireflyRuntimeDependencies,
   input: { message: string; chatSessionId?: string }
 ): Promise<{ text: string; receipt: FireflyRuntimeReceipt }> {
-  const runtimeId = await ensureRuntime(dependencies)
-  const response = await fireflyRequest<ChatResponse>(dependencies, '/chat/send', {
+  const runtimeDependencies = await exchangeRuntimeToken(dependencies)
+  const runtimeId = await ensureRuntime(runtimeDependencies)
+  const response = await fireflyRequest<ChatResponse>(runtimeDependencies, '/chat/send', {
     method: 'POST',
     body: JSON.stringify({
       runtimeId,
