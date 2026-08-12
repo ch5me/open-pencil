@@ -109,6 +109,13 @@ async function updatePreview() {
     )
     if (previewController !== controller) return
     previewBlob.value = data ? new Blob([data], { type: 'image/png' }) : null
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      (error.name !== 'IOCancelledError' && error.name !== 'AbortError')
+    ) {
+      throw error
+    }
   } finally {
     if (previewController === controller) previewController = null
   }

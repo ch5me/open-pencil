@@ -8,7 +8,7 @@ import { SceneGraph } from '@open-pencil/scene-graph'
 import { handleExport } from '@/app/automation/bridge/export-handlers'
 import { createExportTargetActions, EXPORT_IMAGE_TIMEOUT_MS } from '@/app/document/export/files'
 
-test('browser renderExportImage routes exact request through abortable raster worker', async () => {
+test('browser renderExportImage routes through worker without a live main-thread renderer', async () => {
   const graph = new SceneGraph()
   const page = graph.getPages()[0]
   const node = graph.createNode('RECTANGLE', page.id, { width: 10, height: 10 })
@@ -25,8 +25,7 @@ test('browser renderExportImage routes exact request through abortable raster wo
     | undefined
   const editor = Object.create(null) as Editor
   Object.defineProperties(editor, {
-    graph: { value: graph },
-    renderer: { value: { ck: {}, canvas: {} } }
+    graph: { value: graph }
   })
   const state = { currentPageId: page.id } as EditorState
   const actions = createExportTargetActions(editor, state, {} as IORegistry, {

@@ -119,8 +119,6 @@ export function createExportTargetActions(
     pageId = state.currentPageId,
     signal?: AbortSignal
   ): Promise<Uint8Array | null> {
-    const renderer = editor.renderer
-    if (!renderer) return null
     const ids = nodeIds.length > 0 ? nodeIds : editor.graph.getChildren(pageId).map((n) => n.id)
     if (ids.length === 0) return null
     if (worker.available()) {
@@ -133,6 +131,8 @@ export function createExportTargetActions(
         EXPORT_IMAGE_TIMEOUT_MS
       )
     }
+    const renderer = editor.renderer
+    if (!renderer) return null
     return renderNodesToImage(renderer.ck, renderer, editor.graph, pageId, ids, {
       scale,
       format
