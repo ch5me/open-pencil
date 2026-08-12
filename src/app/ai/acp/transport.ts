@@ -1,17 +1,15 @@
 import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION } from "@agentclientprotocol/sdk";
-import type {
-  Client,
-  Agent,
-  SessionNotification,
-  RequestPermissionRequest,
-  RequestPermissionResponse,
-} from "@agentclientprotocol/sdk";
+import type { Client, Agent, SessionNotification } from "@agentclientprotocol/sdk";
 import type { ACPAgentDef } from "@open-pencil/core/constants";
 import type { ChatTransport, UIMessage, UIMessageChunk } from "ai";
 
 import SYSTEM_PROMPT from "@/app/ai/chat/system-prompt.md?raw";
 
 import { mapUpdate } from "./map-update";
+import { getOpenPencilMcpServers } from "./product-policy";
+import type { ProductPermissionRequest } from "./product-policy";
+import { requestPermissionFromUser } from "./permission";
+import type { ProductPermissionResponse } from "./permission";
 import { spawnAcpProcess } from "./process";
 
 type TauriChild = Awaited<ReturnType<typeof spawnAcpProcess>>["child"];
@@ -234,9 +232,8 @@ export class ACPChatTransport implements ChatTransport<UIMessage> {
 
     const clientImpl: Client = {
       async requestPermission(
-        params: RequestPermissionRequest,
-      ): Promise<RequestPermissionResponse> {
-        const { requestPermissionFromUser } = await import("@/app/ai/acp/permission");
+        params: ProductPermissionRequest,
+      ): Promise<ProductPermissionResponse> {
         return requestPermissionFromUser(params);
       },
 
@@ -246,8 +243,7 @@ export class ACPChatTransport implements ChatTransport<UIMessage> {
     };
 
     const connection = new ClientSideConnection((_agent: Agent) => clientImpl, stream);
-    const { getAutomationAuthToken } = await import("@/app/automation/mcp/spawn");
-    const automationAuthToken = await getAutomationAuthToken();
+    const mcpServers = await getOpenPencilMcpServers();
 
     await connection.initialize({
       protocolVersion: PROTOCOL_VERSION,
@@ -258,16 +254,7 @@ export class ACPChatTransport implements ChatTransport<UIMessage> {
     try {
       sessionResult = await connection.newSession({
         cwd: this.cwd,
-        mcpServers: [
-          {
-            type: "http" as const,
-            name: "open-pencil",
-            url: "http://127.0.0.1:7600/mcp",
-            headers: automationAuthToken
-              ? [{ name: "Authorization", value: `Bearer ${automationAuthToken}` }]
-              : [],
-          },
-        ],
+        mcpServers,
       });
     } catch (e) {
       await child.kill();

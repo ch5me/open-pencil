@@ -1,6 +1,6 @@
 import { describe, expect, test, beforeEach } from "bun:test";
 
-import type { RequestPermissionRequest } from "@agentclientprotocol/sdk";
+import type { ProductPermissionRequest } from "@/app/ai/acp/product-policy";
 
 import {
   permissionQueue,
@@ -15,14 +15,10 @@ function makeRequest(
     { optionId: "allow", kind: "allow_once", name: "Allow once" },
     { optionId: "reject", kind: "reject_once", name: "Reject" },
   ],
-): RequestPermissionRequest {
+): ProductPermissionRequest {
   return {
     sessionId: "session-1",
-    options: options.map((o) => ({
-      optionId: o.optionId,
-      kind: o.kind as "allow_once" | "allow_always" | "reject_once" | "reject_always",
-      name: o.name,
-    })),
+    options,
     toolCall: {
       sessionUpdate: "tool_call_update",
       toolCallId: "tc-1",
@@ -51,6 +47,24 @@ describe("acp-permission", () => {
     expect(result.outcome.outcome).toBe("selected");
     expect(result.outcome.optionId).toBe("allow");
     expect(permissionQueue.value).toHaveLength(0);
+  });
+  test("preserves the engine's opaque permission request identity", async () => {
+    const request = { ...makeRequest(), requestId: "runtime-request:opaque/7" };
+    const promise = requestPermissionFromUser(request);
+
+    expect(currentPermission.value?.request.requestId).toBe("runtime-request:opaque/7");
+    respondToPermission("reject");
+    await expect(promise).resolves.toEqual({
+      outcome: { outcome: "selected", optionId: "reject" },
+    });
+  });
+  test("denies an option not offered by the engine", async () => {
+    const promise = requestPermissionFromUser(makeRequest());
+    respondToPermission("forged-option");
+
+    await expect(promise).resolves.toEqual({
+      outcome: { outcome: "selected", optionId: "reject" },
+    });
   });
 
   test("rejectCurrentPermission picks reject option", async () => {
