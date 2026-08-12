@@ -31,7 +31,7 @@ The target capability commits are:
 
 1. CH5 operations and deployment.
 2. ELF auth and hosted API.
-3. Hosted frontend and Firefly runtime/billing authority.
+3. Hosted frontend and provider-neutral agent-gateway boundary.
 4. CLI receipts and MCP targeting.
 5. PSD/image-editor/persistence.
 6. Residual regressions proven against current upstream.
@@ -56,7 +56,7 @@ The target capability commits are:
 1. Package/workspace topology and lockfile.
 2. Core scene graph, editor, renderer, Kiwi, and document I/O.
 3. Vue SDK and app shell.
-4. AI/ACP, hosted auth, runtime provisioning, and billing boundaries.
+4. AI/ACP, hosted auth, and the provider-neutral agent-gateway boundary.
 5. API, hosted storage, collaboration, and assets.
 6. CLI, MCP, automation, and review tooling.
 7. Tests, docs, desktop packaging, and deployment.
@@ -85,7 +85,9 @@ Deep integration does not require deep edits throughout upstream.
 - Keep ELF identity and session policy in hosted app-shell and API adapters.
 - Keep documents, assets, rooms, and persistence behind CH5-owned service
   interfaces.
-- Keep Firefly runtime and billing behind typed agent-runtime adapters.
+- Keep hosted agent chat behind one typed app transport and one API adapter.
+  OpenPencil must not provision runtimes or model provider, billing, worker,
+  container, image, or registry concepts.
 - Keep deployment, Hush, Forgejo, and promotion additive.
 - Isolate image-editor/PSD/persistence in CH5-owned packages or narrow core
   extension points. Upstream-file edits require a drift-ledger row and focused

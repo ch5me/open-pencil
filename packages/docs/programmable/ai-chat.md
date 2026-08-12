@@ -31,6 +31,18 @@ You can configure multiple reusable models and separately assign models for desi
 
 No backend, no subscription — your key talks directly to the provider. Browser requests are subject to each provider's CORS policy, and model deployments vary in how reliably they stream tool calls. See [BYOK provider and model compatibility](./byok-provider-compatibility) for measured results and reproduction steps.
 
+### Hosted deployments
+
+A hosted OpenPencil deployment can provide an authenticated agent service
+instead of asking users for model credentials. OpenPencil sends product-level
+chat messages and receives streamed text and design-action requests. The service
+chooses how the agent runs.
+
+The editor does not select or manage the service's model provider, billing,
+workers, containers, images, or deployment infrastructure. Design actions still
+execute inside OpenPencil through the same validated tool registry used by local
+chat and MCP.
+
 ## What It Can Do
 
 The assistant has 90+ tools across these categories:

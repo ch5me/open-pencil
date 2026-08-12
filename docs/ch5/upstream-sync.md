@@ -132,8 +132,8 @@ the repo gate baseline are green.
   main and exact upstream; maintained code is rebuilt by capability.
 - Upstream-owned implementations win unless a focused CH5 regression proves a
   missing contract.
-- ELF auth, hosted API, Firefly authority, and CH5 deployment stay explicit
-  additive surfaces.
+- ELF auth, hosted API, the provider-neutral agent-gateway boundary, and CH5
+  deployment stay explicit additive surfaces.
 - PSD/image-editor/persistence is a required CH5 product program. Proven
   primitives stay additive behind explicit package subpaths; upstream owns the
   app's scene graph, undo, tabs, renderer, and document storage.

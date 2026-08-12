@@ -18,9 +18,9 @@ Measured August 12, 2026:
 - Current tree delta: 1,779 files
 
 The fork is not thin today. The maintained result should minimize edits to
-upstream-owned internals, not minimize CH5 product depth. OpenPencil is
-Firefly/ELF's design surface; deep hosted and image-editing capabilities are
-intentional.
+upstream-owned internals, not minimize CH5 product depth. OpenPencil is an
+ELF-authenticated design surface; deep hosted and image-editing capabilities
+are intentional. Agent execution stays behind a provider-neutral gateway.
 
 ## What CH5 added
 
@@ -28,7 +28,7 @@ intentional.
   integration.
 - Hosted document, asset, persistence, collaboration-room, and ownership
   services.
-- Firefly runtime and billing authority boundaries.
+- Provider-neutral hosted agent chat with ELF-authenticated admission.
 - Hush, Forgejo, Cloudflare, Grove, Pitchfork, staging, promotion, and release
   operations.
 - PSD import, raster composition, image-editor sessions, texture/resource
@@ -50,7 +50,7 @@ upstream.
 | CH5 build, Hush, Forgejo, Cloudflare, Grove, and dev services | `.ch5`, `.forgejo`, `.hush`, deployment scripts, `pitchfork.toml`  | Preserve additively                                                 | Local gates; private CI syntax; staging remains separate from production       |
 | ELF hosted authentication                                     | `api/src/auth.ts`, login/callback views, hosted session client     | Recreate on upstream router/app seams                               | RS256/JWKS tests; unauthenticated route gate; callback/session tests           |
 | Hosted documents, assets, and collaboration rooms             | `api/src/documents`, document backends, hosted collaboration tests | Recreate through adapters                                           | CRUD, ownership, room derivation, persistence, and browser collaboration tests |
-| Firefly runtime and billing authority                         | Hosted topology, AI/runtime adapters, proof scripts                | Recreate only at authority boundaries                               | Typed failure; exact runtime identity; no local LLM fallback                   |
+| Provider-neutral hosted agent gateway                         | Hosted topology, AI transport adapter, API proxy, proof scripts     | Recreate only at the product/API boundary                           | Typed failure; opaque trace identity; cancellation; no local fallback; no infrastructure fields |
 | Image editor, PSD import, persistence, and layer model        | Large additions under core editor/canvas/IO plus tests             | Preserve as a required CH5 product program, not a blind fork replay | Capability-by-capability tests and explicit upstream-equivalence review        |
 | CLI review receipts and implementation provenance             | CLI additive modules and review tests                              | Recreate against upstream CLI APIs                                  | Machine-readable receipt and Git-lock-free tests                               |
 | MCP/automation targeting                                      | MCP sessions, stdio bridge, live document/page targeting           | Re-evaluate against upstream v0.14 APIs                             | MCP path scoping, session, and target-selection tests                          |
@@ -68,7 +68,7 @@ upstream.
 | MCP, CLI, automation                                    | Present but CH5 targeting and provenance differ                | Rebuild only CH5 targeting and receipt contracts           |
 | Canvas recovery and resource resilience                 | Partly present                                                 | Re-test each failure; keep only remaining gaps             |
 | PSD and image-editor runtime                            | No equivalent upstream subsystem                               | Separate CH5 product program                               |
-| ELF auth, hosted API, Firefly authority, CH5 deployment | No equivalent upstream authority                               | Keep additive and explicit                                 |
+| ELF auth, hosted API, agent-gateway boundary, CH5 deployment | No equivalent upstream authority                             | Keep additive and explicit                                 |
 
 ## Current replay candidate
 
@@ -84,7 +84,9 @@ Replayed:
 - Core hosted contract and focused auth/API tests.
 - Hosted document frontend through upstream storage adapters, tabs, and
   local-first sync.
-- Firefly runtime and billing transport for hosted chat.
+- Existing Firefly runtime/billing transport as a temporary migration source;
+  replace it with the provider-neutral contract in
+  `docs/ch5/agent-chat-boundary.md`.
 - Strict CLI review receipts and implementation provenance.
 - Additive PSD staging/rasterization, image composition/resilience, and atomic
   image-persistence extension APIs with focused regressions.
@@ -130,7 +132,7 @@ a small set of capability commits:
 
 1. CH5 operations and deployment.
 2. ELF auth and hosted API.
-3. Hosted frontend and Firefly authority adapters.
+3. Hosted frontend and provider-neutral agent-gateway adapters.
 4. CLI and MCP CH5 contracts.
 5. PSD/image-editor/persistence as a required CH5 product program.
 6. Focused residual regressions that current upstream still fails.

@@ -5,11 +5,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "account_id": "25bb5f8d9ec4a36106f0ff6b519133b1",
   "workers_dev": true,
-  // Real ELF (Firefly) RS256/JWKS verifier config. These are non-secret and
+  // Real ELF RS256/JWKS verifier config. These are non-secret and
   // activate the canonical @ch5me/elf-auth-client verifier. Values are verified
-  // against firefly-cloud's authority (packages/runtime-config production
-  // hostMap + DELEGATED_SUB_APP_AUDIENCES.openpencil): tokens minted for
-  // OpenPencil carry iss=https://app.elf.dance, aud=https://openpencil-api.elf.dance.
+  // against the ELF issuer and OpenPencil audience: tokens minted for OpenPencil
+  // carry iss=https://app.elf.dance, aud=https://openpencil-api.elf.dance.
   // NOTE the issuer, JWKS, and OpenPencil audience are distinct authorities;
   // a mismatch fails every real token. Never set
   // ALLOW_DEV_STUB_AUTH here — that flag is local-dev only.

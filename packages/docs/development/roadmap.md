@@ -36,6 +36,11 @@ OpenPencil is moving toward production-grade Figma compatibility while keeping d
 - Publish tested AI workflow recipes for common tasks: create from prompt, edit a selected design, compare against a screenshot or Figma reference, fix visual regressions, extract tokens, and batch-migrate files.
 - Make agent workflows measurable by default: every substantial operation should be able to produce a render, structured diff, lint result, or comparison artifact.
 - Keep MCP, CLI, and SDK operations aligned so agent skills can run the same workflow in desktop, browser, CI, or headless file mode.
+- Add a provider-neutral hosted agent transport: ELF authenticates the user,
+  OpenPencil exposes its existing design actions, and an external agent service
+  owns agent loops, provider/model routing, billing, and deployment
+  infrastructure. Keep agent-native actions and A2A behind adapters rather than
+  coupling editor code to a specific backend.
 
 ### Tooling and API parity
 
