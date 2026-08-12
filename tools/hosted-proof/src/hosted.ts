@@ -20,12 +20,12 @@
  * 11. Feature flag contract validated through the root compatibility script
  */
 
-export {} // Force TypeScript module mode (top-level await in script)
+// oxlint-disable-next-line open-pencil/no-deep-parent-relative-imports -- API owns the auth cookie contract.
+import { ELF_JWT_COOKIE } from '../../../api/src/auth'
 
 const API_ORIGIN = process.env.OPENPENCIL_API_ORIGIN ?? 'http://127.0.0.1:8787'
 const AUTH_TOKEN = process.env.OPENPENCIL_AUTH_TOKEN
 const STUB_TOKEN = process.env.OPENPENCIL_DEV_STUB_TOKEN
-const ELF_COOKIE = 'ELF_JWT'
 
 let passCount = 0
 let failCount = 0
@@ -107,7 +107,7 @@ output('\n5. Authenticated session bootstrap')
 
 if (STUB_TOKEN) {
   const cookieSession = await request('/api/session', {
-    headers: { cookie: `${ELF_COOKIE}=${STUB_TOKEN}` }
+    headers: { cookie: `${ELF_JWT_COOKIE}=${STUB_TOKEN}` }
   })
   assert(cookieSession.status === 200, `cookie session → ${cookieSession.status}`)
   const cookieSessionJSON = cookieSession.json()

@@ -18,7 +18,8 @@
  *   OPENPENCIL_PREVIEW_URL=http://localhost:1420 bun scripts/preview-proof.ts
  */
 
-export {} // Force TypeScript module mode (top-level await in script)
+// oxlint-disable-next-line open-pencil/no-deep-parent-relative-imports -- API owns the auth cookie contract.
+import { ELF_JWT_COOKIE } from '../../../api/src/auth'
 
 const PREVIEW_URL = process.env.OPENPENCIL_PREVIEW_URL ?? 'http://localhost:1420'
 const API_ORIGIN = process.env.OPENPENCIL_PREVIEW_API_ORIGIN ?? 'http://127.0.0.1:8787'
@@ -149,8 +150,10 @@ if (workerAvailable) {
   output('\n8. Hosted document CRUD (via paired preview Worker)')
 
   const STUB_TOKEN = process.env.OPENPENCIL_DEV_STUB_TOKEN ?? 'openpencil-hosted-dev-token'
-  const ELF_COOKIE = 'ELF_JWT'
-  const headers = { cookie: `${ELF_COOKIE}=${STUB_TOKEN}`, 'content-type': 'application/json' }
+  const headers = {
+    cookie: `${ELF_JWT_COOKIE}=${STUB_TOKEN}`,
+    'content-type': 'application/json'
+  }
 
   // 8a. Create hosted document
   const docId = `preview-proof-${Date.now()}`

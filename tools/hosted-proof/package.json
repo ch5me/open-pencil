@@ -1,5 +1,8 @@
 {
   "name": "@open-pencil/hosted-proof-tools",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test": "bun test"
+  }
 }
