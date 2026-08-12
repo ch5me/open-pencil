@@ -1,4 +1,4 @@
-import CanvasKitInit from 'canvaskit-wasm/full'
+import CanvasKitInit from 'canvaskit-wasm'
 
 import { SkiaRenderer } from '#core/canvas'
 import { deserializeSceneGraph } from '#core/kiwi/fig/parse/transfer'
@@ -30,7 +30,7 @@ self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
     renderer.dpr = 1
     const graph = deserializeSceneGraph(serialized)
     fontManager.applyExportSnapshot(fontSnapshot)
-    await renderer.loadFonts(undefined, false)
+    await renderer.loadFonts(undefined, false, false)
     renderer.invalidateAllPictures()
     const restoreTextMeasurer = await renderer.prepareForExport(graph, pageId, nodeIds)
     let result

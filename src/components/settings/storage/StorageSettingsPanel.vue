@@ -28,10 +28,20 @@ const { dialogs } = useI18n()
 const router = useRouter()
 const { copy, copied } = useClipboard()
 const provider = computed(() => storageProviderRegistry.get(activeStorageProviderID.value))
-const preferenceDrafts = ref<Record<string, string>>({
-  ...readStoragePreferences(provider.value.id)
-})
-const credentialDrafts = ref<Record<string, string>>({})
+
+function createPreferenceDrafts(): Record<string, string> {
+  const saved = readStoragePreferences(provider.value.id)
+  return Object.fromEntries(
+    provider.value.preferenceFields.map((field) => [field.id, saved[field.id] ?? ''])
+  )
+}
+
+function createCredentialDrafts(): Record<string, string> {
+  return Object.fromEntries(provider.value.credentialFields.map((field) => [field.id, '']))
+}
+
+const preferenceDrafts = ref<Record<string, string>>(createPreferenceDrafts())
+const credentialDrafts = ref<Record<string, string>>(createCredentialDrafts())
 const credentialStatuses = ref<Record<string, CredentialStatus>>({})
 const busy = ref(false)
 const result = ref<{ ok: boolean; message: string } | null>(null)
@@ -111,9 +121,9 @@ async function testConnection(): Promise<void> {
   }
 }
 
-watch(activeStorageProviderID, (providerID) => {
-  preferenceDrafts.value = { ...readStoragePreferences(providerID) }
-  credentialDrafts.value = {}
+watch(activeStorageProviderID, () => {
+  preferenceDrafts.value = createPreferenceDrafts()
+  credentialDrafts.value = createCredentialDrafts()
   result.value = null
   void refreshStatuses()
 })

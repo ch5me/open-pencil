@@ -1,4 +1,7 @@
+import { readFile } from 'node:fs/promises'
+
 import { test, expect, type Page } from '@playwright/test'
+import { unzipSync } from 'fflate'
 
 import { expectInViewport } from '#tests/e2e/fixtures'
 import { CanvasHelper } from '#tests/helpers/canvas'
@@ -206,7 +209,12 @@ test('multiple export formats download as a single zip', async () => {
 
   const [download] = await Promise.all([page.waitForEvent('download'), exportButton().click()])
   expect(download.suggestedFilename()).toBe('Export rect 1.zip')
-  canvas.assertNoErrors()
+  const archivePath = await download.path()
+  expect(archivePath).not.toBeNull()
+  const entries = unzipSync(new Uint8Array(await readFile(archivePath ?? '')))
+  expect(Object.keys(entries).sort()).toEqual(['Export rect 1.svg', 'Export rect 1@1x.png'])
+  expect(entries['Export rect 1@1x.png']?.slice(1, 4)).toEqual(new Uint8Array([0x50, 0x4e, 0x47]))
+  expect(new TextDecoder().decode(entries['Export rect 1.svg'])).toContain('<svg')
 })
 
 test('a single export format downloads the file directly', async () => {

@@ -11,7 +11,7 @@ test('storage settings keep secrets behind the credential manager', async ({ pag
   await page.getByTestId('settings-section-storage').click()
   await page.getByLabel('Endpoint').fill('https://s3.example.com')
   await page.getByLabel('Bucket').fill('designs')
-  await expect(page.getByRole('button', { name: 'Copy CORS JSON' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Copy CORS JSON' })).toBeVisible()
 
   const secretField = page.locator('[data-credential="secret-access-key"]')
   await secretField.locator('input').fill('storage-secret')
@@ -35,6 +35,21 @@ test('storage settings keep secrets behind the credential manager', async ({ pag
 })
 
 test('model library keeps reusable profiles and role assignments', async ({ page }) => {
+  await page.route('https://models.dev/api.json', async (route) => {
+    await route.fulfill({
+      json: {
+        openrouter: {
+          models: {
+            'moonshotai/kimi-k2.5': {
+              name: 'Kimi K2.5',
+              attachment: true,
+              tool_call: true
+            }
+          }
+        }
+      }
+    })
+  })
   await page.goto('/?test')
   const canvas = new CanvasHelper(page)
   await canvas.waitForInit()
@@ -54,7 +69,8 @@ test('model library keeps reusable profiles and role assignments', async ({ page
   await page.getByRole('option', { name: 'OpenRouter' }).click()
   await page.getByLabel('Model ID').first().click()
   await page.getByRole('option', { name: 'Kimi K2.5' }).click()
-  await page.getByRole('switch', { name: 'Image input' }).click()
+  await page.getByRole('button', { name: 'Advanced settings' }).click()
+  await expect(page.getByText('Image input').locator('..')).toContainText('Supported')
   await page.getByRole('button', { name: 'Save model' }).click()
 
   await page.getByTestId('settings-model-assignment-fast').click()

@@ -69,7 +69,8 @@ export function getFontProvider(r: SkiaRenderer) {
 export async function loadFonts(
   r: SkiaRenderer,
   onFallbackFontsLoaded?: () => void,
-  loadFallbacks = true
+  loadFallbacks = true,
+  loadDefault = true
 ): Promise<void> {
   if (r.isDestroyed()) return
   r.onFontResolutionSettled = (snapshot, nodeIds) => {
@@ -83,7 +84,9 @@ export async function loadFonts(
   fontManager.attachProvider(r.ck, r.fontProvider)
   syncFontGeneration(r)
 
-  const fontData = await fontManager.loadFont(DEFAULT_FONT_FAMILY, 'Regular')
+  const fontData = loadDefault
+    ? await fontManager.loadFont(DEFAULT_FONT_FAMILY, 'Regular')
+    : fontManager.loadedData(DEFAULT_FONT_FAMILY, 'Regular')
   if (r.isDestroyed()) return
   if (fontData) {
     const typeface = r.ck.Typeface.MakeFreeTypeFaceFromData(fontData)
