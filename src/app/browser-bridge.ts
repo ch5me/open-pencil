@@ -1,6 +1,7 @@
 import type { ChatTransport, UIMessage } from 'ai'
 
 import type { EditorStore } from '@/app/editor/session/create'
+import type { PencilTestDriver } from '@/app/pencil/types'
 
 export interface OpenPencilTestHooks {
   writeCount?: () => number
@@ -15,6 +16,7 @@ export interface OpenPencilWindowAPI {
   getStore?: () => EditorStore
   setChatTransport?: (factory: () => ChatTransport<UIMessage>) => void
   openFile?: (path: string) => Promise<void>
+  pencilTestDriver?: PencilTestDriver
   test?: OpenPencilTestHooks
 }
 

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Add a hosted Apple Pencil pressure canvas, native-first diagnostics, hardware scenario tracking, and exact device-evidence JSON export.
+
 ### Fixed
 
 - Complete translated app, accessibility, font, color, collaboration, import, connection-test, and browser fallback text across all supported locales, and keep the document language synchronized with the selected locale.

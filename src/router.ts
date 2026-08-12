@@ -5,6 +5,7 @@ import { isAuthenticated, refreshSession } from '@/app/hosted/session'
 
 import EditorView from './views/EditorView.vue'
 import LoginView from './views/LoginView.vue'
+import PencilLabView from './views/PencilLabView.vue'
 import StorageView from './views/StorageView.vue'
 
 async function requireHostedAuth() {
@@ -20,6 +21,7 @@ const router = createRouter({
     { path: '/', component: EditorView, beforeEnter: requireHostedAuth },
     { path: '/storage', component: StorageView, beforeEnter: requireHostedAuth },
     { path: '/demo', component: EditorView, meta: { demo: true }, beforeEnter: requireHostedAuth },
+    { path: '/pencil-lab', component: PencilLabView, beforeEnter: requireHostedAuth },
     { path: '/share/:roomId', component: EditorView, beforeEnter: requireHostedAuth },
     {
       path: '/hosted',

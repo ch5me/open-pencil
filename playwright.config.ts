@@ -1,5 +1,7 @@
 import { defineConfig } from '@playwright/test'
 
+const port = Number(process.env.OPENPENCIL_E2E_PORT ?? 1420)
+
 export default defineConfig({
   testDir: './tests',
   timeout: 15_000,
@@ -15,7 +17,7 @@ export default defineConfig({
     }
   },
   use: {
-    baseURL: 'http://localhost:1420',
+    baseURL: `http://127.0.0.1:${port}`,
     testIdAttribute: 'data-test-id',
     viewport: { width: 1280, height: 800 },
     deviceScaleFactor: 2,
@@ -49,8 +51,8 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: 'bun run dev',
-    port: 1420,
+    command: `bunx vite --host 127.0.0.1 --port ${port} --strictPort`,
+    port,
     reuseExistingServer: true
   }
 })
