@@ -300,7 +300,7 @@ export class FontManager {
       try {
         const buffer = await this.fetchGoogleFont(family, style, signal);
         if (buffer) {
-          await this.writeDownloadedFont(family, style, buffer);
+          await this.writeDownloadedFont(family, style, buffer, signal);
           return this.registerAndCache(family, style, buffer, signal);
         }
       } catch (e) {
@@ -553,7 +553,9 @@ export class FontManager {
     family: string,
     style: string,
     data: ArrayBuffer,
+    signal?: AbortSignal,
   ): Promise<void> {
+    signal?.throwIfAborted();
     if (!this.downloadedFontCache) return;
     try {
       await this.downloadedFontCache.write(family, style, data);

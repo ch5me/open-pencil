@@ -168,19 +168,50 @@ test("timeout still terminates raster work with a caller signal", async () => {
   expect(terminated).toBe(true);
 });
 
-test("cancelled font acquisition cannot mutate loaded font state after settling", async () => {
-  let resolveCache: ((data: ArrayBuffer) => void) | undefined;
+async function expectNoLateFontPublication(cancel: (controller: AbortController) => void) {
+  let resolveFontBytes: ((data: ArrayBuffer) => void) | undefined;
+  let fontRequestStarted: (() => void) | undefined;
+  const fontRequest = new Promise<void>((resolve) => {
+    fontRequestStarted = resolve;
+  });
+  let writes = 0;
   fontManager.setDownloadedFontCache({
-    read: () =>
-      new Promise((resolve) => {
-        resolveCache = resolve;
-      }),
-    write: () => Promise.resolve(),
+    read: () => Promise.resolve(null),
+    write: async () => {
+      writes++;
+    },
+  });
+  Object.assign(globalThis, {
+    fetch: (input: string | URL | Request) => {
+      if (String(input).includes("www.googleapis.com")) {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              items: [
+                {
+                  family: "Late Cancelled Export",
+                  files: { regular: "https://fonts.example/font.ttf" },
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+        );
+      }
+      fontRequestStarted?.();
+      return Promise.resolve({
+        ok: true,
+        arrayBuffer: () =>
+          new Promise<ArrayBuffer>((resolve) => {
+            resolveFontBytes = resolve;
+          }),
+      } as Response);
+    },
   });
 
   const graph = new SceneGraph();
   const page = graph.getPages()[0];
-  const family = `LateCancelledExport_${Date.now()}`;
+  const family = "Late Cancelled Export";
   const text = graph.createNode("TEXT", page.id, {
     text: "Cancelled",
     fontFamily: family,
@@ -193,13 +224,24 @@ test("cancelled font acquisition cannot mutate loaded font state after settling"
     [text.id],
     { format: "PNG" },
     controller.signal,
+    1,
   );
-  controller.abort();
+  await fontRequest;
+  cancel(controller);
 
   await expect(exporting).rejects.toBeInstanceOf(IOCancelledError);
-  resolveCache?.(new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer);
+  resolveFontBytes?.(new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer);
   await waitForWorkerDispatch();
+  expect(writes).toBe(0);
   expect(fontManager.isStyleLoaded(family, "Regular")).toBe(false);
+}
+
+test("cancelled font acquisition publishes no cache or loaded state after settling", () => {
+  return expectNoLateFontPublication((controller) => controller.abort());
+});
+
+test("timed-out font acquisition publishes no cache or loaded state after settling", () => {
+  return expectNoLateFontPublication(() => undefined);
 });
 
 test("concurrent raster exports stay caller-owned without detaching editor bytes", async () => {
