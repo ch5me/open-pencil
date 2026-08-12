@@ -33,7 +33,7 @@ The target capability commits are:
 2. ELF auth and hosted API.
 3. Hosted frontend and Firefly runtime/billing authority.
 4. CLI receipts and MCP targeting.
-5. PSD/image-editor/persistence, if retained.
+5. PSD/image-editor/persistence.
 6. Residual regressions proven against current upstream.
 
 ## Strategy
@@ -77,6 +77,24 @@ For each historical private patch:
 6. Record every surviving upstream-file edit in the drift ledger.
 
 Patch equivalence from `git cherry` is useful evidence, not semantic proof.
+
+## Conflict-avoidance architecture
+
+Deep integration does not require deep edits throughout upstream.
+
+- Keep ELF identity and session policy in hosted app-shell and API adapters.
+- Keep documents, assets, rooms, and persistence behind CH5-owned service
+  interfaces.
+- Keep Firefly runtime and billing behind typed agent-runtime adapters.
+- Keep deployment, Hush, Forgejo, and promotion additive.
+- Isolate image-editor/PSD/persistence in CH5-owned packages or narrow core
+  extension points. Upstream-file edits require a drift-ledger row and focused
+  test.
+- Prefer upstream public exports and composition. Avoid copying upstream modules
+  into CH5 namespaces.
+- If a capability needs repeated edits across upstream internals, first add one
+  stable extension seam, then carry the capability behind it.
+- Target zero conflicts for weekly sync. Any conflict stops automatic landing.
 
 ## Acceptance
 

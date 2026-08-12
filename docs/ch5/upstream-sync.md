@@ -133,6 +133,9 @@ the repo gate baseline are green.
   missing contract.
 - ELF auth, hosted API, Firefly authority, and CH5 deployment stay explicit
   additive surfaces.
-- PSD/image-editor/persistence remains a separate product decision and replay
-  program.
+- PSD/image-editor/persistence is a required CH5 product program, isolated
+  behind narrow extension seams.
 - Production promotion remains manual after exact staging proof.
+
+Maintenance optimizes for a small upstream-owned-file delta, not a shallow
+Firefly integration. CH5-owned additive packages and adapters may be substantial.

@@ -18,6 +18,14 @@ commits. Never replay the historical commit sequence one by one. See
 `docs/ch5/upstream-capabilities.md` and
 `docs/ch5/upstream-reconciliation-plan.md`.
 
+**Product decision (2026-08-12):** OpenPencil is Firefly/ELF's deeply integrated
+design surface. ELF identity, hosted documents and assets, collaboration,
+Firefly runtime and billing, portable agent workflows, deployment, and the
+image-editor/PSD/persistence program are intentional CH5 product capabilities,
+not optional fork residue. Keep those integrations at additive packages,
+adapters, API routes, and app-shell seams so upstream editor internals remain
+replaceable.
+
 ## Upstream maintenance
 
 - `upstream` fetches `https://github.com/open-pencil/open-pencil.git`; its push

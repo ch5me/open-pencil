@@ -21,7 +21,7 @@ ledger and restores a small maintained delta.
 | Hosted API and storage | Persist hosted documents, assets, rooms, and user state | Upstream ships an equivalent backend contract | Prefer adapters around upstream document/session APIs |
 | CH5 deployment | Stage and promote through Forgejo, Hush, and Cloudflare | Upstream deployment becomes compatible with CH5 authority | Keep `.forgejo`, `.ch5`, `scripts`, and `docs/ch5` additive |
 | Runtime provisioning and billing | Route agent work through Firefly-owned runtime authority | Upstream adopts the same authority split | Preserve typed failure and exact runtime identity receipts |
-| CH5 product extensions | CH5 has added substantial editor, renderer, import, and review work | Upstream equivalents land or maintained delta exceeds one page | Delete duplicate CH5 code first; isolate remaining changes behind package seams |
+| CH5 product extensions | OpenPencil is Firefly/ELF's design surface, including image editing and PSD workflows | Upstream equivalents land or maintained upstream-file delta exceeds one page | Delete duplicate code first; keep required capabilities behind CH5-owned packages and narrow extension seams |
 
 ## Reconciliation done bar
 

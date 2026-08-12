@@ -17,8 +17,10 @@ Measured August 12, 2026:
 - Patch-equivalent upstream commits: 126 by `git cherry`
 - Current tree delta: 1,779 files
 
-The fork is not thin today. The maintained result should become thin by
-preserving capabilities, not historical implementation shape.
+The fork is not thin today. The maintained result should minimize edits to
+upstream-owned internals, not minimize CH5 product depth. OpenPencil is
+Firefly/ELF's design surface; deep hosted and image-editing capabilities are
+intentional.
 
 ## What CH5 added
 
@@ -49,7 +51,7 @@ upstream.
 | ELF hosted authentication | `api/src/auth.ts`, login/callback views, hosted session client | Recreate on upstream router/app seams | RS256/JWKS tests; unauthenticated route gate; callback/session tests |
 | Hosted documents, assets, and collaboration rooms | `api/src/documents`, document backends, hosted collaboration tests | Recreate through adapters | CRUD, ownership, room derivation, persistence, and browser collaboration tests |
 | Firefly runtime and billing authority | Hosted topology, AI/runtime adapters, proof scripts | Recreate only at authority boundaries | Typed failure; exact runtime identity; no local LLM fallback |
-| Image editor, PSD import, persistence, and layer model | Large additions under core editor/canvas/IO plus tests | Preserve as a separate CH5 product program, not a blind fork replay | Capability-by-capability tests and explicit upstream-equivalence review |
+| Image editor, PSD import, persistence, and layer model | Large additions under core editor/canvas/IO plus tests | Preserve as a required CH5 product program, not a blind fork replay | Capability-by-capability tests and explicit upstream-equivalence review |
 | CLI review receipts and implementation provenance | CLI additive modules and review tests | Recreate against upstream CLI APIs | Machine-readable receipt and Git-lock-free tests |
 | MCP/automation targeting | MCP sessions, stdio bridge, live document/page targeting | Re-evaluate against upstream v0.14 APIs | MCP path scoping, session, and target-selection tests |
 | UI/editor fixes and performance work | App shell, menu, layer tree, input coalescing, canvas recovery | Re-evaluate test-first | Port only failures still reproducible on upstream |
@@ -120,5 +122,5 @@ a small set of capability commits:
 2. ELF auth and hosted API.
 3. Hosted frontend and Firefly authority adapters.
 4. CLI and MCP CH5 contracts.
-5. PSD/image-editor/persistence, only if retained as a product.
+5. PSD/image-editor/persistence as a required CH5 product program.
 6. Focused residual regressions that current upstream still fails.

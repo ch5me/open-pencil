@@ -18,6 +18,9 @@ description: Maintain the OpenPencil private fork against open-pencil/open-penci
 - Resolve conflicts by preserving intent from `docs/ch5/upstream-drift.md`.
 - Before retaining an old upstream-file patch, run its focused regression
   against current upstream. Passing means drop the patch.
+- OpenPencil is a deep Firefly/ELF product integration. Minimize edits to
+  upstream-owned files, not CH5 capability depth; prefer additive packages,
+  adapters, API routes, and app-shell seams.
 - A successful sync ends only after configured gates pass, the merge is
   committed, `HEAD:main` is pushed, and remote ancestry is proven.
 

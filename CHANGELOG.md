@@ -4,6 +4,8 @@
 
 - Document the measured private-fork history, upstream overlap, capability
   replay policy, and current reconciliation status.
+- Record OpenPencil as Firefly/ELF's deeply integrated design surface and define
+  extension-seam rules that reduce future upstream conflicts.
 - Add a guarded upstream-fork sync workflow with drift classification, conflict
   prediction, full verification, provenance locking, and direct-main push proof.
 
