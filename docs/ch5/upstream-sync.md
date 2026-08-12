@@ -87,21 +87,29 @@ canonical checkout, while the job itself binds a disposable Grove Tree.
 
 ## Current baseline
 
-Measured August 11, 2026:
+Measured August 12, 2026:
 
 - Fork point: `ec31ea11865fa239b03aa739e8d37f903a252a10`
-- Upstream tip: `9ceb7a7bea2ff63d18dacf28a9747b83100113e7`
-- Pending upstream commits: 499
-- Fork-only commits: 715
-- Predicted conflicts: 953
+- Private tip: `237fa465eef2c6f6df7a3753fae2f8089843765d`
+- Upstream tip: `51ab21571ad29cf86e4862e145dcf9e937860390`
+- Pending upstream commits: 500
+- Fork-only commits: 725
+- Substantive/checkpoint/merge/generated: `413 / 191 / 90 / 31`
+- Private tree delta: 1,779 files
+- Earlier predicted conflicts: 953
+- Patch-equivalent upstream commits: 126 by `git cherry`
 
 This is a one-time upstream-first replay program, not a safe weekly merge. The
 scripts correctly refuse routine automatic integration until that baseline is
 repaired.
 
+The existing replay candidate is based on upstream
+`9ceb7a7bea2ff63d18dacf28a9747b83100113e7` and is one upstream commit behind.
+Refresh parent two before landing.
+
 ## Current verification status
 
-Measured August 11, 2026:
+Measured August 11, 2026 against the current replay candidate:
 
 - Upstream workflow unit tests: 2 passed.
 - Repo-local app and docs routes: serving HTTP 200.
@@ -113,3 +121,18 @@ Measured August 11, 2026:
 
 Weekly automatic landing stays disabled until the upstream reconciliation and
 the repo gate baseline are green.
+
+## Official maintenance policy
+
+- Weekly automation uses Runbook A only after the fork returns to `routine` or
+  `review`.
+- `program` always stops before mutation and creates a replay plan.
+- Shared history remains immutable. A reconciliation merge records old private
+  main and exact upstream; maintained code is rebuilt by capability.
+- Upstream-owned implementations win unless a focused CH5 regression proves a
+  missing contract.
+- ELF auth, hosted API, Firefly authority, and CH5 deployment stay explicit
+  additive surfaces.
+- PSD/image-editor/persistence remains a separate product decision and replay
+  program.
+- Production promotion remains manual after exact staging proof.

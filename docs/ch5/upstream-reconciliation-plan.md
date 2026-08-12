@@ -8,10 +8,33 @@ as `routine` or `review`.
 
 ## Why this is a program
 
-The August 11, 2026 inspection found 499 upstream-only commits, 715 fork-only
-commits, 1,883 upstream-changed files, and 953 predicted conflicts. Resolving
-that with line-by-line conflict choices would preserve accidental duplication
-and make future merges worse.
+The August 12, 2026 inspection found 500 upstream-only commits, 725 fork-only
+commits, and a 1,779-file private tree delta. The private history contains 413
+substantive commits, 191 agent checkpoints, 90 merges, and 31 generated,
+fixture, or hygiene commits. An earlier merge prediction found 953 conflicts.
+Resolving that with line-by-line conflict choices would preserve accidental
+duplication and make future merges worse.
+
+## History policy
+
+- Preserve the complete private history as parent one of one reconciliation
+  merge.
+- Preserve exact upstream as parent two.
+- Do not rebase, squash, or force-push shared private main.
+- Do not replay 725 commits individually.
+- Rebuild the maintained tree as a small number of capability commits after
+  upstream, grouped by product contract rather than historical agent session.
+- Keep old commits for provenance and archaeology, not as the future maintenance
+  unit.
+
+The target capability commits are:
+
+1. CH5 operations and deployment.
+2. ELF auth and hosted API.
+3. Hosted frontend and Firefly runtime/billing authority.
+4. CLI receipts and MCP targeting.
+5. PSD/image-editor/persistence, if retained.
+6. Residual regressions proven against current upstream.
 
 ## Strategy
 
@@ -40,6 +63,20 @@ and make future merges worse.
 
 `docs/ch5/upstream-capabilities.md` is the decision inventory. Shared generated
 files have a single owner.
+
+## Retention rule
+
+For each historical private patch:
+
+1. Identify the user-visible or authority contract.
+2. Run its focused regression against current upstream without the old patch.
+3. If upstream passes, drop the patch.
+4. If upstream partly passes, rebuild the narrow missing contract against
+   upstream's current architecture.
+5. If upstream has no equivalent, preserve it as an isolated CH5 capability.
+6. Record every surviving upstream-file edit in the drift ledger.
+
+Patch equivalence from `git cherry` is useful evidence, not semantic proof.
 
 ## Acceptance
 

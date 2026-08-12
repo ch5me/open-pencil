@@ -12,7 +12,12 @@ description: Maintain the OpenPencil private fork against open-pencil/open-penci
 - Run `bun run upstream:inspect -- --json` first.
 - `program` means stop automatic merge and create a dedicated reconciliation
   plan from the report. Never pass `--allow-program` without owning that plan.
+- Preserve historical private main as parent one of the reconciliation merge,
+  but rebuild maintained code by capability. Never replay hundreds of
+  agent/checkpoint commits one by one.
 - Resolve conflicts by preserving intent from `docs/ch5/upstream-drift.md`.
+- Before retaining an old upstream-file patch, run its focused regression
+  against current upstream. Passing means drop the patch.
 - A successful sync ends only after configured gates pass, the merge is
   committed, `HEAD:main` is pushed, and remote ancestry is proven.
 

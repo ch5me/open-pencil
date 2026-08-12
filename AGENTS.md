@@ -10,6 +10,14 @@ platform divergence. Do not describe or document upstream work as CH5-authored:
 this remains Danila Poyarkov's project, CH5-hosted and CH5-extended. The current
 drift is tracked in `docs/ch5/upstream-drift.md`.
 
+Historical private main is not currently thin: after the May 26, 2026 fork
+point it accumulated 725 commits, including agent checkpoints and broad product
+experiments. Preserve shared history through a reconciliation merge, but rebuild
+the maintained tree from current upstream as a small number of capability
+commits. Never replay the historical commit sequence one by one. See
+`docs/ch5/upstream-capabilities.md` and
+`docs/ch5/upstream-reconciliation-plan.md`.
+
 ## Upstream maintenance
 
 - `upstream` fetches `https://github.com/open-pencil/open-pencil.git`; its push
@@ -21,6 +29,8 @@ drift is tracked in `docs/ch5/upstream-drift.md`.
 - `routine` and `review` may use `bun run upstream:sync -- --push` from a clean
   Grove Tree. `program` requires a dedicated reconciliation plan and must not be
   scheduled for automatic landing.
+- Before retaining an old patch to upstream-owned code, run its focused
+  regression against current upstream. Passing means drop the patch.
 - Successful `HEAD:main` push triggers normal CI and staging. Production remains
   an explicit promotion.
 

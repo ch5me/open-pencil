@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Document the measured private-fork history, upstream overlap, capability
+  replay policy, and current reconciliation status.
 - Add a guarded upstream-fork sync workflow with drift classification, conflict
   prediction, full verification, provenance locking, and direct-main push proof.
 

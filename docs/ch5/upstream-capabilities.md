@@ -4,17 +4,41 @@ This is the intent inventory for rebuilding CH5's private OpenPencil fork on a
 current upstream tree. It is not a claim that every fork-only commit must
 survive.
 
-Measured August 11, 2026:
+Measured August 12, 2026:
 
 - Common ancestor: `ec31ea11865fa239b03aa739e8d37f903a252a10`
-- Private main inspected: `bb3d2c294767380747141412214621c1ffb3ab7a`
-- Upstream inspected: `9ceb7a7bea2ff63d18dacf28a9747b83100113e7`
-- Fork-only history: more than 700 commits, including generated checkpoints
-- Deliberate non-checkpoint subjects reviewed: 430
-- Current tree delta: roughly 1,800 files
+- Private main inspected: `237fa465eef2c6f6df7a3753fae2f8089843765d`
+- Upstream inspected: `51ab21571ad29cf86e4862e145dcf9e937860390`
+- Fork-only history: 725 commits
+- Substantive commits: 413
+- Agent checkpoints: 191
+- Merge commits: 90
+- Generated, fixture, or hygiene noise: 31
+- Patch-equivalent upstream commits: 126 by `git cherry`
+- Current tree delta: 1,779 files
 
 The fork is not thin today. The maintained result should become thin by
 preserving capabilities, not historical implementation shape.
+
+## What CH5 added
+
+- ELF authentication, hosted route gating, session handling, and hosted API
+  integration.
+- Hosted document, asset, persistence, collaboration-room, and ownership
+  services.
+- Firefly runtime and billing authority boundaries.
+- Hush, Forgejo, Cloudflare, Grove, Pitchfork, staging, promotion, and release
+  operations.
+- PSD import, raster composition, image-editor sessions, texture/resource
+  planning, and atomic persistence.
+- DOM/CSS and Design JSX compatibility, Kiwi and Fig package extraction, Vue
+  SDK work, CLI exports and receipts, MCP targeting, and automation.
+- Large editor, canvas, scene-graph, layer-tree, input, performance, Figma
+  compatibility, and regression-test bodies.
+
+The final four groups contain substantial overlap with upstream v0.14. Preserve
+their behavior only when a focused CH5 regression still fails on current
+upstream.
 
 ## Replay decisions
 
@@ -31,6 +55,42 @@ preserving capabilities, not historical implementation shape.
 | UI/editor fixes and performance work | App shell, menu, layer tree, input coalescing, canvas recovery | Re-evaluate test-first | Port only failures still reproducible on upstream |
 | Core/scene-graph/Kiwi/package refactors | Hundreds of edits in upstream-owned packages | Drop historical shape; use upstream v0.14 topology | Upstream package build plus focused CH5 contract tests |
 | Generated OpenWiki, authority receipts, benchmark records | `openwiki`, `docs/image-editor` evidence | Regenerate after code decisions | Evidence points at the replay candidate, not old private main |
+
+## Upstream overlap
+
+| Capability | Upstream status | Policy |
+| --- | --- | --- |
+| DOM/CSS, Design JSX, Kiwi, Fig, Vue SDK | Fully or mostly present, often with newer architecture | Use upstream; retain only failing CH5 contract tests |
+| Layer virtualization and input coalescing | Present upstream | Drop old patches unless their focused tests fail |
+| Storage workspace, local-first sync, S3, previews | Present upstream, but not equivalent to CH5 hosted persistence | Use upstream UI/storage; keep hosted backend as an adapter |
+| MCP, CLI, automation | Present but CH5 targeting and provenance differ | Rebuild only CH5 targeting and receipt contracts |
+| Canvas recovery and resource resilience | Partly present | Re-test each failure; keep only remaining gaps |
+| PSD and image-editor runtime | No equivalent upstream subsystem | Separate CH5 product program |
+| ELF auth, hosted API, Firefly authority, CH5 deployment | No equivalent upstream authority | Keep additive and explicit |
+
+## Current replay candidate
+
+The upstream-first candidate uses private main as parent one and upstream
+`9ceb7a7bea2ff63d18dacf28a9747b83100113e7` as parent two. It currently adds 99
+paths over that upstream tree.
+
+Replayed:
+
+- CH5 operations, Hush, Forgejo, Cloudflare deployment, and dev services.
+- ELF auth, hosted flags, session, login, callback, and router integration.
+- Hosted API document, asset, room, and persistence baseline.
+- Core hosted contract and focused auth/API tests.
+
+Not replayed:
+
+- Hosted document frontend integration.
+- Firefly runtime and billing adapters.
+- CLI review receipts and CH5 MCP targeting.
+- PSD, image editor, atomic persistence, and CH5 layer-model program.
+- Historical UI/core patches not yet proven necessary.
+
+The candidate is one upstream commit behind current `upstream/master`
+(`51ab21571ad29cf86e4862e145dcf9e937860390`). Update parent two before landing.
 
 ## Port order
 
@@ -51,3 +111,14 @@ preserving capabilities, not historical implementation shape.
 After reconciliation, every surviving edit to an upstream-owned file needs one
 row in `docs/ch5/upstream-drift.md`. Additive CH5 directories do not need
 per-file rows, but their public integration seams do.
+
+History stays intact through the reconciliation merge. Maintained code does not
+preserve the 725-commit implementation sequence. Replay the surviving product as
+a small set of capability commits:
+
+1. CH5 operations and deployment.
+2. ELF auth and hosted API.
+3. Hosted frontend and Firefly authority adapters.
+4. CLI and MCP CH5 contracts.
+5. PSD/image-editor/persistence, only if retained as a product.
+6. Focused residual regressions that current upstream still fails.
