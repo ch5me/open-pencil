@@ -25,7 +25,7 @@ runs:
         fi
         git lfs install --force
         git lfs pull
-        head -c 4 tests/fixtures/material3.fig | xxd
+        head -c 4 tests/fixtures/material3.fig | od -An -tx1
 
     - name: Install Bun
       shell: bash
@@ -48,4 +48,9 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      run: bun install ${{ inputs.install-args }}
+      run: |
+        test -n "${NPM_TOKEN:-}" || {
+          echo "NPM_TOKEN Forgejo secret is required for @ch5me packages" >&2
+          exit 1
+        }
+        bun install ${{ inputs.install-args }}

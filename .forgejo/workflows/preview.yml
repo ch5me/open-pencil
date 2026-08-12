@@ -12,6 +12,10 @@ concurrency:
   group: preview-${{ forgejo.event.pull_request.number }}
   cancel-in-progress: true
 
+env:
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
 jobs:
   preview:
     runs-on: ubuntu-latest
