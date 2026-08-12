@@ -18,6 +18,7 @@ import {
   renderFixedThumbnailViaWorker,
   renderThumbnail
 } from '#core/io/formats/raster'
+import { IOCancelledError } from '#core/io/limits'
 import { populateAllLazyFigImportRoots } from '#core/kiwi/fig/lazy-import'
 import {
   sceneNodeToKiwi,
@@ -40,6 +41,11 @@ interface CanvasExportEntry {
   page: FigExportPage
   canvasGuid: GUID
   canvasNc: KiwiNodeChange
+}
+
+export class FigCompressionCancellationUnsupportedError extends Error {
+  readonly code = 'fig-compression-cancellation-unsupported'
+  override readonly name = 'FigCompressionCancellationUnsupportedError'
 }
 
 function variableValueToKiwi(
@@ -395,6 +401,58 @@ function appendInternalResources(context: InternalResourceContext): void {
   }
 }
 
+async function compressViaTauri(
+  schemaDeflated: Uint8Array,
+  kiwiData: Uint8Array,
+  thumbnailPNG: Uint8Array,
+  metaJSON: string,
+  imageEntries: Array<{ name: string; data: Uint8Array }>,
+  figKiwiVersion: number | undefined,
+  signal?: AbortSignal
+): Promise<Uint8Array> {
+  if (signal?.aborted) throw new IOCancelledError('IO export cancelled')
+  const { invoke } = await import('@tauri-apps/api/core')
+  if (signal?.aborted) throw new IOCancelledError('IO export cancelled')
+  const compression = invoke<number[]>('build_fig_file', {
+    schemaDeflated: Array.from(schemaDeflated),
+    kiwiData: Array.from(kiwiData),
+    thumbnailPng: Array.from(thumbnailPNG),
+    metaJson: metaJSON,
+    images: imageEntries.map((e) => ({ name: e.name, data: Array.from(e.data) })),
+    figKiwiVersion
+  })
+  if (!signal) return new Uint8Array(await compression)
+
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const finish = (callback: () => void) => {
+      if (settled) return
+      settled = true
+      signal.removeEventListener('abort', cancel)
+      callback()
+    }
+    const cancel = () =>
+      finish(() =>
+        reject(
+          new FigCompressionCancellationUnsupportedError(
+            'Active FIG compression cannot be cancelled across the Tauri invoke boundary'
+          )
+        )
+      )
+
+    signal.addEventListener('abort', cancel, { once: true })
+    if (signal.aborted) {
+      cancel()
+      return
+    }
+    void compression
+      .then((bytes) => finish(() => resolve(new Uint8Array(bytes))))
+      .catch((error: unknown) =>
+        finish(() => reject(error instanceof Error ? error : new Error(String(error))))
+      )
+  })
+}
+
 export async function exportFigFile(
   sourceGraph: SceneGraph,
   ck?: CanvasKit,
@@ -570,23 +628,35 @@ export async function exportFigFile(
   const version = graph.figKiwiVersion ?? undefined
 
   if (IS_TAURI) {
-    const { invoke } = await import('@tauri-apps/api/core')
-    return new Uint8Array(
-      await invoke<number[]>('build_fig_file', {
-        schemaDeflated: Array.from(schemaDeflated),
-        kiwiData: Array.from(kiwiData),
-        thumbnailPng: Array.from(thumbnailPNG),
-        metaJson: metaJSON,
-        images: imageEntries.map((e) => ({ name: e.name, data: Array.from(e.data) })),
-        figKiwiVersion: version
-      })
+    return compressViaTauri(
+      schemaDeflated,
+      kiwiData,
+      thumbnailPNG,
+      metaJSON,
+      imageEntries,
+      version,
+      signal
     )
   }
 
-  return compressFigData(schemaDeflated, kiwiData, thumbnailPNG, metaJSON, imageEntries, version)
+  return compressFigData(
+    schemaDeflated,
+    kiwiData,
+    thumbnailPNG,
+    metaJSON,
+    imageEntries,
+    version,
+    signal
+  )
 }
 
 export { compressFigDataSync } from '@open-pencil/fig'
+
+const FIG_COMPRESSION_TIMEOUT_MS = 60_000
+
+export class FigCompressionWorkerProtocolError extends Error {
+  override name = 'FigCompressionWorkerProtocolError'
+}
 
 function canUseWorker(): boolean {
   return typeof Worker !== 'undefined' && IS_BROWSER
@@ -598,34 +668,76 @@ function compressViaWorker(
   thumbnailPNG: Uint8Array,
   metaJSON: string,
   imageEntries: Array<{ name: string; data: Uint8Array }>,
-  figKiwiVersion?: number
+  figKiwiVersion?: number,
+  signal?: AbortSignal,
+  timeoutMs = FIG_COMPRESSION_TIMEOUT_MS
 ): Promise<Uint8Array> {
+  if (signal?.aborted) {
+    return Promise.reject(new IOCancelledError('IO export cancelled'))
+  }
+
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./export-worker.ts', import.meta.url), {
-      type: 'module'
-    })
+    let worker: Worker
+    try {
+      worker = new Worker(new URL('./export-worker.ts', import.meta.url), {
+        type: 'module'
+      })
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error(String(error)))
+      return
+    }
+
+    let settled = false
+    const finish = (callback: () => void) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
+      signal?.removeEventListener('abort', cancel)
+      worker.terminate()
+      callback()
+    }
+    const cancel = () => finish(() => reject(new IOCancelledError('IO export cancelled')))
+    const timeout = setTimeout(cancel, timeoutMs)
 
     worker.onmessage = (e: MessageEvent<Uint8Array>) => {
-      resolve(e.data)
-      worker.terminate()
+      finish(() => {
+        if (signal?.aborted) {
+          reject(new IOCancelledError('IO export cancelled'))
+        } else if (!(e.data instanceof Uint8Array)) {
+          reject(
+            new FigCompressionWorkerProtocolError('FIG compression worker returned invalid data')
+          )
+        } else {
+          resolve(e.data)
+        }
+      })
     }
     worker.onerror = (err) => {
-      reject(new Error(err.message))
-      worker.terminate()
+      finish(() => reject(new Error(err.message || 'FIG compression worker failed')))
+    }
+
+    signal?.addEventListener('abort', cancel, { once: true })
+    if (signal?.aborted) {
+      cancel()
+      return
     }
 
     // Do NOT use transferables here. toUint8Array() in ByteBuffer returns a view of the
     // internal buffer, so transferring kiwiData.buffer or schemaDeflated.buffer detaches
     // buffers that may be shared with other views, causing "already detached" errors on
     // subsequent saves. Structured clone (the default) copies the data safely.
-    worker.postMessage({
-      schemaDeflated,
-      kiwiData,
-      thumbnailPNG,
-      metaJSON,
-      images: imageEntries,
-      figKiwiVersion
-    })
+    try {
+      worker.postMessage({
+        schemaDeflated,
+        kiwiData,
+        thumbnailPNG,
+        metaJSON,
+        images: imageEntries,
+        figKiwiVersion
+      })
+    } catch (error) {
+      finish(() => reject(error instanceof Error ? error : new Error(String(error))))
+    }
   })
 }
 
@@ -635,8 +747,13 @@ export function compressFigData(
   thumbnailPNG: Uint8Array,
   metaJSON: string,
   imageEntries: Array<{ name: string; data: Uint8Array }>,
-  figKiwiVersion?: number
+  figKiwiVersion?: number,
+  signal?: AbortSignal,
+  timeoutMs = FIG_COMPRESSION_TIMEOUT_MS
 ): Promise<Uint8Array> {
+  if (signal?.aborted) {
+    return Promise.reject(new IOCancelledError('IO export cancelled'))
+  }
   if (canUseWorker()) {
     return compressViaWorker(
       schemaDeflated,
@@ -644,7 +761,14 @@ export function compressFigData(
       thumbnailPNG,
       metaJSON,
       imageEntries,
-      figKiwiVersion
+      figKiwiVersion,
+      signal,
+      timeoutMs
+    )
+  }
+  if (signal) {
+    return Promise.reject(
+      new FigCompressionCancellationUnsupportedError('Abortable FIG compression requires a worker')
     )
   }
   return Promise.resolve(

@@ -81,8 +81,8 @@ export function createEditorStoreModules(
     setPlannedFilePath: documentIO.setPlannedFilePath,
     startWatchingCurrentFile: documentIO.startWatchingCurrentFile,
     dispose: () => {
-      editor.clearPageViewports()
       documentIO.disposeDocumentIO()
+      editor.clearPageViewports()
     },
     ...documentExport,
     ...mobileClipboard,

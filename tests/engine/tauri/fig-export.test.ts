@@ -1,17 +1,33 @@
 import { describe, expect, test } from 'bun:test'
 
-describe('Tauri fig export', () => {
-  test('delegates fig archive construction to the Tauri Rust command', async () => {
-    const proc = Bun.spawn(['bun', 'tests/helpers/tauri/fig-export-fixture.ts'], {
-      stdout: 'pipe',
-      stderr: 'pipe'
-    })
-    const [stdout, stderr, exitCode] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-      proc.exited
-    ])
+type FixtureMode = 'ordinary' | 'pre-abort' | 'active-boundary'
 
-    expect({ exitCode, stdout, stderr }).toEqual({ exitCode: 0, stdout: '', stderr: '' })
+describe('Tauri fig export', () => {
+  test('allows signal-bearing Tauri export when cancellation is not requested', async () => {
+    const result = await runFixture('ordinary')
+    expect(result).toEqual({ exitCode: 0, stdout: '', stderr: '' })
+  })
+
+  test('rejects a pre-aborted export before native compression dispatch', async () => {
+    const result = await runFixture('pre-abort')
+    expect(result).toEqual({ exitCode: 0, stdout: '', stderr: '' })
+  })
+
+  test('fails loud when cancellation is requested during active Tauri compression', async () => {
+    const result = await runFixture('active-boundary')
+    expect(result).toEqual({ exitCode: 0, stdout: '', stderr: '' })
   })
 })
+
+async function runFixture(mode: FixtureMode) {
+  const proc = Bun.spawn(['bun', 'tests/helpers/tauri/fig-export-fixture.ts', mode], {
+    stdout: 'pipe',
+    stderr: 'pipe'
+  })
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited
+  ])
+  return { exitCode, stdout, stderr }
+}

@@ -25,6 +25,27 @@ export class RasterWorkerProtocolError extends Error {
   override name = 'RasterWorkerProtocolError'
 }
 
+interface RasterWorkerResponseCandidate {
+  kind?: unknown
+  bytes?: unknown
+  error?: unknown
+  width?: unknown
+  height?: unknown
+}
+
+function isRasterWorkerResponse(value: unknown): value is RasterWorkerResponse {
+  if (!value || typeof value !== 'object') return false
+  const response = value as RasterWorkerResponseCandidate
+  if (response.kind !== 'raster' && response.kind !== 'fixed-thumbnail') return false
+  if (response.bytes !== undefined && !(response.bytes instanceof Uint8Array)) return false
+  if (response.error !== undefined && typeof response.error !== 'string') return false
+  if (response.bytes !== undefined && response.error !== undefined) return false
+  if (response.kind === 'fixed-thumbnail') {
+    return typeof response.width === 'number' && typeof response.height === 'number'
+  }
+  return true
+}
+
 export function canUseRasterExportWorker(): boolean {
   return IS_BROWSER && typeof Worker !== 'undefined'
 }
@@ -117,14 +138,19 @@ async function dispatchRasterWorker(
       }
       const cancelWorker = () => finish(() => reject(new IOCancelledError('IO export cancelled')))
 
-      worker.onmessage = (event: MessageEvent<RasterWorkerResponse>) => {
+      worker.onmessage = (event: MessageEvent<unknown>) => {
+        const response = event.data
+        if (!isRasterWorkerResponse(response)) {
+          finish(() => reject(new RasterWorkerProtocolError('Raster worker returned invalid data')))
+          return
+        }
         finish(() => {
           if (exportSignal.aborted) {
             reject(new IOCancelledError('IO export cancelled'))
-          } else if (event.data.error) {
-            reject(new Error(event.data.error))
+          } else if (response.error) {
+            reject(new Error(response.error))
           } else {
-            resolve(event.data)
+            resolve(response)
           }
         })
       }
