@@ -10,7 +10,7 @@ const CONTEXT_SCHEMA = 'ch5.open-pencil-lint-context/1'
 const RECEIPT_SCHEMA = 'ch5.open-pencil-lint/3'
 const MAX_CONTEXT_BYTES = 1024 * 1024
 
-interface JsonObject {
+interface JSONObject {
   [key: string]: unknown
 }
 
@@ -44,13 +44,13 @@ export interface StableDocument {
   byteLength: number
 }
 
-function object(value: unknown, label: string): JsonObject {
+function object(value: unknown, label: string): JSONObject {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error(`${label} must be an object`)
-  return value as JsonObject
+  return value as JSONObject
 }
 
-function exactKeys(value: JsonObject, allowed: readonly string[], label: string) {
+function exactKeys(value: JSONObject, allowed: readonly string[], label: string) {
   const extras = Object.keys(value).filter((key) => !allowed.includes(key))
   if (extras.length > 0) throw new Error(`${label} has unsupported field(s): ${extras.join(', ')}`)
 }
@@ -228,8 +228,8 @@ export function checkedNodesForContext(context: Ch5ReviewContext) {
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalize)
   if (!value || typeof value !== 'object') return value
-  const input = value as JsonObject
-  const output: JsonObject = {}
+  const input = value as JSONObject
+  const output: JSONObject = {}
   for (const key of Object.keys(input).sort()) output[key] = canonicalize(input[key])
   return output
 }

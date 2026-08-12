@@ -11,7 +11,7 @@ import {
   type RasterCompositionAssetResolver
 } from '#core/canvas/image-editor'
 import type { AssetRevision } from '#core/editor/assets'
-import type { SceneGraph, SceneNode } from '#core/scene-graph'
+import type { SceneNode } from '#core/scene-graph'
 
 function assertPixelParity(
   actual: ArrayLike<number>,
@@ -237,7 +237,7 @@ test('group CPU cache ignores unrelated siblings in the raster signature', () =>
     }
     byId.set(root.id, root)
     return createCompositionPlan(
-      { rootId: root.id, getNode: (id: string) => byId.get(id) } as unknown as SceneGraph,
+      { rootId: root.id, getNode: (id: string) => byId.get(id) },
       root.id,
       { adjustmentHooks: ['exposure'] }
     )
@@ -283,11 +283,9 @@ test('group CPU cache matches uncached pixels and honors adjustment revisions', 
     metadata: { format: 'rgba8-srgb', width: 1, height: 1 },
     bytes: new Uint8Array([255, 0, 0, 255])
   } satisfies AssetRevision
-  const plan = createCompositionPlan(
-    { rootId: image.id, getNode: () => image } as unknown as SceneGraph,
-    image.id,
-    { adjustmentHooks: ['exposure'] }
-  )
+  const plan = createCompositionPlan({ rootId: image.id, getNode: () => image }, image.id, {
+    adjustmentHooks: ['exposure']
+  })
   const uncached = composeRasterRGBA8(plan, resolver(revision), {
     width: 1,
     height: 1,
@@ -351,11 +349,9 @@ test('group CPU cache bypasses opaque adjustments without a revision', () => {
     metadata: { format: 'rgba8-srgb', width: 1, height: 1 },
     bytes: new Uint8Array([255, 0, 0, 255])
   } satisfies AssetRevision
-  const plan = createCompositionPlan(
-    { rootId: image.id, getNode: () => image } as unknown as SceneGraph,
-    image.id,
-    { adjustmentHooks: ['exposure'] }
-  )
+  const plan = createCompositionPlan({ rootId: image.id, getNode: () => image }, image.id, {
+    adjustmentHooks: ['exposure']
+  })
   let calls = 0
   const exposure = (pixel: readonly [number, number, number, number]) => {
     calls += 1
@@ -393,11 +389,9 @@ test('group CPU cache invalidates replacement adjustment callbacks', () => {
     metadata: { format: 'rgba8-srgb', width: 1, height: 1 },
     bytes: new Uint8Array([255, 0, 0, 255])
   } satisfies AssetRevision
-  const plan = createCompositionPlan(
-    { rootId: image.id, getNode: () => image } as unknown as SceneGraph,
-    image.id,
-    { adjustmentHooks: ['exposure'] }
-  )
+  const plan = createCompositionPlan({ rootId: image.id, getNode: () => image }, image.id, {
+    adjustmentHooks: ['exposure']
+  })
   const cache = createRasterGroupCache(0)
   composeRasterRGBA8(plan, resolver(revision), {
     width: 1,
@@ -456,7 +450,7 @@ test('group CPU cache invalidates when an ancestor mask changes geometry', () =>
       [image.id, image]
     ])
     return createCompositionPlan(
-      { rootId: group.id, getNode: (id: string) => byId.get(id) } as unknown as SceneGraph,
+      { rootId: group.id, getNode: (id: string) => byId.get(id) },
       group.id,
       { adjustmentHooks: ['exposure'] }
     )
@@ -743,7 +737,7 @@ function planFor(
     {
       rootId,
       getNode: (id: string) => byId.get(id)
-    } as unknown as SceneGraph,
+    },
     rootId,
     options
   )
@@ -785,7 +779,7 @@ test('RGBA8 composition consumes pixels with ancestor clipping and adjustment ho
       {
         rootId: group.id,
         getNode: (id: string) => new Map([group, image].map((entry) => [entry.id, entry])).get(id)
-      } as unknown as SceneGraph,
+      },
       group.id,
       { adjustmentHooks: ['exposure'] }
     ),
@@ -861,7 +855,7 @@ test('composition-full-v1 inherits visibility and opacity through nested clippin
   const graph = {
     rootId: visibleClip.id,
     getNode: (id: string) => [...nodes, hiddenClip, hiddenImage].find((entry) => entry.id === id)
-  } as unknown as SceneGraph
+  }
   const revision = (assetId: string): AssetRevision => ({
     revisionId: `sha256:${assetId}`,
     kind: 'image',
@@ -934,7 +928,7 @@ test('RGBA8 composition applies nested mask bounds and clipping with pixel parit
   const graph = {
     rootId: clip.id,
     getNode: (id: string) => new Map([clip, mask, image].map((entry) => [entry.id, entry])).get(id)
-  } as unknown as SceneGraph
+  }
   const plan = createCompositionPlan(graph, clip.id)
   const revision = {
     revisionId: 'sha256:masked',
@@ -990,7 +984,7 @@ test('composition-full-v1 applies adjustment hooks only inside clipped adjustmen
     rootId: clip.id,
     getNode: (id: string) =>
       new Map([clip, mask, adjustmentLayer].map((entry) => [entry.id, entry])).get(id)
-  } as unknown as SceneGraph
+  }
   const plan = createCompositionPlan(graph, clip.id, {
     adjustmentHooks: ['exposure']
   })
@@ -1044,7 +1038,7 @@ test('effects-gap-068 consumes typed brightness, contrast, and saturation adjust
     {
       rootId: image.id,
       getNode: (id: string) => (id === image.id ? image : undefined)
-    } as unknown as SceneGraph,
+    },
     image.id,
     { adjustmentHooks: ['brightness', 'contrast', 'saturation'] }
   )
@@ -1087,7 +1081,7 @@ test('effects-gap-069 consumes typed effect filters with bounded areas', () => {
     {
       rootId: image.id,
       getNode: (id: string) => (id === image.id ? image : undefined)
-    } as unknown as SceneGraph,
+    },
     image.id
   )
   const result = composeRasterRGBA8(plan, resolver(revision), {
@@ -1478,7 +1472,7 @@ test('RGBA8 composition clips nested children and applies inherited opacity', ()
       rootId: outer.id,
       getNode: (id: string) =>
         new Map([outer, inner, image].map((entry) => [entry.id, entry])).get(id)
-    } as unknown as SceneGraph,
+    },
     outer.id
   )
 
@@ -1550,7 +1544,7 @@ test('nested group composition blends RGBA8 colors in document-linear space', ()
     rootId: outer.id,
     getNode: (id: string) =>
       new Map([outer, background, inner, foreground].map((entry) => [entry.id, entry])).get(id)
-  } as unknown as SceneGraph
+  }
   const plan = createCompositionPlan(graph, outer.id)
   const result = composeRasterRGBA8(
     plan,

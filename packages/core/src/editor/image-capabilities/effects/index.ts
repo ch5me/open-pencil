@@ -153,12 +153,12 @@ function rgbToHsl(red: number, green: number, blue: number): [number, number, nu
   return [hue, saturation, lightness]
 }
 
-function hslToRgb(hue: number, saturation: number, lightness: number): [number, number, number] {
+function hslToRGB(hue: number, saturation: number, lightness: number): [number, number, number] {
   if (saturation === 0) {
     const gray = clampByte(lightness * 255)
     return [gray, gray, gray]
   }
-  const hueToRgb = (p: number, q: number, t: number): number => {
+  const hueToRGB = (p: number, q: number, t: number): number => {
     let wrapped = t
     if (wrapped < 0) wrapped += 1
     else if (wrapped > 1) wrapped -= 1
@@ -171,9 +171,9 @@ function hslToRgb(hue: number, saturation: number, lightness: number): [number, 
     lightness < 0.5 ? lightness * (1 + saturation) : lightness + saturation - lightness * saturation
   const p = 2 * lightness - q
   return [
-    clampByte(hueToRgb(p, q, hue + 1 / 3) * 255),
-    clampByte(hueToRgb(p, q, hue) * 255),
-    clampByte(hueToRgb(p, q, hue - 1 / 3) * 255)
+    clampByte(hueToRGB(p, q, hue + 1 / 3) * 255),
+    clampByte(hueToRGB(p, q, hue) * 255),
+    clampByte(hueToRGB(p, q, hue - 1 / 3) * 255)
   ]
 }
 
@@ -240,7 +240,7 @@ export function createRasterEffectAdjustment(
       return ([r, g, b, a]) => {
         const [hue, saturation, lightness] = rgbToHsl(r, g, b)
         return [
-          ...hslToRgb(
+          ...hslToRGB(
             (hue + hueShift + 1) % 1,
             Math.max(0, Math.min(1, saturation + saturationShift)),
             Math.max(0, Math.min(1, lightness + lightnessShift))
@@ -392,6 +392,8 @@ function pixelIndex(width: number, x: number, y: number): number {
  * Checks the CPU reference and accelerated effect output at the pixel boundary.
  * Pixels outside the declared effect area must stay byte-identical.
  */
+// Keeping the full acceptance contract visible makes its fail-loud cases auditable.
+// oxlint-disable-next-line complexity
 export function assertEffectPixelAcceptance(
   source: readonly number[],
   reference: readonly number[],

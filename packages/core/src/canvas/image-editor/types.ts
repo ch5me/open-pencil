@@ -20,6 +20,7 @@ export interface RendererResilienceContract {
 
 export class RendererResilienceContractError extends Error {
   readonly code = 'E_RENDERER_RESILIENCE_CONTRACT'
+  override readonly name = 'RendererResilienceContractError'
 }
 
 export function createRendererResilienceContract(
@@ -62,10 +63,12 @@ export function validateRendererResilienceContract(contract: RendererResilienceC
 
 export class UnsupportedImageBackendError extends Error {
   readonly code = 'unsupported-image-backend'
+  override readonly name = 'UnsupportedImageBackendError'
 }
 
 export class ImageRenderContextLostError extends Error {
   readonly code = 'image-render-context-lost'
+  override readonly name = 'ImageRenderContextLostError'
 }
 
 export type ImageRenderGapCode =

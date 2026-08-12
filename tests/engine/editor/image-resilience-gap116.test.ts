@@ -6,7 +6,7 @@ import {
   observeLongSessionLeakGuard,
   type ImageRevisionResolver
 } from '#core/canvas/image-editor'
-import type { SceneGraph, SceneNode } from '#core/scene-graph'
+import type { SceneNode } from '#core/scene-graph'
 
 const CORRUPTED_REVISION_ID = 'sha256:resilience-116-corrupted' as const
 const HEALTHY_REVISION_ID = 'sha256:resilience-116-healthy' as const
@@ -57,12 +57,12 @@ function resiliencePlan(includeCorrupt = true): ReturnType<typeof createComposit
     y: 0,
     width: 20,
     height: 10
-  } as unknown as SceneNode
+  } as SceneNode
   const allNodes = [root, ...nodes]
   const graph = {
     rootId: root.id,
     getNode: (id: string) => allNodes.find((node) => node.id === id)
-  } as unknown as SceneGraph
+  }
   return createCompositionPlan(graph)
 }
 
@@ -92,22 +92,25 @@ test('RESILIENCE-GAP-116 isolates a corrupted image from healthy siblings', () =
       assetId,
       revisionId: assetId === 'asset:corrupt' ? CORRUPTED_REVISION_ID : HEALTHY_REVISION_ID
     }),
-    getRevision: (revisionId) =>
-      revisionId === HEALTHY_REVISION_ID
-        ? {
-            revisionId,
-            kind: 'image',
-            metadata: { width: 32, height: 32 },
-            bytes: new Uint8Array([1, 2, 3])
-          }
-        : revisionId === CORRUPTED_REVISION_ID
-          ? {
-              revisionId,
-              kind: 'image',
-              metadata: { width: 32, height: 32 },
-              bytes: new Uint8Array()
-            }
-          : undefined
+    getRevision: (revisionId) => {
+      if (revisionId === HEALTHY_REVISION_ID) {
+        return {
+          revisionId,
+          kind: 'image',
+          metadata: { width: 32, height: 32 },
+          bytes: new Uint8Array([1, 2, 3])
+        }
+      }
+      if (revisionId === CORRUPTED_REVISION_ID) {
+        return {
+          revisionId,
+          kind: 'image',
+          metadata: { width: 32, height: 32 },
+          bytes: new Uint8Array()
+        }
+      }
+      return undefined
+    }
   })
 
   expect(frame.commands).toHaveLength(3)

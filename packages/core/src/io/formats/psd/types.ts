@@ -257,13 +257,16 @@ export interface PsdExportInput {
 
 export class PsdUnsupportedError extends Error {
   readonly code = 'unsupported-psd'
+  override readonly name = 'PsdUnsupportedError'
 }
 
 export class PsdHostileFileError extends Error {
   readonly code = 'hostile-psd-file'
+  override readonly name = 'PsdHostileFileError'
 }
 
 export class PsdCancelledError extends Error {
   readonly code = 'psd-import-cancelled'
+  override readonly name = 'PsdCancelledError'
 }
 import type { ImportedTextMetadata } from '#core/editor/image-capabilities/text'

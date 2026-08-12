@@ -1,4 +1,5 @@
 import { getHostedConfig } from '@/app/hosted/flags'
+import { IS_BROWSER } from '@/constants'
 
 export type HostedRequestOptions = {
   apiOrigin?: string
@@ -6,19 +7,19 @@ export type HostedRequestOptions = {
   fetch?: typeof fetch
 }
 
-export class HostedApiError extends Error {
+export class HostedAPIError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
     message: string
   ) {
     super(message)
-    this.name = 'HostedApiError'
+    this.name = 'HostedAPIError'
   }
 }
 
 function defaultSessionToken(): string | null {
-  return typeof window === 'undefined' ? null : (window.openPencil?.test?.hostedAuthToken ?? null)
+  return IS_BROWSER ? (window.openPencil?.test?.hostedAuthToken ?? null) : null
 }
 
 export function createHostedRequester(options: HostedRequestOptions = {}) {
@@ -27,7 +28,7 @@ export function createHostedRequester(options: HostedRequestOptions = {}) {
   return async function hostedRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
     const origin = options.apiOrigin ?? getHostedConfig().apiOrigin
     if (!origin) {
-      throw new HostedApiError(0, 'api-origin-missing', 'Hosted API origin is not configured.')
+      throw new HostedAPIError(0, 'api-origin-missing', 'Hosted API origin is not configured.')
     }
 
     const headers = new Headers(init.headers)
@@ -47,7 +48,7 @@ export function createHostedRequester(options: HostedRequestOptions = {}) {
         error?: string
         message?: string
       } | null
-      throw new HostedApiError(
+      throw new HostedAPIError(
         response.status,
         body?.error ?? 'unknown',
         body?.message ?? response.statusText

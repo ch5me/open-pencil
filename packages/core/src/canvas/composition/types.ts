@@ -1,3 +1,5 @@
+import type { Rect } from '@open-pencil/scene-graph/primitives'
+
 import type { AssetId } from '#core/editor/assets'
 import type { BlendMode, MaskType, SceneGraph } from '#core/scene-graph'
 
@@ -7,7 +9,10 @@ export type CompositionIsolation = 'isolated' | 'pass-through'
 
 export class CompositionUnsupportedClassError extends Error {
   readonly code = 'unsupported-composition-class'
+  override readonly name = 'CompositionUnsupportedClassError'
 }
+
+export type CompositionGraph = Pick<SceneGraph, 'rootId' | 'getNode'>
 
 export interface CompositionNode {
   readonly nodeId: string
@@ -21,7 +26,7 @@ export interface CompositionNode {
   readonly clipsContent: boolean
   readonly clipDepth: number
   readonly rotation: number
-  readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>
+  readonly bounds: Readonly<Rect>
   readonly maskType: MaskType | null
   readonly maskIsOutline: boolean
   readonly maskDepth: number
@@ -79,7 +84,7 @@ function assertSupportedType(type: string): void {
 }
 
 export function createCompositionPlan(
-  graph: SceneGraph,
+  graph: CompositionGraph,
   rootId = graph.rootId,
   options: CompositionOptions = {}
 ): CompositionPlan {

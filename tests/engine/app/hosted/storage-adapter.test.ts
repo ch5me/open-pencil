@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test'
 
-import { HostedApiError } from '@/app/hosted/http'
+import { HostedAPIError } from '@/app/hosted/http'
 import { openHostedRouteDocument } from '@/app/hosted/navigation'
 import {
   createHostedStorageAdapter,
@@ -20,6 +20,11 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json' }
   })
+}
+
+function requestURL(input: string | URL | Request): string {
+  if (typeof input === 'string') return input
+  return input instanceof URL ? input.href : input.url
 }
 
 describe('ELF hosted storage adapter', () => {
@@ -64,8 +69,9 @@ describe('ELF hosted storage adapter', () => {
       apiOrigin: 'https://api.example.test',
       sessionToken: () => 'test-token',
       fetch: (async (url, init) => {
-        calls.push({ url: String(url), init })
-        if (String(url).endsWith('/api/documents')) {
+        const requestURLValue = requestURL(url)
+        calls.push({ url: requestURLValue, init })
+        if (requestURLValue.endsWith('/api/documents')) {
           return json({
             documents: [{ id: 'doc-1', title: 'Hosted doc', updatedAt: '2026-08-12T00:00:00Z' }]
           })
@@ -128,7 +134,7 @@ describe('ELF hosted storage adapter', () => {
     })
 
     await expect(adapter.listDocuments()).rejects.toEqual(
-      new HostedApiError(401, 'unauthorized', 'Sign in required')
+      new HostedAPIError(401, 'unauthorized', 'Sign in required')
     )
   })
 })

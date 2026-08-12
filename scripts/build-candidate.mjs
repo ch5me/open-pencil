@@ -1,7 +1,11 @@
 import { execSync } from 'node:child_process'
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, mkdirSync } from 'node:fs'
 
 const MANIFEST_DIR = '.build-manifests'
+
+function output(message) {
+  process.stdout.write(`${message}\n`)
+}
 
 function getCommit() {
   return execSync('git rev-parse HEAD').toString().trim()
@@ -24,16 +28,16 @@ function recordManifest(commit, branch) {
   }
 
   writeFileSync(`${MANIFEST_DIR}/staging.json`, JSON.stringify(manifest, null, 2) + '\n')
-  console.log(`Recorded staging manifest for ${commit} on ${branch}`)
+  output(`Recorded staging manifest for ${commit} on ${branch}`)
 }
 
 function main() {
   const commit = getCommit()
   const branch = getBranch()
 
-  console.log(`Building staging candidate from ${commit} (${branch})...`)
+  output(`Building staging candidate from ${commit} (${branch})...`)
   recordManifest(commit, branch)
-  console.log('Candidate build complete.')
+  output('Candidate build complete.')
 }
 
 main()

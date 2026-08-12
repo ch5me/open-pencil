@@ -5,6 +5,7 @@ export {
   isCompositionContainer,
   serializeCompositionPlan,
   type CompositionIsolation,
+  type CompositionGraph,
   type CompositionNode,
   type CompositionOptions,
   type CompositionPlan

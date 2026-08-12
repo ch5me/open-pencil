@@ -10,8 +10,8 @@ import {
   createAcknowledgedWorkingDocumentIdentity,
   createPersistenceContractReceipt,
   createTerminationInjector,
-  detachPngDataUrls,
-  estimateJsonOverhead,
+  detachPNGDataURLs,
+  estimateJSONOverhead,
   migrateWorkingDocumentRecord,
   PersistenceConflictError,
   PersistenceContractError,
@@ -62,7 +62,7 @@ async function detached(
   contentRootHash: string,
   contentSequence: number
 ): Promise<DetachedWorkingDocument> {
-  return detachPngDataUrls(
+  return detachPNGDataURLs(
     record(contentRootHash, contentSequence, {
       title: contentSequence === 1 ? 'Prior' : 'Next',
       image: contentSequence === 1 ? PNG_DATA_URL : OTHER_PNG_DATA_URL
@@ -82,7 +82,7 @@ function pngBytes(base64 = PNG_BASE64): Uint8Array {
   return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0))
 }
 
-function pngDataUrl(bytes: Uint8Array): string {
+function pngDataURL(bytes: Uint8Array): string {
   return `data:image/png;base64,${bytes.toBase64()}`
 }
 
@@ -179,7 +179,7 @@ function pngImage(
 }
 
 test('persistence-v1 detaches and deduplicates PNG bytes outside JSON', async () => {
-  const result = await detachPngDataUrls(
+  const result = await detachPNGDataURLs(
     record(NEXT_ROOT, 2, {
       image: PNG_DATA_URL,
       nested: [{ duplicate: PNG_DATA_URL }]
@@ -341,7 +341,7 @@ test('persistence-v1 quota and migration failures preserve the acknowledged root
       prior.assets.reduce((total, asset) => total + asset.bytes.byteLength, 0)
   })
   await quotaStore.save(prior.record, prior.assets)
-  const oversized = await detachPngDataUrls(
+  const oversized = await detachPNGDataURLs(
     record(NEXT_ROOT, 2, { image: PNG_DATA_URL, padding: 'x'.repeat(256) })
   )
   await expect(
@@ -360,7 +360,7 @@ test('persistence-v1 quota and migration failures preserve the acknowledged root
   ).rejects.toBeInstanceOf(PersistenceMigrationError)
   expect(migrationStore.recover('doc:one')?.record.contentRootHash).toBe(PRIOR_ROOT)
 
-  const digestMismatch = await detachPngDataUrls(
+  const digestMismatch = await detachPNGDataURLs(
     record(NEXT_ROOT, 2, { image: OTHER_PNG_DATA_URL })
   )
   if (digestMismatch.assets[0]) digestMismatch.assets[0].bytes[8] = 1
@@ -374,7 +374,7 @@ test('persistence-v1 quota and migration failures preserve the acknowledged root
   ).rejects.toBeInstanceOf(PersistenceMigrationError)
   expect(migrationStore.recover('doc:one')?.record.contentRootHash).toBe(PRIOR_ROOT)
   await expect(
-    detachPngDataUrls(record(NEXT_ROOT, 2, { image: 'data:image/png;base64,bm90LXBuZw==' }))
+    detachPNGDataURLs(record(NEXT_ROOT, 2, { image: 'data:image/png;base64,bm90LXBuZw==' }))
   ).rejects.toBeInstanceOf(PersistenceMigrationError)
 })
 
@@ -418,7 +418,7 @@ test('public editor persistence rejects structurally corrupt PNGs before save or
   await store.save(prior.record, prior.assets)
   for (const bytes of corruptPngs) {
     await expect(
-      detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(bytes) }))
+      detachPNGDataURLs(record(NEXT_ROOT, 2, { image: pngDataURL(bytes) }))
     ).rejects.toBeInstanceOf(PersistenceMigrationError)
     const reference = {
       kind: 'detached-binary-asset-v1' as const,
@@ -442,7 +442,7 @@ test('public editor persistence validates indexed palettes, transparency order, 
   const transparency = pngChunk('tRNS', new Uint8Array([255]))
   const indexed = pngImage(indexedIhdr, new Uint8Array([0, 0]), palette, transparency)
   await expect(
-    detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(indexed) }))
+    detachPNGDataURLs(record(NEXT_ROOT, 2, { image: pngDataURL(indexed) }))
   ).resolves.toMatchObject({ assets: [{ reference: { byteLength: indexed.byteLength } }] })
 
   const tooManyPaletteEntries = pngImage(
@@ -484,7 +484,7 @@ test('public editor persistence validates indexed palettes, transparency order, 
     paletteOverflow
   ]) {
     await expect(
-      detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(bytes) }))
+      detachPNGDataURLs(record(NEXT_ROOT, 2, { image: pngDataURL(bytes) }))
     ).rejects.toBeInstanceOf(PersistenceMigrationError)
   }
 })
@@ -525,13 +525,13 @@ test('public editor persistence validates bounded zlib framing and decoded scanl
 
   for (const bytes of corrupt) {
     await expect(
-      detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(bytes) }))
+      detachPNGDataURLs(record(NEXT_ROOT, 2, { image: pngDataURL(bytes) }))
     ).rejects.toBeInstanceOf(PersistenceMigrationError)
   }
 
   const oversizedScanlines = pngImage(pngIhdr(1024, 1024, 8, 6), new Uint8Array(0))
   await expect(
-    detachPngDataUrls(record(NEXT_ROOT, 2, { image: pngDataUrl(oversizedScanlines) }), {
+    detachPNGDataURLs(record(NEXT_ROOT, 2, { image: pngDataURL(oversizedScanlines) }), {
       maxDecodedAssetBytes: 1024
     })
   ).rejects.toBeInstanceOf(PersistenceQuotaError)
@@ -543,7 +543,7 @@ test('public editor persistence accepts 200 generated PNG scanline variants', as
     const pixel = index & 0xff
     const bytes = pngImage(pngIhdr(1, 1, 8, 6), new Uint8Array([filter, pixel, pixel, pixel, 255]))
     await expect(
-      detachPngDataUrls(record(NEXT_ROOT, index, { image: pngDataUrl(bytes) }))
+      detachPNGDataURLs(record(NEXT_ROOT, index, { image: pngDataURL(bytes) }))
     ).resolves.toMatchObject({ assets: [{ reference: { byteLength: bytes.byteLength } }] })
   }
 })
@@ -562,7 +562,7 @@ test('persistence admission rejects encoded, decoded, and aggregate bytes before
     { maxAggregateDecodedBytes: decodedBytes + otherDecodedBytes - 1 }
   ]
   for (const options of quotaCases) {
-    await expect(detachPngDataUrls(twoAssets, options)).rejects.toBeInstanceOf(
+    await expect(detachPNGDataURLs(twoAssets, options)).rejects.toBeInstanceOf(
       PersistenceQuotaError
     )
   }
@@ -575,7 +575,7 @@ test('persistence admission rejects encoded, decoded, and aggregate bytes before
       return originalAtob(value)
     }
     try {
-      await expect(detachPngDataUrls(twoAssets, options)).rejects.toBeInstanceOf(
+      await expect(detachPNGDataURLs(twoAssets, options)).rejects.toBeInstanceOf(
         PersistenceQuotaError
       )
       expect(atobCalls).toBe(0)
@@ -624,7 +624,7 @@ test('persistence admission options accept exact validated limits only', async (
   ]
   for (const options of invalidOptions) {
     await expect(
-      Reflect.apply(detachPngDataUrls, undefined, [record(NEXT_ROOT, 1, {}), options])
+      Reflect.apply(detachPNGDataURLs, undefined, [record(NEXT_ROOT, 1, {}), options])
     ).rejects.toBeInstanceOf(PersistenceContractError)
     expect(() => Reflect.construct(AtomicWorkingDocumentPersistence, [options])).toThrow(
       PersistenceContractError
@@ -635,7 +635,7 @@ test('persistence admission options accept exact validated limits only', async (
 test('persistence-v1 rejects surplus assets from mixed generations', async () => {
   const prior = await detached(PRIOR_ROOT, 1)
   const next = await detached(NEXT_ROOT, 2)
-  const surplus = await detachPngDataUrls(record(THIRD_ROOT, 3, { image: OTHER_PNG_DATA_URL }))
+  const surplus = await detachPNGDataURLs(record(THIRD_ROOT, 3, { image: OTHER_PNG_DATA_URL }))
   const store = new AtomicWorkingDocumentPersistence()
   await store.save(prior.record, prior.assets)
   await expect(
@@ -658,7 +658,7 @@ test('persistence-v1 rejects surplus assets from mixed generations', async () =>
 test('persistence-v1 rejects stale sequences and stale-root CAS without regressing ACK', async () => {
   const prior = await detached(PRIOR_ROOT, 1)
   const next = await detached(NEXT_ROOT, 2)
-  const third = await detachPngDataUrls(
+  const third = await detachPNGDataURLs(
     record(THIRD_ROOT, 3, { title: 'Third', image: OTHER_PNG_DATA_URL })
   )
   const store = new AtomicWorkingDocumentPersistence()
@@ -951,8 +951,8 @@ test('persistence-v1 rejects unknown JSON-safe record keys before PNG detachment
   const benign = { ...base }
   Reflect.set(embedded, 'extra', PNG_DATA_URL)
   Reflect.set(benign, 'extra', { benign: true })
-  await expect(detachPngDataUrls(embedded)).rejects.toBeInstanceOf(PersistenceContractError)
-  await expect(detachPngDataUrls(benign)).rejects.toBeInstanceOf(PersistenceContractError)
+  await expect(detachPNGDataURLs(embedded)).rejects.toBeInstanceOf(PersistenceContractError)
+  await expect(detachPNGDataURLs(benign)).rejects.toBeInstanceOf(PersistenceContractError)
 })
 
 test('public editor API rejects unknown viewport keys before PNG detachment', async () => {
@@ -961,24 +961,24 @@ test('public editor API rejects unknown viewport keys before PNG detachment', as
   Reflect.set(embedded.viewport, 'extra', PNG_DATA_URL)
   Reflect.set(benign.viewport, 'extra', true)
 
-  await expect(detachPngDataUrls(embedded)).rejects.toBeInstanceOf(PersistenceContractError)
-  await expect(detachPngDataUrls(benign)).rejects.toBeInstanceOf(PersistenceContractError)
+  await expect(detachPNGDataURLs(embedded)).rejects.toBeInstanceOf(PersistenceContractError)
+  await expect(detachPNGDataURLs(benign)).rejects.toBeInstanceOf(PersistenceContractError)
 })
 
 test('persistence-v1 rejects PNG data URLs outside payload arrays', async () => {
   await expect(
-    detachPngDataUrls({ ...record(NEXT_ROOT, 1, {}), selectionIds: [PNG_DATA_URL] })
+    detachPNGDataURLs({ ...record(NEXT_ROOT, 1, {}), selectionIds: [PNG_DATA_URL] })
   ).rejects.toBeInstanceOf(PersistenceContractError)
 })
 
 test('persistence-v1 rejects PNG data URLs in nested payload keys', async () => {
   await expect(
-    detachPngDataUrls(record(NEXT_ROOT, 1, { nested: { [PNG_DATA_URL]: true } }))
+    detachPNGDataURLs(record(NEXT_ROOT, 1, { nested: { [PNG_DATA_URL]: true } }))
   ).rejects.toBeInstanceOf(PersistenceContractError)
 })
 
 test('persistence-v1 detaches caller and recovery asset buffers', async () => {
-  const next = await detachPngDataUrls(record(NEXT_ROOT, 1, { image: OTHER_PNG_DATA_URL }))
+  const next = await detachPNGDataURLs(record(NEXT_ROOT, 1, { image: OTHER_PNG_DATA_URL }))
   const store = new AtomicWorkingDocumentPersistence()
   const originalByte = next.assets[0]?.bytes[8]
   const pendingSave = store.save(next.record, next.assets)
@@ -1012,7 +1012,7 @@ test('public async persistence helpers snapshot complete inputs before digest aw
     title: 'Original'
   })
   const original = structuredClone(source)
-  const detachment = detachPngDataUrls(source)
+  const detachment = detachPNGDataURLs(source)
 
   Reflect.set(source, 'documentId', 'doc:mutated')
   Reflect.set(source, 'contentRootHash', THIRD_ROOT)
@@ -1075,7 +1075,7 @@ test('public persistence boundaries normalize access traps without double-wrappi
     () => validateWorkingDocumentRecord(hostileRecord),
     () => validateDetachedWorkingDocument(base, hostileAssets),
     () => recoverWorkingDocument(hostileRecords, base.documentId, acknowledgement(base)),
-    () => estimateJsonOverhead(hostilePayload),
+    () => estimateJSONOverhead(hostilePayload),
     () => createPersistenceContractReceipt(hostileReceipt)
   ]
   for (const call of syncCalls) {
@@ -1088,7 +1088,7 @@ test('public persistence boundaries normalize access traps without double-wrappi
     }
   }
 
-  await expect(detachPngDataUrls(hostileRecord)).rejects.toMatchObject({
+  await expect(detachPNGDataURLs(hostileRecord)).rejects.toMatchObject({
     code: 'E_IMAGE_PERSISTENCE_CONTRACT'
   })
   await expect(
@@ -1112,7 +1112,7 @@ test('public persistence boundaries normalize access traps without double-wrappi
     }
   )
   try {
-    estimateJsonOverhead(typedTrap)
+    estimateJSONOverhead(typedTrap)
     throw new Error('expected typed persistence failure')
   } catch (error) {
     expect(error).toBe(typed)
@@ -1124,7 +1124,7 @@ test('public persistence boundaries normalize access traps without double-wrappi
       throw asyncTyped
     }
   })
-  await expect(detachPngDataUrls(asyncTypedRecord)).rejects.toBe(asyncTyped)
+  await expect(detachPNGDataURLs(asyncTypedRecord)).rejects.toBe(asyncTyped)
 
   const saveTyped = new PersistenceQuotaError('preserve save identity')
   const typedSaveOptions = new Proxy(
@@ -1208,17 +1208,17 @@ test('public persistence receipt accepts exact state overrides only', () => {
 })
 
 test('persistence-v1 rejects unsupported image data URLs everywhere persisted', async () => {
-  const jpegDataUrl = 'data:image/jpeg;base64,/9j/4AAQSkZJRg=='
-  const svgDataUrl = 'data:image/svg+xml,%3Csvg%3E%3C/svg%3E'
+  const jpegDataURL = 'data:image/jpeg;base64,/9j/4AAQSkZJRg=='
+  const svgDataURL = 'data:image/svg+xml,%3Csvg%3E%3C/svg%3E'
 
   await expect(
-    detachPngDataUrls(record(NEXT_ROOT, 1, { image: jpegDataUrl }))
+    detachPNGDataURLs(record(NEXT_ROOT, 1, { image: jpegDataURL }))
   ).rejects.toBeInstanceOf(PersistenceMigrationError)
   await expect(
-    new AtomicWorkingDocumentPersistence().save(record(NEXT_ROOT, 1, { image: svgDataUrl }), [])
+    new AtomicWorkingDocumentPersistence().save(record(NEXT_ROOT, 1, { image: svgDataURL }), [])
   ).rejects.toBeInstanceOf(PersistenceMigrationError)
   await expect(
-    detachPngDataUrls({ ...record(NEXT_ROOT, 1, {}), selectionIds: [jpegDataUrl] })
+    detachPNGDataURLs({ ...record(NEXT_ROOT, 1, {}), selectionIds: [jpegDataURL] })
   ).rejects.toBeInstanceOf(PersistenceContractError)
 })
 
@@ -1304,7 +1304,7 @@ test('persistence-v1 preserves existing record and receipt APIs', () => {
       schemaMigration: 'SUPPORTED',
       crashRecovery: 'SUPPORTED'
     },
-    estimateJsonOverhead(baseRecord.payload)
+    estimateJSONOverhead(baseRecord.payload)
   )
   expect(receipt.version).toBe('persistence-v1')
   expect(receipt.jsonOverheadBytes).toBeGreaterThanOrEqual(0)
@@ -1508,7 +1508,7 @@ test('termination injection validates hashes and never widens invalid filters', 
   )
 })
 
-test('estimateJsonOverhead accepts plain data objects only with typed failures', () => {
+test('estimateJSONOverhead accepts plain data objects only with typed failures', () => {
   const accessor = Object.defineProperty({}, 'value', {
     enumerable: true,
     get() {
@@ -1524,12 +1524,12 @@ test('estimateJsonOverhead accepts plain data objects only with typed failures',
     }
   )
   for (const payload of [null, undefined, 1, 'value', [], accessor, hostile]) {
-    expect(() => Reflect.apply(estimateJsonOverhead, undefined, [payload])).toThrow(
+    expect(() => Reflect.apply(estimateJSONOverhead, undefined, [payload])).toThrow(
       PersistenceContractError
     )
   }
-  expect(estimateJsonOverhead(Object.create(null))).toBe(0)
-  expect(estimateJsonOverhead({ value: 1 })).toBe(8)
+  expect(estimateJSONOverhead(Object.create(null))).toBe(0)
+  expect(estimateJSONOverhead({ value: 1 })).toBe(8)
 })
 
 test('persistence-v1 record recovery ignores unacknowledged embedded data URLs', () => {

@@ -4,6 +4,10 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 const MANIFEST_DIR = '.build-manifests'
 const HISTORY_FILE = `${MANIFEST_DIR}/history.json`
 
+function output(message) {
+  process.stdout.write(`${message}\n`)
+}
+
 function readManifest(stage) {
   const path = `${MANIFEST_DIR}/${stage}.json`
   if (!existsSync(path)) {
@@ -25,7 +29,7 @@ function writeHistory(history) {
 }
 
 function deployToProduction(manifest) {
-  console.log(`Deploying ${manifest.commit} (${manifest.timestamp}) to production...`)
+  output(`Deploying ${manifest.commit} (${manifest.timestamp}) to production...`)
 
   // Build with production env
   execSync('OPENPENCIL_HOSTED_ENV=production bun run build', {
@@ -33,7 +37,7 @@ function deployToProduction(manifest) {
   })
 
   // Pages deploy happens in the workflow, not here
-  console.log('Production build complete. Pages deploy will be handled by the workflow.')
+  output('Production build complete. Pages deploy will be handled by the workflow.')
 }
 
 function main() {
@@ -52,7 +56,7 @@ function main() {
       throw new Error('No previous manifest to rollback to.')
     }
     const previous = history[history.length - 2]
-    console.log(`Rolling back to ${previous.commit}...`)
+    output(`Rolling back to ${previous.commit}...`)
     deployToProduction(previous)
   } else {
     const manifest = readManifest('staging')
@@ -67,7 +71,7 @@ function main() {
     writeHistory(history)
   }
 
-  console.log('Promotion complete.')
+  output('Promotion complete.')
 }
 
 main()

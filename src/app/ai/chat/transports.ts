@@ -160,11 +160,14 @@ export function createChatSessionManager({
 
     if (!chat || transportDirty || currentChatStore !== store) {
       const messages = currentChatMessages.get(store)
-      const transport: ChatTransport<UIMessage> = useFireflyRuntime
-        ? createFireflyChatTransport()
-        : isACPProvider.value
-          ? await createActiveACPTransport()
-          : await createTransport(store)
+      let transport: ChatTransport<UIMessage>
+      if (useFireflyRuntime) {
+        transport = createFireflyChatTransport()
+      } else if (isACPProvider.value) {
+        transport = await createActiveACPTransport()
+      } else {
+        transport = await createTransport(store)
+      }
       chat = new Chat<UIMessage>({ transport, messages })
       currentChatStore = store
       transportDirty = false

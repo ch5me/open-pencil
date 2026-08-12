@@ -1,3 +1,5 @@
+import type { Vector } from '@open-pencil/scene-graph/primitives'
+
 import type { CompositionNode, CompositionPlan } from '#core/canvas/composition'
 import type { AssetId, AssetRevision } from '#core/editor/assets'
 import {
@@ -241,10 +243,12 @@ export function createRasterCanvasPool(thresholdMs = 50): RasterCanvasPool {
 
 export class RasterCompositionError extends Error {
   readonly code: string = 'E_RASTER_COMPOSITION'
+  override readonly name: string = 'RasterCompositionError'
 }
 
 export class RasterBackendUnavailableError extends RasterCompositionError {
   readonly code = 'E_RASTER_BACKEND_UNAVAILABLE'
+  override readonly name = 'RasterBackendUnavailableError'
 }
 
 export const RASTER_RGBA8_PARITY: RasterParityThresholds = {
@@ -330,11 +334,7 @@ function blendOver(
   output[outputIndex + 3] = Math.round(resultAlpha * 255)
 }
 
-function pointInRotatedNode(
-  node: CompositionNode,
-  x: number,
-  y: number
-): { x: number; y: number } | undefined {
+function pointInRotatedNode(node: CompositionNode, x: number, y: number): Vector | undefined {
   const { x: originX, y: originY, width, height } = node.bounds
   if (width <= 0 || height <= 0) return undefined
   const radians = (-node.rotation * Math.PI) / 180
@@ -380,7 +380,7 @@ function maskAlpha(plan: CompositionPlan, node: CompositionNode, x: number, y: n
         return 0
       }
     }
-    if (childIndex < 0) break
+    if (childIndex === -1) break
     node = parent
     parentId = parent.parentId
   }
@@ -591,6 +591,8 @@ function applyRasterEffect(
   return output
 }
 
+// The compositor intentionally keeps all validation and pixel-path decisions together.
+// oxlint-disable-next-line complexity
 export function composeRasterRGBA8(
   plan: CompositionPlan,
   resolve: RasterCompositionAssetResolver,

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 const SOURCE_RUNTIME_PATHS = ['package.json', 'src', 'bin', 'assets'] as const
 
-interface PackageJson {
+interface PackageJSON {
   name: string
   version?: string
   dependencies?: Record<string, string>
@@ -154,11 +154,11 @@ async function stableFile(path: string): Promise<{ bytes: Uint8Array; stat: Path
   }
 }
 
-async function readPackageJson(root: string): Promise<PackageJson> {
-  return JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as PackageJson
+async function readPackageJSON(root: string): Promise<PackageJSON> {
+  return JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) as PackageJSON
 }
 
-function dependencyNames(pkg: PackageJson): Array<{ name: string; optional: boolean }> {
+function dependencyNames(pkg: PackageJSON): Array<{ name: string; optional: boolean }> {
   const required = new Set(Object.keys(pkg.dependencies ?? {}))
   const optional = new Set([
     ...Object.keys(pkg.optionalDependencies ?? {}),
@@ -175,7 +175,7 @@ async function sourcePackages(repositoryRoot: string): Promise<Map<string, strin
     if (!entry.isDirectory()) continue
     const root = join(repositoryRoot, 'packages', entry.name)
     if (!(await pathExists(join(root, 'package.json')))) continue
-    roots.set((await readPackageJson(root)).name, await realpath(root))
+    roots.set((await readPackageJSON(root)).name, await realpath(root))
   }
   return roots
 }
@@ -215,7 +215,7 @@ async function runtimeTopology(
     const current = pending.shift() as { root: string; layout: RuntimePackage['layout'] }
     const resolvedRoot = await realpath(current.root)
     if (selected.has(resolvedRoot)) continue
-    const pkg = await readPackageJson(resolvedRoot)
+    const pkg = await readPackageJSON(resolvedRoot)
     selected.set(resolvedRoot, {
       name: pkg.name,
       version: pkg.version ?? 'unknown',
@@ -471,7 +471,7 @@ export async function prepareImplementationProvenance(argv: readonly string[]): 
   const contextIndex = argv.findIndex(
     (arg) => arg === '--ch5-review-context' || arg.startsWith('--ch5-review-context=')
   )
-  if (contextIndex < 0) return
+  if (contextIndex === -1) return
   const contextArg = argv[contextIndex]
   const contextPath =
     contextArg.startsWith('--ch5-review-context=') &&

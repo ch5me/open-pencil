@@ -209,9 +209,12 @@ export function createProgressiveOpenPlan(options: ProgressiveOpenOptions): Prog
     })
     // A stage that cannot fit the budget ends refinement; earlier stages stay valid.
     if (!plan) break
+    let kind: ImageProgressiveStage['kind'] = 'refine'
+    if (stages.length === 0) kind = 'proxy'
+    else if (plan.scale >= 1) kind = 'full'
     stages.push({
       index: stages.length,
-      kind: stages.length === 0 ? 'proxy' : plan.scale >= 1 ? 'full' : 'refine',
+      kind,
       plan,
       interactive: stages.length === 0
     })

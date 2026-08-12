@@ -17,23 +17,27 @@ import {
   deriveOperatingMode,
   validateHostedConfig,
   type HostedEnvironmentConfig
-} from '../packages/core/src/hosted/types.ts'
+} from '@open-pencil/core/hosted'
 
 let passCount = 0
 let failCount = 0
 
+function output(message: string) {
+  process.stdout.write(`${message}\n`)
+}
+
 function assert(condition: boolean, label: string) {
   if (condition) {
     passCount++
-    console.log(`  PASS: ${label}`)
+    output(`  PASS: ${label}`)
   } else {
     failCount++
-    console.log(`  FAIL: ${label}`)
+    output(`  FAIL: ${label}`)
   }
 }
 
 // --- 1. Topology JSON is valid ---
-console.log('\n1. Topology JSON validation')
+output('\n1. Topology JSON validation')
 const topology = JSON.parse(readFileSync('./config/hosted-topology.json', 'utf8'))
 assert(topology.version === 1, 'topology version is 1')
 assert(Object.keys(topology.environments).length === 4, '4 environments declared')
@@ -43,7 +47,7 @@ assert('staging' in topology.environments, 'staging environment present')
 assert('production' in topology.environments, 'production environment present')
 
 // --- 2. Alignment with .ch5/environments.yaml ---
-console.log('\n2. Alignment with .ch5/environments.yaml')
+output('\n2. Alignment with .ch5/environments.yaml')
 const envYaml = readFileSync('./.ch5/environments.yaml', 'utf8')
 assert(envYaml.includes('openpencil-staging'), 'envs.yaml declares staging')
 assert(envYaml.includes('openpencil-production'), 'envs.yaml declares production')
@@ -58,7 +62,7 @@ assert(
 )
 
 // --- 3. Flag dependency constraints ---
-console.log('\n3. Flag dependency constraints (validateHostedConfig)')
+output('\n3. Flag dependency constraints (validateHostedConfig)')
 
 const validConfig: HostedEnvironmentConfig = {
   env: 'staging',
@@ -93,14 +97,14 @@ const docsWithoutAuth: HostedEnvironmentConfig = {
 const docsErrs = validateHostedConfig(docsWithoutAuth)
 assert(docsErrs.length > 0, 'docs without auth produces violations')
 
-const hostedNoApi: HostedEnvironmentConfig = {
+const hostedNoAPI: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
   apiOrigin: '',
   authCallbackUrl: '',
   appUrl: 'https://staging.design.elf.dance'
 }
-const apiErrs = validateHostedConfig(hostedNoApi)
+const apiErrs = validateHostedConfig(hostedNoAPI)
 assert(
   apiErrs.some((e) => e.includes('apiOrigin')),
   'hosted without apiOrigin produces violation'
@@ -120,7 +124,7 @@ assert(
 )
 
 // --- 4. Operating mode derivation ---
-console.log('\n4. Operating mode derivation')
+output('\n4. Operating mode derivation')
 assert(
   deriveOperatingMode({ hostedAuth: false, hostedDocs: false, hostedCollab: false }) ===
     'local-only',
@@ -143,7 +147,7 @@ assert(
 )
 
 // --- 5. Independent switchability ---
-console.log('\n5. Independent switchability')
+output('\n5. Independent switchability')
 // Each environment has a unique flag combination
 const localFlags = topology.environments.local.flags
 const previewFlags = topology.environments.preview.flags
@@ -183,7 +187,7 @@ assert(
 )
 
 // --- 6. Callback URLs are explicit per environment ---
-console.log('\n6. Callback URLs explicit per environment')
+output('\n6. Callback URLs explicit per environment')
 assert(topology.environments.local.authCallbackUrl === '', 'local: no callback URL')
 assert(topology.environments.preview.authCallbackUrl !== '', 'preview: callback URL set')
 assert(topology.environments.staging.authCallbackUrl !== '', 'staging: callback URL set')
@@ -195,7 +199,7 @@ assert(
 )
 
 // --- Summary ---
-console.log(`\n--- Results: ${passCount} passed, ${failCount} failed ---`)
+output(`\n--- Results: ${passCount} passed, ${failCount} failed ---`)
 if (failCount > 0) {
   process.exit(1)
 }

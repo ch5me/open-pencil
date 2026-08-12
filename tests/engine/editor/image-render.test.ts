@@ -12,7 +12,7 @@ import {
   type ImageRevisionResolver
 } from '#core/canvas/image-editor'
 import type { AssetRevision } from '#core/editor/assets'
-import type { SceneGraph, SceneNode } from '#core/scene-graph'
+import type { SceneNode } from '#core/scene-graph'
 
 function imageNode(id: string, assetId = 'asset:hero', visible = true): SceneNode {
   return {
@@ -36,18 +36,14 @@ function imageNode(id: string, assetId = 'asset:hero', visible = true): SceneNod
         imageHash: assetId
       }
     ]
-    // Test fixture intentionally models only composition fields.
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-  } as unknown as SceneNode
+  } as SceneNode
 }
 
 function imagePlan(nodes = [imageNode('image')]): ReturnType<typeof createCompositionPlan> {
   const graph = {
     rootId: nodes[0]?.id ?? 'image',
     getNode: (id: string) => nodes.find((node) => node.id === id)
-    // Test graph intentionally implements only the composition resolver surface.
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-  } as unknown as SceneGraph
+  }
   return createCompositionPlan(graph)
 }
 
@@ -62,7 +58,7 @@ function multiImagePlan(nodes: SceneNode[]): ReturnType<typeof createComposition
   const graph = {
     rootId: root.id,
     getNode: (id: string) => (id === root.id ? root : children.find((node) => node.id === id))
-  } as unknown as SceneGraph
+  }
   return createCompositionPlan(graph)
 }
 
@@ -149,10 +145,11 @@ test('image render adapter emits clipped raster bases from composition groups', 
     ...imageNode('raster', 'asset:raster-base'),
     parentId: 'group'
   }
+  const nodes = new Map([group, raster].map((node) => [node.id, node]))
   const graph = {
     rootId: group.id,
-    getNode: (id: string) => (id === group.id ? group : id === raster.id ? raster : undefined)
-  } as unknown as SceneGraph
+    getNode: (id: string) => nodes.get(id)
+  }
   const plan = createCompositionPlan(graph, 'group', {
     adjustmentHooks: ['exposure']
   })
@@ -283,12 +280,12 @@ test('image render adapter uploads only textures affected by source or mask dirt
   }
   const source = { ...imageNode('source', 'asset:source'), parentId: 'group' }
   const mask = { ...imageNode('mask', 'asset:mask'), parentId: 'group', isMask: true }
+  const nodes = new Map([group, source, mask].map((node) => [node.id, node]))
   const plan = createCompositionPlan(
     {
       rootId: 'group',
-      getNode: (id: string) =>
-        id === 'group' ? group : id === 'source' ? source : id === 'mask' ? mask : undefined
-    } as unknown as SceneGraph,
+      getNode: (id: string) => nodes.get(id)
+    },
     'group'
   )
   const resolve: ImageRevisionResolver = {

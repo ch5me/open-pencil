@@ -9,7 +9,7 @@ import {
   ImageTilePlanLimitError,
   type ImageRevisionResolver
 } from '#core/canvas/image-editor'
-import type { SceneGraph, SceneNode } from '#core/scene-graph'
+import type { SceneNode } from '#core/scene-graph'
 
 const LOSS_RESTART_CYCLES = 20
 const SOURCE_DIMENSION = 4096
@@ -37,14 +37,11 @@ function resiliencePlan(assetId = 'asset:resilience'): ReturnType<typeof createC
         imageHash: assetId
       }
     ]
-    // Fixture models only the composition resolver surface.
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-  } as unknown as SceneNode
+  } as SceneNode
   const graph = {
     rootId: node.id,
     getNode: (id: string) => (id === node.id ? node : undefined)
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-  } as unknown as SceneGraph
+  }
   return createCompositionPlan(graph)
 }
 

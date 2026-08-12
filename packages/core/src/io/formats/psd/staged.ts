@@ -15,9 +15,7 @@ import {
   type PsdWarningCode,
   type PsdCorpusManifest,
   type PsdExternalSource,
-  type PsdChannelMetadata,
-  type PsdIccProfile,
-  type PsdSpotColor
+  type PsdIccProfile
 } from './types'
 
 const PSD_METADATA_MAGIC = new TextEncoder().encode('OPPSD1')
@@ -353,11 +351,12 @@ function readLayerMetadata(
   const payload = new TextDecoder().decode(bytes.subarray(offset + PSD_METADATA_MAGIC.byteLength))
   try {
     const parsed = JSON.parse(payload) as unknown
-    const layers = Array.isArray(parsed)
-      ? parsed
-      : parsed && typeof parsed === 'object' && Array.isArray(parsed.layers)
-        ? parsed.layers
-        : null
+    let layers: unknown = null
+    if (Array.isArray(parsed)) {
+      layers = parsed
+    } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.layers)) {
+      layers = parsed.layers
+    }
     if (!layers) throw new PsdUnsupportedError('invalid PSD layer metadata')
     if (!Array.isArray(layers) || layers.length > limits.maxLayers) {
       throw new PsdUnsupportedError('invalid PSD layer metadata')
@@ -397,6 +396,12 @@ function readLayerMetadata(
   }
 }
 
+function isPSDDocumentMetadata(value: unknown): value is PsdDocumentMetadata {
+  return Boolean(value && typeof value === 'object' && Array.isArray(Reflect.get(value, 'layers')))
+}
+
+// Metadata validation remains explicit so malformed staged documents fail with precise errors.
+// oxlint-disable-next-line complexity
 function readDocumentMetadata(
   bytes: Uint8Array,
   offset: number,
@@ -410,24 +415,24 @@ function readDocumentMetadata(
     if (Array.isArray(parsed)) {
       return { layers: readLayerMetadata(bytes, offset, limits) }
     }
-    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.layers)) {
+    if (!isPSDDocumentMetadata(parsed)) {
       throw new PsdUnsupportedError('invalid PSD layer metadata')
     }
-    const document = parsed as Record<string, unknown>
+    const metadata = parsed
     if (
-      document.dpi !== undefined &&
-      (!Array.isArray(document.dpi) ||
-        document.dpi.length !== 2 ||
-        document.dpi.some(
+      metadata.dpi !== undefined &&
+      (!Array.isArray(metadata.dpi) ||
+        metadata.dpi.length !== 2 ||
+        metadata.dpi.some(
           (value) => typeof value !== 'number' || !Number.isFinite(value) || value <= 0
         ))
     ) {
       throw new PsdUnsupportedError('invalid PSD DPI metadata')
     }
     if (
-      document.channels !== undefined &&
-      (!Array.isArray(document.channels) ||
-        document.channels.some(
+      metadata.channels !== undefined &&
+      (!Array.isArray(metadata.channels) ||
+        metadata.channels.some(
           (channel) =>
             !channel ||
             typeof channel !== 'object' ||
@@ -439,9 +444,9 @@ function readDocumentMetadata(
       throw new PsdUnsupportedError('invalid PSD channel metadata')
     }
     if (
-      document.spotColors !== undefined &&
-      (!Array.isArray(document.spotColors) ||
-        document.spotColors.some(
+      metadata.spotColors !== undefined &&
+      (!Array.isArray(metadata.spotColors) ||
+        metadata.spotColors.some(
           (spot) =>
             !spot ||
             typeof spot !== 'object' ||
@@ -454,14 +459,14 @@ function readDocumentMetadata(
       throw new PsdUnsupportedError('invalid PSD spot color metadata')
     }
     if (
-      document.metadata !== undefined &&
-      (!document.metadata ||
-        typeof document.metadata !== 'object' ||
-        Array.isArray(document.metadata))
+      metadata.metadata !== undefined &&
+      (!metadata.metadata ||
+        typeof metadata.metadata !== 'object' ||
+        Array.isArray(metadata.metadata))
     ) {
       throw new PsdUnsupportedError('invalid PSD document metadata')
     }
-    return document as PsdDocumentMetadata
+    return metadata
   } catch (error) {
     if (error instanceof PsdUnsupportedError) throw error
     throw new PsdUnsupportedError('invalid PSD layer metadata')
@@ -485,16 +490,16 @@ export function stagePsdImport(
 ): PsdImportResult {
   const header = parsePsdHeader(bytes, limits)
   const warnings = headerWarnings(header)
-  const document = readDocumentMetadata(bytes, 26, limits)
-  const layers = document?.layers ?? []
-  const iccProfile = decodeIccProfile(document?.iccProfile)
+  const documentMetadata = readDocumentMetadata(bytes, 26, limits)
+  const layers = documentMetadata?.layers ?? []
+  const iccProfile = decodeIccProfile(documentMetadata?.iccProfile)
   const enrichedHeader: PsdHeader = {
     ...header,
-    ...(document?.dpi ? { dpi: document.dpi } : {}),
+    ...(documentMetadata?.dpi ? { dpi: documentMetadata.dpi } : {}),
     ...(iccProfile ? { iccProfile } : {}),
-    ...(document?.channels ? { channelsMetadata: document.channels } : {}),
-    ...(document?.spotColors ? { spotColors: document.spotColors } : {}),
-    ...(document?.metadata ? { metadata: document.metadata } : {})
+    ...(documentMetadata?.channels ? { channelsMetadata: documentMetadata.channels } : {}),
+    ...(documentMetadata?.spotColors ? { spotColors: documentMetadata.spotColors } : {}),
+    ...(documentMetadata?.metadata ? { metadata: documentMetadata.metadata } : {})
   }
   warnings.push(...blendModeWarning(layers))
   warnings.push(...adjustmentWarning(layers))
@@ -526,6 +531,8 @@ export async function readPsdFile(
   return stagePsdImport(bytes, limits)
 }
 
+// Export validation is intentionally centralized to preserve one deterministic staged format.
+// oxlint-disable-next-line complexity
 export function stagePsdExport(
   input: PsdExportInput,
   limits: PsdLimits = DEFAULT_PSD_LIMITS
@@ -666,7 +673,9 @@ export function layerMetadata(
       : {}),
     ...(options.vector ? { vector: structuredClone(options.vector) } : {}),
     ...(options.paths ? { paths: structuredClone(options.paths) } : {}),
-    ...(options.effects ? { effects: structuredClone(options.effects) } : {}),
+    ...(options.effects
+      ? { effects: options.effects.map((effect) => structuredClone(effect)) }
+      : {}),
     ...(options.vectorMask ? { vectorMask: structuredClone(options.vectorMask) } : {}),
     warnings: []
   }

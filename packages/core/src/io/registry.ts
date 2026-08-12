@@ -5,6 +5,7 @@ import type { ExportRequest, IOContext, IOFormatAdapter, ReadDocumentInput } fro
 
 export class IOInputLimitError extends Error {
   readonly code = 'io-input-limit'
+  override readonly name = 'IOInputLimitError'
 }
 
 export function assertInputWithinLimit(byteLength: number, maxInputBytes?: number): void {

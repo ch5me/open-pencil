@@ -5,7 +5,7 @@ import { IOCancelledError } from '#core/io/limits'
 
 test('FIG worker cancellation terminates active archive parsing', async () => {
   const originalWorker = globalThis.Worker
-  let worker: FakeWorker | undefined
+  const instances: FakeWorker[] = []
   let abortListeners = 0
 
   class FakeWorker {
@@ -15,7 +15,7 @@ test('FIG worker cancellation terminates active archive parsing', async () => {
     terminated = false
 
     constructor() {
-      worker = this
+      instances.push(this)
     }
 
     postMessage() {
@@ -45,6 +45,7 @@ test('FIG worker cancellation terminates active archive parsing', async () => {
       return removeEventListener(...args)
     }) as AbortSignal['removeEventListener']
     const parsing = parseFigViaWorker(new ArrayBuffer(8), { signal: controller.signal })
+    const worker = instances[0]
     expect(worker?.posted).toBe(true)
     expect(abortListeners).toBe(1)
 

@@ -389,7 +389,7 @@ function isDetachedReference(value: unknown): value is DetachedBinaryAssetRefere
 }
 
 // oxlint-disable-next-line complexity
-function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
+function assertJSONValue(value: unknown, ancestors = new Set<object>()): void {
   const primitive =
     value === null ||
     typeof value === 'string' ||
@@ -420,7 +420,7 @@ function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
       if (!descriptor?.enumerable || !('value' in descriptor)) {
         throw new PersistenceContractError('working-document payload has non-JSON properties')
       }
-      assertJsonValue(descriptor.value, ancestors)
+      assertJSONValue(descriptor.value, ancestors)
     }
     ancestors.delete(value)
     return
@@ -437,15 +437,15 @@ function assertJsonValue(value: unknown, ancestors = new Set<object>()): void {
         'working-document payload keys must not contain image data URLs'
       )
     }
-    assertJsonValue(descriptor.value, ancestors)
+    assertJSONValue(descriptor.value, ancestors)
   }
   ancestors.delete(value)
 }
 
-function containsImageDataUrl(value: unknown): boolean {
+function containsImageDataURL(value: unknown): boolean {
   if (typeof value === 'string') return IMAGE_DATA_URL_PREFIX.test(value)
-  if (Array.isArray(value)) return value.some(containsImageDataUrl)
-  return isPlainRecord(value) && Object.values(value).some(containsImageDataUrl)
+  if (Array.isArray(value)) return value.some(containsImageDataURL)
+  return isPlainRecord(value) && Object.values(value).some(containsImageDataURL)
 }
 
 function pngChunkType(bytes: Uint8Array, offset: number): string {
@@ -457,7 +457,7 @@ function pngChunkType(bytes: Uint8Array, offset: number): string {
   )
 }
 
-function readPngUint32(bytes: Uint8Array, offset: number): number {
+function readPNGUint32(bytes: Uint8Array, offset: number): number {
   return (
     ((bytes[offset] ?? 0) * 0x1000000 +
       (bytes[offset + 1] ?? 0) * 0x10000 +
@@ -475,7 +475,7 @@ function pngCrc32(bytes: Uint8Array, start: number, end: number): number {
   return (crc ^ 0xffffffff) >>> 0
 }
 
-function assertPngChunkType(bytes: Uint8Array, offset: number, type: string): void {
+function assertPNGChunkType(bytes: Uint8Array, offset: number, type: string): void {
   const typeBytes = bytes.subarray(offset + 4, offset + 8)
   const isAsciiLetter = (byte: number) =>
     (byte >= 0x41 && byte <= 0x5a) || (byte >= 0x61 && byte <= 0x7a)
@@ -489,7 +489,7 @@ function assertPngChunkType(bytes: Uint8Array, offset: number, type: string): vo
   }
 }
 
-interface PngImageHeader {
+interface PNGImageHeader {
   width: number
   height: number
   bitDepth: number
@@ -497,9 +497,9 @@ interface PngImageHeader {
   interlace: number
 }
 
-function assertPngIhdr(bytes: Uint8Array, dataOffset: number): PngImageHeader {
-  const width = readPngUint32(bytes, dataOffset)
-  const height = readPngUint32(bytes, dataOffset + 4)
+function assertPNGIHDR(bytes: Uint8Array, dataOffset: number): PNGImageHeader {
+  const width = readPNGUint32(bytes, dataOffset)
+  const height = readPNGUint32(bytes, dataOffset + 4)
   const bitDepth = bytes[dataOffset + 8] ?? 0
   const colorType = bytes[dataOffset + 9] ?? 0
   const interlace = bytes[dataOffset + 12] ?? 2
@@ -525,8 +525,8 @@ function assertPngIhdr(bytes: Uint8Array, dataOffset: number): PngImageHeader {
   return { width, height, bitDepth, colorType, interlace }
 }
 
-interface PngChunkState {
-  header: PngImageHeader | undefined
+interface PNGChunkState {
+  header: PNGImageHeader | undefined
   sawPlte: boolean
   paletteEntries: number
   sawTrns: boolean
@@ -536,7 +536,7 @@ interface PngChunkState {
   idatParts: Uint8Array[]
 }
 
-function assertPngPlte(length: number, state: PngChunkState): void {
+function assertPNGPLTE(length: number, state: PNGChunkState): void {
   const header = state.header
   if (
     !header ||
@@ -556,7 +556,7 @@ function assertPngPlte(length: number, state: PngChunkState): void {
   state.paletteEntries = length / 3
 }
 
-function assertPngTrns(length: number, state: PngChunkState): void {
+function assertPNGTRNS(length: number, state: PNGChunkState): void {
   const header = state.header
   const colorType = header?.colorType
   if (
@@ -574,8 +574,8 @@ function assertPngTrns(length: number, state: PngChunkState): void {
   state.sawTrns = true
 }
 
-function assertPngTrnsData(data: Uint8Array, state: PngChunkState): void {
-  assertPngTrns(data.byteLength, state)
+function assertPNGTRNSData(data: Uint8Array, state: PNGChunkState): void {
+  assertPNGTRNS(data.byteLength, state)
   const header = state.header
   if (header?.colorType === 0 && header.bitDepth < 16) {
     const sample = ((data[0] ?? 0) << 8) | (data[1] ?? 0)
@@ -592,12 +592,12 @@ function assertPngTrnsData(data: Uint8Array, state: PngChunkState): void {
   }
 }
 
-interface PngPass {
+interface PNGPass {
   width: number
   height: number
 }
 
-function pngPasses(header: PngImageHeader): readonly PngPass[] {
+function pngPasses(header: PNGImageHeader): readonly PNGPass[] {
   if (header.interlace === 0) return [{ width: header.width, height: header.height }]
   const starts = [
     [0, 0, 8, 8],
@@ -614,7 +614,7 @@ function pngPasses(header: PngImageHeader): readonly PngPass[] {
   }))
 }
 
-function pngScanlineByteLength(header: PngImageHeader, limit: number): number {
+function pngScanlineByteLength(header: PNGImageHeader, limit: number): number {
   const channels: Readonly<Record<number, number>> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }
   const bitsPerPixel = header.bitDepth * (channels[header.colorType] ?? 0)
   const scanlineBytes = (width: number) => 1n + (BigInt(width) * BigInt(bitsPerPixel) + 7n) / 8n
@@ -632,8 +632,8 @@ function pngScanlineByteLength(header: PngImageHeader, limit: number): number {
   return Number(total)
 }
 
-function readPngAdler32(bytes: Uint8Array): number {
-  return readPngUint32(bytes, bytes.byteLength - 4)
+function readPNGAdler32(bytes: Uint8Array): number {
+  return readPNGUint32(bytes, bytes.byteLength - 4)
 }
 
 class DeflateBitReader {
@@ -871,7 +871,7 @@ function paethPredictor(left: number, up: number, upperLeft: number): number {
   return upDistance <= upperLeftDistance ? up : upperLeft
 }
 
-function unfilterPngRow(
+function unfilterPNGRow(
   filter: number,
   raw: Uint8Array,
   previous: Uint8Array,
@@ -892,7 +892,7 @@ function unfilterPngRow(
   return row
 }
 
-function assertIndexedPngSamples(
+function assertIndexedPNGSamples(
   row: Uint8Array,
   width: number,
   bitDepth: number,
@@ -909,7 +909,7 @@ function assertIndexedPngSamples(
   }
 }
 
-function assertPngScanlines(decoded: Uint8Array, state: PngChunkState): void {
+function assertPNGScanlines(decoded: Uint8Array, state: PNGChunkState): void {
   const header = state.header
   if (!header) throw new PersistenceMigrationError('PNG header is missing')
   const channels: Readonly<Record<number, number>> = { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }
@@ -927,13 +927,13 @@ function assertPngScanlines(decoded: Uint8Array, state: PngChunkState): void {
       const raw = decoded.subarray(offset, offset + rowBytes)
       offset += rowBytes
       if (header.colorType !== 3) continue
-      previous = unfilterPngRow(filter, raw, previous, bytesPerPixel)
-      assertIndexedPngSamples(previous, pass.width, header.bitDepth, state.paletteEntries)
+      previous = unfilterPNGRow(filter, raw, previous, bytesPerPixel)
+      assertIndexedPNGSamples(previous, pass.width, header.bitDepth, state.paletteEntries)
     }
   }
 }
 
-function assertPngImageData(state: PngChunkState, limit: number): void {
+function assertPNGImageData(state: PNGChunkState, limit: number): void {
   const header = state.header
   if (!header || state.idatBytes === 0) {
     throw new PersistenceMigrationError('PNG IDAT stream must be non-empty')
@@ -981,27 +981,27 @@ function assertPngImageData(state: PngChunkState, limit: number): void {
   }
   if (
     decodedBytes !== expectedBytes ||
-    ((adlerB << 16) | adlerA) >>> 0 !== readPngAdler32(compressed)
+    ((adlerB << 16) | adlerA) >>> 0 !== readPNGAdler32(compressed)
   ) {
     throw new PersistenceMigrationError('PNG decoded scanline size or zlib checksum is invalid')
   }
-  assertPngScanlines(decoded, state)
+  assertPNGScanlines(decoded, state)
 }
 
-function acceptPngChunk(
+function acceptPNGChunk(
   type: string,
   length: number,
   data: Uint8Array,
   chunkEnd: number,
   byteLength: number,
-  state: PngChunkState,
+  state: PNGChunkState,
   decodedByteLimit: number
 ): boolean {
   if (type === 'IHDR') throw new PersistenceMigrationError('PNG IHDR chunk is duplicated')
   if (type === 'PLTE') {
-    assertPngPlte(length, state)
+    assertPNGPLTE(length, state)
   } else if (type === 'tRNS') {
-    assertPngTrnsData(data, state)
+    assertPNGTRNSData(data, state)
   } else if (type === 'IDAT') {
     if (state.idatEnded) {
       throw new PersistenceMigrationError('PNG IDAT chunks must be consecutive')
@@ -1019,11 +1019,11 @@ function acceptPngChunk(
   if (length !== 0 || !state.sawIdat || chunkEnd !== byteLength) {
     throw new PersistenceMigrationError('PNG IEND chunk must be empty and terminal')
   }
-  assertPngImageData(state, decodedByteLimit)
+  assertPNGImageData(state, decodedByteLimit)
   return true
 }
 
-function assertPngStructure(bytes: Uint8Array, decodedByteLimit: number): void {
+function assertPNGStructure(bytes: Uint8Array, decodedByteLimit: number): void {
   if (
     bytes.byteLength < PNG_MIN_BYTE_LENGTH ||
     PNG_SIGNATURE.some((byte, index) => bytes[index] !== byte)
@@ -1032,7 +1032,7 @@ function assertPngStructure(bytes: Uint8Array, decodedByteLimit: number): void {
   }
 
   let offset: number = PNG_SIGNATURE.length
-  const state: PngChunkState = {
+  const state: PNGChunkState = {
     header: undefined,
     sawPlte: false,
     paletteEntries: 0,
@@ -1046,28 +1046,28 @@ function assertPngStructure(bytes: Uint8Array, decodedByteLimit: number): void {
     if (bytes.byteLength - offset < PNG_CHUNK_OVERHEAD) {
       throw new PersistenceMigrationError('PNG chunk exceeds byte bounds')
     }
-    const length = readPngUint32(bytes, offset)
+    const length = readPNGUint32(bytes, offset)
     const type = pngChunkType(bytes, offset)
-    assertPngChunkType(bytes, offset, type)
+    assertPNGChunkType(bytes, offset, type)
     if (length > bytes.byteLength - offset - PNG_CHUNK_OVERHEAD) {
       throw new PersistenceMigrationError('PNG chunk exceeds byte bounds')
     }
     const dataOffset = offset + 8
     const crcOffset = dataOffset + length
     const chunkEnd = crcOffset + 4
-    if (pngCrc32(bytes, offset + 4, crcOffset) !== readPngUint32(bytes, crcOffset)) {
+    if (pngCrc32(bytes, offset + 4, crcOffset) !== readPNGUint32(bytes, crcOffset)) {
       throw new PersistenceMigrationError(`PNG ${type} chunk CRC is invalid`)
     }
     if (offset === PNG_SIGNATURE.length) {
       if (type !== 'IHDR' || length !== PNG_IHDR_LENGTH) {
         throw new PersistenceMigrationError('PNG IHDR must be first and exactly 13 bytes')
       }
-      state.header = assertPngIhdr(bytes, dataOffset)
+      state.header = assertPNGIHDR(bytes, dataOffset)
       offset = chunkEnd
       continue
     }
     if (
-      acceptPngChunk(
+      acceptPNGChunk(
         type,
         length,
         bytes.subarray(dataOffset, crcOffset),
@@ -1091,8 +1091,8 @@ function estimateBase64DecodedBytes(base64: string): number {
   return (base64.length / 4) * 3 - padding
 }
 
-function inspectPngDataUrl(dataUrl: string, limits: PersistenceAdmissionLimits): string {
-  const match = BASE64_PNG_DATA_URL.exec(dataUrl)
+function inspectPNGDataURL(dataURL: string, limits: PersistenceAdmissionLimits): string {
+  const match = BASE64_PNG_DATA_URL.exec(dataURL)
   if (!match?.[1]) {
     throw new PersistenceMigrationError('PNG data URL must use valid base64 encoding')
   }
@@ -1114,7 +1114,7 @@ function inspectPngDataUrl(dataUrl: string, limits: PersistenceAdmissionLimits):
   return match[1]
 }
 
-function collectPngAdmission(
+function collectPNGAdmission(
   value: unknown,
   limits: PersistenceAdmissionLimits,
   admission: PersistenceAdmissionState
@@ -1123,7 +1123,7 @@ function collectPngAdmission(
     if (!PNG_DATA_URL_PREFIX.test(value)) {
       throw new PersistenceMigrationError('unsupported image data URL')
     }
-    const base64 = inspectPngDataUrl(value, limits)
+    const base64 = inspectPNGDataURL(value, limits)
     addAdmissionBytes(
       admission,
       'encodedBytes',
@@ -1141,16 +1141,16 @@ function collectPngAdmission(
     return
   }
   if (Array.isArray(value)) {
-    for (const item of value) collectPngAdmission(item, limits, admission)
+    for (const item of value) collectPNGAdmission(item, limits, admission)
     return
   }
   if (isPlainRecord(value)) {
-    for (const item of Object.values(value)) collectPngAdmission(item, limits, admission)
+    for (const item of Object.values(value)) collectPNGAdmission(item, limits, admission)
   }
 }
 
-function decodePngDataUrl(dataUrl: string, limits: PersistenceAdmissionLimits): Uint8Array {
-  const base64 = inspectPngDataUrl(dataUrl, limits)
+function decodePNGDataURL(dataURL: string, limits: PersistenceAdmissionLimits): Uint8Array {
+  const base64 = inspectPNGDataURL(dataURL, limits)
   let binary: string
   try {
     binary = atob(base64)
@@ -1158,7 +1158,7 @@ function decodePngDataUrl(dataUrl: string, limits: PersistenceAdmissionLimits): 
     throw new PersistenceMigrationError('PNG data URL contains invalid base64')
   }
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
-  assertPngStructure(bytes, limits.maxDecodedAssetBytes)
+  assertPNGStructure(bytes, limits.maxDecodedAssetBytes)
   return bytes
 }
 
@@ -1171,7 +1171,7 @@ async function sha256(bytes: Uint8Array): Promise<string> {
   }
 }
 
-async function detachJsonValue(
+async function detachJSONValue(
   value: unknown,
   assets: Map<string, DetachedBinaryAsset>,
   limits: PersistenceAdmissionLimits
@@ -1180,7 +1180,7 @@ async function detachJsonValue(
     if (!PNG_DATA_URL_PREFIX.test(value)) {
       throw new PersistenceMigrationError('unsupported image data URL')
     }
-    const bytes = decodePngDataUrl(value, limits)
+    const bytes = decodePNGDataURL(value, limits)
     const digest = await sha256(bytes)
     const reference: DetachedBinaryAssetReference = {
       kind: 'detached-binary-asset-v1',
@@ -1201,13 +1201,13 @@ async function detachJsonValue(
     return value
   }
   if (Array.isArray(value)) {
-    return Promise.all(value.map((item) => detachJsonValue(item, assets, limits)))
+    return Promise.all(value.map((item) => detachJSONValue(item, assets, limits)))
   }
   if (isPlainRecord(value)) {
     const entries = await Promise.all(
       Object.entries(value).map(async ([key, item]) => [
         key,
-        await detachJsonValue(item, assets, limits)
+        await detachJSONValue(item, assets, limits)
       ])
     )
     return Object.fromEntries(entries)
@@ -1464,7 +1464,7 @@ function assertAcknowledgementIdentity(
   identity: unknown
 ): asserts identity is AcknowledgedWorkingDocumentIdentity {
   assertDocumentId(documentId)
-  assertJsonValue(identity)
+  assertJSONValue(identity)
   if (!isPlainRecord(identity) || !hasExactDataProperties(identity, ACKNOWLEDGED_IDENTITY_KEYS)) {
     throw new PersistenceContractError('expected acknowledgement identity is invalid')
   }
@@ -1556,7 +1556,7 @@ function snapshotSaveOptions(
   }
 }
 
-export async function detachPngDataUrls(
+export async function detachPNGDataURLs(
   record: WorkingDocumentRecord,
   options: PersistenceAdmissionOptions = {}
 ): Promise<DetachedWorkingDocument> {
@@ -1564,11 +1564,11 @@ export async function detachPngDataUrls(
     const limits = normalizeAdmissionOptions(options)
     const snapshot = snapshotWorkingDocumentRecord(record)
     const assets = new Map<string, DetachedBinaryAsset>()
-    collectPngAdmission(snapshot.payload, limits, {
+    collectPNGAdmission(snapshot.payload, limits, {
       encodedBytes: 0,
       decodedBytes: 0
     })
-    const payload = await detachJsonValue(snapshot.payload, assets, limits)
+    const payload = await detachJSONValue(snapshot.payload, assets, limits)
     if (!isPlainRecord(payload)) {
       throw new PersistenceMigrationError('working-document payload must be a JSON object')
     }
@@ -1594,13 +1594,13 @@ function validateDetachedWorkingDocumentSnapshot(
   validateWorkingDocumentRecord(record)
   assertDensePlainRecordArray(assets, DETACHED_BINARY_ASSET_KEYS, 'detached binary assets')
   assertDetachedAssetAdmission(assets, limits)
-  if (containsImageDataUrl(record.payload)) {
+  if (containsImageDataURL(record.payload)) {
     throw new PersistenceMigrationError('working document contains an embedded image data URL')
   }
 
   const assetsByRevision = new Map<string, DetachedBinaryAsset>()
   for (const asset of assets) {
-    assertPngStructure(asset.bytes, limits.maxDecodedAssetBytes)
+    assertPNGStructure(asset.bytes, limits.maxDecodedAssetBytes)
     if (assetsByRevision.has(asset.reference.revisionId)) {
       throw new PersistenceMigrationError(
         `duplicate detached binary asset revision: ${asset.reference.revisionId}`
@@ -1868,12 +1868,12 @@ export class AtomicWorkingDocumentPersistence {
   }
 }
 
-export function estimateJsonOverhead(payload: Readonly<Record<string, unknown>>): number {
+export function estimateJSONOverhead(payload: Readonly<Record<string, unknown>>): number {
   try {
     if (!isPlainRecord(payload)) {
       throw new PersistenceContractError('json overhead payload must be a plain object')
     }
-    assertJsonValue(payload)
+    assertJSONValue(payload)
     const jsonBytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength
     return jsonBytes - new TextEncoder().encode(JSON.stringify(Object.values(payload))).byteLength
   } catch (error) {
@@ -1893,10 +1893,10 @@ export function validateWorkingDocumentRecord(
     if (!isPlainRecord(record) || !hasExactKeys(record, WORKING_DOCUMENT_RECORD_KEYS)) {
       throw new PersistenceContractError('working document has unknown record keys')
     }
-    assertJsonValue(record)
+    assertJSONValue(record)
     if (
       Object.entries(record).some(
-        ([key, value]) => key !== 'payload' && containsImageDataUrl(value)
+        ([key, value]) => key !== 'payload' && containsImageDataURL(value)
       )
     ) {
       throw new PersistenceContractError(
@@ -1981,7 +1981,7 @@ export function recoverWorkingDocument(
         record.contentSequence === identitySnapshot.contentSequence &&
         record.contentRootHash === identitySnapshot.contentRootHash
     )
-    if (candidates.some(({ payload }) => containsImageDataUrl(payload))) {
+    if (candidates.some(({ payload }) => containsImageDataURL(payload))) {
       throw new PersistenceMigrationError(
         'record-only recovery cannot recover embedded image data URLs'
       )

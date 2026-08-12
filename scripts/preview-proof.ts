@@ -27,13 +27,17 @@ const API_ORIGIN = process.env.OPENPENCIL_PREVIEW_API_ORIGIN ?? 'http://127.0.0.
 let passCount = 0
 let failCount = 0
 
+function output(message: string) {
+  process.stdout.write(`${message}\n`)
+}
+
 function assert(condition: boolean, label: string) {
   if (condition) {
     passCount++
-    console.log(`  PASS: ${label}`)
+    output(`  PASS: ${label}`)
   } else {
     failCount++
-    console.log(`  FAIL: ${label}`)
+    output(`  FAIL: ${label}`)
   }
 }
 
@@ -53,7 +57,7 @@ async function apiRequest(path: string, opts?: RequestInit) {
 // ---------------------------------------------------------------------------
 // 1. Preview URL serves HTML
 // ---------------------------------------------------------------------------
-console.log('\n1. Preview URL accessibility')
+output('\n1. Preview URL accessibility')
 const root = await request('/')
 assert(root.status === 200, `GET / → ${root.status}`)
 assert(root.text.includes('<html') || root.text.includes('<!DOCTYPE'), 'response contains HTML')
@@ -61,7 +65,7 @@ assert(root.text.includes('<html') || root.text.includes('<!DOCTYPE'), 'response
 // ---------------------------------------------------------------------------
 // 2. Editor shell loads
 // ---------------------------------------------------------------------------
-console.log('\n2. Editor shell presence')
+output('\n2. Editor shell presence')
 assert(
   root.text.includes('id="app"') || root.text.includes('data-v-app'),
   'Vue app mount point present'
@@ -70,13 +74,13 @@ assert(
 // ---------------------------------------------------------------------------
 // 3. Local-only routes accessible
 // ---------------------------------------------------------------------------
-console.log('\n3. Local-only route accessibility')
+output('\n3. Local-only route accessibility')
 assert(root.status === 200, 'root route loads without auth requirement')
 
 // ---------------------------------------------------------------------------
 // 4. Hosted route redirects without session
 // ---------------------------------------------------------------------------
-console.log('\n4. Hosted route gating (preview = no live session)')
+output('\n4. Hosted route gating (preview = no live session)')
 const hostedRes = await request('/hosted', { redirect: 'manual' })
 // Preview Pages without hosted auth enabled should either redirect or show local mode
 const isRedirect = hostedRes.status >= 300 && hostedRes.status < 400
@@ -89,7 +93,7 @@ assert(
 // ---------------------------------------------------------------------------
 // 5. Feature flags resolve to preview mode
 // ---------------------------------------------------------------------------
-console.log('\n5. Feature flag resolution')
+output('\n5. Feature flag resolution')
 try {
   const { spawnSync } = await import('node:child_process')
   const flagResult = spawnSync('bun', ['run', 'scripts/validate-hosted-flags.ts'], {
@@ -102,48 +106,48 @@ try {
     `feature flags validate for preview mode (exit ${flagResult.status})`
   )
 } catch {
-  console.log('  SKIP: feature flag validation (bun spawn unavailable)')
+  output('  SKIP: feature flag validation (bun spawn unavailable)')
 }
 
 // ---------------------------------------------------------------------------
 // 6-7. Worker health + session bootstrap (requires Worker)
 // ---------------------------------------------------------------------------
 let workerAvailable = false
-console.log('\n6. Worker health check')
+output('\n6. Worker health check')
 try {
   const healthRes = await fetch(`${API_ORIGIN}/health`, { signal: AbortSignal.timeout(5000) })
   if (healthRes.status === 200) {
-    const healthJson = await healthRes.json()
-    assert(healthJson.status === 'ok', 'Worker health reports ok')
+    const healthJSON = await healthRes.json()
+    assert(healthJSON.status === 'ok', 'Worker health reports ok')
     workerAvailable = true
   } else {
     assert(false, `Worker health → ${healthRes.status}`)
   }
 } catch {
   // Worker not available — Pages-only preview, skip hosted doc/collab checks
-  console.log('  SKIP: Worker not reachable (Pages-only preview)')
+  output('  SKIP: Worker not reachable (Pages-only preview)')
 }
 
 if (workerAvailable) {
-  console.log('\n7. Session bootstrap on preview Worker')
+  output('\n7. Session bootstrap on preview Worker')
   try {
     const sessionRes = await fetch(`${API_ORIGIN}/api/session`, {
       signal: AbortSignal.timeout(5000)
     })
     if (sessionRes.status === 200) {
-      const sessionJson = await sessionRes.json()
-      assert(sessionJson.user === null, 'session returns user: null without credentials')
+      const sessionJSON = await sessionRes.json()
+      assert(sessionJSON.user === null, 'session returns user: null without credentials')
     } else {
       assert(false, `session endpoint → ${sessionRes.status}`)
     }
   } catch {
-    console.log('  SKIP: session endpoint unreachable')
+    output('  SKIP: session endpoint unreachable')
   }
 
   // ---------------------------------------------------------------------------
   // 8. Hosted document CRUD via paired Worker
   // ---------------------------------------------------------------------------
-  console.log('\n8. Hosted document CRUD (via paired preview Worker)')
+  output('\n8. Hosted document CRUD (via paired preview Worker)')
 
   const STUB_TOKEN = process.env.OPENPENCIL_DEV_STUB_TOKEN ?? 'openpencil-hosted-dev-token'
   const ELF_COOKIE = 'ELF_JWT'
@@ -168,9 +172,9 @@ if (workerAvailable) {
   // 8b. Read snapshot
   const snapRes = await apiRequest(`/api/documents/${docId}/snapshot`, { headers })
   assert(snapRes.status === 200, `GET snapshot → ${snapRes.status}`)
-  const snapJson = snapRes.json()
-  assert(snapJson.document?.id === docId, 'snapshot document id matches')
-  assert(snapJson.snapshot?.bytesBase64 === snapshotBytes, 'snapshot bytes match')
+  const snapJSON = snapRes.json()
+  assert(snapJSON.document?.id === docId, 'snapshot document id matches')
+  assert(snapJSON.snapshot?.bytesBase64 === snapshotBytes, 'snapshot bytes match')
 
   // 8c. Save (update) snapshot
   const newBytes = btoa('preview-hosted-updated')
@@ -186,8 +190,8 @@ if (workerAvailable) {
 
   // 8d. Verify update persisted
   const updatedSnap = await apiRequest(`/api/documents/${docId}/snapshot`, { headers })
-  const updatedJson = updatedSnap.json()
-  assert(updatedJson.snapshot?.bytesBase64 === newBytes, 'updated snapshot bytes match')
+  const updatedJSON = updatedSnap.json()
+  assert(updatedJSON.snapshot?.bytesBase64 === newBytes, 'updated snapshot bytes match')
 
   // 8e. Delete document
   const deleteRes = await apiRequest(`/api/documents/${docId}`, { method: 'DELETE', headers })
@@ -215,14 +219,14 @@ if (workerAvailable) {
   // ---------------------------------------------------------------------------
   // 9. Hosted collab room via paired Worker
   // ---------------------------------------------------------------------------
-  console.log('\n9. Hosted collab room (via paired preview Worker)')
+  output('\n9. Hosted collab room (via paired preview Worker)')
 
   const roomRes = await apiRequest(`/api/documents/${collabDocId}/room`, { headers })
   assert(roomRes.status === 200, `GET room → ${roomRes.status}`)
-  const roomJson = roomRes.json()
-  assert(roomJson.documentId === collabDocId, 'room documentId matches')
-  assert(roomJson.roomId, 'room response includes roomId')
-  assert(roomJson.status === 'ok', 'room status is ok')
+  const roomJSON = roomRes.json()
+  assert(roomJSON.documentId === collabDocId, 'room documentId matches')
+  assert(roomJSON.roomId, 'room response includes roomId')
+  assert(roomJSON.status === 'ok', 'room status is ok')
 
   // 9b. Unauthorized access rejected
   const unauthRoom = await apiRequest(`/api/documents/${collabDocId}/room`)
@@ -232,9 +236,9 @@ if (workerAvailable) {
 // ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
-console.log(`\n--- Preview Deploy Proof: ${passCount} passed, ${failCount} failed ---`)
-console.log(`Preview URL: ${PREVIEW_URL}`)
-console.log(`API origin: ${API_ORIGIN}`)
+output(`\n--- Preview Deploy Proof: ${passCount} passed, ${failCount} failed ---`)
+output(`Preview URL: ${PREVIEW_URL}`)
+output(`API origin: ${API_ORIGIN}`)
 if (failCount > 0) {
   process.exit(1)
 }

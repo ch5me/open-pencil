@@ -1,4 +1,4 @@
-import { createHostedRequester, HostedApiError, type HostedRequestOptions } from '@/app/hosted/http'
+import { createHostedRequester, HostedAPIError, type HostedRequestOptions } from '@/app/hosted/http'
 import type {
   StorageAdapter,
   StorageDocument,
@@ -77,7 +77,7 @@ export function createHostedStorageAdapter(
       )
       const encoded = response.snapshot?.bytesBase64
       if (!encoded) {
-        throw new HostedApiError(
+        throw new HostedAPIError(
           409,
           'missing-snapshot',
           `Hosted document ${id} has no readable snapshot.`
@@ -102,7 +102,7 @@ export function createHostedStorageAdapter(
           })
         })
       } catch (error) {
-        if (!(error instanceof HostedApiError) || error.code !== 'not-found') throw error
+        if (!(error instanceof HostedAPIError) || error.code !== 'not-found') throw error
         await request('/api/documents', {
           method: 'POST',
           body: JSON.stringify({
@@ -131,14 +131,14 @@ export function createHostedStorageAdapter(
           ? { name: response.document.title, updatedAt: response.document.updatedAt }
           : null
       } catch (error) {
-        if (error instanceof HostedApiError && error.code === 'not-found') return null
+        if (error instanceof HostedAPIError && error.code === 'not-found') return null
         throw error
       }
     },
 
     getUsage() {
       return Promise.reject(
-        new HostedApiError(
+        new HostedAPIError(
           501,
           'usage-unavailable',
           'Hosted storage usage is not exposed by the ELF API.'

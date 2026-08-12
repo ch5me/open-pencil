@@ -10,7 +10,7 @@ import {
   type ImageRevisionResolver
 } from '#core/canvas/image-editor'
 import { MEMORY_PROFILE_LIMITS } from '#core/io/transactional/protocol'
-import type { SceneGraph, SceneNode } from '#core/scene-graph'
+import type { SceneNode } from '#core/scene-graph'
 
 const LOSS_RESTART_CYCLES = 20
 const WARM_STATE_RENDERS = 200
@@ -41,14 +41,11 @@ function resiliencePlan(
         imageHash: assetId
       }
     ]
-    // Fixture models only the composition resolver surface.
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-  } as unknown as SceneNode
+  } as SceneNode
   const graph = {
     rootId: node.id,
     getNode: (id: string) => (id === node.id ? node : undefined)
-    // oxlint-disable-next-line open-pencil(no-broad-double-cast)
-  } as unknown as SceneGraph
+  }
   return createCompositionPlan(graph)
 }
 
@@ -85,7 +82,9 @@ function faultyAdapter(
       }
       return { backend: 'skia', commands: [], textures: [], gaps: [] }
     },
-    markDirty() {},
+    markDirty() {
+      // Fault fixture intentionally ignores dirtiness.
+    },
     loseContext() {
       lost = true
     },
