@@ -35,12 +35,9 @@ description: Référence des composants pour les primitives Vue headless dans @o
 <SdkCardGroup>
   <SdkCard title="ColorPickerRoot" to="/programmable/sdk/api/components/color-picker-root" description="Primitive de sélecteur de couleur basé sur un popover." />
   <SdkCard title="ColorInputRoot" to="/programmable/sdk/api/components/color-input-root" description="Helper headless pour la saisie de couleur." />
-  <SdkCard title="FillPickerRoot" to="/programmable/sdk/api/components/fill-picker-root" description="Primitive de sélecteur de remplissage basé sur un popover." />
   <SdkCard title="FontPickerRoot" to="/programmable/sdk/api/components/font-picker-root" description="Primitive de sélecteur de police avec recherche." />
   <SdkCard title="GradientEditorRoot" to="/programmable/sdk/api/components/gradient-editor-root" description="Primitive racine pour l'édition de dégradés." />
   <SdkCard title="GradientEditorBar" to="/programmable/sdk/api/components/gradient-editor-bar" description="Primitive de barre de dégradé déplaçable." />
   <SdkCard title="GradientEditorStop" to="/programmable/sdk/api/components/gradient-editor-stop" description="Primitive pour un point d'arrêt de dégradé." />
-  <SdkCard title="ScrubInputRoot" to="/programmable/sdk/api/components/scrub-input-root" description="Racine d'entrée numérique par glissement." />
-  <SdkCard title="ScrubInputField" to="/programmable/sdk/api/components/scrub-input-field" description="Primitive de champ de saisie en mode édition." />
-  <SdkCard title="ScrubInputDisplay" to="/programmable/sdk/api/components/scrub-input-display" description="Primitive d'affichage en mode non-édition." />
+  <SdkCard title="NumberField" to="/programmable/sdk/api/components/number-field" description="Numeric field with scrubbing, expressions, and keyboard stepping." />
 </SdkCardGroup>

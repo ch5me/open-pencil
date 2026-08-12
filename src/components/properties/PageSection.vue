@@ -1,20 +1,59 @@
 <script setup lang="ts">
-import { useI18n } from "@open-pencil/vue";
-import { computed } from "vue";
+import { computed } from 'vue'
 
-import { useEditorStore } from "@/app/editor/active-store";
-import ColorInput from "@/components/ColorPicker/ColorInput.vue";
-import { useSectionUI } from "@/components/ui/section";
+import { useI18n } from '@open-pencil/vue'
 
-const editor = useEditorStore();
-const pageColor = computed(() => editor.state.pageColor);
-const sectionCls = useSectionUI();
-const { panels } = useI18n();
+import ColorPicker from '@/components/ColorPicker/ColorPicker.vue'
+import PaintField from '@/components/properties/paint/PaintField.vue'
+import PaintValue from '@/components/properties/paint/PaintValue.vue'
+import FillSwatch from '@/components/ui/FillSwatch.vue'
+import PanelSection from '@/components/ui/panel/PanelSection.vue'
+import { useEditorStore } from '@/app/editor/active-store'
+
+import type { Color, Fill } from '@open-pencil/scene-graph'
+
+const editor = useEditorStore()
+const pageColor = computed(() => editor.state.pageColor)
+const pageFill = computed<Fill>(() => ({
+  type: 'SOLID',
+  color: pageColor.value,
+  opacity: 1,
+  visible: true
+}))
+const { panels } = useI18n()
+
+function updatePageAlpha(alpha: number) {
+  editor.setPageColor({ ...pageColor.value, a: alpha })
+}
+
+function updatePageColor(color: Color) {
+  editor.setPageColor(color)
+}
 </script>
 
 <template>
-  <div data-test-id="page-section" :class="sectionCls.wrapper">
-    <label class="mb-1.5 block text-[11px] text-muted">{{ panels.page ?? "Page" }}</label>
-    <ColorInput :color="pageColor" editable @update="editor.setPageColor($event)" />
-  </div>
+  <PanelSection :label="panels.page">
+    <PaintField
+      :opacity="pageColor.a"
+      :opacity-label="panels.opacity"
+      @update:opacity="updatePageAlpha"
+    >
+      <template #preview>
+        <ColorPicker :color="pageColor" @update="updatePageColor">
+          <template #trigger>
+            <button
+              type="button"
+              :aria-label="panels.pageBackground"
+              class="size-5 shrink-0 cursor-pointer rounded border-0 bg-transparent p-0"
+            >
+              <FillSwatch :fill="pageFill" class="size-full" />
+            </button>
+          </template>
+        </ColorPicker>
+      </template>
+      <template #value>
+        <PaintValue :color="pageColor" :label="panels.pageBackground" @update="updatePageColor" />
+      </template>
+    </PaintField>
+  </PanelSection>
 </template>

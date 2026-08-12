@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { useI18n, useLayoutControlsContext } from "@open-pencil/vue";
+import { useI18n, useLayoutControlsContext } from '@open-pencil/vue'
 
-const ctx = useLayoutControlsContext();
+const ctx = useLayoutControlsContext()
 
-const { panels } = useI18n();
+const { panels } = useI18n()
 </script>
 
 <template>
@@ -17,7 +17,7 @@ const { panels } = useI18n();
         ctx.editor.updateNodeWithUndo(
           ctx.node.id,
           { clipsContent: !ctx.node.clipsContent },
-          'Toggle clip content',
+          'Toggle clip content'
         )
       "
     />

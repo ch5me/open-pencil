@@ -1,11 +1,11 @@
-import { unzipSync, inflateSync } from "fflate";
-import { decompress as zstdDecompress } from "fzstd";
+import { inflateSync } from 'fflate'
+import { decompress as zstdDecompress } from 'fzstd'
 
-import { decodeBinarySchema, compileSchema, ByteBuffer } from "../schema-runtime";
-import type { FigmaMessage, NodeChange } from "./codec";
-import { isZstdCompressed } from "./protocol";
+import { decodeBinarySchema, compileSchema, ByteBuffer } from '../schema-runtime'
+import type { FigmaMessage, NodeChange } from './codec'
+import { isZstdCompressed } from './protocol'
 
-export type { NodeChange } from "./codec";
+export type { NodeChange } from './codec'
 
 /**
  * Deduplicates pluginData/pluginRelaunchData entries on raw NodeChange objects.
@@ -16,148 +16,103 @@ export type { NodeChange } from "./codec";
 export function deduplicateNodeChangePluginData(nodeChanges: NodeChange[]): void {
   for (const nc of nodeChanges) {
     if (nc.pluginData && nc.pluginData.length > 1) {
-      const map = new Map<string, (typeof nc.pluginData)[number]>();
+      const map = new Map<string, (typeof nc.pluginData)[number]>()
       for (const entry of nc.pluginData) {
-        map.set(`${entry.pluginID}\0${entry.key}\0${entry.value}`, entry);
+        map.set(`${entry.pluginID}\0${entry.key}\0${entry.value}`, entry)
       }
       if (map.size < nc.pluginData.length) {
-        nc.pluginData = [...map.values()];
+        nc.pluginData = [...map.values()]
       }
     }
     if (nc.pluginRelaunchData && nc.pluginRelaunchData.length > 1) {
-      const map = new Map<string, (typeof nc.pluginRelaunchData)[number]>();
+      const map = new Map<string, (typeof nc.pluginRelaunchData)[number]>()
       for (const entry of nc.pluginRelaunchData) {
-        map.set(`${entry.pluginID}\0${entry.command}\0${entry.message}\0${entry.isDeleted}`, entry);
+        map.set(`${entry.pluginID}\0${entry.command}\0${entry.message}\0${entry.isDeleted}`, entry)
       }
       if (map.size < nc.pluginRelaunchData.length) {
-        nc.pluginRelaunchData = [...map.values()];
+        nc.pluginRelaunchData = [...map.values()]
       }
     }
   }
 }
 
 interface FigKiwiPayload {
-  schemaDeflated: Uint8Array;
-  dataRaw: Uint8Array;
-  version: number;
+  schemaDeflated: Uint8Array
+  dataRaw: Uint8Array
+  version: number
 }
 
 interface CompiledKiwiSchema {
-  decodeMessage(data: Uint8Array): unknown;
+  decodeMessage(data: Uint8Array): unknown
 }
 
 export function parseFigKiwiContainer(data: Uint8Array): FigKiwiPayload | null {
-  const header = new TextDecoder().decode(data.slice(0, 8));
-  if (header !== "fig-kiwi") return null;
+  const header = new TextDecoder().decode(data.slice(0, 8))
+  if (header !== 'fig-kiwi') return null
 
-  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-  const version = view.getUint32(8, true);
-  let offset = 12;
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength)
+  const version = view.getUint32(8, true)
+  let offset = 12
 
-  const chunks: Uint8Array[] = [];
+  const chunks: Uint8Array[] = []
   while (offset < data.length) {
-    if (offset + 4 > data.length) break;
-    const len = view.getUint32(offset, true);
-    offset += 4;
+    if (offset + 4 > data.length) break
+    const len = view.getUint32(offset, true)
+    offset += 4
     if (offset + len > data.length) {
       throw new Error(
-        `Corrupted .fig file: chunk at offset ${offset - 4} declares length ${len} but only ${data.length - offset} bytes remain`,
-      );
+        `Corrupted .fig file: chunk at offset ${offset - 4} declares length ${len} but only ${data.length - offset} bytes remain`
+      )
     }
-    chunks.push(data.slice(offset, offset + len));
-    offset += len;
+    chunks.push(data.slice(offset, offset + len))
+    offset += len
   }
-  if (chunks.length < 2) return null;
+  if (chunks.length < 2) return null
 
-  const compressed = chunks[1];
-  let dataRaw: Uint8Array;
+  const compressed = chunks[1]
+  let dataRaw: Uint8Array
   if (isZstdCompressed(compressed)) {
-    dataRaw = zstdDecompress(compressed);
+    dataRaw = zstdDecompress(compressed)
   } else {
-    try {
-      dataRaw = inflateSync(compressed);
-    } catch {
-      dataRaw = compressed;
-    }
+    dataRaw = inflateSync(compressed)
   }
 
-  return { schemaDeflated: chunks[0], dataRaw, version };
+  return { schemaDeflated: chunks[0], dataRaw, version }
 }
 
-export interface FigParseResult {
-  nodeChanges: NodeChange[];
-  blobs: Uint8Array[];
-  images: Array<[string, Uint8Array]>;
-  figKiwiVersion: number;
+export interface FigKiwiDecodeResult {
+  nodeChanges: NodeChange[]
+  blobs: Uint8Array[]
+  figKiwiVersion: number
   /** Deflated kiwi schema bytes from the original file (for roundtrip fidelity). */
-  figSchemaDeflated: Uint8Array;
+  figSchemaDeflated: Uint8Array
 }
 
-export function parseFigBuffer(buffer: ArrayBuffer): FigParseResult {
-  const zip = unzipSync(new Uint8Array(buffer), {
-    filter: (file) =>
-      file.name === "canvas.fig" ||
-      file.name === "canvas" ||
-      (file.name.startsWith("images/") && file.name !== "images/"),
-  });
-  const entries = Object.keys(zip);
+/** Decode one raw `fig-kiwi` canvas payload. Outer `.fig` archive handling lives in `@open-pencil/fig`. */
+export function decodeFigKiwiCanvas(data: Uint8Array): FigKiwiDecodeResult {
+  const payload = parseFigKiwiContainer(data)
+  if (!payload) throw new Error('Invalid fig-kiwi container')
 
-  let canvasData: Uint8Array | null = null;
-  for (const name of entries) {
-    if (name === "canvas.fig" || name === "canvas") {
-      canvasData = zip[name];
-      break;
-    }
-  }
-  if (!canvasData) {
-    let maxSize = 0;
-    for (const name of entries) {
-      const lower = name.toLowerCase();
-      if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".json")) continue;
-      if (zip[name].byteLength > maxSize) {
-        maxSize = zip[name].byteLength;
-        canvasData = zip[name];
-      }
-    }
-  }
+  const schemaBytes = inflateSync(payload.schemaDeflated)
+  const schema = decodeBinarySchema(new ByteBuffer(schemaBytes))
+  const compiled = compileSchema(schema) as CompiledKiwiSchema
+  const message = compiled.decodeMessage(payload.dataRaw) as FigmaMessage
 
-  if (!canvasData) {
-    throw new Error(`No canvas data found in .fig file. Entries: ${entries.join(", ")}`);
-  }
-
-  const payload = parseFigKiwiContainer(canvasData);
-  if (!payload) throw new Error("Invalid fig-kiwi container");
-
-  const schemaBytes = inflateSync(payload.schemaDeflated);
-  const schema = decodeBinarySchema(new ByteBuffer(schemaBytes));
-  const compiled = compileSchema(schema) as CompiledKiwiSchema;
-  const message = compiled.decodeMessage(payload.dataRaw) as FigmaMessage;
-
-  const nodeChanges = message.nodeChanges;
+  const nodeChanges = message.nodeChanges
   if (!nodeChanges || nodeChanges.length === 0) {
-    throw new Error("No nodes found in .fig file");
+    throw new Error('No nodes found in .fig file')
   }
 
-  // Deduplicate before returning — critical for worker path where raw
-  // nodeChanges are serialized via postMessage before extractPluginData runs
-  deduplicateNodeChangePluginData(nodeChanges);
+  deduplicateNodeChangePluginData(nodeChanges)
 
-  const blobs: Uint8Array[] = (message.blobs ?? []).map((b) =>
-    b.bytes instanceof Uint8Array ? b.bytes : new Uint8Array(Object.values(b.bytes)),
-  );
-
-  const images: Array<[string, Uint8Array]> = [];
-  for (const name of entries) {
-    if (name.startsWith("images/") && name !== "images/") {
-      images.push([name.replace("images/", ""), zip[name]]);
-    }
-  }
+  const blobs: Uint8Array[] = (message.blobs ?? []).map((blob) =>
+    blob.bytes instanceof Uint8Array ? blob.bytes : new Uint8Array(Object.values(blob.bytes))
+  )
 
   return {
     nodeChanges,
     blobs,
-    images,
     figKiwiVersion: payload.version,
-    figSchemaDeflated: payload.schemaDeflated,
-  };
+    figSchemaDeflated: payload.schemaDeflated
+  }
 }

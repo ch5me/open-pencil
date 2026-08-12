@@ -4,20 +4,20 @@ export {
   nodeBounds,
   nodeMove,
   nodeResize,
-  renameNode,
-} from "./structure/basic";
+  renameNode
+} from './structure/basic'
 export {
   flattenNodes,
   groupNodes,
   nodeToComponent,
   reparentNode,
-  ungroupNode,
-} from "./structure/hierarchy";
+  ungroupNode
+} from './structure/hierarchy'
 
-export { nodeAncestors, nodeBindings, nodeChildren, nodeTree } from "./structure/tree";
+export { nodeAncestors, nodeBindings, nodeChildren, nodeTree } from './structure/tree'
 
-export { nodeReplaceWith } from "./structure/replace";
+export { nodeReplaceWith } from './structure/replace'
 
-export { arrangeNodes } from "./structure/arrange";
+export { arrangeNodes } from './structure/arrange'
 
-export { batchUpdate } from "./structure/batch";
+export { batchUpdate } from './structure/batch'

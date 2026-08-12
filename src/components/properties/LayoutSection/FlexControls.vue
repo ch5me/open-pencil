@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { LayoutDirection, LayoutAlign } from "@open-pencil/core/scene-graph";
-import { useI18n, useLayoutControlsContext } from "@open-pencil/vue";
+import { ref } from 'vue'
+import { tv } from 'tailwind-variants'
 import {
   SelectContent,
   SelectItem,
@@ -9,46 +9,56 @@ import {
   SelectPortal,
   SelectRoot,
   SelectTrigger,
-  SelectViewport,
-} from "reka-ui";
-import { ref } from "vue";
+  SelectViewport
+} from 'reka-ui'
 
-import ClipContentControl from "@/components/properties/LayoutSection/ClipContentControl.vue";
-import PaddingControls from "@/components/properties/LayoutSection/PaddingControls.vue";
-import VariableScrubInput from "@/components/properties/VariableScrubInput.vue";
-import AppSelect from "@/components/ui/AppSelect.vue";
-import { useSelectUI } from "@/components/ui/select";
+import AppSelect from '@/components/ui/AppSelect.vue'
+import layoutAlignmentTheme from '@/theme/layout-alignment'
 
-const ctx = useLayoutControlsContext();
-const gapFieldRef = ref<HTMLElement | null>(null);
+import VariableNumberField from '@/components/properties/VariableNumberField.vue'
+import ClipContentControl from '@/components/properties/LayoutSection/ClipContentControl.vue'
+import PaddingControls from '@/components/properties/LayoutSection/PaddingControls.vue'
+import { useSelectUI } from '@/components/ui/select'
+import { useI18n, useLayoutControlsContext } from '@open-pencil/vue'
 
-const { panels } = useI18n();
-const gapSelect = useSelectUI({ item: "rounded py-1.5 pr-2 pl-6 text-xs" });
+import type { LayoutDirection, LayoutAlign } from '@open-pencil/scene-graph'
+
+const ctx = useLayoutControlsContext()
+const layoutAlignment = tv(layoutAlignmentTheme)
+const alignmentStyles = layoutAlignment()
+const gapFieldRef = ref<HTMLElement | null>(null)
+
+const { panels } = useI18n()
+const gapSelect = useSelectUI({ item: 'rounded py-1.5 pr-2 pl-6 text-xs' })
 
 function anchorRef(element: HTMLElement | null): HTMLElement | undefined {
-  return element ?? undefined;
+  return element ?? undefined
 }
 
 function setGapMode(value: string) {
-  ctx.setGapAuto(value === "AUTO");
+  ctx.setGapAuto(value === 'AUTO')
 }
 
 function isAlignmentActive(primary: LayoutAlign, counter: string) {
   if (ctx.gapAuto)
-    return ctx.node.primaryAxisAlign === "SPACE_BETWEEN" && ctx.node.counterAxisAlign === counter;
-  return ctx.node.primaryAxisAlign === primary && ctx.node.counterAxisAlign === counter;
+    return ctx.node.primaryAxisAlign === 'SPACE_BETWEEN' && ctx.node.counterAxisAlign === counter
+  return ctx.node.primaryAxisAlign === primary && ctx.node.counterAxisAlign === counter
+}
+
+function alignmentCellClass(primary: LayoutAlign, counter: string) {
+  return layoutAlignment({ active: isAlignmentActive(primary, counter) }).cell()
 }
 </script>
 
 <template>
   <div class="mt-2">
-    <label class="mb-1 block text-[11px] text-muted">{{ panels.flow }}</label>
+    <label class="mb-1 block text-[11px] text-muted">{{ panels.direction }}</label>
     <AppSelect
       :model-value="ctx.layoutDirection"
       :options="[
         { value: 'AUTO', label: panels.auto },
         { value: 'LTR', label: 'LTR' },
-        { value: 'RTL', label: 'RTL' },
+        { value: 'RTL', label: 'RTL' }
       ]"
       @update:model-value="ctx.setLayoutDirection($event as LayoutDirection)"
     />
@@ -56,7 +66,7 @@ function isAlignmentActive(primary: LayoutAlign, counter: string) {
 
   <div class="mt-2 flex items-center gap-1.5">
     <template v-if="ctx.node.layoutWrap === 'WRAP'">
-      <VariableScrubInput
+      <VariableNumberField
         data-test-id="layout-gap-input"
         class="min-w-0 flex-1"
         :label="ctx.node.layoutMode === 'VERTICAL' ? panels.verticalGap : panels.horizontalGap"
@@ -74,8 +84,8 @@ function isAlignmentActive(primary: LayoutAlign, counter: string) {
           />
           <icon-lucide-align-horizontal-space-between v-else class="size-3.5" />
         </template>
-      </VariableScrubInput>
-      <VariableScrubInput
+      </VariableNumberField>
+      <VariableNumberField
         data-test-id="layout-cross-gap-input"
         class="min-w-0 flex-1"
         :label="ctx.node.layoutMode === 'VERTICAL' ? panels.horizontalGap : panels.verticalGap"
@@ -93,7 +103,7 @@ function isAlignmentActive(primary: LayoutAlign, counter: string) {
           />
           <icon-lucide-align-vertical-space-between v-else class="size-3.5" />
         </template>
-      </VariableScrubInput>
+      </VariableNumberField>
     </template>
     <template v-else>
       <div
@@ -144,7 +154,7 @@ function isAlignmentActive(primary: LayoutAlign, counter: string) {
         </SelectRoot>
       </div>
       <div v-else ref="gapFieldRef" class="min-w-0 flex-1">
-        <VariableScrubInput
+        <VariableNumberField
           data-test-id="layout-gap-input"
           class="w-full"
           :model-value="Math.round(ctx.node.itemSpacing)"
@@ -195,7 +205,7 @@ function isAlignmentActive(primary: LayoutAlign, counter: string) {
               </SelectPortal>
             </SelectRoot>
           </template>
-        </VariableScrubInput>
+        </VariableNumberField>
       </div>
     </template>
     <button
@@ -215,19 +225,15 @@ function isAlignmentActive(primary: LayoutAlign, counter: string) {
 
   <div class="mt-2">
     <label class="mb-1 block text-[11px] text-muted">{{ panels.alignment }}</label>
-    <div data-test-id="layout-alignment-grid" class="grid w-fit grid-cols-3 gap-0.5">
+    <div data-test-id="layout-alignment-grid" :class="alignmentStyles.grid()">
       <button
         v-for="cell in ctx.alignGrid"
         :key="`${cell.primary}-${cell.counter}`"
-        class="flex size-6 cursor-pointer items-center justify-center rounded border text-[11px]"
-        :class="
-          isAlignmentActive(cell.primary, cell.counter)
-            ? 'border-accent bg-accent/10 text-accent'
-            : 'border-border text-muted hover:bg-hover hover:text-surface'
-        "
+        :data-active="isAlignmentActive(cell.primary, cell.counter) || undefined"
+        :class="alignmentCellClass(cell.primary, cell.counter)"
         @click="ctx.setAlignment(ctx.gapAuto ? 'SPACE_BETWEEN' : cell.primary, cell.counter)"
       >
-        <span class="size-1.5 rounded-full bg-current" />
+        <span :class="alignmentStyles.dot()" />
       </button>
     </div>
   </div>

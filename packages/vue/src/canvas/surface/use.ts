@@ -1,15 +1,16 @@
-import type { Editor } from "@open-pencil/core/editor";
-import type { CanvasKit } from "canvaskit-wasm";
-import type { Ref } from "vue";
+import type { CanvasKit } from 'canvaskit-wasm'
+import type { Ref } from 'vue'
+
+import type { Editor } from '@open-pencil/core/editor'
 
 import {
   createCanvasSurfaceManager,
-  useCanvasSurfaceLifecycle,
-} from "#vue/canvas/surface/lifecycle";
-import { createCanvasHitTests, createRulerVisibility } from "#vue/canvas/surface/overlays";
-import type { UseCanvasOptions } from "#vue/canvas/surface/types";
+  useCanvasSurfaceLifecycle
+} from '#vue/canvas/surface/lifecycle'
+import { createCanvasHitTests, createRulerVisibility } from '#vue/canvas/surface/overlays'
+import type { UseCanvasOptions } from '#vue/canvas/surface/types'
 
-export type { UseCanvasOptions } from "#vue/canvas/surface/types";
+export type { UseCanvasOptions } from '#vue/canvas/surface/types'
 
 /**
  * Connects an OpenPencil editor to a real canvas element using CanvasKit.
@@ -21,12 +22,12 @@ export type { UseCanvasOptions } from "#vue/canvas/surface/types";
 export function useCanvas(
   canvasRef: Ref<HTMLCanvasElement | null>,
   editor: Editor,
-  options?: UseCanvasOptions,
+  options?: UseCanvasOptions
 ) {
-  let ck: CanvasKit | null = null;
-  const lifecycle: { destroyed: boolean } = { destroyed: false };
-  const isDestroyed = () => lifecycle.destroyed;
-  const shouldShowRulers = createRulerVisibility(options);
+  let ck: CanvasKit | null = null
+  const lifecycle: { destroyed: boolean } = { destroyed: false }
+  const isDestroyed = () => lifecycle.destroyed
+  const shouldShowRulers = createRulerVisibility(options)
 
   const surface = createCanvasSurfaceManager({
     editor,
@@ -34,8 +35,8 @@ export function useCanvas(
     options,
     getCanvasKit: () => ck,
     isDestroyed,
-    shouldShowRulers,
-  });
+    shouldShowRulers
+  })
 
   useCanvasSurfaceLifecycle({
     canvasRef,
@@ -43,21 +44,21 @@ export function useCanvas(
     lifecycle,
     getCanvasKitValue: () => ck,
     setCanvasKit: (value) => {
-      ck = value;
+      ck = value
     },
-    onReady: options?.onReady,
-  });
+    onReady: options?.onReady
+  })
 
   const { hitTestSectionTitle, hitTestComponentLabel, hitTestFrameTitle } = createCanvasHitTests(
     editor,
-    surface.getRenderer,
-  );
+    surface.getRenderer
+  )
 
   return {
     render: surface.markDirty,
     renderNow: surface.renderNow,
     hitTestSectionTitle,
     hitTestComponentLabel,
-    hitTestFrameTitle,
-  };
+    hitTestFrameTitle
+  }
 }

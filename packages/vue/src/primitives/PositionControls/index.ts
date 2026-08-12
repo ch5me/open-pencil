@@ -1,1 +1,1 @@
-export { default as PositionControlsRoot } from "#vue/primitives/PositionControls/PositionControlsRoot.vue";
+export { default as PositionControlsRoot } from '#vue/primitives/PositionControls/PositionControlsRoot.vue'

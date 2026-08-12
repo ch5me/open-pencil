@@ -1,35 +1,39 @@
 <script setup lang="ts">
-import type { AcceptableValue } from "reka-ui";
+import { useTypography } from '#vue/controls/typography/use'
 
-import { useTypography } from "#vue/controls/typography/use";
-import type { TypographyFontLoader } from "#vue/controls/typography/use";
+import type { TypographyFontLoader } from '#vue/controls/typography/use'
+import type { AcceptableValue } from 'reka-ui'
 
 const { fontLoader } = defineProps<{
-  fontLoader?: TypographyFontLoader;
-}>();
+  fontLoader?: TypographyFontLoader
+}>()
 
-const ctx = useTypography({ fontLoader });
+const ctx = useTypography({ fontLoader })
 
 function onAlignChange(val: AcceptableValue) {
-  if (val) ctx.setAlign(val as "LEFT" | "CENTER" | "RIGHT");
+  if (val) ctx.setAlign(val as 'LEFT' | 'CENTER' | 'RIGHT' | 'JUSTIFIED')
 }
 
 function onFormattingChange(val: AcceptableValue | AcceptableValue[]) {
-  if (Array.isArray(val)) ctx.onFormattingChange(val as string[]);
+  if (Array.isArray(val)) ctx.onFormattingChange(val as string[])
 }
 
 const actions = {
   setFamily: ctx.setFamily,
   setWeight: ctx.setWeight,
   setDirection: ctx.setDirection,
+  setVerticalAlign: ctx.setVerticalAlign,
+  setTextCase: ctx.setTextCase,
+  setTruncation: ctx.setTruncation,
+  setFontFeature: ctx.setFontFeature,
   updateProp: ctx.updateProp,
   commitProp: ctx.commitProp,
   align: onAlignChange,
   formatting: onFormattingChange,
   toggleBold: ctx.toggleBold,
   toggleItalic: ctx.toggleItalic,
-  toggleDecoration: ctx.toggleDecoration,
-};
+  toggleDecoration: ctx.toggleDecoration
+}
 </script>
 
 <template>

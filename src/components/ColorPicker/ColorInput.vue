@@ -1,25 +1,27 @@
 <script setup lang="ts">
-import type { Color } from "@open-pencil/core/types";
-import { ColorInputRoot, inputValue } from "@open-pencil/vue";
-import type { OkHCLControls } from "@open-pencil/vue";
-import { useAttrs } from "vue";
+import { useAttrs } from 'vue'
 
-import ColorPicker from "@/components/ColorPicker/ColorPicker.vue";
+import { ColorInputRoot, inputValue } from '@open-pencil/vue'
 
-defineOptions({ inheritAttrs: false });
+import ColorPicker from '@/components/ColorPicker/ColorPicker.vue'
 
-const attrs = useAttrs();
+import type { Color } from '@open-pencil/scene-graph/primitives'
+import type { OkHCLControls } from '@open-pencil/vue'
+
+defineOptions({ inheritAttrs: false })
+
+const attrs = useAttrs()
 
 const {
   editable = false,
   color,
-  okhcl = null,
+  okhcl = null
 } = defineProps<{
-  color: Color;
-  editable?: boolean;
-  okhcl?: OkHCLControls | null;
-}>();
-const emit = defineEmits<{ update: [color: Color] }>();
+  color: Color
+  editable?: boolean
+  okhcl?: OkHCLControls | null
+}>()
+const emit = defineEmits<{ update: [color: Color] }>()
 </script>
 
 <template>

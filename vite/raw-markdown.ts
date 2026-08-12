@@ -1,12 +1,12 @@
-import type { Plugin } from "vite";
+import type { Plugin } from 'vite'
 
 export function rawMarkdownPlugin(): Plugin {
   return {
-    name: "raw-text-assets",
+    name: 'raw-text-assets',
     transform(code: string, id: string) {
-      if (id.endsWith(".md") || id.endsWith(".kiwi")) {
-        return { code: `export default ${JSON.stringify(code)}`, map: null };
+      if (id.endsWith('.md') || id.endsWith('.kiwi')) {
+        return { code: `export default ${JSON.stringify(code)}`, map: null }
       }
-    },
-  };
+    }
+  }
 }

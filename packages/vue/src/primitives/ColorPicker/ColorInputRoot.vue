@@ -1,35 +1,37 @@
 <script setup lang="ts">
-import { colorToHexRaw, parseColor } from "@open-pencil/core/color";
-import type { Color } from "@open-pencil/core/types";
-import { computed } from "vue";
+import { useColorModel } from '#vue/controls/color-model/use'
+import type { OkHCLControls } from '#vue/controls/color-model/types'
 
-import type { OkHCLControls } from "#vue/primitives/ColorPicker/types";
+import type { Color } from '@open-pencil/scene-graph/primitives'
 
 const {
   color,
   editable = false,
-  okhcl = null,
+  okhcl = null
 } = defineProps<{
-  color: Color;
-  editable?: boolean;
-  okhcl?: OkHCLControls | null;
-}>();
+  color: Color
+  editable?: boolean
+  okhcl?: OkHCLControls | null
+}>()
 
-const emit = defineEmits<{ update: [color: Color] }>();
-
-const hex = computed(() => colorToHexRaw(color));
-
-function updateFromHex(value: string) {
-  const parsed = parseColor(value.startsWith("#") ? value : `#${value}`);
-  emit("update", { ...parsed, a: color.a });
-}
+const emit = defineEmits<{ update: [color: Color] }>()
+const model = useColorModel({
+  color: () => color,
+  onUpdate: (nextColor) => emit('update', nextColor)
+})
 
 const actions = {
-  updateFromHex,
-  updateColor: (nextColor: Color) => emit("update", nextColor),
-};
+  updateFromHex: model.updateHex,
+  updateColor: model.updateColor
+}
 </script>
 
 <template>
-  <slot :color="color" :editable="editable" :hex="hex" :actions="actions" :okhcl="okhcl" />
+  <slot
+    :color="color"
+    :editable="editable"
+    :hex="model.hex.value"
+    :actions="actions"
+    :okhcl="okhcl"
+  />
 </template>

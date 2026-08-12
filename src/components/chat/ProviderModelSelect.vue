@@ -6,19 +6,19 @@ import {
   SelectPortal,
   SelectRoot,
   SelectTrigger,
-  SelectViewport,
-} from "reka-ui";
+  SelectViewport
+} from 'reka-ui'
 
-import { useAIChat } from "@/app/ai/chat/use";
-import AppBadge from "@/components/ui/AppBadge.vue";
-import { useSelectUI } from "@/components/ui/select";
+import AppBadge from '@/components/ui/AppBadge.vue'
+import { useSelectUI } from '@/components/ui/select'
+import { useAIChat } from '@/app/ai/chat/use'
 
-const { modelID, providerDef } = useAIChat();
+const { modelID, providerDef } = useAIChat()
 const selectCls = useSelectUI({
-  trigger: "gap-1 rounded border-none bg-transparent px-1.5 py-0.5 text-[10px] text-muted",
-  content: "max-h-60 overflow-y-auto",
-  item: "gap-2 rounded px-2 py-1.5 text-[11px]",
-});
+  trigger: 'gap-1 rounded border-none bg-transparent px-1.5 py-0.5 text-[10px] text-muted',
+  content: 'max-h-60 overflow-y-auto',
+  item: 'gap-2 rounded px-2 py-1.5 text-[11px]'
+})
 </script>
 
 <template>

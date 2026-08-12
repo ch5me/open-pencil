@@ -1,2 +1,2 @@
-export * from "./schema-runtime";
-export * from "./fig";
+export * from './schema-runtime'
+export * from './fig'

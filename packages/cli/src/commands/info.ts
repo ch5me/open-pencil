@@ -1,43 +1,44 @@
-import type { InfoResult } from "@open-pencil/core/rpc";
-import { defineCommand } from "citty";
+import { defineCommand } from 'citty'
 
-import { appTargetOptions } from "#cli/app-target";
-import { bold, fmtHistogram, fmtSummary, kv } from "#cli/format";
-import { loadRpcData } from "#cli/rpc-data";
+import type { InfoResult } from '@open-pencil/core/rpc'
+
+import { appTargetOptions } from '#cli/app-target'
+import { bold, fmtHistogram, fmtSummary, kv } from '#cli/format'
+import { loadRPCData } from '#cli/rpc-data'
 
 export default defineCommand({
-  meta: { description: "Show document info (pages, node counts, fonts)" },
+  meta: { description: 'Show document info (pages, node counts, fonts)' },
   args: {
     file: {
-      type: "positional",
-      description: "Document file path (omit to connect to running app)",
-      required: false,
+      type: 'positional',
+      description: 'Document file path (omit to connect to running app)',
+      required: false
     },
     ...appTargetOptions,
-    json: { type: "boolean", description: "Output as JSON" },
+    json: { type: 'boolean', description: 'Output as JSON' }
   },
   async run({ args }) {
-    const data = await loadRpcData<InfoResult>(args.file, "info", undefined, args);
+    const data = await loadRPCData<InfoResult>(args.file, 'info', undefined, args)
 
     if (args.json) {
-      console.log(JSON.stringify(data, null, 2));
-      return;
+      console.log(JSON.stringify(data, null, 2))
+      return
     }
 
-    console.log("");
-    console.log(bold(`  ${data.pages} pages, ${data.totalNodes} nodes`));
-    console.log("");
+    console.log('')
+    console.log(bold(`  ${data.pages} pages, ${data.totalNodes} nodes`))
+    console.log('')
 
-    const pageItems = Object.entries(data.pageCounts).map(([label, value]) => ({ label, value }));
-    console.log(fmtHistogram(pageItems, { unit: "nodes" }));
+    const pageItems = Object.entries(data.pageCounts).map(([label, value]) => ({ label, value }))
+    console.log(fmtHistogram(pageItems, { unit: 'nodes' }))
 
-    console.log("");
-    console.log(fmtSummary(data.types));
+    console.log('')
+    console.log(fmtSummary(data.types))
 
     if (data.fonts.length > 0) {
-      console.log("");
-      console.log(kv("Fonts", data.fonts.join(", ")));
+      console.log('')
+      console.log(kv('Fonts', data.fonts.join(', ')))
     }
-    console.log("");
-  },
-});
+    console.log('')
+  }
+})

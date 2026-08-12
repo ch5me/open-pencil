@@ -1,66 +1,72 @@
-import type { RulerTheme } from "@open-pencil/core/canvas";
-import { parseColor } from "@open-pencil/core/color";
-import { IS_BROWSER } from "@open-pencil/core/constants";
-import { useLocalStorage, usePreferredDark } from "@vueuse/core";
-import { computed, watch } from "vue";
+import { useLocalStorage, usePreferredDark } from '@vueuse/core'
+import { computed, watch } from 'vue'
 
-import { getActiveEditorStoreOrNull } from "@/app/editor/active-store";
+import type { RulerTheme } from '@open-pencil/core/canvas'
+import { parseColor } from '@open-pencil/core/color'
+import { IS_BROWSER } from '@open-pencil/core/constants'
 
-export type AppTheme = "dark" | "light" | "auto";
+import { getActiveEditorStoreOrNull, useActiveEditorStoreRef } from '@/app/editor/active-store'
 
-const THEME_STORAGE_KEY = "open-pencil:theme";
-const DEFAULT_THEME: AppTheme = "dark";
+export type AppTheme = 'dark' | 'light' | 'auto'
 
-const theme = useLocalStorage<AppTheme>(THEME_STORAGE_KEY, DEFAULT_THEME);
-const prefersDark = usePreferredDark();
-const resolvedTheme = computed<"dark" | "light">(() => {
-  if (theme.value === "auto") return prefersDark.value ? "dark" : "light";
-  return theme.value;
-});
+const THEME_STORAGE_KEY = 'open-pencil:theme'
+const DEFAULT_THEME: AppTheme = 'dark'
+
+const theme = useLocalStorage<AppTheme>(THEME_STORAGE_KEY, DEFAULT_THEME)
+const prefersDark = usePreferredDark()
+const resolvedTheme = computed<'dark' | 'light'>(() => {
+  if (theme.value === 'auto') return prefersDark.value ? 'dark' : 'light'
+  return theme.value
+})
 
 function readRulerTheme(): RulerTheme | null {
-  if (!IS_BROWSER || !("document" in globalThis)) return null;
-  const style = getComputedStyle(document.documentElement);
+  if (!IS_BROWSER || !('document' in globalThis)) return null
+  const style = getComputedStyle(document.documentElement)
   return {
-    background: parseColor(style.getPropertyValue("--color-ruler-bg")),
-    tick: parseColor(style.getPropertyValue("--color-ruler-tick")),
-    text: parseColor(style.getPropertyValue("--color-ruler-text")),
-    label: parseColor(style.getPropertyValue("--color-ruler-label")),
-  };
+    background: parseColor(style.getPropertyValue('--color-ruler-bg')),
+    tick: parseColor(style.getPropertyValue('--color-ruler-tick')),
+    text: parseColor(style.getPropertyValue('--color-ruler-text')),
+    label: parseColor(style.getPropertyValue('--color-ruler-label'))
+  }
 }
 
 function updateCanvasTheme(): void {
-  if (!IS_BROWSER) return;
-  const store = getActiveEditorStoreOrNull();
-  if (!store) return;
-  store.state.rulerTheme = readRulerTheme() ?? undefined;
-  store.requestRepaint();
+  if (!IS_BROWSER) return
+  const store = getActiveEditorStoreOrNull()
+  if (!store) return
+  store.state.rulerTheme = readRulerTheme() ?? undefined
+  store.requestRepaint()
 }
 
-function applyTheme(value: "dark" | "light", setting: AppTheme): void {
-  if (!IS_BROWSER || !("document" in globalThis)) return;
-  document.documentElement.dataset.theme = value;
-  document.documentElement.dataset.themeSetting = setting;
-  document.documentElement.style.colorScheme = value;
-  updateCanvasTheme();
+function applyTheme(value: 'dark' | 'light', setting: AppTheme): void {
+  if (!IS_BROWSER || !('document' in globalThis)) return
+  document.documentElement.dataset.theme = value
+  document.documentElement.dataset.themeSetting = setting
+  document.documentElement.style.colorScheme = value
+  updateCanvasTheme()
 }
 
 export function useAppTheme() {
   watch([resolvedTheme, theme], ([value, setting]) => applyTheme(value, setting), {
-    immediate: true,
-  });
+    immediate: true
+  })
 
-  const isLight = computed(() => resolvedTheme.value === "light");
+  // Editors may mount after the theme was applied; push the canvas (ruler)
+  // theme whenever the active editor changes so rulers always match.
+  const activeStoreRef = useActiveEditorStoreRef()
+  watch([activeStoreRef, resolvedTheme], () => updateCanvasTheme(), { flush: 'post' })
+
+  const isLight = computed(() => resolvedTheme.value === 'light')
 
   function setTheme(value: AppTheme): void {
-    theme.value = value;
+    theme.value = value
   }
 
   function toggleTheme(): void {
-    theme.value = isLight.value ? "dark" : "light";
+    theme.value = isLight.value ? 'dark' : 'light'
   }
 
-  return { theme, resolvedTheme, isLight, setTheme, toggleTheme };
+  return { theme, resolvedTheme, isLight, setTheme, toggleTheme }
 }
 
-applyTheme(resolvedTheme.value, theme.value);
+applyTheme(resolvedTheme.value, theme.value)

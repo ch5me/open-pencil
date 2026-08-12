@@ -1,10 +1,14 @@
+import type { D1Database, R2Bucket, DurableObjectNamespace } from '@cloudflare/workers-types'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import type { D1Database, R2Bucket, DurableObjectNamespace } from '@cloudflare/workers-types'
-import { AuthConfigurationError, assertAuthConfigured, resolveSession, requireSession } from './auth'
+
+import {
+  AuthConfigurationError,
+  assertAuthConfigured,
+  resolveSession,
+  requireSession
+} from './auth'
 import { hydrateHostedSnapshotAssets } from './documents/assets'
-import { deriveHostedRoomId } from './documents/room-id'
-import { DocumentRoomDO } from './documents/room'
 import {
   createHostedDocument,
   saveHostedDocumentSnapshot,
@@ -14,6 +18,8 @@ import {
   deleteHostedDocument,
   HostedDocumentStoreError
 } from './documents/crud'
+import { DocumentRoomDO } from './documents/room'
+import { deriveHostedRoomId } from './documents/room/id'
 export { DocumentRoomDO }
 
 export interface Env {
@@ -30,13 +36,15 @@ export interface Env {
 export const app = new Hono<{ Bindings: Env }>()
 
 app.onError((err, c) => {
-  console.error(JSON.stringify({
-    event: 'request.failed',
-    method: c.req.method,
-    path: c.req.path,
-    error: err instanceof Error ? err.message : String(err),
-    code: err instanceof AuthConfigurationError ? err.code : undefined
-  }))
+  console.error(
+    JSON.stringify({
+      event: 'request.failed',
+      method: c.req.method,
+      path: c.req.path,
+      error: err instanceof Error ? err.message : String(err),
+      code: err instanceof AuthConfigurationError ? err.code : undefined
+    })
+  )
   if (err instanceof AuthConfigurationError) {
     return c.json({ error: 'auth-misconfigured', code: err.code, message: err.message }, 500)
   }
@@ -56,7 +64,11 @@ const allowedOrigins = new Set([
   'http://127.0.0.1:1422'
 ])
 
-function resolveRoomDocumentOwner(documentId: string, userId: string, record: { id: string; owner_user_id: string } | null) {
+function resolveRoomDocumentOwner(
+  documentId: string,
+  userId: string,
+  record: { id: string; owner_user_id: string } | null
+) {
   if (record) return record
   if (documentId === 'doc_test' && userId === 'stub-user-001') {
     return { id: documentId, owner_user_id: userId }
@@ -64,13 +76,15 @@ function resolveRoomDocumentOwner(documentId: string, userId: string, record: { 
   return null
 }
 
-app.use(cors({
-  origin: (origin) => (origin && allowedOrigins.has(origin) ? origin : undefined),
-  allowHeaders: ['Authorization', 'Content-Type'],
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true,
-  maxAge: 86400
-}))
+app.use(
+  cors({
+    origin: (origin) => (origin && allowedOrigins.has(origin) ? origin : undefined),
+    allowHeaders: ['Authorization', 'Content-Type'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    maxAge: 86400
+  })
+)
 
 // Health endpoint — required by .ch5/services.yaml health checks
 app.get('/health', (c) => {
@@ -136,7 +150,13 @@ app.post('/api/documents', requireSession(), async (c) => {
   }>()
 
   if (!body.documentId || !body.snapshotId || !body.title || !body.snapshotBytesBase64) {
-    return c.json({ error: 'missing-fields', message: 'documentId, snapshotId, title, and snapshotBytesBase64 are required.' }, 400)
+    return c.json(
+      {
+        error: 'missing-fields',
+        message: 'documentId, snapshotId, title, and snapshotBytesBase64 are required.'
+      },
+      400
+    )
   }
 
   try {
@@ -181,17 +201,23 @@ app.get('/api/documents/:documentId/snapshot', requireSession(), async (c) => {
 
   const doc = await c.env.DB.prepare(
     'SELECT id, owner_user_id, title, source_format, current_snapshot_id, current_snapshot_storage_key, updated_at FROM hosted_documents WHERE id = ?'
-  ).bind(documentId).first<{
-    id: string
-    owner_user_id: string
-    title: string
-    source_format: string
-    current_snapshot_id: string
-    current_snapshot_storage_key: string
-    updated_at: string
-  }>()
+  )
+    .bind(documentId)
+    .first<{
+      id: string
+      owner_user_id: string
+      title: string
+      source_format: string
+      current_snapshot_id: string
+      current_snapshot_storage_key: string
+      updated_at: string
+    }>()
 
-  const authorizedDoc = resolveRoomDocumentOwner(documentId, userId, doc ? { id: doc.id, owner_user_id: doc.owner_user_id } : null)
+  const authorizedDoc = resolveRoomDocumentOwner(
+    documentId,
+    userId,
+    doc ? { id: doc.id, owner_user_id: doc.owner_user_id } : null
+  )
   if (!authorizedDoc || authorizedDoc.owner_user_id !== userId || !doc) {
     return c.json({ error: 'not-found' }, 404)
   }
@@ -199,7 +225,13 @@ app.get('/api/documents/:documentId/snapshot', requireSession(), async (c) => {
   const snapshotObject = await c.env.DOCUMENTS.get(doc.current_snapshot_storage_key)
   if (!snapshotObject) {
     return c.json(
-      { error: 'missing-snapshot', message: 'Hosted snapshot bytes are unavailable. Re-save the document to rebuild the latest snapshot.', documentId, snapshotId: doc.current_snapshot_id },
+      {
+        error: 'missing-snapshot',
+        message:
+          'Hosted snapshot bytes are unavailable. Re-save the document to rebuild the latest snapshot.',
+        documentId,
+        snapshotId: doc.current_snapshot_id
+      },
       409
     )
   }
@@ -207,13 +239,15 @@ app.get('/api/documents/:documentId/snapshot', requireSession(), async (c) => {
   const snapshotBytes = new Uint8Array(await snapshotObject.arrayBuffer())
   const assetRows = await c.env.DB.prepare(
     'SELECT id, storage_key, content_hash, media_type, byte_length FROM hosted_assets WHERE document_id = ? AND snapshot_id = ? ORDER BY created_at ASC'
-  ).bind(documentId, doc.current_snapshot_id).all<{
-    id: string
-    storage_key: string
-    content_hash: string
-    media_type: string
-    byte_length: number
-  }>()
+  )
+    .bind(documentId, doc.current_snapshot_id)
+    .all<{
+      id: string
+      storage_key: string
+      content_hash: string
+      media_type: string
+      byte_length: number
+    }>()
 
   const hydration = await hydrateHostedSnapshotAssets({
     bucket: c.env.ASSETS,
@@ -221,20 +255,39 @@ app.get('/api/documents/:documentId/snapshot', requireSession(), async (c) => {
   })
 
   return c.json({
-    document: { id: doc.id, title: doc.title, sourceFormat: doc.source_format, currentSnapshotId: doc.current_snapshot_id, updatedAt: doc.updated_at },
+    document: {
+      id: doc.id,
+      title: doc.title,
+      sourceFormat: doc.source_format,
+      currentSnapshotId: doc.current_snapshot_id,
+      updatedAt: doc.updated_at
+    },
     snapshot: { id: doc.current_snapshot_id, bytesBase64: encodeBase64(snapshotBytes) },
     assets: hydration.assets,
-    hydration: { degraded: hydration.degraded, missingAssetIds: hydration.missingAssetIds, message: hydration.degraded ? 'Some hosted assets are missing. The document loads in degraded mode until those assets are re-uploaded.' : null }
+    hydration: {
+      degraded: hydration.degraded,
+      missingAssetIds: hydration.missingAssetIds,
+      message: hydration.degraded
+        ? 'Some hosted assets are missing. The document loads in degraded mode until those assets are re-uploaded.'
+        : null
+    }
   })
 })
 
 app.put('/api/documents/:documentId/snapshot', requireSession(), async (c) => {
   const documentId = c.req.param('documentId')
   const userId = (c as any).get('userId') as string
-  const body = await c.req.json<{ snapshotId: string; snapshotBytesBase64: string; reason?: string }>()
+  const body = await c.req.json<{
+    snapshotId: string
+    snapshotBytesBase64: string
+    reason?: string
+  }>()
 
   if (!body.snapshotId || !body.snapshotBytesBase64) {
-    return c.json({ error: 'missing-fields', message: 'snapshotId and snapshotBytesBase64 are required.' }, 400)
+    return c.json(
+      { error: 'missing-fields', message: 'snapshotId and snapshotBytesBase64 are required.' },
+      400
+    )
   }
 
   try {
@@ -282,7 +335,13 @@ app.post('/api/documents/:documentId/assets', requireSession(), async (c) => {
   }>()
 
   if (!body.assetId || !body.snapshotId || !body.kind || !body.bytesBase64 || !body.mediaType) {
-    return c.json({ error: 'missing-fields', message: 'assetId, snapshotId, kind, bytesBase64, and mediaType are required.' }, 400)
+    return c.json(
+      {
+        error: 'missing-fields',
+        message: 'assetId, snapshotId, kind, bytesBase64, and mediaType are required.'
+      },
+      400
+    )
   }
 
   try {

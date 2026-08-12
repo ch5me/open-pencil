@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import { PositionControlsRoot, useI18n } from "@open-pencil/vue";
+import { PositionControlsRoot, useI18n } from '@open-pencil/vue'
 
-import { useEditorStore } from "@/app/editor/active-store";
-import ScrubInput from "@/components/ScrubInput.vue";
-import { useIconButtonUI } from "@/components/ui/icon-button";
-import { useSectionUI } from "@/components/ui/section";
-import Tip from "@/components/ui/Tip.vue";
+import { useEditorStore } from '@/app/editor/active-store'
+import NumberField from '@/components/inputs/NumberField.vue'
+import IconButton from '@/components/ui/IconButton.vue'
+import PanelGrid from '@/components/ui/panel/PanelGrid.vue'
+import PanelSection from '@/components/ui/panel/PanelSection.vue'
+import Tip from '@/components/ui/Tip.vue'
 
-const { panels } = useI18n();
-const store = useEditorStore();
-const sectionCls = useSectionUI();
+const { panels } = useI18n()
+const store = useEditorStore()
 
 function handleAlign(
-  nodeAlign: (axis: "horizontal" | "vertical", pos: "min" | "center" | "max") => void,
-  axis: "horizontal" | "vertical",
-  pos: "min" | "center" | "max",
+  nodeAlign: (axis: 'horizontal' | 'vertical', pos: 'min' | 'center' | 'max') => void,
+  axis: 'horizontal' | 'vertical',
+  pos: 'min' | 'center' | 'max'
 ) {
-  const es = store.state.nodeEditState;
-  if (es && es.selectedVertexIndices.size >= 2) {
-    store.nodeEditAlignVertices(axis, pos);
+  const editState = store.state.nodeEditState
+  if (editState && editState.selectedVertexIndices.size >= 2) {
+    store.nodeEditAlignVertices(axis, pos)
   } else {
-    nodeAlign(axis, pos);
+    nodeAlign(axis, pos)
   }
 }
 </script>
@@ -29,93 +29,85 @@ function handleAlign(
   <PositionControlsRoot
     v-slot="{ active, isMulti, xValue, yValue, wValue, hValue, rotationValue, actions }"
   >
-    <div v-if="active" data-test-id="position-section" :class="sectionCls.wrapper">
-      <label class="mb-1.5 block text-[11px] text-muted">{{ panels.position }}</label>
-
-      <div class="mb-1.5 flex gap-2">
+    <PanelSection v-if="active" :label="panels.position">
+      <div role="toolbar" :aria-label="panels.position" class="mb-1.5 flex justify-between">
         <div class="flex gap-0.5">
-          <Tip :label="panels.alignLeft">
-            <button
-              :class="useIconButtonUI({ size: 'md' }).base"
-              data-test-id="position-align-left"
-              @click="handleAlign(actions.align, 'horizontal', 'min')"
-            >
-              <icon-lucide-align-start-vertical class="size-3.5" />
-            </button>
-          </Tip>
-          <Tip :label="panels.alignCenterHorizontally">
-            <button
-              :class="useIconButtonUI({ size: 'md' }).base"
-              data-test-id="position-align-center-h"
-              @click="handleAlign(actions.align, 'horizontal', 'center')"
-            >
-              <icon-lucide-align-center-vertical class="size-3.5" />
-            </button>
-          </Tip>
-          <Tip :label="panels.alignRight">
-            <button
-              :class="useIconButtonUI({ size: 'md' }).base"
-              data-test-id="position-align-right"
-              @click="handleAlign(actions.align, 'horizontal', 'max')"
-            >
-              <icon-lucide-align-end-vertical class="size-3.5" />
-            </button>
-          </Tip>
+          <IconButton
+            :label="panels.alignLeft"
+            size="md"
+            @click="handleAlign(actions.align, 'horizontal', 'min')"
+          >
+            <icon-lucide-align-start-vertical class="size-3.5" />
+          </IconButton>
+          <IconButton
+            :label="panels.alignCenterHorizontally"
+            size="md"
+            @click="handleAlign(actions.align, 'horizontal', 'center')"
+          >
+            <icon-lucide-align-center-vertical class="size-3.5" />
+          </IconButton>
+          <IconButton
+            :label="panels.alignRight"
+            size="md"
+            @click="handleAlign(actions.align, 'horizontal', 'max')"
+          >
+            <icon-lucide-align-end-vertical class="size-3.5" />
+          </IconButton>
         </div>
         <div class="flex gap-0.5">
-          <Tip :label="panels.alignTop">
-            <button
-              :class="useIconButtonUI({ size: 'md' }).base"
-              data-test-id="position-align-top"
-              @click="handleAlign(actions.align, 'vertical', 'min')"
-            >
-              <icon-lucide-align-start-horizontal class="size-3.5" />
-            </button>
-          </Tip>
-          <Tip :label="panels.alignCenterVertically">
-            <button
-              :class="useIconButtonUI({ size: 'md' }).base"
-              data-test-id="position-align-center-v"
-              @click="handleAlign(actions.align, 'vertical', 'center')"
-            >
-              <icon-lucide-align-center-horizontal class="size-3.5" />
-            </button>
-          </Tip>
-          <Tip :label="panels.alignBottom">
-            <button
-              :class="useIconButtonUI({ size: 'md' }).base"
-              data-test-id="position-align-bottom"
-              @click="handleAlign(actions.align, 'vertical', 'max')"
-            >
-              <icon-lucide-align-end-horizontal class="size-3.5" />
-            </button>
-          </Tip>
+          <IconButton
+            :label="panels.alignTop"
+            size="md"
+            @click="handleAlign(actions.align, 'vertical', 'min')"
+          >
+            <icon-lucide-align-start-horizontal class="size-3.5" />
+          </IconButton>
+          <IconButton
+            :label="panels.alignCenterVertically"
+            size="md"
+            @click="handleAlign(actions.align, 'vertical', 'center')"
+          >
+            <icon-lucide-align-center-horizontal class="size-3.5" />
+          </IconButton>
+          <IconButton
+            :label="panels.alignBottom"
+            size="md"
+            @click="handleAlign(actions.align, 'vertical', 'max')"
+          >
+            <icon-lucide-align-end-horizontal class="size-3.5" />
+          </IconButton>
         </div>
       </div>
 
-      <div class="flex gap-1.5">
+      <PanelGrid :columns="2">
         <Tip :label="panels.xAxis">
-          <ScrubInput
+          <NumberField
             icon="X"
+            data-property="x"
+            :aria-label="panels.xAxis"
             :model-value="xValue"
             @update:model-value="actions.updateProp('x', $event)"
             @commit="(v: number, p: number) => actions.commitProp('x', v, p)"
           />
         </Tip>
         <Tip :label="panels.yAxis">
-          <ScrubInput
+          <NumberField
             icon="Y"
+            data-property="y"
+            :aria-label="panels.yAxis"
             :model-value="yValue"
             @update:model-value="actions.updateProp('y', $event)"
             @commit="(v: number, p: number) => actions.commitProp('y', v, p)"
           />
         </Tip>
-      </div>
+      </PanelGrid>
 
-      <div v-if="isMulti" class="mt-1.5 flex gap-1.5">
+      <PanelGrid v-if="isMulti" :columns="2" class="mt-1.5">
         <Tip :label="panels.width">
-          <ScrubInput
+          <NumberField
             icon="W"
+            data-property="width"
+            :aria-label="panels.width"
             :model-value="wValue"
             :min="1"
             @update:model-value="actions.updateProp('width', $event)"
@@ -123,21 +115,24 @@ function handleAlign(
           />
         </Tip>
         <Tip :label="panels.height">
-          <ScrubInput
+          <NumberField
             icon="H"
+            data-property="height"
+            :aria-label="panels.height"
             :model-value="hValue"
             :min="1"
             @update:model-value="actions.updateProp('height', $event)"
             @commit="(v: number, p: number) => actions.commitProp('height', v, p)"
           />
         </Tip>
-      </div>
+      </PanelGrid>
 
-      <div class="mt-1.5 flex items-center gap-1.5">
+      <PanelGrid :columns="2" class="mt-1.5">
         <Tip :label="panels.rotation">
-          <ScrubInput
-            class="flex-1"
+          <NumberField
             suffix="°"
+            data-property="rotation"
+            :aria-label="panels.rotation"
             :model-value="rotationValue"
             :min="-360"
             :max="360"
@@ -147,36 +142,20 @@ function handleAlign(
             <template #icon>
               <icon-lucide-rotate-cw class="size-3" />
             </template>
-          </ScrubInput>
+          </NumberField>
         </Tip>
-        <Tip :label="panels.flipHorizontal">
-          <button
-            :class="useIconButtonUI({ size: 'md', ui: { base: 'shrink-0' } }).base"
-            data-test-id="position-flip-horizontal"
-            @click="actions.flip('horizontal')"
-          >
+        <div class="flex h-6 items-center justify-end gap-0.5">
+          <IconButton :label="panels.flipHorizontal" size="md" @click="actions.flip('horizontal')">
             <icon-lucide-flip-horizontal-2 class="size-3.5" />
-          </button>
-        </Tip>
-        <Tip :label="panels.flipVertical">
-          <button
-            :class="useIconButtonUI({ size: 'md', ui: { base: 'shrink-0' } }).base"
-            data-test-id="position-flip-vertical"
-            @click="actions.flip('vertical')"
-          >
+          </IconButton>
+          <IconButton :label="panels.flipVertical" size="md" @click="actions.flip('vertical')">
             <icon-lucide-flip-vertical-2 class="size-3.5" />
-          </button>
-        </Tip>
-        <Tip :label="panels.rotate90">
-          <button
-            :class="useIconButtonUI({ size: 'md', ui: { base: 'shrink-0' } }).base"
-            data-test-id="position-rotate-90"
-            @click="actions.rotate(90)"
-          >
+          </IconButton>
+          <IconButton :label="panels.rotate90" size="md" @click="actions.rotate(90)">
             <icon-lucide-rotate-cw-square class="size-3.5" />
-          </button>
-        </Tip>
-      </div>
-    </div>
+          </IconButton>
+        </div>
+      </PanelGrid>
+    </PanelSection>
   </PositionControlsRoot>
 </template>

@@ -4,5 +4,5 @@ export {
   type HostedEnvironmentConfig,
   type OperatingMode,
   deriveOperatingMode,
-  validateHostedConfig,
-} from "./types";
+  validateHostedConfig
+} from './types'

@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { colorToCSS } from "@open-pencil/core/color";
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
+import { tv } from 'tailwind-variants'
+import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui'
 
-import { initials } from "@/app/shell/ui";
-import { useMobileHudContext } from "@/components/MobileHud/context";
+import { initials } from '@/app/shell/ui'
+import { colorToCSS } from '@open-pencil/core/color'
+import { useMobileHudContext } from '@/components/MobileHud/context'
+import collaborationTheme from '@/theme/collaboration'
 
-const hud = useMobileHudContext();
+const hud = useMobileHudContext()
+const collaboration = tv(collaborationTheme)
+const styles = collaboration({ size: 'md' })
+
+function peerAvatarClass(following: boolean) {
+  return collaboration({ size: 'md', following }).avatar()
+}
 </script>
 
 <template>
   <PopoverRoot v-if="hud.collabState.connected">
     <PopoverTrigger as-child>
-      <button
-        class="flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-white/10 bg-panel/70 px-3 shadow-md backdrop-blur-xl select-none active:bg-hover"
-      >
-        <span class="size-2 rounded-full bg-green-500" />
+      <button :class="styles.presenceTrigger()">
+        <span :class="styles.presenceDot()" />
         <span class="text-xs text-surface">Online: {{ hud.onlineCount }}</span>
       </button>
     </PopoverTrigger>
@@ -24,32 +30,34 @@ const hud = useMobileHudContext();
         :side-offset="8"
         side="bottom"
         align="center"
-        class="z-50 w-56 rounded-xl border border-border bg-panel p-3 shadow-xl"
+        :class="styles.presenceContent()"
       >
-        <div class="mb-2 text-[11px] tracking-wider text-muted uppercase">In this room</div>
+        <div class="mb-2 text-[11px] tracking-wider text-muted uppercase">
+          {{ hud.dialogs.inThisRoom }}
+        </div>
         <div class="flex flex-col gap-2">
           <div class="flex items-center gap-2">
             <div
-              class="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+              :class="styles.avatar()"
               :style="{ background: colorToCSS(hud.collabState.localColor) }"
             >
-              {{ initials(hud.collabState.localName || "You") }}
+              {{ initials(hud.collabState.localName || 'You') }}
             </div>
             <span class="min-w-0 flex-1 truncate text-xs text-surface">
-              {{ hud.collabState.localName || "You" }}
+              {{ hud.collabState.localName || 'You' }}
             </span>
-            <span class="text-[10px] text-muted">you</span>
+            <span class="text-[10px] text-muted">{{ hud.dialogs.youSuffix }}</span>
           </div>
 
           <div
             v-for="peer in hud.collabPeers"
             :key="peer.clientId"
-            class="flex cursor-pointer items-center gap-2 rounded-md px-0.5 py-0.5 select-none active:bg-hover"
+            :data-following="hud.followingPeer === peer.clientId || undefined"
+            :class="styles.peerRow()"
             @click="hud.toggleFollowPeer(peer.clientId)"
           >
             <div
-              class="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-              :class="hud.followingPeer === peer.clientId ? 'ring-2 ring-white/40' : ''"
+              :class="[peerAvatarClass(hud.followingPeer === peer.clientId), styles.peerAvatar()]"
               :style="{ background: colorToCSS(peer.color) }"
             >
               {{ initials(peer.name) }}
@@ -61,11 +69,8 @@ const hud = useMobileHudContext();
           </div>
         </div>
 
-        <button
-          class="mt-3 flex h-7 w-full cursor-pointer items-center justify-center rounded border border-border bg-transparent text-xs text-muted select-none active:bg-hover"
-          @click="hud.disconnect"
-        >
-          Disconnect
+        <button :class="styles.disconnect()" @click="hud.disconnect">
+          {{ hud.dialogs.disconnect }}
         </button>
       </PopoverContent>
     </PopoverPortal>

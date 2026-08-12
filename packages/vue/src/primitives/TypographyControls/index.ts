@@ -1,1 +1,1 @@
-export { default as TypographyControlsRoot } from "#vue/primitives/TypographyControls/TypographyControlsRoot.vue";
+export { default as TypographyControlsRoot } from '#vue/primitives/TypographyControls/TypographyControlsRoot.vue'

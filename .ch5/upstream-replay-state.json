@@ -1,0 +1,30 @@
+{
+  "schema": "ch5.upstream-replay.state.v1",
+  "additivePaths": [
+    ".agents/skills/open-pencil-upstream-sync",
+    ".ch5",
+    ".forgejo",
+    ".hush",
+    ".mcp.json",
+    ".mise.toml",
+    ".npmrc",
+    ".opencode",
+    ".sops.yaml",
+    "api",
+    "config/hosted-topology.json",
+    "docs/ch5",
+    "pitchfork.toml",
+    "scripts/build-candidate.mjs",
+    "scripts/ci-setup-hush.sh",
+    "scripts/hosted-proof.ts",
+    "scripts/preview-proof.ts",
+    "scripts/promote.mjs",
+    "scripts/upstream-sync.ts",
+    "scripts/validate-hosted-flags.ts",
+    "tests/engine/upstream-sync",
+    "tools/ch5"
+  ],
+  "privateHead": "5fb8973d48161cb3dd77c82c7e6359df314acc72",
+  "startedAt": "2026-08-12T03:10:37.620Z",
+  "upstream": "51ab21571ad29cf86e4862e145dcf9e937860390"
+}

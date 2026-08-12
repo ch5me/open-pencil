@@ -1,41 +1,37 @@
 <script setup lang="ts">
 import {
-  editorCommandMetadata,
-  formatShortcut,
-  useEditorCommands,
-  useI18n,
-} from "@open-pencil/vue";
-import type { EditorCommandId } from "@open-pencil/vue";
-import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuPortal,
   DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from "reka-ui";
-import IconChevronDown from "~icons/lucide/chevron-down";
-import IconCombine from "~icons/lucide/combine";
-import IconCopyMinus from "~icons/lucide/copy-minus";
-import IconCopyX from "~icons/lucide/copy-x";
-import IconListCollapse from "~icons/lucide/list-collapse";
-import IconSquaresIntersect from "~icons/lucide/squares-intersect";
+  DropdownMenuTrigger
+} from 'reka-ui'
+import IconChevronDown from '~icons/lucide/chevron-down'
+import IconCombine from '~icons/lucide/combine'
+import IconCopyMinus from '~icons/lucide/copy-minus'
+import IconCopyX from '~icons/lucide/copy-x'
+import IconListCollapse from '~icons/lucide/list-collapse'
+import IconSquaresIntersect from '~icons/lucide/squares-intersect'
 
-import { menuItem, useMenuUI } from "@/components/ui/menu";
-import Tip from "@/components/ui/Tip.vue";
+import { editorCommandMetadata, formatShortcut, useEditorCommands, useI18n } from '@open-pencil/vue'
+import type { EditorCommandId } from '@open-pencil/vue'
 
-const { getCommand, runCommand } = useEditorCommands();
-const { commands } = useI18n();
+import Tip from '@/components/ui/Tip.vue'
+import { menuItem, useMenuUI } from '@/components/ui/menu'
+
+const { getCommand, runCommand } = useEditorCommands()
+const { commands } = useI18n()
 
 const operations = [
-  { id: "selection.booleanUnion", icon: IconCombine },
-  { id: "selection.booleanSubtract", icon: IconCopyMinus },
-  { id: "selection.booleanIntersect", icon: IconSquaresIntersect },
-  { id: "selection.booleanExclude", icon: IconCopyX },
-  { id: "selection.flatten", icon: IconListCollapse },
-] satisfies Array<{ id: EditorCommandId; icon: unknown }>;
+  { id: 'selection.booleanUnion', icon: IconCombine },
+  { id: 'selection.booleanSubtract', icon: IconCopyMinus },
+  { id: 'selection.booleanIntersect', icon: IconSquaresIntersect },
+  { id: 'selection.booleanExclude', icon: IconCopyX },
+  { id: 'selection.flatten', icon: IconListCollapse }
+] satisfies Array<{ id: EditorCommandId; icon: unknown }>
 
-const menuCls = useMenuUI({ content: "min-w-44" });
-const itemCls = menuItem({ justify: "between" });
+const menuCls = useMenuUI({ content: 'min-w-44' })
+const itemCls = menuItem({ justify: 'between' })
 </script>
 
 <template>

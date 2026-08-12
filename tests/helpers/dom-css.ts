@@ -1,5 +1,15 @@
-import { colorToCSS } from "@open-pencil/core/color";
-import type { DesignDocument } from "@open-pencil/dom-css";
+import { colorToCSS } from '@open-pencil/core/color'
+import type { DesignDocument, DesignElement, DesignNode } from '@open-pencil/dom-css'
+
+export function findTextElement(nodes: DesignNode[]): DesignElement | undefined {
+  for (const node of nodes) {
+    if (node.type !== 'element') continue
+    if (node.children.some((child) => child.type === 'text')) return node
+    const child = findTextElement(node.children)
+    if (child) return child
+  }
+  return undefined
+}
 
 export const DOM_CSS_COLORS = {
   white: colorToCSS({ r: 1, g: 1, b: 1, a: 1 }),
@@ -13,27 +23,27 @@ export const DOM_CSS_COLORS = {
   sky100: colorToCSS({ r: 224 / 255, g: 242 / 255, b: 254 / 255, a: 1 }),
   sky700: colorToCSS({ r: 3 / 255, g: 105 / 255, b: 161 / 255, a: 1 }),
   slateShadow: colorToCSS({ r: 15 / 255, g: 23 / 255, b: 42 / 255, a: 0.12 }),
-  dialogShadow: colorToCSS({ r: 15 / 255, g: 23 / 255, b: 42 / 255, a: 0.16 }),
-} as const;
+  dialogShadow: colorToCSS({ r: 15 / 255, g: 23 / 255, b: 42 / 255, a: 0.16 })
+} as const
 
 export const simpleCardDocument: DesignDocument = {
-  type: "document",
+  type: 'document',
   children: [
     {
-      type: "element",
-      tagName: "div",
-      attrs: { class: "card", "data-id": "node-1" },
-      children: [{ type: "text", text: "OpenPencil" }],
-    },
-  ],
-};
+      type: 'element',
+      tagName: 'div',
+      attrs: { class: 'card', 'data-id': 'node-1' },
+      children: [{ type: 'text', text: 'OpenPencil' }]
+    }
+  ]
+}
 
 export const cssCardHTML = `
   <article class="card">
     <h1 class="title">OpenPencil</h1>
     <p class="description">Design with code-shaped CSS.</p>
   </article>
-`;
+`
 
 export const cssCardCSS = `
   .card {
@@ -58,68 +68,68 @@ export const cssCardCSS = `
     font-size: 14px;
     line-height: 20px;
   }
-`;
+`
 
 export const computedCardDocument: DesignDocument = {
-  type: "document",
+  type: 'document',
   children: [
     {
-      type: "element",
-      tagName: "div",
-      attrs: { class: "card" },
+      type: 'element',
+      tagName: 'div',
+      attrs: { class: 'card' },
       computedStyle: {
-        width: "320px",
-        height: "160px",
-        display: "flex",
-        "flex-direction": "column",
-        gap: "12px",
-        padding: "24px",
-        "border-radius": "16px",
-        "background-color": "rgb(255, 255, 255)",
+        width: '320px',
+        height: '160px',
+        display: 'flex',
+        'flex-direction': 'column',
+        gap: '12px',
+        padding: '24px',
+        'border-radius': '16px',
+        'background-color': 'rgb(255, 255, 255)'
       },
       children: [
         {
-          type: "element",
-          tagName: "h1",
+          type: 'element',
+          tagName: 'h1',
           attrs: {},
           computedStyle: {
-            color: "rgb(17, 24, 39)",
-            "font-size": "24px",
-            "font-weight": "700",
-            "line-height": "32px",
+            color: 'rgb(17, 24, 39)',
+            'font-size': '24px',
+            'font-weight': '700',
+            'line-height': '32px'
           },
-          children: [{ type: "text", text: "OpenPencil" }],
-        },
-      ],
-    },
-  ],
-};
+          children: [{ type: 'text', text: 'OpenPencil' }]
+        }
+      ]
+    }
+  ]
+}
 
 export const tailwindCardClasses = [
-  "flex",
-  "flex-col",
-  "gap-3",
-  "w-80",
-  "h-44",
-  "p-6",
-  "rounded-xl",
-  "bg-white",
-  "text-slate-900",
-] as const;
+  'flex',
+  'flex-col',
+  'gap-3',
+  'w-80',
+  'h-44',
+  'p-6',
+  'rounded-xl',
+  'bg-white',
+  'text-slate-900'
+] as const
 
 export const tailwindButtonClasses = [
-  "inline-flex",
-  "items-center",
-  "justify-center",
-  "gap-2",
-  "rounded-md",
-  "bg-slate-900",
-  "px-4",
-  "py-2",
-  "text-sm",
-  "font-medium",
-  "text-white",
-] as const;
+  'inline-flex',
+  'items-center',
+  'justify-center',
+  'gap-2',
+  'rounded-md',
+  'bg-slate-900',
+  'px-4',
+  'py-2',
+  'text-sm',
+  'font-medium',
+  'text-white'
+] as const
 
 export const fixtureMatrixHTML = `
   <section class="fixture-shell">
@@ -137,7 +147,7 @@ export const fixtureMatrixHTML = `
       <button class="primary-button">Create design</button>
     </dialog>
   </section>
-`;
+`
 
 export const fixtureMatrixCSS = `
   .fixture-shell {
@@ -235,42 +245,42 @@ export const fixtureMatrixCSS = `
     font-weight: 600;
     line-height: 20px;
   }
-`;
+`
 
 export const tailwindInputClasses = [
-  "h-10",
-  "w-80",
-  "rounded-md",
-  "border",
-  "border-slate-300",
-  "bg-white",
-  "px-3",
-  "text-sm",
-  "text-slate-900",
-] as const;
+  'h-10',
+  'w-80',
+  'rounded-md',
+  'border',
+  'border-slate-300',
+  'bg-white',
+  'px-3',
+  'text-sm',
+  'text-slate-900'
+] as const
 
 export const tailwindBadgeClasses = [
-  "inline-flex",
-  "h-6",
-  "items-center",
-  "justify-center",
-  "rounded-full",
-  "bg-sky-100",
-  "px-2.5",
-  "text-xs",
-  "font-semibold",
-  "text-sky-700",
-] as const;
+  'inline-flex',
+  'h-6',
+  'items-center',
+  'justify-center',
+  'rounded-full',
+  'bg-sky-100',
+  'px-2.5',
+  'text-xs',
+  'font-semibold',
+  'text-sky-700'
+] as const
 
 export const tailwindNavClasses = [
-  "flex",
-  "h-12",
-  "w-96",
-  "items-center",
-  "justify-between",
-  "rounded-xl",
-  "border",
-  "border-slate-200",
-  "bg-white",
-  "px-4",
-] as const;
+  'flex',
+  'h-12',
+  'w-96',
+  'items-center',
+  'justify-between',
+  'rounded-xl',
+  'border',
+  'border-slate-200',
+  'bg-white',
+  'px-4'
+] as const

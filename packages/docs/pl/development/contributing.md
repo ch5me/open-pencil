@@ -55,14 +55,14 @@ bun run check
 ### Konwencje
 
 - **Nazwy plików** — kebab-case (`scene-graph.ts`, `use-canvas-input.ts`)
-- **Komponenty** — PascalCase Vue SFCs (`EditorCanvas.vue`, `ScrubInput.vue`)
+- **Komponenty** — PascalCase Vue SFCs (`EditorCanvas.vue`, `NumberField.vue`)
 - **Stałe** — SCREAMING_SNAKE_CASE
 - **Funkcje/zmienne** — camelCase
 - **Typy/interfejsy** — PascalCase
 
 ### Konwencje dla agentów AI
 
-Deweloperzy i agenci AI powinni przeczytać `AGENTS.md` w katalogu głównym repo ([zobacz na Forgejo](https://git.ch5.me/ch5/open-pencil/src/branch/main/AGENTS.md)). Obejmuje renderowanie, graf sceny, komponenty i instancje, layout, UI, format pliku, konwencje Tauri i znane problemy.
+Deweloperzy i agenci AI powinni przeczytać `AGENTS.md` w katalogu głównym repo ([zobacz na GitHub](https://github.com/open-pencil/open-pencil/blob/master/AGENTS.md)). Obejmuje renderowanie, graf sceny, komponenty i instancje, layout, UI, format pliku, konwencje Tauri i znane problemy.
 
 ## Wprowadzanie zmian
 
@@ -76,15 +76,15 @@ Kod źródłowy silnika core znajduje się w `packages/core/src/`. Kod aplikacyj
 
 | Plik | Cel |
 |------|-----|
-| `packages/core/src/scene-graph/` | Graf sceny: węzły, zmienne, instancje, hit testing |
+| `packages/scene-graph/src/` | Graf sceny: węzły, zmienne, instancje, hit testing i cofanie |
 | `packages/core/src/canvas/renderer.ts` | Pipeline renderowania CanvasKit |
-| `packages/core/src/layout.ts` | Adapter layoutu Yoga |
-| `packages/core/src/scene-graph/undo.ts` | Menedżer cofnij/ponów |
+| `packages/core/src/layout/` | Adapter layoutu Yoga |
 | `packages/core/src/clipboard.ts` | Schowek kompatybilny z Figmą |
 | `packages/core/src/vector/` | Model sieci wektorowej |
 | `packages/core/src/io/formats/raster/render.ts` | Eksport obrazu offscreen (PNG/JPG/WEBP) |
-| `packages/core/src/kiwi/binary/codec.ts` | Koder/dekoder binarny Kiwi |
-| `packages/core/src/kiwi/fig-import.ts` | Logika importu plików .fig |
+| `packages/kiwi/src/schema-runtime/` | Runtime schematu i kodek binarny Kiwi |
+| `packages/fig/src/node-change/` | Konwersja między SceneGraph i Figma NodeChange |
+| `packages/core/src/io/formats/fig/` | Orkiestracja odczytu/zapisu .fig dla aplikacji |
 | `packages/cli/src/index.ts` | Punkt wejścia CLI |
 | `packages/core/src/tools/` | Ujednolicone definicje narzędzi (AI, MCP, CLI) |
 | `packages/core/src/figma-api/` | Implementacja Figma Plugin API |

@@ -1,326 +1,338 @@
 <script setup lang="ts">
-import type { Color, SceneNode, Stroke } from "@open-pencil/core/scene-graph";
+import { ref } from 'vue'
+
 import {
   applySolidStrokeColor,
-  PropertyListRoot,
-  useColorVariableBinding,
-  useStrokeControls,
-  useOkHCL,
+  BindableValueRoot,
+  MIXED,
+  useColorBindingProvider,
   useI18n,
-} from "@open-pencil/vue";
-import { ref } from "vue";
+  useOkHCL,
+  useStrokeControls
+} from '@open-pencil/vue'
 
-import ColorInput from "@/components/ColorPicker/ColorInput.vue";
-import { boundVariableColor } from "@/components/properties/color-style-row";
-import ColorStyleRow from "@/components/properties/ColorStyleRow.vue";
-import ScrubInput from "@/components/ScrubInput.vue";
-import AppSelect from "@/components/ui/AppSelect.vue";
-import { useIconButtonUI } from "@/components/ui/icon-button";
-import { useSectionUI } from "@/components/ui/section";
-import Tip from "@/components/ui/Tip.vue";
+import ColorPicker from '@/components/ColorPicker/ColorPicker.vue'
+import NumberField from '@/components/inputs/NumberField.vue'
+import PropertyItemRow from '@/components/properties/item-list/PropertyItemRow.vue'
+import PaintField from '@/components/properties/paint/PaintField.vue'
+import PaintValue from '@/components/properties/paint/PaintValue.vue'
+import {
+  applyPaintMutation,
+  cancelPaintMutation,
+  commitPaintMutation,
+  paintBindingTargets
+} from '@/components/properties/paint/binding'
+import { createStrokeOkhclAdapter } from '@/components/properties/paint/okhcl'
+import PropertyListRoot from '@/components/properties/PropertyListRoot.vue'
+import SharedStyleField from '@/components/properties/shared-style/SharedStyleField.vue'
+import VariableBindingPicker from '@/components/properties/binding/VariableBindingPicker.vue'
+import AppSelect from '@/components/ui/AppSelect.vue'
+import FillSwatch from '@/components/ui/FillSwatch.vue'
+import IconButton from '@/components/ui/IconButton.vue'
+import PanelFieldGroup from '@/components/ui/panel/PanelFieldGroup.vue'
+import PanelGrid from '@/components/ui/panel/PanelGrid.vue'
+import PanelSection from '@/components/ui/panel/PanelSection.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import Tip from '@/components/ui/Tip.vue'
 
-const strokeCtx = useStrokeControls();
-const strokeVarCtx = useColorVariableBinding("strokes");
-const okhcl = useOkHCL();
-const { panels } = useI18n();
-const sectionCls = useSectionUI();
+import { colorToHexRaw } from '@open-pencil/core/color'
+import type { Color, Fill, SceneNode, Stroke } from '@open-pencil/scene-graph'
+import type { BindableValueActions } from '@open-pencil/vue'
 
-const expandedSides = ref(false);
+const strokeCtx = useStrokeControls()
+const { advancedActive, cap, join, miterLimit } = strokeCtx
+const colorProvider = useColorBindingProvider()
+const okhcl = useOkHCL()
+const { panels, dialogs } = useI18n()
+const expandedSides = ref(false)
 
-function updateStrokeColor(
-  activeNode: SceneNode | null | undefined,
-  index: number,
-  color: Color,
-  patch: (index: number, changes: Record<string, unknown>) => void,
-) {
-  if (activeNode && strokeVarCtx.getBoundVariable(activeNode.id, index)) {
-    strokeVarCtx.unbindVariable(activeNode.id, index);
+function strokePreview(stroke: Stroke, color: Color): Fill {
+  return {
+    type: 'SOLID',
+    color,
+    opacity: stroke.opacity,
+    visible: stroke.visible
   }
-  patch(index, applySolidStrokeColor(color));
 }
 
-function onToggleSides(activeNode: SceneNode) {
-  const next = !expandedSides.value;
-  expandedSides.value = next;
+function updateStrokeColor(
+  binding: BindableValueActions<Color>,
+  flush: () => void,
+  color: Color,
+  patch: (changes: Partial<Stroke>) => void,
+  commit: boolean
+) {
+  if (!applyPaintMutation(binding, flush, () => patch(applySolidStrokeColor(color)))) return
+  if (commit) commitPaintMutation(binding)
+}
+
+function setCap(value: string) {
+  if (value === 'NONE' || value === 'ROUND' || value === 'SQUARE') {
+    strokeCtx.setCap(value)
+  }
+}
+
+function setJoin(value: string) {
+  if (value === 'MITER' || value === 'BEVEL' || value === 'ROUND') {
+    strokeCtx.setJoin(value)
+  }
+}
+
+function onToggleSides(activeNode: SceneNode | null) {
+  if (!activeNode) return
+  const next = !expandedSides.value
+  expandedSides.value = next
   if (next && !activeNode.independentStrokeWeights) {
-    const weight = activeNode.strokes[0]?.weight ?? 1;
-    strokeCtx.selectSide("CUSTOM", {
+    const weight = activeNode.strokes[0]?.weight ?? 1
+    strokeCtx.selectSide('CUSTOM', {
       ...activeNode,
       borderTopWeight: weight,
       borderRightWeight: weight,
       borderBottomWeight: weight,
-      borderLeftWeight: weight,
-    } as SceneNode);
+      borderLeftWeight: weight
+    })
   } else if (!next && activeNode.independentStrokeWeights) {
-    strokeCtx.selectSide("ALL", activeNode);
+    strokeCtx.selectSide('ALL', activeNode)
   }
-}
-
-type StrokePatch = (i: number, partial: Partial<Stroke>) => void;
-
-function dashState(stroke: Stroke | undefined): { dash: number; gap: number; on: boolean } {
-  const p = stroke?.dashPattern;
-  if (!p || p.length === 0) return { dash: 6, gap: 6, on: false };
-  return { dash: p[0] ?? 6, gap: p[1] ?? p[0] ?? 6, on: true };
-}
-
-function toggleDash(stroke: Stroke | undefined, patch: StrokePatch) {
-  const { dash, gap, on } = dashState(stroke);
-  patch(0, { dashPattern: on ? [] : [Math.max(dash, 1), Math.max(gap, 1)] });
-}
-
-function setDash(stroke: Stroke | undefined, patch: StrokePatch, value: number) {
-  const { gap } = dashState(stroke);
-  patch(0, { dashPattern: [Math.max(1, value), gap] });
-}
-
-function setGap(stroke: Stroke | undefined, patch: StrokePatch, value: number) {
-  const { dash } = dashState(stroke);
-  patch(0, { dashPattern: [dash, Math.max(1, value)] });
 }
 </script>
 
 <template>
   <PropertyListRoot
-    v-slot="{ items, isMixed, activeNode, actions }"
+    v-slot="{ items, isMixed, activeNode, selectedNodeIds, flush, actions }"
     prop-key="strokes"
     :label="panels.stroke"
   >
-    <div data-test-id="stroke-section" :class="sectionCls.wrapper">
-      <div class="flex items-center justify-between">
-        <label :class="sectionCls.label">{{ panels.stroke }}</label>
-        <Tip :label="panels.addStroke">
-          <button
-            data-test-id="stroke-section-add"
-            :class="useIconButtonUI().base"
-            @click="actions.add(strokeCtx.defaultStroke)"
-          >
-            +
-          </button>
-        </Tip>
-      </div>
+    <PanelSection :label="panels.stroke" :empty="!isMixed && items.length === 0">
+      <template #actions>
+        <IconButton :label="panels.addStroke" @click="actions.add(strokeCtx.defaultStroke)">
+          <icon-lucide-plus class="size-3.5" />
+        </IconButton>
+      </template>
+
+      <SharedStyleField kind="stroke" :label="panels.strokeStyle" />
 
       <p v-if="isMixed" class="text-[11px] text-muted">{{ panels.mixedStrokesHelp }}</p>
 
-      <ColorStyleRow
-        v-for="(stroke, i) in items as Stroke[]"
-        :key="`${i}:${stroke.visible ? 'visible' : 'hidden'}`"
-        :item="stroke"
-        :index="i"
-        :active-node-id="activeNode?.id ?? null"
-        :binding-api="strokeVarCtx"
-        :variable-color="stroke.color"
-        :visibility-test-id="`stroke-visibility-${i}`"
-        :apply-variable-test-id="`stroke-apply-variable-${i}`"
-        unbind-test-id="stroke-unbind-variable"
-        data-test-id="stroke-item"
-        :data-test-index="i"
+      <PropertyItemRow
+        v-for="(stroke, index) in items"
+        :key="`${index}:${stroke.visible ? 'visible' : 'hidden'}`"
+        prop-key="strokes"
+        :index="index"
+        :visibility-label="panels.toggleVisibility"
         :remove-label="panels.removeStroke"
-        @patch="actions.patch(i, $event)"
-        @toggle-visibility="actions.toggleVisibility(i)"
-        @remove="actions.remove(i)"
       >
-        <ColorInput
-          class="min-w-0 flex-1"
-          :color="
-            activeNode
-              ? (boundVariableColor(strokeVarCtx, activeNode.id, i) ?? stroke.color)
-              : stroke.color
-          "
-          :okhcl="
-            activeNode
-              ? {
-                  fieldFormat: okhcl.getFieldFormat(activeNode, i, 'stroke'),
-                  fieldOptions: okhcl.fieldOptions,
-                  okhcl: okhcl.getStrokeOkHCLColor(activeNode, i),
-                  ...okhcl.getStrokePreviewInfo(activeNode, i),
-                  setFieldFormat: ($event) => okhcl.setStrokeFieldFormat(activeNode, i, $event),
-                  updateOkHCL: ($event) => okhcl.updateStrokeOkHCL(activeNode, i, $event),
-                }
-              : null
-          "
-          editable
-          @update="updateStrokeColor(activeNode, i, $event, actions.patch)"
-        />
-      </ColorStyleRow>
+        <BindableValueRoot
+          v-slot="binding"
+          :provider="colorProvider"
+          :targets="paintBindingTargets(selectedNodeIds, 'strokes', index)"
+          :value="stroke.color"
+          batch-label="Change stroke color"
+        >
+          <PaintField
+            :opacity="stroke.opacity"
+            :opacity-label="panels.opacity"
+            @update:opacity="actions.patch(index, { opacity: $event })"
+          >
+            <template #preview>
+              <ColorPicker
+                :color="binding.resolvedValue ?? stroke.color"
+                :okhcl="createStrokeOkhclAdapter(okhcl, activeNode, index)"
+                @update="
+                  updateStrokeColor(
+                    binding.actions,
+                    flush,
+                    $event,
+                    (changes) => actions.patch(index, changes),
+                    false
+                  )
+                "
+                @open-change="!$event && commitPaintMutation(binding.actions)"
+                @cancel="cancelPaintMutation(binding.actions)"
+              >
+                <template #trigger>
+                  <button
+                    type="button"
+                    :aria-label="panels.stroke"
+                    class="size-4 shrink-0 cursor-pointer rounded-sm border-0 bg-transparent p-0"
+                  >
+                    <FillSwatch
+                      :fill="strokePreview(stroke, binding.resolvedValue ?? stroke.color)"
+                      class="size-full"
+                    />
+                  </button>
+                </template>
+              </ColorPicker>
+            </template>
 
-      <div
-        v-if="!isMixed && (items as unknown[]).length > 0"
-        class="mt-1 flex items-center gap-1.5"
-      >
+            <template #value>
+              <PaintValue
+                :color="stroke.color"
+                :resolved-color="binding.resolvedValue"
+                :variable-name="binding.variable?.name"
+                :label="panels.stroke"
+                @update="
+                  updateStrokeColor(
+                    binding.actions,
+                    flush,
+                    $event,
+                    (changes) => actions.patch(index, changes),
+                    true
+                  )
+                "
+              />
+            </template>
+
+            <template #binding>
+              <VariableBindingPicker
+                :trigger-label="panels.applyVariable"
+                :search-placeholder="dialogs.search"
+                :empty-label="panels.noVariablesFound"
+                :detach-label="panels.detachVariable"
+                :create-label="
+                  panels.createColorVariable({ value: `#${colorToHexRaw(stroke.color)}` })
+                "
+                :create-name-placeholder="panels.variableName"
+                :create-submit-label="panels.create"
+              />
+            </template>
+          </PaintField>
+        </BindableValueRoot>
+      </PropertyItemRow>
+
+      <div v-if="!isMixed && items.length > 0" class="mt-1 flex items-center gap-1.5">
         <AppSelect
-          class="w-[72px]"
           :label="panels.strokeType"
+          :ui="{ trigger: 'w-[88px] flex-none' }"
           :model-value="strokeCtx.currentAlign(activeNode)"
           :options="strokeCtx.alignOptions"
-          @update:model-value="strokeCtx.updateAlign($event as Stroke['align'], activeNode!)"
+          data-property="stroke-align"
+          @update:model-value="strokeCtx.updateAlign($event as Stroke['align'], activeNode)"
         />
         <Tip :label="panels.strokeWeight">
-          <ScrubInput
+          <NumberField
             v-if="!expandedSides"
             class="flex-1"
-            :model-value="activeNode!.strokes[0]?.weight ?? 1"
+            icon="W"
+            :model-value="items[0]?.weight ?? 1"
             :min="0"
+            data-property="stroke-weight"
             @update:model-value="actions.patch(0, { weight: $event })"
-          >
-            <template #icon>
-              <svg
-                class="size-3"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <line x1="1" y1="3" x2="11" y2="3" />
-                <line x1="1" y1="6" x2="11" y2="6" />
-                <line x1="1" y1="9" x2="11" y2="9" />
-              </svg>
-            </template>
-          </ScrubInput>
+          />
         </Tip>
-        <Tip :label="panels.strokeSides">
-          <button
-            data-test-id="stroke-sides-toggle"
-            :class="[
-              useIconButtonUI({ size: 'md', ui: { base: 'size-[26px] shrink-0' } }).base,
-              { '!border-accent !text-accent': expandedSides },
-            ]"
-            @click="onToggleSides(activeNode!)"
-          >
-            <svg class="size-3.5" viewBox="0 0 14 14" fill="currentColor">
-              <rect x="1" y="1" width="5" height="5" rx="1" />
-              <rect x="8" y="1" width="5" height="5" rx="1" />
-              <rect x="1" y="8" width="5" height="5" rx="1" />
-              <rect x="8" y="8" width="5" height="5" rx="1" />
-            </svg>
-          </button>
-        </Tip>
+        <IconButton
+          :label="panels.strokeSides"
+          size="md"
+          class="size-[26px] shrink-0"
+          :active="expandedSides"
+          data-property="stroke-sides"
+          @click="onToggleSides(activeNode)"
+        >
+          <icon-lucide-layout-grid class="size-3.5" />
+        </IconButton>
       </div>
 
-      <div
-        v-if="!isMixed && (items as unknown[]).length > 0"
-        class="mt-1.5 flex items-center gap-1.5"
-      >
-        <Tip :label="panels.strokeDash">
-          <button
-            data-test-id="stroke-dash-toggle"
-            :aria-label="panels.strokeDash"
-            class="flex h-[26px] shrink-0 cursor-pointer items-center gap-1 rounded border bg-input px-1.5 text-[11px]"
-            :class="
-              dashState((items as Stroke[])[0]).on
-                ? '!border-accent !text-accent'
-                : 'border-border text-muted hover:bg-hover hover:text-surface'
-            "
-            @click="toggleDash((items as Stroke[])[0], actions.patch)"
-          >
-            <svg
-              class="size-3"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <line x1="1" y1="6" x2="11" y2="6" stroke-dasharray="3 2" />
-            </svg>
-          </button>
-        </Tip>
-        <template v-if="dashState((items as Stroke[])[0]).on">
-          <ScrubInput
+      <div v-if="!isMixed && items.length > 0" class="mt-1.5 flex items-center gap-1.5">
+        <IconButton
+          :label="panels.strokeDash"
+          size="md"
+          class="shrink-0"
+          :active="strokeCtx.dashState(items[0]).on"
+          data-property="stroke-dash"
+          @click="actions.patch(0, strokeCtx.toggleDash(items[0]))"
+        >
+          <span class="flex items-center gap-0.5">
+            <icon-lucide-minus class="size-2.5" />
+            <icon-lucide-minus class="size-2.5" />
+          </span>
+        </IconButton>
+        <template v-if="strokeCtx.dashState(items[0]).on">
+          <NumberField
             class="flex-1"
-            :model-value="(items as Stroke[])[0].dashPattern?.[0] ?? 6"
+            icon="D"
+            :model-value="items[0]?.dashPattern?.[0] ?? 6"
             :min="1"
-            data-test-id="stroke-dash-length"
-            @update:model-value="setDash((items as Stroke[])[0], actions.patch, $event)"
-          >
-            <template #icon>
-              <svg
-                class="size-3"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <line x1="1" y1="6" x2="5" y2="6" />
-                <line x1="7" y1="6" x2="11" y2="6" />
-              </svg>
-            </template>
-          </ScrubInput>
-          <ScrubInput
+            data-property="stroke-dash-length"
+            @update:model-value="actions.patch(0, strokeCtx.setDash(items[0], $event))"
+          />
+          <NumberField
             class="flex-1"
-            :model-value="
-              (items as Stroke[])[0].dashPattern?.[1] ??
-              (items as Stroke[])[0].dashPattern?.[0] ??
-              6
-            "
+            icon="G"
+            :model-value="items[0]?.dashPattern?.[1] ?? items[0]?.dashPattern?.[0] ?? 6"
             :min="1"
-            data-test-id="stroke-dash-gap"
-            @update:model-value="setGap((items as Stroke[])[0], actions.patch, $event)"
-          >
-            <template #icon>
-              <svg
-                class="size-3"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-              >
-                <line x1="1" y1="6" x2="3" y2="6" />
-                <line x1="9" y1="6" x2="11" y2="6" />
-              </svg>
-            </template>
-          </ScrubInput>
+            data-property="stroke-dash-gap"
+            @update:model-value="actions.patch(0, strokeCtx.setGap(items[0], $event))"
+          />
         </template>
       </div>
 
+      <PanelGrid v-if="advancedActive" :columns="3" class="mt-1.5">
+        <PanelFieldGroup :label="panels.strokeCap">
+          <SegmentedControl
+            :model-value="cap === MIXED ? 'MIXED' : cap"
+            :options="strokeCtx.capOptions"
+            :label="panels.strokeCap"
+            data-property="stroke-cap"
+            @update:model-value="setCap"
+          >
+            <template #option="{ option }">
+              <Tip :label="option.label">
+                <icon-lucide-minus v-if="option.value === 'NONE'" class="size-3" />
+                <icon-lucide-circle v-else-if="option.value === 'ROUND'" class="size-2.5" />
+                <icon-lucide-square v-else class="size-2.5" />
+              </Tip>
+            </template>
+          </SegmentedControl>
+        </PanelFieldGroup>
+
+        <PanelFieldGroup :label="panels.strokeJoin">
+          <SegmentedControl
+            :model-value="join === MIXED ? 'MIXED' : join"
+            :options="strokeCtx.joinOptions"
+            :label="panels.strokeJoin"
+            data-property="stroke-join"
+            @update:model-value="setJoin"
+          >
+            <template #option="{ option }">
+              <Tip :label="option.label">
+                <icon-lucide-corner-up-right v-if="option.value === 'MITER'" class="size-3" />
+                <icon-lucide-triangle v-else-if="option.value === 'BEVEL'" class="size-2.5" />
+                <icon-lucide-circle v-else class="size-2.5" />
+              </Tip>
+            </template>
+          </SegmentedControl>
+        </PanelFieldGroup>
+
+        <PanelFieldGroup :label="panels.strokeMiterLimit">
+          <NumberField
+            :model-value="miterLimit"
+            :min="1"
+            data-property="stroke-miter-limit"
+            :aria-label="panels.strokeMiterLimit"
+            @update:model-value="strokeCtx.updateMiterLimit"
+            @commit="strokeCtx.commitMiterLimit"
+          >
+            <template #icon>
+              <icon-lucide-triangle-right class="size-3" />
+            </template>
+          </NumberField>
+        </PanelFieldGroup>
+      </PanelGrid>
+
       <div
-        v-if="!isMixed && (items as unknown[]).length > 0 && expandedSides"
+        v-if="!isMixed && items.length > 0 && expandedSides"
         class="mt-1.5 grid grid-cols-2 gap-1.5"
       >
-        <ScrubInput
+        <NumberField
           v-for="side in strokeCtx.borderSides"
           :key="side"
-          :model-value="
-            activeNode![
-              `border${side[0].toUpperCase()}${side.slice(1)}Weight` as keyof SceneNode
-            ] as number
-          "
+          :label="side[0].toUpperCase()"
+          :model-value="strokeCtx.borderWeight(activeNode, side)"
           :min="0"
-          @update:model-value="strokeCtx.updateBorderWeight(side, $event, activeNode!)"
-        >
-          <template #icon>
-            <svg class="size-3" viewBox="0 0 12 12" fill="none" stroke-width="1.5">
-              <rect
-                x="1"
-                y="1"
-                width="10"
-                height="10"
-                rx="1"
-                stroke="currentColor"
-                stroke-opacity="0.3"
-                stroke-dasharray="2 2"
-              />
-              <line v-if="side === 'top'" x1="1" y1="1" x2="11" y2="1" stroke="currentColor" />
-              <line
-                v-else-if="side === 'right'"
-                x1="11"
-                y1="1"
-                x2="11"
-                y2="11"
-                stroke="currentColor"
-              />
-              <line
-                v-else-if="side === 'bottom'"
-                x1="1"
-                y1="11"
-                x2="11"
-                y2="11"
-                stroke="currentColor"
-              />
-              <line v-else x1="1" y1="1" x2="1" y2="11" stroke="currentColor" />
-            </svg>
-          </template>
-        </ScrubInput>
+          :data-property="`stroke-${side}-weight`"
+          @update:model-value="strokeCtx.updateBorderWeight(side, $event, activeNode)"
+        />
       </div>
-    </div>
+    </PanelSection>
   </PropertyListRoot>
 </template>

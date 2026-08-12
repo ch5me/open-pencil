@@ -1,72 +1,59 @@
 <script setup lang="ts">
-import type { LayoutMode } from "@open-pencil/core/scene-graph";
-import { vTestId, useI18n, useLayoutControlsContext } from "@open-pencil/vue";
+import { computed } from 'vue'
 
-import Tip from "@/components/ui/Tip.vue";
+import { useI18n, useLayoutControlsContext } from '@open-pencil/vue'
 
-const ctx = useLayoutControlsContext();
+import IconButton from '@/components/ui/IconButton.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import Tip from '@/components/ui/Tip.vue'
 
-const { panels } = useI18n();
+import type { LayoutMode } from '@open-pencil/scene-graph'
 
-const layoutModes: { mode: LayoutMode; test: string }[] = [
-  { mode: "HORIZONTAL", test: "horizontal" },
-  { mode: "VERTICAL", test: "vertical" },
-  { mode: "GRID", test: "grid" },
-];
+const ctx = useLayoutControlsContext()
+const { panels } = useI18n()
+
+const layoutModes = computed<Array<{ value: LayoutMode; label: string }>>(() => [
+  { value: 'NONE', label: panels.value.freeform },
+  { value: 'VERTICAL', label: panels.value.layoutVertical },
+  { value: 'HORIZONTAL', label: panels.value.layoutHorizontal },
+  { value: 'GRID', label: panels.value.layoutGrid }
+])
+
+function setLayoutMode(mode: string) {
+  ctx.editor.setLayoutMode(ctx.node.id, mode as LayoutMode)
+}
 </script>
 
 <template>
-  <div class="flex items-center justify-between">
-    <label class="mb-1.5 block text-[11px] text-muted">{{ panels.autoLayout }}</label>
-    <Tip v-if="ctx.node.layoutMode === 'NONE'" :label="panels.addAutoLayout">
-      <button
-        class="cursor-pointer rounded border-none bg-transparent px-1 text-base leading-none text-muted hover:bg-hover hover:text-surface"
-        data-test-id="layout-add-auto"
-        @click="ctx.editor.setLayoutMode(ctx.node.id, 'VERTICAL')"
+  <div>
+    <label class="mb-1 block text-[11px] text-muted">{{ panels.flow }}</label>
+    <div class="flex items-center gap-1.5">
+      <SegmentedControl
+        :model-value="ctx.node.layoutMode"
+        :options="layoutModes"
+        :label="panels.flow"
+        :ui="{ root: 'flex min-w-0 flex-1' }"
+        @change="setLayoutMode"
       >
-        +
-      </button>
-    </Tip>
-    <Tip v-else :label="panels.removeAutoLayout">
-      <button
-        class="cursor-pointer rounded border-none bg-transparent px-1 text-base leading-none text-muted hover:bg-hover hover:text-surface"
-        data-test-id="layout-remove-auto"
-        @click="ctx.editor.setLayoutMode(ctx.node.id, 'NONE')"
-      >
-        −
-      </button>
-    </Tip>
-  </div>
+        <template #option="{ option }">
+          <Tip :label="option.label" class="flex items-center justify-center">
+            <icon-lucide-move v-if="option.value === 'NONE'" class="size-3.5" />
+            <icon-lucide-rows-2 v-else-if="option.value === 'VERTICAL'" class="size-3.5" />
+            <icon-lucide-columns-2 v-else-if="option.value === 'HORIZONTAL'" class="size-3.5" />
+            <icon-lucide-layout-grid v-else class="size-3.5" />
+          </Tip>
+        </template>
+      </SegmentedControl>
 
-  <div v-if="ctx.node.layoutMode !== 'NONE'" class="mt-1.5 flex gap-0.5">
-    <button
-      v-for="dir in layoutModes"
-      :key="dir.mode"
-      v-test-id="`layout-direction-${dir.test}`"
-      class="flex cursor-pointer items-center justify-center rounded border px-2 py-1"
-      :class="
-        (dir.mode === 'GRID' ? ctx.isGrid : ctx.node.layoutMode === dir.mode)
-          ? 'border-accent bg-accent/10 text-accent'
-          : 'border-border text-muted hover:bg-hover hover:text-surface'
-      "
-      @click="ctx.editor.setLayoutMode(ctx.node.id, dir.mode)"
-    >
-      <icon-lucide-arrow-right v-if="dir.mode === 'HORIZONTAL'" class="size-3.5" />
-      <icon-lucide-arrow-down v-else-if="dir.mode === 'VERTICAL'" class="size-3.5" />
-      <icon-lucide-layout-grid v-else class="size-3.5" />
-    </button>
-    <button
-      v-if="ctx.isFlex"
-      data-test-id="layout-direction-wrap"
-      class="flex cursor-pointer items-center justify-center rounded border px-2 py-1"
-      :class="
-        ctx.node.layoutWrap === 'WRAP'
-          ? 'border-accent bg-accent/10 text-accent'
-          : 'border-border text-muted hover:bg-hover hover:text-surface'
-      "
-      @click="ctx.updateProp('layoutWrap', ctx.node.layoutWrap === 'WRAP' ? 'NO_WRAP' : 'WRAP')"
-    >
-      <icon-lucide-wrap-text class="size-3.5" />
-    </button>
+      <IconButton
+        v-if="ctx.isFlex"
+        :label="panels.layoutWrap"
+        size="md"
+        :active="ctx.node.layoutWrap === 'WRAP'"
+        @click="ctx.updateProp('layoutWrap', ctx.node.layoutWrap === 'WRAP' ? 'NO_WRAP' : 'WRAP')"
+      >
+        <icon-lucide-wrap-text class="size-3.5" />
+      </IconButton>
+    </div>
   </div>
 </template>

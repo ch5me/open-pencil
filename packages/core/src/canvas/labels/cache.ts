@@ -1,120 +1,120 @@
-import type { SceneGraph, SceneNode } from "#core/scene-graph";
+import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
 
 export interface CachedSection {
-  nodeId: string;
-  absX: number;
-  absY: number;
-  nested: boolean;
+  nodeId: string
+  absX: number
+  absY: number
+  nested: boolean
 }
 
 export interface CachedComponent {
-  nodeId: string;
-  absX: number;
-  absY: number;
-  parentType: string;
+  nodeId: string
+  absX: number
+  absY: number
+  parentType: string
 }
 
 interface Viewport {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+  x: number
+  y: number
+  w: number
+  h: number
 }
 
-const LABEL_TYPES = new Set(["COMPONENT", "COMPONENT_SET"]);
-const COMPONENT_LABEL_PARENT_TYPES = new Set(["CANVAS", "SECTION"]);
+const LABEL_TYPES = new Set(['COMPONENT', 'COMPONENT_SET'])
+const COMPONENT_LABEL_PARENT_TYPES = new Set(['CANVAS', 'SECTION'])
 
 function isInViewport(absX: number, absY: number, w: number, h: number, vp: Viewport): boolean {
-  return absX + w >= vp.x && absY + h >= vp.y && absX <= vp.x + vp.w && absY <= vp.y + vp.h;
+  return absX + w >= vp.x && absY + h >= vp.y && absX <= vp.x + vp.w && absY <= vp.y + vp.h
 }
 
 function collectVisibleLabels<
   T extends { nodeId: string; absX: number; absY: number },
-  U extends object,
+  U extends object
 >(
   graph: SceneGraph,
   viewport: Viewport,
   cachedItems: T[],
-  metadata: (cached: T) => U,
+  metadata: (cached: T) => U
 ): Array<{ node: SceneNode; absX: number; absY: number } & U> {
-  const result: Array<{ node: SceneNode; absX: number; absY: number } & U> = [];
+  const result: Array<{ node: SceneNode; absX: number; absY: number } & U> = []
   for (const cached of cachedItems) {
-    const node = graph.getNode(cached.nodeId);
+    const node = graph.getNode(cached.nodeId)
     if (!node || !isInViewport(cached.absX, cached.absY, node.width, node.height, viewport))
-      continue;
-    result.push({ node, absX: cached.absX, absY: cached.absY, ...metadata(cached) });
+      continue
+    result.push({ node, absX: cached.absX, absY: cached.absY, ...metadata(cached) })
   }
-  return result;
+  return result
 }
 
 export class LabelCache {
-  private sections: CachedSection[] = [];
-  private components: CachedComponent[] = [];
-  private cachedSceneVersion = -1;
-  private cachedPositionPreviewVersion = -1;
-  private cachedPageId: string | null = null;
+  private sections: CachedSection[] = []
+  private components: CachedComponent[] = []
+  private cachedSceneVersion = -1
+  private cachedPositionPreviewVersion = -1
+  private cachedPageId: string | null = null
 
   update(
     graph: SceneGraph,
     pageId: string | null,
     sceneVersion: number,
-    positionPreviewVersion = graph.positionPreviewVersion,
+    positionPreviewVersion = graph.positionPreviewVersion
   ): void {
     if (
       sceneVersion === this.cachedSceneVersion &&
       positionPreviewVersion === this.cachedPositionPreviewVersion &&
       pageId === this.cachedPageId
     ) {
-      return;
+      return
     }
-    this.rebuild(graph, pageId);
-    this.cachedSceneVersion = sceneVersion;
-    this.cachedPositionPreviewVersion = positionPreviewVersion;
-    this.cachedPageId = pageId;
+    this.rebuild(graph, pageId)
+    this.cachedSceneVersion = sceneVersion
+    this.cachedPositionPreviewVersion = positionPreviewVersion
+    this.cachedPageId = pageId
   }
 
   invalidate(): void {
-    this.cachedSceneVersion = -1;
-    this.cachedPositionPreviewVersion = -1;
-    this.cachedPageId = null;
-    this.sections = [];
-    this.components = [];
+    this.cachedSceneVersion = -1
+    this.cachedPositionPreviewVersion = -1
+    this.cachedPageId = null
+    this.sections = []
+    this.components = []
   }
 
   getSections(
     graph: SceneGraph,
-    viewport: Viewport,
+    viewport: Viewport
   ): Array<{ node: SceneNode; absX: number; absY: number; nested: boolean }> {
     return collectVisibleLabels(graph, viewport, this.sections, (cached) => ({
-      nested: cached.nested,
-    }));
+      nested: cached.nested
+    }))
   }
 
   getComponents(
     graph: SceneGraph,
-    viewport: Viewport,
+    viewport: Viewport
   ): Array<{ node: SceneNode; absX: number; absY: number; inside: boolean }> {
     return collectVisibleLabels(graph, viewport, this.components, () => ({
-      inside: false,
-    }));
+      inside: false
+    }))
   }
 
   getAllSections(): readonly CachedSection[] {
-    return this.sections;
+    return this.sections
   }
 
   getAllComponents(): readonly CachedComponent[] {
-    return this.components;
+    return this.components
   }
 
   private rebuild(graph: SceneGraph, pageId: string | null): void {
-    this.sections = [];
-    this.components = [];
+    this.sections = []
+    this.components = []
 
-    const pageNode = graph.getNode(pageId ?? graph.rootId);
-    if (!pageNode) return;
+    const pageNode = graph.getNode(pageId ?? graph.rootId)
+    if (!pageNode) return
 
-    this.walkChildren(graph, pageNode.id, 0, 0, false);
+    this.walkChildren(graph, pageNode.id, 0, 0, false)
   }
 
   private walkChildren(
@@ -122,30 +122,30 @@ export class LabelCache {
     parentId: string,
     ox: number,
     oy: number,
-    insideSection: boolean,
+    insideSection: boolean
   ): void {
-    const parent = graph.getNode(parentId);
-    if (!parent) return;
-    const parentType = parent.type;
+    const parent = graph.getNode(parentId)
+    if (!parent) return
+    const parentType = parent.type
 
     for (const childId of parent.childIds) {
-      const child = graph.getNode(childId);
-      if (!child || !child.visible) continue;
-      const ax = ox + child.x;
-      const ay = oy + child.y;
+      const child = graph.getNode(childId)
+      if (!child || !child.visible) continue
+      const ax = ox + child.x
+      const ay = oy + child.y
 
-      if (child.type === "SECTION") {
-        this.sections.push({ nodeId: childId, absX: ax, absY: ay, nested: insideSection });
-        this.walkChildren(graph, childId, ax, ay, true);
+      if (child.type === 'SECTION') {
+        this.sections.push({ nodeId: childId, absX: ax, absY: ay, nested: insideSection })
+        this.walkChildren(graph, childId, ax, ay, true)
       } else if (LABEL_TYPES.has(child.type)) {
         if (COMPONENT_LABEL_PARENT_TYPES.has(parentType)) {
-          this.components.push({ nodeId: childId, absX: ax, absY: ay, parentType });
+          this.components.push({ nodeId: childId, absX: ax, absY: ay, parentType })
         }
         if (child.childIds.length > 0) {
-          this.walkChildren(graph, childId, ax, ay, insideSection);
+          this.walkChildren(graph, childId, ax, ay, insideSection)
         }
       } else if (child.childIds.length > 0) {
-        this.walkChildren(graph, childId, ax, ay, insideSection);
+        this.walkChildren(graph, childId, ax, ay, insideSection)
       }
     }
   }

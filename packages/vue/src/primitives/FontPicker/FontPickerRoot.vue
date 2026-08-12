@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { templateRef, unrefElement } from "@vueuse/core";
+import { nextTick } from 'vue'
+import { templateRef, unrefElement } from '@vueuse/core'
 import {
   ComboboxAnchor,
   ComboboxContent,
@@ -11,46 +12,46 @@ import {
   ComboboxTrigger,
   ComboboxVirtualizer,
   ComboboxViewport,
-  type AcceptableValue,
-} from "reka-ui";
-import { nextTick } from "vue";
+  type AcceptableValue
+} from 'reka-ui'
 
-import type { FontPickerUi } from "#vue/primitives/FontPicker/types";
 import {
   useFontPicker,
   type FontAccessController,
-  type FontFamilyOption,
-} from "#vue/primitives/FontPicker/useFontPicker";
+  type FontFamilyOption
+} from '#vue/primitives/FontPicker/useFontPicker'
+
+import type { FontPickerUI } from '#vue/primitives/FontPicker/types'
 
 const { listFamilies, localFontAccess, ui, emptySearchText, emptyFontsText, emptyFontsHint } =
   defineProps<{
-    listFamilies: () => Promise<string[] | FontFamilyOption[]>;
-    localFontAccess?: FontAccessController;
-    ui?: FontPickerUi;
-    emptySearchText?: string;
-    emptyFontsText?: string;
-    emptyFontsHint?: string;
-  }>();
+    listFamilies: () => Promise<string[] | FontFamilyOption[]>
+    localFontAccess?: FontAccessController
+    ui?: FontPickerUI
+    emptySearchText?: string
+    emptyFontsText?: string
+    emptyFontsHint?: string
+  }>()
 
-const modelValue = defineModel<string>({ required: true });
-const emit = defineEmits<{ select: [family: string] }>();
+const modelValue = defineModel<string>({ required: true })
+const emit = defineEmits<{ select: [family: string] }>()
 
-const contentRef = templateRef<HTMLElement>("contentRef");
+const contentRef = templateRef<HTMLElement>('contentRef')
 
 function focusSearchInput() {
   nextTick(() => {
-    const content = unrefElement(contentRef);
-    if (!(content instanceof HTMLElement)) return;
-    content.querySelector<HTMLInputElement>("input")?.focus();
-  });
+    const content = unrefElement(contentRef)
+    if (!(content instanceof HTMLElement)) return
+    content.querySelector<HTMLInputElement>('input')?.focus()
+  })
 }
 
 const { searchTerm, open, filtered, loading, accessState, requestAccess, select } = useFontPicker({
   modelValue,
   listFamilies,
   localFontAccess,
-  onSelect: (family) => emit("select", family),
-});
+  onSelect: (family) => emit('select', family)
+})
 </script>
 
 <template>
@@ -60,7 +61,7 @@ const { searchTerm, open, filtered, loading, accessState, requestAccess, select 
     :ignore-filter="true"
     @update:model-value="
       (v: AcceptableValue) => {
-        if (typeof v === 'string') select(v);
+        if (typeof v === 'string') select(v)
       }
     "
   >
@@ -124,7 +125,7 @@ const { searchTerm, open, filtered, loading, accessState, requestAccess, select 
           </ComboboxVirtualizer>
 
           <div v-if="filtered.length === 0 && searchTerm" :class="ui?.empty">
-            {{ emptySearchText ?? "No fonts found" }}
+            {{ emptySearchText ?? 'No fonts found' }}
           </div>
           <div v-else-if="filtered.length === 0" :class="ui?.empty">
             <div>
@@ -137,7 +138,7 @@ const { searchTerm, open, filtered, loading, accessState, requestAccess, select 
               <p v-else-if="accessState === 'unsupported'">
                 Local fonts are not available in this browser.
               </p>
-              <p v-else>{{ emptyFontsText ?? "No local fonts available." }}</p>
+              <p v-else>{{ emptyFontsText ?? 'No local fonts available.' }}</p>
               <p v-if="emptyFontsHint" class="mt-1">{{ emptyFontsHint }}</p>
               <button
                 v-if="accessState === 'prompt'"
@@ -146,7 +147,7 @@ const { searchTerm, open, filtered, loading, accessState, requestAccess, select 
                 :disabled="loading"
                 @click="requestAccess"
               >
-                {{ loading ? "Loading…" : "Allow local fonts" }}
+                {{ loading ? 'Loading…' : 'Allow local fonts' }}
               </button>
             </div>
           </div>

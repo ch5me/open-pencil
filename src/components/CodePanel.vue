@@ -1,90 +1,92 @@
 <script setup lang="ts">
-import { JSX_REFERENCE, selectionToJSX } from "@open-pencil/core/design-jsx";
-import type { JSXFormat } from "@open-pencil/core/design-jsx";
-import { useI18n, useSceneComputed } from "@open-pencil/vue";
-import { useClipboard } from "@vueuse/core";
-import Prism from "prismjs";
-import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from "reka-ui";
-import { computed, ref, watch } from "vue";
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from 'reka-ui'
+import { useClipboard } from '@vueuse/core'
+import { computed, ref, watch } from 'vue'
 
-import { useEditorStore } from "@/app/editor/active-store";
-import AppTextButton from "@/components/ui/AppTextButton.vue";
-import Tip from "@/components/ui/Tip.vue";
+import { JSX_REFERENCE, selectionToJSX } from '@open-pencil/core/design-jsx'
+import { useI18n, useSceneComputed } from '@open-pencil/vue'
 
-const store = useEditorStore();
-const { copy, copied } = useClipboard({ copiedDuring: 2000 });
-const { dialogs } = useI18n();
-const jsxFormat = ref<JSXFormat>("openpencil");
-const showImporter = ref(false);
-const importHTML = ref("");
-const importCSS = ref("");
-const importError = ref("");
-const importing = ref(false);
+import { highlightJSX } from '@/app/code/highlight'
+import { useEditorStore } from '@/app/editor/active-store'
+import AppPlaceholder from '@/components/ui/AppPlaceholder.vue'
+import AppTextButton from '@/components/ui/AppTextButton.vue'
+import Tip from '@/components/ui/Tip.vue'
+
+import type { JSXFormat } from '@open-pencil/core/design-jsx'
+
+const store = useEditorStore()
+const { copy, copied } = useClipboard({ copiedDuring: 2000 })
+const { dialogs } = useI18n()
+const jsxFormat = ref<JSXFormat>('openpencil')
+const showImporter = ref(false)
+const importHTML = ref('')
+const importCSS = ref('')
+const importError = ref('')
+const importing = ref(false)
 
 function toggleFormat() {
-  jsxFormat.value = jsxFormat.value === "openpencil" ? "tailwind" : "openpencil";
+  jsxFormat.value = jsxFormat.value === 'openpencil' ? 'tailwind' : 'openpencil'
 }
 
 const jsxCode = useSceneComputed(() => {
-  void store.state.sceneVersion;
-  const ids = [...store.state.selectedIds];
-  if (ids.length === 0) return "";
-  return selectionToJSX(ids, store.graph, jsxFormat.value);
-});
+  void store.state.sceneVersion
+  const ids = [...store.state.selectedIds]
+  if (ids.length === 0) return ''
+  return selectionToJSX(ids, store.graph, jsxFormat.value)
+})
 
 const highlightedLines = computed(() => {
-  if (!jsxCode.value) return [];
-  const grammar = Prism.languages.jsx ?? Prism.languages.javascript;
-  return jsxCode.value.split("\n").map((line) => Prism.highlight(line, grammar, "jsx"));
-});
+  if (!jsxCode.value) return []
+  return jsxCode.value.split('\n').map(highlightJSX)
+})
 
-const { copy: copyRef, copied: copiedRef } = useClipboard({ copiedDuring: 2000 });
+const { copy: copyRef, copied: copiedRef } = useClipboard({ copiedDuring: 2000 })
 
-const canImport = computed(() => importHTML.value.trim().length > 0);
+const canImport = computed(() => importHTML.value.trim().length > 0)
 
 watch([importHTML, importCSS], () => {
-  importError.value = "";
-});
+  importError.value = ''
+})
 
 function errorMessage(error: unknown) {
-  if (error instanceof Error && error.message) return error.message;
-  return "Import failed. Check the HTML and CSS, then try again.";
+  if (error instanceof Error && error.message) return error.message
+  return dialogs.value.importFailed
 }
 
 function toggleImporter() {
-  showImporter.value = !showImporter.value;
+  showImporter.value = !showImporter.value
 }
 
 async function pasteImportHTML() {
   try {
-    importError.value = "";
-    importHTML.value = await navigator.clipboard.readText();
+    importError.value = ''
+    importHTML.value = await navigator.clipboard.readText()
   } catch (e) {
-    importError.value = errorMessage(e);
+    importError.value = errorMessage(e)
   }
 }
 
 async function importCode() {
-  if (!canImport.value || importing.value) return;
+  if (!canImport.value || importing.value) return
   try {
-    importing.value = true;
-    importError.value = "";
+    importing.value = true
+    importError.value = ''
     await store.importDOMText(importHTML.value, {
-      cssText: importCSS.value.trim() || undefined,
-    });
+      cssText: importCSS.value.trim() || undefined
+    })
   } catch (e) {
-    importError.value = errorMessage(e);
+    importError.value = errorMessage(e)
   } finally {
-    importing.value = false;
+    importing.value = false
   }
 }
 
 function copyCode() {
-  copy(jsxCode.value);
+  copy(jsxCode.value)
 }
 
 function copyReference() {
-  copyRef(JSX_REFERENCE);
+  copyRef(JSX_REFERENCE)
 }
 </script>
 
@@ -98,27 +100,27 @@ function copyReference() {
       <div class="flex items-center gap-1.5">
         <span class="text-[11px] text-muted">JSX</span>
         <AppTextButton
-          test-id="code-panel-format-toggle"
+          data-test-id="code-panel-format-toggle"
           :ui="{ base: 'rounded px-1.5 py-0.5 text-[11px] hover:bg-hover' }"
           @click="toggleFormat"
         >
-          {{ jsxFormat === "openpencil" ? "OpenPencil" : "Tailwind" }}
+          {{ jsxFormat === 'openpencil' ? 'OpenPencil' : 'Tailwind' }}
         </AppTextButton>
       </div>
       <div class="flex items-center gap-1">
         <AppTextButton
-          test-id="code-panel-import-toggle"
+          data-test-id="code-panel-import-toggle"
           :ui="{ base: 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-hover' }"
           @click="toggleImporter"
         >
           <icon-lucide-file-input class="size-3" />
-          Import
+          {{ dialogs.importLabel }}
         </AppTextButton>
         <Tip :label="dialogs.copyJSXReference">
           <AppTextButton
-            test-id="code-panel-copy-ref"
+            data-test-id="code-panel-copy-ref"
             :ui="{
-              base: 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-hover',
+              base: 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-hover'
             }"
             @click="copyReference"
           >
@@ -127,7 +129,7 @@ function copyReference() {
           </AppTextButton>
         </Tip>
         <AppTextButton
-          test-id="code-panel-copy"
+          data-test-id="code-panel-copy"
           :ui="{ base: 'flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-hover' }"
           @click="copyCode"
         >
@@ -145,17 +147,17 @@ function copyReference() {
     >
       <div class="mb-2 flex items-center justify-between gap-2">
         <div class="min-w-0">
-          <div class="text-xs font-medium text-surface">Import HTML/CSS</div>
+          <div class="text-xs font-medium text-surface">{{ dialogs.importHTMLCSS }}</div>
           <div class="text-[11px] text-muted">
-            Paste HTML plus optional CSS or compiled Tailwind CSS.
+            {{ dialogs.importHTMLCSSDescription }}
           </div>
         </div>
         <AppTextButton
-          test-id="code-panel-paste-import"
+          data-test-id="code-panel-paste-import"
           :ui="{ base: 'rounded px-1.5 py-0.5 text-[11px] hover:bg-hover' }"
           @click="pasteImportHTML"
         >
-          Paste
+          {{ dialogs.paste }}
         </AppTextButton>
       </div>
       <textarea
@@ -180,31 +182,33 @@ function copyReference() {
         {{ importError }}
       </div>
       <div class="flex items-center justify-between gap-2">
-        <span class="text-[11px] text-muted">Import replaces the current document.</span>
+        <span class="text-[11px] text-muted">{{ dialogs.importReplacesDocument }}</span>
         <AppTextButton
-          test-id="code-panel-import"
+          data-test-id="code-panel-import"
           :ui="{
             base: [
               'rounded px-2 py-1 text-[11px]',
               canImport && !importing
                 ? 'bg-accent text-black hover:bg-accent/90'
-                : 'cursor-not-allowed opacity-50',
-            ].join(' '),
+                : 'cursor-not-allowed opacity-50'
+            ].join(' ')
           }"
           @click="importCode"
         >
-          {{ importing ? "Importing…" : "Import to canvas" }}
+          {{ importing ? dialogs.importing : dialogs.importToCanvas }}
         </AppTextButton>
       </div>
     </div>
 
-    <div
+    <AppPlaceholder
       v-if="!jsxCode"
       data-test-id="code-panel-empty"
-      class="flex flex-1 items-center justify-center px-4 text-center"
+      :label="dialogs.selectLayerForJSX"
     >
-      <span class="text-xs text-muted">{{ dialogs.selectLayerForJSX }}</span>
-    </div>
+      <template #icon>
+        <icon-lucide-code-2 class="size-5" />
+      </template>
+    </AppPlaceholder>
 
     <ScrollAreaRoot v-else data-test-id="code-panel" class="min-h-0 flex-1">
       <ScrollAreaViewport class="code-highlight size-full">

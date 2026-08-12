@@ -68,6 +68,14 @@ export const programmableSidebar = (
       { text: labels.jsxRenderer, link: `${prefix}/programmable/jsx-renderer` },
       { text: labels.mcpServer, link: `${prefix}/programmable/mcp-server` },
       { text: labels.aiChat, link: `${prefix}/programmable/ai-chat` },
+      ...(!prefix
+        ? [
+            {
+              text: 'BYOK Compatibility',
+              link: '/programmable/byok-provider-compatibility',
+            },
+          ]
+        : []),
       { text: labels.collaboration, link: `${prefix}/programmable/collaboration` },
     ],
   },
@@ -93,9 +101,6 @@ export const developmentSidebar = (prefix: string, label: string): DefaultTheme.
     items: [
       { text: 'Contributing', link: `${prefix}/development/contributing` },
       { text: 'Testing', link: `${prefix}/development/testing` },
-      { text: 'Hosted Operating Modes', link: `${prefix}/development/hosted-operating-modes` },
-      { text: 'Hosted Environment Topology', link: `${prefix}/development/hosted-environment-topology` },
-      { text: 'ELF Auth Naming', link: `${prefix}/development/elf-auth-naming` },
       { text: 'Roadmap', link: `${prefix}/development/roadmap` },
       { text: 'Renderer Profiler', link: `${prefix}/development/renderer-profiler` },
       { text: 'Vector Conversion', link: `${prefix}/development/vector-conversion` },

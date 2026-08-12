@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useCollabPanelContext } from "@/components/CollabPanel/context";
-import AppInput from "@/components/ui/AppInput.vue";
+import AppInput from '@/components/ui/AppInput.vue'
+import { useCollabPanelContext } from '@/components/CollabPanel/context'
 
-const collab = useCollabPanelContext();
+const collab = useCollabPanelContext()
 </script>
 
 <template>
@@ -10,7 +10,7 @@ const collab = useCollabPanelContext();
     <label class="mb-1 block text-xs text-muted">{{ collab.dialogs.yourName }}</label>
     <AppInput
       v-model="collab.nameDraft"
-      test-id="collab-name-input"
+      data-test-id="collab-name-input"
       :placeholder="collab.dialogs.enterYourName"
       @enter="collab.share"
     />
@@ -35,9 +35,9 @@ const collab = useCollabPanelContext();
   <div class="flex items-center gap-1.5">
     <AppInput
       v-model="collab.joinInput"
-      test-id="collab-join-input"
+      data-test-id="collab-join-input"
       :placeholder="collab.dialogs.pasteRoomLinkOrId"
-      :ui="{ base: 'min-w-0 flex-1' }"
+      class="min-w-0 flex-1"
       @enter="collab.join"
     />
     <button

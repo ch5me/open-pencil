@@ -1,6 +1,6 @@
-import { IS_BROWSER, IS_TAURI } from "@open-pencil/core/constants";
+import { IS_BROWSER, IS_TAURI } from '@open-pencil/core/constants'
 
-import ACP_DESIGN_CONTEXT from "@/app/ai/acp/design-context.md";
+import ACP_DESIGN_CONTEXT from '@/app/ai/acp/design-context.md'
 
 export {
   IS_BROWSER,
@@ -58,20 +58,20 @@ export {
   COMPONENT_LABEL_ICON_SIZE,
   COMPONENT_LABEL_ICON_GAP,
   RULER_TARGET_PIXEL_SPACING,
-  RULER_MAJOR_TOLERANCE,
-} from "@open-pencil/core/constants";
+  RULER_MAJOR_TOLERANCE
+} from '@open-pencil/core/constants'
 
-import type { Color } from "@open-pencil/core/types";
+import type { Color } from '@open-pencil/scene-graph/primitives'
 
-export const TRYSTERO_APP_ID = "openpencil";
-export const ROOM_ID_LENGTH = 8;
-export const ROOM_ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+export const TRYSTERO_APP_ID = 'openpencil'
+export const ROOM_ID_LENGTH = 8
+export const ROOM_ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789'
 
-export const WEB_APP_ORIGIN = "https://app.openpencil.dev";
+export const WEB_APP_ORIGIN = 'https://app.openpencil.dev'
 
-export function getShareUrl(roomId: string): string {
-  const base = IS_TAURI || !IS_BROWSER ? WEB_APP_ORIGIN : window.location.origin;
-  return `${base}/share/${roomId}`;
+export function getShareURL(roomId: string): string {
+  const base = IS_TAURI || !IS_BROWSER ? WEB_APP_ORIGIN : window.location.origin
+  return `${base}/share/${roomId}`
 }
 
 export const PEER_COLORS: Color[] = [
@@ -82,8 +82,8 @@ export const PEER_COLORS: Color[] = [
   { r: 0.61, g: 0.15, b: 0.69, a: 1 },
   { r: 1.0, g: 0.34, b: 0.13, a: 1 },
   { r: 0.0, g: 0.74, b: 0.83, a: 1 },
-  { r: 0.91, g: 0.12, b: 0.39, a: 1 },
-];
+  { r: 0.91, g: 0.12, b: 0.39, a: 1 }
+]
 
 export {
   DEFAULT_SHAPE_FILL,
@@ -92,29 +92,33 @@ export {
   SECTION_DEFAULT_STROKE,
   ZOOM_DIVISOR,
   ZOOM_SCALE_MIN,
-  ZOOM_SCALE_MAX,
-} from "@open-pencil/core/constants";
+  ZOOM_SCALE_MAX
+} from '@open-pencil/core/constants'
 
-export const HANDLE_SIZE = 6;
+export const ASSET_GRID_THUMBNAIL_SIZE = 96
+export const ASSET_LIST_THUMBNAIL_SIZE = 40
+export const ASSET_THUMBNAIL_RENDER_SCALE = 2
 
-export const HALF_FRAC = 3 / 7;
-export const HUD_TOP = 12 + 32 + 6 + 32 + 12;
+export const HANDLE_SIZE = 6
 
-export const SWIPE_THRESHOLD = 30;
-export const SWIPE_VELOCITY_THRESHOLD = 500;
-export const DRAWER_SPRING_STIFFNESS = 800;
-export const DRAWER_SPRING_DAMPING = 50;
+export const HALF_FRAC = 3 / 7
+export const HUD_TOP = 12 + 32 + 6 + 32 + 12
 
-export const ACTION_TOAST_DURATION = 800;
-export const DRAG_DEAD_ZONE = 4;
-export const PEN_CLOSE_THRESHOLD = 8;
-export const ROTATION_SNAP_DEGREES = 15;
-export const CORNER_ROTATE_ZONE = 16;
-export const DEFAULT_TEXT_WIDTH = 200;
-export const DEFAULT_TEXT_HEIGHT = 24;
-export const AUTO_LAYOUT_BREAK_THRESHOLD = 8;
-export const HANDLE_HIT_RADIUS = 6;
+export const SWIPE_THRESHOLD = 30
+export const SWIPE_VELOCITY_THRESHOLD = 500
+export const DRAWER_SPRING_STIFFNESS = 800
+export const DRAWER_SPRING_DAMPING = 50
 
-export const ACP_PERMISSION_TIMEOUT_MS = 60_000;
+export const ACTION_TOAST_DURATION = 800
+export const DRAG_DEAD_ZONE = 4
+export const PEN_CLOSE_THRESHOLD = 8
+export const ROTATION_SNAP_DEGREES = 15
+export const CORNER_ROTATE_ZONE = 16
+export const DEFAULT_TEXT_WIDTH = 200
+export const DEFAULT_TEXT_HEIGHT = 24
+export const AUTO_LAYOUT_BREAK_THRESHOLD = 8
+export const HANDLE_HIT_RADIUS = 6
 
-export { ACP_DESIGN_CONTEXT };
+export const ACP_PERMISSION_TIMEOUT_MS = 60_000
+
+export { ACP_DESIGN_CONTEXT }

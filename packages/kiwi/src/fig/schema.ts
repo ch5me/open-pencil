@@ -1,7 +1,7 @@
-import { parseSchema, validateSchema } from "../schema-runtime";
-import schemaText from "./schema/fig.kiwi?raw";
+import { parseSchema, validateSchema } from '../schema-runtime'
+import schemaText from './schema/fig.kiwi?raw'
 
-const schema = parseSchema(schemaText);
-validateSchema(schema);
+const schema = parseSchema(schemaText)
+validateSchema(schema)
 
-export default schema;
+export default schema

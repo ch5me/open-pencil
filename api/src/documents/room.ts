@@ -6,7 +6,7 @@ import {
   createEmptyPersistedRoomState,
   shouldCompactPersistedRoomState,
   type PersistedRoomState
-} from './room-persistence'
+} from './room/persistence'
 
 type WireMessageType = 'yjs-update' | 'awareness' | 'sync-step1' | 'sync-reply' | 'room-state'
 
@@ -53,10 +53,12 @@ export class DocumentRoomDO implements DurableObject {
     const server = pair[1]
     this.state.acceptWebSocket(server)
 
-    server.send(JSON.stringify({
-      type: 'room-state',
-      data: encodeBase64(Y.encodeStateAsUpdate(this.ydoc))
-    } satisfies WireMessage))
+    server.send(
+      JSON.stringify({
+        type: 'room-state',
+        data: encodeBase64(Y.encodeStateAsUpdate(this.ydoc))
+      } satisfies WireMessage)
+    )
 
     for (const payload of this.peerAwareness.values()) {
       server.send(payload)
@@ -77,7 +79,10 @@ export class DocumentRoomDO implements DurableObject {
     const wire = parseWireMessage(payload)
     const type = wire?.type ?? null
 
-    if (wire && (wire.type === 'yjs-update' || wire.type === 'sync-reply' || wire.type === 'room-state')) {
+    if (
+      wire &&
+      (wire.type === 'yjs-update' || wire.type === 'sync-reply' || wire.type === 'room-state')
+    ) {
       const update = decodeBase64(wire.data)
       Y.applyUpdate(this.ydoc, update, 'remote')
       void this.persistYjsUpdate(update)
@@ -116,7 +121,11 @@ export class DocumentRoomDO implements DurableObject {
   }
 
   private async persistYjsUpdate(update: Uint8Array) {
-    const nextState = appendPendingRoomUpdate(this.roomState, encodeBase64(update), update.byteLength)
+    const nextState = appendPendingRoomUpdate(
+      this.roomState,
+      encodeBase64(update),
+      update.byteLength
+    )
     this.roomState = shouldCompactPersistedRoomState(nextState)
       ? compactPersistedRoomState(
           nextState,

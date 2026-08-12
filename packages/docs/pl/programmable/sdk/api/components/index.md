@@ -35,12 +35,9 @@ description: Dokumentacja komponentów bezstanowych prymitywów Vue w @open-penc
 <SdkCardGroup>
   <SdkCard title="ColorPickerRoot" to="/programmable/sdk/api/components/color-picker-root" description="Prymityw selektora kolorów oparty na popover." />
   <SdkCard title="ColorInputRoot" to="/programmable/sdk/api/components/color-input-root" description="Bezstanowy pomocnik pola wejściowego koloru." />
-  <SdkCard title="FillPickerRoot" to="/programmable/sdk/api/components/fill-picker-root" description="Prymityw selektora wypełnień oparty na popover." />
   <SdkCard title="FontPickerRoot" to="/programmable/sdk/api/components/font-picker-root" description="Przeszukiwalny prymityw selektora czcionek." />
   <SdkCard title="GradientEditorRoot" to="/programmable/sdk/api/components/gradient-editor-root" description="Prymityw korzenia do edycji gradientów." />
   <SdkCard title="GradientEditorBar" to="/programmable/sdk/api/components/gradient-editor-bar" description="Przeciągany prymityw paska gradientu." />
   <SdkCard title="GradientEditorStop" to="/programmable/sdk/api/components/gradient-editor-stop" description="Prymityw jednego punktu zatrzymania gradientu." />
-  <SdkCard title="ScrubInputRoot" to="/programmable/sdk/api/components/scrub-input-root" description="Korzeń numerycznego pola wejściowego z przeciąganiem." />
-  <SdkCard title="ScrubInputField" to="/programmable/sdk/api/components/scrub-input-field" description="Prymityw edytowalnego pola wejściowego." />
-  <SdkCard title="ScrubInputDisplay" to="/programmable/sdk/api/components/scrub-input-display" description="Prymityw wyświetlacza w trybie nieEdycji." />
+  <SdkCard title="NumberField" to="/programmable/sdk/api/components/number-field" description="Numeric field with scrubbing, expressions, and keyboard stepping." />
 </SdkCardGroup>

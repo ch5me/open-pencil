@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { templateRef } from "@vueuse/core";
-import { watchEffect } from "vue";
+import { templateRef } from '@vueuse/core'
+import { watchEffect } from 'vue'
 
-import { useCanvasContext } from "#vue/canvas/context";
+import { useCanvasContext } from '#vue/canvas/context'
 
-const { canvasRef } = useCanvasContext();
-const surfaceRef = templateRef<HTMLCanvasElement>("surfaceRef");
+const { canvasRef } = useCanvasContext()
+const surfaceRef = templateRef<HTMLCanvasElement>('surfaceRef')
 
 watchEffect(() => {
-  canvasRef.value = surfaceRef.value;
-});
+  canvasRef.value = surfaceRef.value
+})
 </script>
 
 <template>
@@ -17,5 +17,5 @@ watchEffect(() => {
 </template>
 
 <script lang="ts">
-export default { inheritAttrs: false };
+export default { inheritAttrs: false }
 </script>

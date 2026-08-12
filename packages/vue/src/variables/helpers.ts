@@ -1,77 +1,78 @@
-import { colorToHexRaw, parseColor } from "@open-pencil/core/color";
-import { BLACK } from "@open-pencil/core/constants";
-import type { Editor } from "@open-pencil/core/editor";
-import { randomHex } from "@open-pencil/core/random";
+import type { Ref } from 'vue'
+
+import { colorToHexRaw, parseColor } from '@open-pencil/core/color'
+import { BLACK } from '@open-pencil/core/constants'
+import type { Editor } from '@open-pencil/core/editor'
+import { randomHex } from '@open-pencil/core/random'
 import type {
   Variable,
   VariableCollection,
   VariableType,
-  VariableValue,
-} from "@open-pencil/core/scene-graph";
-import type { Ref } from "vue";
+  VariableValue
+} from '@open-pencil/scene-graph'
 
 export function createVariableCollectionActions(editor: Editor, activeCollectionId: Ref<string>) {
   function setActiveCollection(id: string) {
-    activeCollectionId.value = id;
+    activeCollectionId.value = id
   }
 
   function addCollection() {
-    const id = `col:${randomHex(8)}`;
+    const id = `col:${randomHex(8)}`
     const collection: VariableCollection = {
       id,
-      name: "New collection",
-      modes: [{ modeId: "default", name: "Mode 1" }],
-      defaultModeId: "default",
-      variableIds: [],
-    };
-    editor.addCollection(collection);
-    activeCollectionId.value = id;
+      name: 'New collection',
+      modes: [{ modeId: 'default', name: 'Mode 1' }],
+      defaultModeId: 'default',
+      variableIds: []
+    }
+    editor.addCollection(collection)
+    activeCollectionId.value = id
   }
 
   function renameCollection(id: string, newName: string) {
-    editor.renameCollection(id, newName);
+    editor.renameCollection(id, newName)
   }
 
   function removeCollection(id: string) {
-    editor.removeCollection(id);
-    const cols = [...editor.getCollections()];
-    activeCollectionId.value = cols[0]?.id ?? "";
+    editor.removeCollection(id)
+    const cols = [...editor.getCollections()]
+    activeCollectionId.value = cols[0]?.id ?? ''
   }
 
   function addMode(): string | undefined {
-    const colId = activeCollectionId.value;
-    if (!colId) return undefined;
-    return editor.addMode(colId);
+    const colId = activeCollectionId.value
+    if (!colId) return undefined
+    return editor.addMode(colId)
   }
 
   function removeMode(modeId: string) {
-    const colId = activeCollectionId.value;
-    if (!colId) return;
-    editor.removeMode(colId, modeId);
+    const colId = activeCollectionId.value
+    if (!colId) return
+    editor.removeMode(colId, modeId)
   }
 
   function renameMode(modeId: string, newName: string) {
-    const colId = activeCollectionId.value;
-    if (!colId) return;
-    editor.renameMode(colId, modeId, newName);
+    const colId = activeCollectionId.value
+    if (!colId) return
+    editor.renameMode(colId, modeId, newName)
   }
 
   function setDefaultMode(modeId: string) {
-    const colId = activeCollectionId.value;
-    if (!colId) return;
-    editor.setDefaultMode(colId, modeId);
+    const colId = activeCollectionId.value
+    if (!colId) return
+    editor.setDefaultMode(colId, modeId)
   }
 
   function duplicateMode(modeId: string): string | undefined {
-    const colId = activeCollectionId.value;
-    if (!colId) return undefined;
-    return editor.duplicateMode(colId, modeId);
+    const colId = activeCollectionId.value
+    if (!colId) return undefined
+    return editor.duplicateMode(colId, modeId)
   }
 
   function setActiveMode(modeId: string) {
-    const colId = activeCollectionId.value;
-    if (!colId) return;
-    editor.setActiveMode(colId, modeId);
+    const colId = activeCollectionId.value
+    if (!colId) return
+    editor.setActiveMode(colId, modeId)
   }
 
   return {
@@ -84,36 +85,36 @@ export function createVariableCollectionActions(editor: Editor, activeCollection
     renameMode,
     setDefaultMode,
     duplicateMode,
-    setActiveMode,
-  };
+    setActiveMode
+  }
 }
 
 export function createVariableValueActions(
   editor: Editor,
-  getActiveCollection: () => VariableCollection | null,
+  getActiveCollection: () => VariableCollection | null
 ) {
   function defaultVariableValue(type: VariableType): VariableValue {
-    if (type === "COLOR") return { ...BLACK };
-    if (type === "FLOAT") return 0;
-    if (type === "BOOLEAN") return false;
-    return "";
+    if (type === 'COLOR') return { ...BLACK }
+    if (type === 'FLOAT') return 0
+    if (type === 'BOOLEAN') return false
+    return ''
   }
 
   function defaultVariableName(type: VariableType): string {
-    if (type === "COLOR") return "New color";
-    if (type === "FLOAT") return "New number";
-    if (type === "BOOLEAN") return "New boolean";
-    return "New text";
+    if (type === 'COLOR') return 'New color'
+    if (type === 'FLOAT') return 'New number'
+    if (type === 'BOOLEAN') return 'New boolean'
+    return 'New text'
   }
 
-  function addVariable(type: VariableType = "COLOR") {
-    const col = getActiveCollection();
-    if (!col) return;
+  function addVariable(type: VariableType = 'COLOR') {
+    const col = getActiveCollection()
+    if (!col) return
 
-    const id = `var:${randomHex(8)}`;
-    const valuesByMode: Record<string, VariableValue> = {};
+    const id = `var:${randomHex(8)}`
+    const valuesByMode: Record<string, VariableValue> = {}
     for (const mode of col.modes) {
-      valuesByMode[mode.modeId] = defaultVariableValue(type);
+      valuesByMode[mode.modeId] = defaultVariableValue(type)
     }
 
     editor.addVariable({
@@ -122,46 +123,46 @@ export function createVariableValueActions(
       type,
       collectionId: col.id,
       valuesByMode,
-      description: "",
-      hiddenFromPublishing: false,
-    });
+      description: '',
+      hiddenFromPublishing: false
+    })
   }
 
   function removeVariable(id: string) {
-    editor.removeVariable(id);
+    editor.removeVariable(id)
   }
 
   function renameVariable(id: string, newName: string) {
-    editor.renameVariable(id, newName);
+    editor.renameVariable(id, newName)
   }
 
   function updateVariableValue(id: string, modeId: string, value: VariableValue) {
-    editor.updateVariableValue(id, modeId, value);
+    editor.updateVariableValue(id, modeId, value)
   }
 
   function formatModeValue(variable: Variable, modeId: string): string {
-    const value = variable.valuesByMode[modeId];
-    if (typeof value === "object" && "r" in value) return colorToHexRaw(value);
-    if (typeof value === "object" && "aliasId" in value) {
-      const aliased = editor.getVariable(value.aliasId);
-      return aliased ? `→ ${aliased.name}` : "→ ?";
+    const value = variable.valuesByMode[modeId]
+    if (typeof value === 'object' && 'r' in value) return colorToHexRaw(value)
+    if (typeof value === 'object' && 'aliasId' in value) {
+      const aliased = editor.getVariable(value.aliasId)
+      return aliased ? `→ ${aliased.name}` : '→ ?'
     }
-    return String(value);
+    return String(value)
   }
 
   function parseVariableValue(variable: Variable, raw: string): VariableValue | undefined {
-    if (variable.type === "COLOR") return parseColor(raw.startsWith("#") ? raw : `#${raw}`);
-    if (variable.type === "FLOAT") {
-      const num = Number.parseFloat(raw);
-      return Number.isNaN(num) ? undefined : num;
+    if (variable.type === 'COLOR') return parseColor(raw.startsWith('#') ? raw : `#${raw}`)
+    if (variable.type === 'FLOAT') {
+      const num = Number.parseFloat(raw)
+      return Number.isNaN(num) ? undefined : num
     }
-    if (variable.type === "BOOLEAN") return raw.toLowerCase() === "true";
-    return raw;
+    if (variable.type === 'BOOLEAN') return raw.toLowerCase() === 'true'
+    return raw
   }
 
   function shortName(variable: Variable): string {
-    const parts = variable.name.split("/");
-    return parts[parts.length - 1] ?? variable.name;
+    const parts = variable.name.split('/')
+    return parts[parts.length - 1] ?? variable.name
   }
 
   return {
@@ -171,6 +172,6 @@ export function createVariableValueActions(
     updateVariableValue,
     formatModeValue,
     parseVariableValue,
-    shortName,
-  };
+    shortName
+  }
 }

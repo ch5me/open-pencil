@@ -1,10 +1,10 @@
-import { mock } from "bun:test";
+import { mock } from 'bun:test'
 
-import type { SkiaRenderer } from "#core/canvas/renderer";
-import { renderEffects } from "#core/canvas/shadows";
+import type { SkiaRenderer } from '#core/canvas/renderer'
+import { renderEffects } from '#core/canvas/shadows'
 
 export function mockCalls(fn: ReturnType<typeof mock>): unknown[][] {
-  return (fn as { mock: { calls: unknown[][] } }).mock.calls;
+  return (fn as { mock: { calls: unknown[][] } }).mock.calls
 }
 
 export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaRenderer {
@@ -15,22 +15,23 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
       RRectXY: mock(() => new Float32Array(12)),
       ClipOp: { Intersect: 0 },
       Path: class {
-        addOval = mock(() => undefined);
-        addRect = mock(() => undefined);
-        addRRect = mock(() => undefined);
-        addPath = mock(() => undefined);
-        op = mock(() => true);
-        transform = mock(() => undefined);
-        delete = mock(() => undefined);
-        copy = mock(() => this);
-        stroke = mock(() => this);
-        moveTo = mock(() => undefined);
-        lineTo = mock(() => undefined);
-        cubicTo = mock(() => undefined);
-        close = mock(() => undefined);
+        addOval = mock(() => undefined)
+        addRect = mock(() => undefined)
+        addRRect = mock(() => undefined)
+        addPath = mock(() => undefined)
+        op = mock(() => true)
+        transform = mock(() => undefined)
+        delete = mock(() => undefined)
+        copy = mock(() => this)
+        stroke = mock(() => this)
+        moveTo = mock(() => undefined)
+        lineTo = mock(() => undefined)
+        cubicTo = mock(() => undefined)
+        close = mock(() => undefined)
       },
       PathOp: { Difference: 0, Union: 1 },
-      StrokeJoin: { Round: 0 },
+      StrokeCap: { Butt: 0, Round: 1, Square: 2 },
+      StrokeJoin: { Miter: 0, Round: 1, Bevel: 2 },
       Matrix: { translated: mock(() => new Float32Array(9)) },
       BlendMode: { SrcOver: 0, SrcIn: 1, DstOut: 2, Screen: 3, Multiply: 4 },
       PaintStyle: { Fill: 0, Stroke: 1 },
@@ -44,16 +45,16 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
       WHITE: new Float32Array([1, 1, 1, 1]),
       TRANSPARENT: new Float32Array([0, 0, 0, 0]),
       Paint: class {
-        setAntiAlias = mock(() => undefined);
-        setColor = mock(() => undefined);
-        setShader = mock(() => undefined);
-        setStyle = mock(() => undefined);
-        delete = mock(() => undefined);
+        setAntiAlias = mock(() => undefined)
+        setColor = mock(() => undefined)
+        setShader = mock(() => undefined)
+        setStyle = mock(() => undefined)
+        delete = mock(() => undefined)
       },
       ColorFilter: {
         MakeBlend: mock(() => ({ delete: () => undefined })),
-        MakeMatrix: mock(() => ({ delete: () => undefined })),
-      },
+        MakeMatrix: mock(() => ({ delete: () => undefined }))
+      }
     },
     auxFill: {
       setColor: mock(() => undefined),
@@ -62,7 +63,7 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
       setAlphaf: mock(() => undefined),
       setBlendMode: mock(() => undefined),
       setShader: mock(() => undefined),
-      delete: mock(() => undefined),
+      delete: mock(() => undefined)
     },
     auxStroke: {
       setStrokeWidth: mock(() => undefined),
@@ -70,7 +71,7 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
       setPathEffect: mock(() => undefined),
       setAlphaf: mock(() => undefined),
       setBlendMode: mock(() => undefined),
-      delete: mock(() => undefined),
+      delete: mock(() => undefined)
     },
     fillPaint: {
       setColor: mock(() => undefined),
@@ -78,7 +79,7 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
       setShader: mock(() => undefined),
       getColor: mock(() => new Float32Array([0, 0, 0, 1])),
       setBlendMode: mock(() => undefined),
-      delete: mock(() => undefined),
+      delete: mock(() => undefined)
     },
     strokePaint: {
       setColor: mock(() => undefined),
@@ -87,13 +88,14 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
       setPathEffect: mock(() => undefined),
       setStrokeCap: mock(() => undefined),
       setStrokeJoin: mock(() => undefined),
+      setStrokeMiter: mock(() => undefined),
       setBlendMode: mock(() => undefined),
-      delete: mock(() => undefined),
+      delete: mock(() => undefined)
     },
     opacityPaint: {
       setAlphaf: mock(() => undefined),
       setBlendMode: mock(() => undefined),
-      delete: mock(() => undefined),
+      delete: mock(() => undefined)
     },
     effectLayerPaint: {
       setColor: mock(() => undefined),
@@ -101,7 +103,7 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
       setImageFilter: mock(() => undefined),
       setColorFilter: mock(() => undefined),
       setBlendMode: mock(() => undefined),
-      delete: mock(() => undefined),
+      delete: mock(() => undefined)
     },
     color4f: mock((r, g, b, a) => new Float32Array([r, g, b, a])),
     ltrb: mock((l, t, r, b) => new Float32Array([l, t, r, b])),
@@ -116,7 +118,7 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
     makeRRectWithSpread: mock(() => new Float32Array(12)),
     makeRRectWithOffset: mock(() => new Float32Array(12)),
     makePolygonPath: mock(function (this: SkiaRenderer) {
-      return new this.ck.Path();
+      return new this.ck.Path()
     }),
     renderText: mock(() => undefined),
     applyClippedBlur: mock(() => undefined),
@@ -132,12 +134,12 @@ export function createMockRenderer(overrides: Partial<SkiaRenderer> = {}): SkiaR
     resolveStrokeColor: mock(() => ({ r: 0, g: 0, b: 0, a: 1 })),
     nodePictureCache: {
       get: mock(() => null),
-      set: mock(() => undefined),
+      set: mock(() => undefined)
     },
     isRectangularType: mock(() => true),
     worldViewport: { x: 0, y: 0, w: 1000, h: 1000 },
-    ...overrides,
-  } as SkiaRenderer;
+    ...overrides
+  } as SkiaRenderer
 }
 
 export function createMockCanvas() {
@@ -157,6 +159,6 @@ export function createMockCanvas() {
     clipRRect: mock(() => undefined),
     clipRect: mock(() => undefined),
     drawPicture: mock(() => undefined),
-    drawParagraph: mock(() => undefined),
-  };
+    drawParagraph: mock(() => undefined)
+  }
 }

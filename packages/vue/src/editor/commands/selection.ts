@@ -1,7 +1,27 @@
-import type { EditorCommandMapOptions } from "./context";
-import type { EditorCommand, EditorCommandId } from "./types";
+import type { SceneNode } from '@open-pencil/scene-graph'
 
-type SelectionCommandId = Extract<EditorCommandId, `selection.${string}`>;
+import type { EditorCommandMapOptions } from './context'
+import type { EditorCommand, EditorCommandId } from './types'
+
+type SelectionCommandId = Extract<EditorCommandId, `selection.${string}`>
+
+function selectedMaskTarget(nodes: SceneNode[], editor: EditorCommandMapOptions['editor']) {
+  if (nodes.length === 0) return null
+  if (nodes.length === 1) return nodes[0]
+
+  const [first] = nodes
+  const byId = new Map(nodes.map((node) => [node.id, node]))
+  const selectedParents = new Set(nodes.map((node) => node.parentId))
+  if (selectedParents.size !== 1) return first
+  const parentId = first.parentId
+  if (!parentId) return first
+
+  for (const sibling of editor.graph.getChildren(parentId)) {
+    const selected = byId.get(sibling.id)
+    if (selected) return selected
+  }
+  return first
+}
 
 export function createSelectionCommands({
   editor,
@@ -10,220 +30,289 @@ export function createSelectionCommands({
   messages: t,
   otherPages,
   moveSelectionToPage,
+  getOpacityTarget
 }: EditorCommandMapOptions): Record<SelectionCommandId, EditorCommand> {
   return {
-    "selection.selectAll": {
-      id: "selection.selectAll",
+    'selection.selectAll': {
+      id: 'selection.selectAll',
       get label() {
-        return t.value.selectAll;
+        return t.value.selectAll
       },
       enabled: capabilities.canSelectAll,
-      run: () => editor.selectAll(),
+      run: () => editor.selectAll()
     },
-    "selection.duplicate": {
-      id: "selection.duplicate",
+    'selection.selectInverse': {
+      id: 'selection.selectInverse',
       get label() {
-        return t.value.duplicate;
+        return t.value.selectInverse
+      },
+      enabled: capabilities.canSelectAll,
+      run: () => editor.selectInverse()
+    },
+    'selection.duplicate': {
+      id: 'selection.duplicate',
+      get label() {
+        return t.value.duplicate
       },
       enabled: capabilities.canDuplicate,
-      run: () => editor.duplicateSelected(),
+      run: () => editor.duplicateSelected()
     },
-    "selection.delete": {
-      id: "selection.delete",
+    'selection.delete': {
+      id: 'selection.delete',
       get label() {
-        return t.value.delete;
+        return t.value.delete
       },
       enabled: capabilities.canDelete,
-      run: () => editor.deleteSelected(),
+      run: () => editor.deleteSelected()
     },
-    "selection.group": {
-      id: "selection.group",
+    'selection.group': {
+      id: 'selection.group',
       get label() {
-        return t.value.groupSelection;
+        return t.value.groupSelection
       },
       enabled: capabilities.canGroup,
-      run: () => editor.groupSelected(),
+      run: () => editor.groupSelected()
     },
-    "selection.frameSelection": {
-      id: "selection.frameSelection",
+    'selection.frameSelection': {
+      id: 'selection.frameSelection',
       get label() {
-        return t.value.frameSelection;
+        return t.value.frameSelection
       },
       enabled: capabilities.canFrameSelection,
-      run: () => editor.frameSelection(),
+      run: () => editor.frameSelection()
     },
-    "selection.ungroup": {
-      id: "selection.ungroup",
+    'selection.ungroup': {
+      id: 'selection.ungroup',
       get label() {
-        return t.value.ungroup;
+        return t.value.ungroup
       },
       enabled: capabilities.canUngroup,
-      run: () => editor.ungroupSelected(),
+      run: () => editor.ungroupSelected()
     },
-    "selection.createComponent": {
-      id: "selection.createComponent",
+    'selection.createComponent': {
+      id: 'selection.createComponent',
       get label() {
-        return t.value.createComponent;
+        return t.value.createComponent
       },
       enabled: capabilities.canCreateComponent,
-      run: () => editor.createComponentFromSelection(),
+      run: () => editor.createComponentFromSelection()
     },
-    "selection.createComponentSet": {
-      id: "selection.createComponentSet",
+    'selection.createComponentSet': {
+      id: 'selection.createComponentSet',
       get label() {
-        return t.value.createComponentSet;
+        return t.value.createComponentSet
       },
       enabled: capabilities.canCreateComponentSet,
-      run: () => editor.createComponentSetFromComponents(),
+      run: () => editor.createComponentSetFromComponents()
     },
-    "selection.createInstance": {
-      id: "selection.createInstance",
+    'selection.createInstance': {
+      id: 'selection.createInstance',
       get label() {
-        return t.value.createInstance;
+        return t.value.createInstance
       },
       enabled: capabilities.canCreateInstance,
       run: () => {
-        const node = selection.selectedNode.value;
-        if (node?.type === "COMPONENT") editor.createInstanceFromComponent(node.id);
-      },
+        const node = selection.selectedNode.value
+        if (node?.type === 'COMPONENT') editor.createInstanceFromComponent(node.id)
+      }
     },
-    "selection.detachInstance": {
-      id: "selection.detachInstance",
+    'selection.detachInstance': {
+      id: 'selection.detachInstance',
       get label() {
-        return t.value.detachInstance;
+        return t.value.detachInstance
       },
       enabled: capabilities.canDetachInstance,
-      run: () => editor.detachInstance(),
+      run: () => editor.detachInstance()
     },
-    "selection.goToMainComponent": {
-      id: "selection.goToMainComponent",
+    'selection.goToMainComponent': {
+      id: 'selection.goToMainComponent',
       get label() {
-        return t.value.goToMainComponent;
+        return t.value.goToMainComponent
       },
       enabled: capabilities.canGoToMainComponent,
-      run: () => editor.goToMainComponent(),
+      run: () => void editor.goToMainComponent()
     },
-    "selection.wrapInAutoLayout": {
-      id: "selection.wrapInAutoLayout",
+    'selection.wrapInAutoLayout': {
+      id: 'selection.wrapInAutoLayout',
       get label() {
-        return t.value.addAutoLayout;
+        return t.value.addAutoLayout
       },
       enabled: capabilities.canWrapInAutoLayout,
-      run: () => editor.wrapInAutoLayout(),
+      run: () => editor.wrapInAutoLayout()
     },
-    "selection.bringToFront": {
-      id: "selection.bringToFront",
+    'selection.toggleMask': {
+      id: 'selection.toggleMask',
       get label() {
-        return t.value.bringToFront;
+        const target = selectedMaskTarget(editor.getSelectedNodes(), editor)
+        return target?.isMask ? t.value.removeMask : t.value.useAsMask
+      },
+      enabled: capabilities.canToggleMask,
+      run: () => {
+        const target = selectedMaskTarget(editor.getSelectedNodes(), editor)
+        if (!target) return
+        editor.updateNodeWithUndo(
+          target.id,
+          { isMask: !target.isMask },
+          target.isMask ? 'Remove mask' : 'Use as mask'
+        )
+      }
+    },
+    'selection.bringForward': {
+      id: 'selection.bringForward',
+      get label() {
+        return t.value.bringForward
       },
       enabled: capabilities.canBringToFront,
-      run: () => editor.bringToFront(),
+      run: () => editor.bringForward()
     },
-    "selection.sendToBack": {
-      id: "selection.sendToBack",
+    'selection.bringToFront': {
+      id: 'selection.bringToFront',
       get label() {
-        return t.value.sendToBack;
+        return t.value.bringToFront
+      },
+      enabled: capabilities.canBringToFront,
+      run: () => editor.bringToFront()
+    },
+    'selection.sendBackward': {
+      id: 'selection.sendBackward',
+      get label() {
+        return t.value.sendBackward
       },
       enabled: capabilities.canSendToBack,
-      run: () => editor.sendToBack(),
+      run: () => editor.sendBackward()
     },
-    "selection.toggleVisibility": {
-      id: "selection.toggleVisibility",
+    'selection.sendToBack': {
+      id: 'selection.sendToBack',
       get label() {
-        return t.value.showHide;
+        return t.value.sendToBack
+      },
+      enabled: capabilities.canSendToBack,
+      run: () => editor.sendToBack()
+    },
+    'selection.toggleVisibility': {
+      id: 'selection.toggleVisibility',
+      get label() {
+        return t.value.showHide
       },
       enabled: capabilities.canToggleVisibility,
-      run: () => editor.toggleVisibility(),
+      run: () => editor.toggleVisibility()
     },
-    "selection.toggleLock": {
-      id: "selection.toggleLock",
+    'selection.toggleLock': {
+      id: 'selection.toggleLock',
       get label() {
-        return t.value.lockUnlock;
+        return t.value.lockUnlock
       },
       enabled: capabilities.canToggleLock,
-      run: () => editor.toggleLock(),
+      run: () => editor.toggleLock()
     },
-    "selection.flipHorizontal": {
-      id: "selection.flipHorizontal",
+    'selection.flipHorizontal': {
+      id: 'selection.flipHorizontal',
       get label() {
-        return t.value.flipHorizontal;
+        return t.value.flipHorizontal
       },
       enabled: capabilities.canFlip,
-      run: () => editor.flipNodes([...selection.selectedIds.value], "horizontal"),
+      run: () => editor.flipNodes([...selection.selectedIds.value], 'horizontal')
     },
-    "selection.flipVertical": {
-      id: "selection.flipVertical",
+    'selection.flipVertical': {
+      id: 'selection.flipVertical',
       get label() {
-        return t.value.flipVertical;
+        return t.value.flipVertical
       },
       enabled: capabilities.canFlip,
-      run: () => editor.flipNodes([...selection.selectedIds.value], "vertical"),
+      run: () => editor.flipNodes([...selection.selectedIds.value], 'vertical')
     },
-    "selection.booleanUnion": {
-      id: "selection.booleanUnion",
+    'selection.distributeHorizontal': {
+      id: 'selection.distributeHorizontal',
       get label() {
-        return t.value.unionSelection;
+        return t.value.distributeHorizontal
+      },
+      enabled: capabilities.canDistribute,
+      run: () => editor.distributeNodes([...selection.selectedIds.value], 'horizontal')
+    },
+    'selection.distributeVertical': {
+      id: 'selection.distributeVertical',
+      get label() {
+        return t.value.distributeVertical
+      },
+      enabled: capabilities.canDistribute,
+      run: () => editor.distributeNodes([...selection.selectedIds.value], 'vertical')
+    },
+    'selection.booleanUnion': {
+      id: 'selection.booleanUnion',
+      get label() {
+        return t.value.unionSelection
       },
       enabled: capabilities.canBooleanOperation,
-      run: () => editor.booleanOperationSelected("UNION"),
+      run: () => editor.booleanOperationSelected('UNION')
     },
-    "selection.booleanSubtract": {
-      id: "selection.booleanSubtract",
+    'selection.booleanSubtract': {
+      id: 'selection.booleanSubtract',
       get label() {
-        return t.value.subtractSelection;
+        return t.value.subtractSelection
       },
       enabled: capabilities.canBooleanOperation,
-      run: () => editor.booleanOperationSelected("SUBTRACT"),
+      run: () => editor.booleanOperationSelected('SUBTRACT')
     },
-    "selection.booleanIntersect": {
-      id: "selection.booleanIntersect",
+    'selection.booleanIntersect': {
+      id: 'selection.booleanIntersect',
       get label() {
-        return t.value.intersectSelection;
+        return t.value.intersectSelection
       },
       enabled: capabilities.canBooleanOperation,
-      run: () => editor.booleanOperationSelected("INTERSECT"),
+      run: () => editor.booleanOperationSelected('INTERSECT')
     },
-    "selection.booleanExclude": {
-      id: "selection.booleanExclude",
+    'selection.booleanExclude': {
+      id: 'selection.booleanExclude',
       get label() {
-        return t.value.excludeSelection;
+        return t.value.excludeSelection
       },
       enabled: capabilities.canBooleanOperation,
-      run: () => editor.booleanOperationSelected("EXCLUDE"),
+      run: () => editor.booleanOperationSelected('EXCLUDE')
     },
-    "selection.flatten": {
-      id: "selection.flatten",
+    'selection.flatten': {
+      id: 'selection.flatten',
       get label() {
-        return t.value.flattenSelection;
+        return t.value.flattenSelection
       },
       enabled: capabilities.canFlatten,
-      run: () => editor.flattenSelected(),
+      run: () => editor.flattenSelected()
     },
-    "selection.outlineText": {
-      id: "selection.outlineText",
+    'selection.outlineText': {
+      id: 'selection.outlineText',
       get label() {
-        return t.value.outlineText;
+        return t.value.outlineText
       },
       enabled: capabilities.canOutlineText,
-      run: () => editor.outlineTextSelected(),
+      run: () => editor.outlineTextSelected()
     },
-    "selection.outlineStroke": {
-      id: "selection.outlineStroke",
+    'selection.outlineStroke': {
+      id: 'selection.outlineStroke',
       get label() {
-        return t.value.outlineStroke;
+        return t.value.outlineStroke
       },
       enabled: capabilities.canOutlineStroke,
-      run: () => editor.outlineStrokeSelected(),
+      run: () => editor.outlineStrokeSelected()
     },
-    "selection.moveToPage": {
-      id: "selection.moveToPage",
+    'selection.moveToPage': {
+      id: 'selection.moveToPage',
       get label() {
-        return t.value.moveToPage;
+        return t.value.moveToPage
       },
       enabled: capabilities.canMoveToPage,
       run: () => {
-        moveSelectionToPage(otherPages.value[0].id);
-      },
+        moveSelectionToPage(otherPages.value[0].id)
+      }
     },
-  };
+    'selection.setOpacity': {
+      id: 'selection.setOpacity',
+      get label() {
+        return t.value.setOpacity
+      },
+      enabled: capabilities.canSetOpacity,
+      run: () => {
+        const target = getOpacityTarget()
+        editor.setOpacity(target.value, target.coalesceKey)
+      }
+    }
+  }
 }

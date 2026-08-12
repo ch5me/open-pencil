@@ -1,62 +1,49 @@
 <script setup lang="ts">
-import type { GradientStop } from "@open-pencil/core/scene-graph";
-import { templateRef } from "@vueuse/core";
-import { onBeforeUnmount, ref } from "vue";
+import { templateRef } from '@vueuse/core'
+import { ref } from 'vue'
 
-import { createRafInputController } from "#vue/shared/input/raf-scheduler";
+import type { GradientStop } from '@open-pencil/scene-graph'
 
 const { stops, ui } = defineProps<{
-  stops: GradientStop[];
-  activeStopIndex: number;
-  barBackground: string;
+  stops: GradientStop[]
+  activeStopIndex: number
+  barBackground: string
   ui?: {
-    bar?: string;
-  };
-}>();
+    bar?: string
+  }
+}>()
 
 const emit = defineEmits<{
-  selectStop: [index: number];
-  dragStop: [index: number, position: number];
-}>();
+  selectStop: [index: number]
+  dragStop: [index: number, position: number]
+}>()
 
-const barRef = templateRef<HTMLElement>("barRef");
-const draggingIndex = ref<number | null>(null);
-const pendingDrag = createRafInputController(
-  ({ index, position }: { index: number; position: number }) => emit("dragStop", index, position),
-);
+const barRef = templateRef<HTMLElement>('barRef')
+const draggingIndex = ref<number | null>(null)
 
 function stopPointerDown(index: number, e: PointerEvent) {
-  emit("selectStop", index);
-  draggingIndex.value = index;
-  barRef.value?.setPointerCapture(e.pointerId);
+  emit('selectStop', index)
+  draggingIndex.value = index
+  barRef.value?.setPointerCapture(e.pointerId)
 }
 
 function onPointerMove(e: PointerEvent) {
-  const el = barRef.value;
-  if (!el || draggingIndex.value === null || !el.hasPointerCapture(e.pointerId)) return;
-  const rect = el.getBoundingClientRect();
-  const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  pendingDrag.input({ index: draggingIndex.value, position: pos });
+  const el = barRef.value
+  if (!el || draggingIndex.value === null || !el.hasPointerCapture(e.pointerId)) return
+  const rect = el.getBoundingClientRect()
+  const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+  emit('dragStop', draggingIndex.value, pos)
 }
 
 function onPointerUp() {
-  pendingDrag.change();
-  pendingDrag.cancel();
-  draggingIndex.value = null;
+  draggingIndex.value = null
 }
-
-function onPointerCancel() {
-  pendingDrag.cancel();
-  draggingIndex.value = null;
-}
-
-onBeforeUnmount(onPointerCancel);
 
 const actions = {
-  stopPointerDown,
-};
+  stopPointerDown
+}
 
-defineExpose({ barRef });
+defineExpose({ barRef })
 </script>
 
 <template>
@@ -66,7 +53,6 @@ defineExpose({ barRef });
     :style="{ background: barBackground }"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
-    @pointercancel="onPointerCancel"
   >
     <slot
       :stops="stops"

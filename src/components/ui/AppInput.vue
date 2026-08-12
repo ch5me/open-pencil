@@ -1,58 +1,65 @@
 <script setup lang="ts">
-import type { TestIdProps } from "@open-pencil/vue";
+import { computed } from 'vue'
+import { tv } from 'tailwind-variants'
 
-import { useInputUI } from "@/components/ui/input";
+import theme from '@/theme/input'
 
-interface AppInputProps extends TestIdProps {
-  type?: "text" | "password" | "number" | "search";
-  placeholder?: string;
-  readonly?: boolean;
-  disabled?: boolean;
-  autofocus?: boolean;
-  min?: number;
-  max?: number;
-  step?: number;
-  ui?: {
-    base?: string;
-  };
-  size?: "sm" | "md";
+interface AppInputProps {
+  id?: string
+  type?: 'text' | 'password' | 'number' | 'search'
+  placeholder?: string
+  ariaLabel?: string
+  readonly?: boolean
+  disabled?: boolean
+  autofocus?: boolean
+  min?: number
+  max?: number
+  step?: number
+  tone?: 'default' | 'panel'
+  size?: 'sm' | 'md'
+  state?: 'idle' | 'mixed' | 'bound' | 'invalid'
 }
 
 const {
-  type = "text",
+  id,
+  type = 'text',
   placeholder,
+  ariaLabel,
   readonly,
   disabled,
   autofocus,
   min,
   max,
   step,
-  ui,
-  size = "md",
-  testId,
-} = defineProps<AppInputProps>();
+  tone = 'default',
+  size = 'md',
+  state = 'idle'
+} = defineProps<AppInputProps>()
 
-const modelValue = defineModel<string | number>({ required: true });
+const inputClass = computed(() => tv(theme)({ tone, size, state }))
+
+const modelValue = defineModel<string | number>({ required: true })
 const emit = defineEmits<{
-  change: [];
-  enter: [event: KeyboardEvent];
-  focus: [event: FocusEvent];
-}>();
+  change: []
+  enter: [event: KeyboardEvent]
+  focus: [event: FocusEvent]
+}>()
 </script>
 
 <template>
   <input
+    :id="id"
     v-model="modelValue"
     :type="type"
-    :data-test-id="testId"
     :placeholder="placeholder"
+    :aria-label="ariaLabel"
     :readonly="readonly"
     :disabled="disabled"
     :autofocus="autofocus"
     :min="min"
     :max="max"
     :step="step"
-    :class="useInputUI({ size, ui }).base"
+    :class="inputClass"
     @change="emit('change')"
     @keydown.enter="emit('enter', $event)"
     @focus="emit('focus', $event)"

@@ -1,49 +1,49 @@
 <script setup lang="ts">
-import type { EditorToolDef } from "@open-pencil/core/editor";
-import { toolbarToolTestId, ToolbarItem } from "@open-pencil/vue";
-import type { Tool } from "@open-pencil/vue";
+import Tip from '@/components/ui/Tip.vue'
+import ToolButton from '@/components/Toolbar/ToolButton.vue'
+import ToolFlyout from '@/components/Toolbar/ToolFlyout.vue'
+import {
+  getToolbarToolSelection,
+  isToolbarToolActive,
+  toolbarToolTestId,
+  ToolbarItem
+} from '@open-pencil/vue'
 
-import ToolButton from "@/components/Toolbar/ToolButton.vue";
-import ToolFlyout from "@/components/Toolbar/ToolFlyout.vue";
-import type { ToolbarUi, ToolIconMap, ToolLabels } from "@/components/Toolbar/types";
-import Tip from "@/components/ui/Tip.vue";
+import type { Tool } from '@open-pencil/vue'
+import type { EditorToolDef } from '@open-pencil/core/editor'
+import type { ToolbarUI, ToolIconMap, ToolLabels } from '@/components/Toolbar/types'
 
-const { tools, activeTool, toolIcons, toolLabels, toolShortcuts, ui } = defineProps<{
-  tools: EditorToolDef[];
-  activeTool: Tool;
-  toolIcons: ToolIconMap;
-  toolLabels: ToolLabels;
-  toolShortcuts: Record<Tool, string>;
-  ui?: ToolbarUi;
-}>();
+const { tools, activeTool, flyoutSelections, toolIcons, toolLabels, toolShortcuts, ui } =
+  defineProps<{
+    tools: EditorToolDef[]
+    activeTool: Tool
+    flyoutSelections: ReadonlyMap<Tool, Tool>
+    toolIcons: ToolIconMap
+    toolLabels: ToolLabels
+    toolShortcuts: Record<Tool, string>
+    ui?: ToolbarUI
+  }>()
 
 const emit = defineEmits<{
-  setTool: [tool: Tool];
-}>();
-
-function isActive(tool: EditorToolDef) {
-  return tool.key === activeTool || (tool.flyout?.includes(activeTool) ?? false);
-}
-
-function activeKeyForTool(tool: EditorToolDef) {
-  return tool.flyout?.includes(activeTool) ? activeTool : tool.key;
-}
+  setTool: [tool: Tool]
+}>()
 </script>
 
 <template>
   <div class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center">
     <div
       data-test-id="toolbar"
-      class="flex gap-0.5 rounded-xl border border-border bg-panel p-1 shadow-lg"
+      class="flex gap-0.5 rounded-xl bg-panel p-1 shadow-[0_8px_30px_rgb(0_0_0/0.4)]"
     >
       <template v-for="tool in tools" :key="tool.key">
         <Tip
           v-if="tool.flyout && tool.flyout.length > 1"
-          :label="`${toolLabels[activeKeyForTool(tool)]} (${tool.shortcut})`"
+          :label="`${toolLabels[getToolbarToolSelection(tool, activeTool, flyoutSelections)]} (${tool.shortcut})`"
         >
           <ToolFlyout
             :tool="tool"
             :active-tool="activeTool"
+            :selected-tool="getToolbarToolSelection(tool, activeTool, flyoutSelections)"
             :tool-icons="toolIcons"
             :tool-labels="toolLabels"
             :tool-shortcuts="toolShortcuts"
@@ -55,9 +55,11 @@ function activeKeyForTool(tool: EditorToolDef) {
         <ToolbarItem v-else v-slot="{ active, actions }" :tool="tool.key">
           <Tip :label="`${toolLabels[tool.key]} (${tool.shortcut})`">
             <ToolButton
-              :test-id="toolbarToolTestId(tool.key)"
+              :data-test-id="toolbarToolTestId(tool.key)"
               :icon="toolIcons[tool.key]"
-              :active="active || isActive(tool)"
+              :label="toolLabels[tool.key]"
+              :active="active || isToolbarToolActive(tool, activeTool)"
+              :ui="ui"
               @click="actions.select"
             />
           </Tip>

@@ -22,10 +22,14 @@ description: Component reference for headless Vue primitives in @open-pencil/vue
 ## Property panel primitives
 
 <SdkCardGroup>
+  <SdkCard title="PropertySection" to="/programmable/sdk/api/components/property-section" description="Collapsible property-section anatomy and empty states." />
+  <SdkCard title="PropertyGrid" to="/programmable/sdk/api/components/property-grid" description="Responsive field-grid and action-rail anatomy." />
+  <SdkCard title="SegmentedControl" to="/programmable/sdk/api/components/segmented-control" description="Accessible selection and action-only segment groups." />
   <SdkCard title="PropertyListRoot" to="/programmable/sdk/api/components/property-list-root" description="Headless property list primitive." />
   <SdkCard title="PropertyListItem" to="/programmable/sdk/api/components/property-list-item" description="Single fills, strokes, or effects row primitive." />
   <SdkCard title="PositionControlsRoot" to="/programmable/sdk/api/components/position-controls-root" description="Position, size, and transform controls." />
   <SdkCard title="LayoutControlsRoot" to="/programmable/sdk/api/components/layout-controls-root" description="Auto-layout and sizing controls." />
+  <SdkCard title="ConstraintsControlRoot" to="/programmable/sdk/api/components/constraints-control-root" description="Frame-child resize constraint state and actions." />
   <SdkCard title="AppearanceControlsRoot" to="/programmable/sdk/api/components/appearance-controls-root" description="Opacity, visibility, and corner-radius controls." />
   <SdkCard title="TypographyControlsRoot" to="/programmable/sdk/api/components/typography-controls-root" description="Font, alignment, and formatting controls." />
 </SdkCardGroup>
@@ -35,12 +39,13 @@ description: Component reference for headless Vue primitives in @open-pencil/vue
 <SdkCardGroup>
   <SdkCard title="ColorPickerRoot" to="/programmable/sdk/api/components/color-picker-root" description="Popover-based color picker primitive." />
   <SdkCard title="ColorInputRoot" to="/programmable/sdk/api/components/color-input-root" description="Headless color input helper." />
-  <SdkCard title="FillPickerRoot" to="/programmable/sdk/api/components/fill-picker-root" description="Popover-based fill picker primitive." />
+  <SdkCard title="ChannelSlider" to="/programmable/sdk/api/components/channel-slider" description="Accessible scalar slider for OkHCL channels." />
+  <SdkCard title="FillRoot" to="/programmable/sdk/api/components/fill-root" description="Fill category state and conversion actions." />
+  <SdkCard title="FillSwatch" to="/programmable/sdk/api/components/fill-swatch" description="Binding-aware semantic fill preview." />
   <SdkCard title="FontPickerRoot" to="/programmable/sdk/api/components/font-picker-root" description="Searchable font picker primitive." />
   <SdkCard title="GradientEditorRoot" to="/programmable/sdk/api/components/gradient-editor-root" description="Root primitive for gradient editing." />
   <SdkCard title="GradientEditorBar" to="/programmable/sdk/api/components/gradient-editor-bar" description="Draggable gradient bar primitive." />
   <SdkCard title="GradientEditorStop" to="/programmable/sdk/api/components/gradient-editor-stop" description="Single gradient stop primitive." />
-  <SdkCard title="ScrubInputRoot" to="/programmable/sdk/api/components/scrub-input-root" description="Drag-to-scrub numeric input root." />
-  <SdkCard title="ScrubInputField" to="/programmable/sdk/api/components/scrub-input-field" description="Editing input field primitive." />
-  <SdkCard title="ScrubInputDisplay" to="/programmable/sdk/api/components/scrub-input-display" description="Non-editing display primitive." />
+  <SdkCard title="NumberField" to="/programmable/sdk/api/components/number-field" description="Numeric field anatomy with scrubbing, expressions, and keyboard stepping." />
+  <SdkCard title="BindableValue" to="/programmable/sdk/api/components/bindable-value" description="Provider-driven variable and token binding composition." />
 </SdkCardGroup>

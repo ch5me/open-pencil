@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { proxyRefs } from "vue";
+import { proxyRefs } from 'vue'
 
-import { useLayout } from "#vue/controls/layout/use";
-import { provideLayoutControls } from "#vue/primitives/LayoutControls/context";
+import { useLayout } from '#vue/controls/layout/use'
+import { provideLayoutControls } from '#vue/primitives/LayoutControls/context'
+import type { LayoutControlsRootSlots } from '#vue/primitives/LayoutControls/types'
 
-const ctx = useLayout();
+const ctx = useLayout()
+defineSlots<LayoutControlsRootSlots>()
 const actions = {
   updateProp: ctx.updateProp,
   updateSizeLimit: ctx.updateSizeLimit,
@@ -13,8 +15,9 @@ const actions = {
   addSizeLimit: ctx.addSizeLimit,
   removeSizeLimit: ctx.removeSizeLimit,
   commitProp: ctx.commitProp,
-  setWidthSizing: ctx.setWidthSizing,
-  setHeightSizing: ctx.setHeightSizing,
+  setAxisSizing: ctx.setAxisSizing,
+  updateAxisSize: ctx.updateAxisSize,
+  commitAxisSize: ctx.commitAxisSize,
   setHorizontalPadding: ctx.setHorizontalPadding,
   commitHorizontalPadding: ctx.commitHorizontalPadding,
   setVerticalPadding: ctx.setVerticalPadding,
@@ -25,13 +28,13 @@ const actions = {
   updateGridTrack: ctx.updateGridTrack,
   addTrack: ctx.addTrack,
   removeTrack: ctx.removeTrack,
-  toggleIndividualPadding: ctx.toggleIndividualPadding,
-};
+  toggleIndividualPadding: ctx.toggleIndividualPadding
+}
 provideLayoutControls(
   proxyRefs(ctx) as ReturnType<typeof proxyRefs<typeof ctx>> & {
-    node: NonNullable<typeof ctx.node.value>;
-  },
-);
+    node: NonNullable<typeof ctx.node.value>
+  }
+)
 </script>
 
 <template>

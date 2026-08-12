@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { Fill } from "@open-pencil/core/scene-graph";
-import { computed } from "vue";
+import { computed } from 'vue'
 
-import { useGradientStops } from "#vue/primitives/GradientEditor/useGradientStops";
+import { useGradientStops } from '#vue/primitives/GradientEditor/useGradientStops'
 
-const { fill } = defineProps<{ fill: Fill }>();
-const emit = defineEmits<{ update: [fill: Fill] }>();
+import type { Fill } from '@open-pencil/scene-graph'
+
+const { fill } = defineProps<{ fill: Fill }>()
+const emit = defineEmits<{ update: [fill: Fill] }>()
 
 const {
   activeStopIndex,
@@ -22,11 +23,11 @@ const {
   updateStopColor,
   updateStopOpacity,
   updateActiveColor,
-  dragStop,
+  dragStop
 } = useGradientStops(
   computed(() => fill),
-  (updated) => emit("update", updated),
-);
+  (updated) => emit('update', updated)
+)
 
 const actions = {
   setSubtype,
@@ -37,8 +38,8 @@ const actions = {
   updateStopColor,
   updateStopOpacity,
   updateActiveColor,
-  dragStop,
-};
+  dragStop
+}
 </script>
 
 <template>

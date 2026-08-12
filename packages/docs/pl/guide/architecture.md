@@ -102,7 +102,7 @@ Serwer MCP obecnie udostępnia 90 narzędzi. Referencyjna implementacja w [figma
 
 ### Narzędzia CI do designu
 
-Headless CLI już obsługuje `analyze colors/typography/spacing/clusters`. Następnie: integracja z Forgejo Actions dla automatycznego lintingu designu i regresji wizualnej w PR-ach.
+Headless CLI już obsługuje `analyze colors/typography/spacing/clusters`. Następnie: integracja z GitHub Actions dla automatycznego lintingu designu i regresji wizualnej w PR-ach.
 
 ### Prototypowanie
 

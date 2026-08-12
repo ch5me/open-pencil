@@ -1,29 +1,49 @@
-import type { EditorCommandMapOptions } from "./context";
-import type { EditorCommand } from "./types";
+import type { EditorCommandMapOptions } from './context'
+import type { EditorCommand } from './types'
 
-type EditCommandId = "edit.undo" | "edit.redo";
+type EditCommandId = 'edit.undo' | 'edit.redo'
+
+// Vector edit mode keeps a session-local history; undo/redo route there
+// while it is active instead of the document undo stack.
+type NodeEditHistoryEditor = Partial<{
+  nodeEditUndo: () => void
+  nodeEditRedo: () => void
+}>
 
 export function createEditCommands({
   editor,
   capabilities,
-  messages: t,
+  messages: t
 }: EditorCommandMapOptions): Record<EditCommandId, EditorCommand> {
+  const nodeEditEditor = editor as typeof editor & NodeEditHistoryEditor
   return {
-    "edit.undo": {
-      id: "edit.undo",
+    'edit.undo': {
+      id: 'edit.undo',
       get label() {
-        return t.value.undo;
+        return t.value.undo
       },
       enabled: capabilities.canUndo,
-      run: () => editor.undoAction(),
+      run: () => {
+        if (editor.state.nodeEditState) {
+          nodeEditEditor.nodeEditUndo?.()
+          return
+        }
+        editor.undoAction()
+      }
     },
-    "edit.redo": {
-      id: "edit.redo",
+    'edit.redo': {
+      id: 'edit.redo',
       get label() {
-        return t.value.redo;
+        return t.value.redo
       },
       enabled: capabilities.canRedo,
-      run: () => editor.redoAction(),
-    },
-  };
+      run: () => {
+        if (editor.state.nodeEditState) {
+          nodeEditEditor.nodeEditRedo?.()
+          return
+        }
+        editor.redoAction()
+      }
+    }
+  }
 }

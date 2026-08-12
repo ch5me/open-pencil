@@ -1,7 +1,8 @@
-import { DEFAULT_FONT_FAMILY } from "@open-pencil/core/constants";
-import type { SceneNode } from "@open-pencil/core/scene-graph";
-import { fontManager } from "@open-pencil/core/text";
-import { computed } from "vue";
+import { computed } from 'vue'
+
+import { DEFAULT_FONT_FAMILY } from '@open-pencil/core/constants'
+import { fontManager } from '@open-pencil/core/text'
+import type { SceneNode } from '@open-pencil/scene-graph'
 
 /**
  * Returns missing-font information for a text node getter.
@@ -11,19 +12,19 @@ import { computed } from "vue";
  */
 export function useNodeFontStatus(node: () => SceneNode | null | undefined) {
   const missingFonts = computed(() => {
-    const n = node();
-    if (n?.type !== "TEXT") return [];
+    const n = node()
+    if (n?.type !== 'TEXT') return []
 
-    const families = new Set<string>();
-    families.add(n.fontFamily || DEFAULT_FONT_FAMILY);
+    const families = new Set<string>()
+    families.add(n.fontFamily || DEFAULT_FONT_FAMILY)
     for (const run of n.styleRuns) {
-      if (run.style.fontFamily) families.add(run.style.fontFamily);
+      if (run.style.fontFamily) families.add(run.style.fontFamily)
     }
 
-    return [...families].filter((f) => !fontManager.isLoaded(f));
-  });
+    return [...families].filter((f) => !fontManager.isLoaded(f))
+  })
 
-  const hasMissingFonts = computed(() => missingFonts.value.length > 0);
+  const hasMissingFonts = computed(() => missingFonts.value.length > 0)
 
-  return { missingFonts, hasMissingFonts };
+  return { missingFonts, hasMissingFonts }
 }

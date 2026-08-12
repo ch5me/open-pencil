@@ -1,32 +1,30 @@
 <script setup lang="ts">
-import type { TestIdProps } from "@open-pencil/vue";
-import { twMerge } from "tailwind-merge";
-import { computed } from "vue";
-
-interface AppTextButtonProps extends TestIdProps {
+import { computed } from 'vue'
+import { twMerge } from 'tailwind-merge'
+interface AppTextButtonProps {
   ui?: {
-    base?: string;
-  };
-  size?: "xs" | "sm";
-  underline?: boolean;
+    base?: string
+  }
+  size?: 'xs' | 'sm'
+  underline?: boolean
 }
 
-const { ui, size = "sm", underline = false, testId } = defineProps<AppTextButtonProps>();
+const { ui, size = 'sm', underline = false } = defineProps<AppTextButtonProps>()
 
-const emit = defineEmits<{ click: [event: MouseEvent] }>();
+const emit = defineEmits<{ click: [event: MouseEvent] }>()
 
 const cls = computed(() =>
   twMerge(
-    "cursor-pointer text-muted hover:text-surface",
-    size === "xs" ? "text-[9px]" : "text-[10px]",
-    underline && "underline",
-    ui?.base,
-  ),
-);
+    'cursor-pointer text-muted hover:text-surface',
+    size === 'xs' ? 'text-[9px]' : 'text-[10px]',
+    underline && 'underline',
+    ui?.base
+  )
+)
 </script>
 
 <template>
-  <button type="button" :data-test-id="testId" :class="cls" @click="emit('click', $event)">
+  <button type="button" :class="cls" @click="emit('click', $event)">
     <slot />
   </button>
 </template>

@@ -1,201 +1,117 @@
 <script setup lang="ts">
-import { useViewportKind, formatShortcut, useI18n } from "@open-pencil/vue";
-import { useHead } from "@unhead/vue";
-import { useEventListener, useUrlSearchParams } from "@vueuse/core";
-import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from "reka-ui";
-import { onMounted, onUnmounted, provide, ref, watch } from "vue";
-import { useRoute } from "vue-router";
+import { onMounted, onUnmounted, provide, ref } from 'vue'
+import { useEventListener, useUrlSearchParams } from '@vueuse/core'
+import { useRoute } from 'vue-router'
+import { useHead } from '@unhead/vue'
+import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
 
-import { connectAutomation } from "@/app/automation/bridge/server";
-import { spawnMCPIfNeeded } from "@/app/automation/mcp/spawn";
-import { useCollab, COLLAB_KEY } from "@/app/collab/use";
-import { createDemoShapes } from "@/app/demo/document";
-import { useEditorStore } from "@/app/editor/active-store";
-import { isHostedAuthEnabled, isHostedCollabEnabled } from "@/app/hosted/flags";
-import { isAuthenticated, refreshSession } from "@/app/hosted/session";
-import { useKeyboard } from "@/app/shell/keyboard/use";
-import {
-  loadEditorWorkspace,
-  saveEditorWorkspace,
-  type EditorWorkspaceState,
-} from "@/app/shell/layout-storage";
-import { appMenuShortcut } from "@/app/shell/menu/shortcut";
-import { openFileFromPath, useMenu } from "@/app/shell/menu/use";
-import { createTab, activeTab, getActiveStore, tabCount } from "@/app/tabs";
-import { isTauri } from "@/app/tauri/env";
-import CollabPanel from "@/components/CollabPanel/CollabPanel.vue";
-import CommandSearch from "@/components/CommandSearch.vue";
-import EditorCanvas from "@/components/EditorCanvas.vue";
-import LayersPanel from "@/components/LayersPanel.vue";
-import MobileDrawer from "@/components/MobileDrawer.vue";
-import MobileHud from "@/components/MobileHud/MobileHud.vue";
-import PropertiesPanel from "@/components/PropertiesPanel.vue";
-import SafariBanner from "@/components/SafariBanner.vue";
-import TabBar from "@/components/TabBar.vue";
-import Toolbar from "@/components/Toolbar/Toolbar.vue";
-import Tip from "@/components/ui/Tip.vue";
+import { useViewportKind, formatShortcut, useI18n } from '@open-pencil/vue'
+import { useKeyboard } from '@/app/shell/keyboard/use'
+import { loadEditorLayout, saveEditorLayout } from '@/app/shell/layout-storage'
+import { openFileFromPath, useMenu } from '@/app/shell/menu/use'
+import { useCollab, COLLAB_KEY } from '@/app/collab/use'
+import { connectAutomation } from '@/app/automation/bridge/server'
+import { spawnMCPIfNeeded } from '@/app/automation/mcp/spawn'
+import { isTauri } from '@/app/tauri/env'
+import { appMenuShortcut } from '@/app/shell/menu/shortcut'
+import { createDemoShapes } from '@/app/demo/document'
+import { useEditorStore } from '@/app/editor/active-store'
+import { createTab, activeTab, getActiveStore, tabCount } from '@/app/tabs'
 
-const route = useRoute();
-const params = useUrlSearchParams("history");
-const showChrome = !("no-chrome" in params);
+import CollabPanel from '@/components/CollabPanel/CollabPanel.vue'
+import EditorCanvas from '@/components/EditorCanvas.vue'
+import LayersPanel from '@/components/LayersPanel.vue'
+import MobileDrawer from '@/components/MobileDrawer.vue'
+import MobileHud from '@/components/MobileHud/MobileHud.vue'
+import PropertiesPanel from '@/components/PropertiesPanel.vue'
+import RenameSelectionDialog from '@/components/selection/RenameSelectionDialog.vue'
+import SafariBanner from '@/components/SafariBanner.vue'
+import TabBar from '@/components/TabBar.vue'
+import Tip from '@/components/ui/Tip.vue'
+import Toolbar from '@/components/Toolbar/Toolbar.vue'
 
-const createdInitialTab = tabCount() === 0;
-const firstTab = createdInitialTab ? createTab() : (activeTab.value ?? createTab());
-const store = useEditorStore();
-const { dialogs } = useI18n();
-const { isMobile } = useViewportKind();
-const commandSearchOpen = ref(false);
+const route = useRoute()
+const params = useUrlSearchParams('history')
+const showChrome = !('no-chrome' in params)
 
-if (createdInitialTab && route.meta.demo && !("test" in params)) {
-  createDemoShapes(firstTab.store);
+const createdInitialTab = tabCount() === 0
+const firstTab = createdInitialTab ? createTab() : (activeTab.value ?? createTab())
+const store = useEditorStore()
+const { dialogs } = useI18n()
+const { isMobile } = useViewportKind()
+
+if (createdInitialTab && route.meta.demo && !('test' in params)) {
+  void createDemoShapes(firstTab.store)
 }
 
-useHead({ title: route.meta.demo ? "Demo" : undefined });
-useKeyboard();
-useMenu();
+useHead({ title: route.meta.demo ? 'Demo' : undefined })
+useKeyboard()
+useMenu()
 
-useEventListener(window, "keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "/")) {
-    event.preventDefault();
-    commandSearchOpen.value = true;
-  }
-});
-
-const collab = useCollab(getActiveStore);
-provide(COLLAB_KEY, collab);
-
-function maybeConnectHostedCollab() {
-  if (!isHostedCollabEnabled()) return;
-  if (!isAuthenticated()) return;
-  const documentId = typeof route.params.documentId === "string" ? route.params.documentId : null;
-  if (!documentId) return;
-  if (
-    collab.state.value.mode === "hosted-do" &&
-    collab.state.value.documentId === documentId &&
-    collab.state.value.connected
-  ) {
-    return;
-  }
-  collab.connectHostedDocument(documentId);
-}
-
-watch(
-  () => route.params.documentId,
-  () => {
-    maybeConnectHostedCollab();
-  },
-  { immediate: true },
-);
+const collab = useCollab(getActiveStore)
+provide(COLLAB_KEY, collab)
 
 useEventListener(
   document,
-  "wheel",
+  'wheel',
   (e: WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) e.preventDefault();
+    if (e.ctrlKey || e.metaKey) e.preventDefault()
   },
-  { passive: false },
-);
+  { passive: false }
+)
 
-const automationCleanup = ref<(() => void) | null>(null);
-const mcpCleanup = ref<(() => void) | null>(null);
-const fileAssociationCleanup = ref<(() => void) | null>(null);
-const initialWorkspace = loadEditorWorkspace();
-const initialEditorLayout = initialWorkspace.layout;
-
-store.state.showUI = initialWorkspace.showUI;
-store.state.showRulers = initialWorkspace.showRulers;
-store.state.showRemoteCursors = initialWorkspace.showRemoteCursors;
-store.state.activeRibbonTab = initialWorkspace.activeRibbonTab;
-store.state.panelMode = initialWorkspace.panelMode;
-store.state.leftPanelMode = initialWorkspace.leftPanelMode;
-
-function currentWorkspace(layout = initialEditorLayout): EditorWorkspaceState {
-  return {
-    layout,
-    showUI: store.state.showUI,
-    showRulers: store.state.showRulers,
-    showRemoteCursors: store.state.showRemoteCursors,
-    activeRibbonTab: store.state.activeRibbonTab,
-    panelMode: store.state.panelMode,
-    leftPanelMode: store.state.leftPanelMode,
-  };
-}
-
-watch(
-  () => [
-    store.state.showUI,
-    store.state.showRulers,
-    store.state.showRemoteCursors,
-    store.state.activeRibbonTab,
-    store.state.panelMode,
-    store.state.leftPanelMode,
-  ],
-  () => saveEditorWorkspace(currentWorkspace()),
-);
-
-function saveWorkspaceLayout(layout: number[]) {
-  saveEditorWorkspace(currentWorkspace(layout));
-}
+const automationCleanup = ref<(() => void) | null>(null)
+const mcpCleanup = ref<(() => void) | null>(null)
+const fileAssociationCleanup = ref<(() => void) | null>(null)
+const initialEditorLayout = loadEditorLayout()
 
 type PendingOpenFile = {
-  path: string;
-};
+  path: string
+}
 
 async function openPendingAssociatedFiles() {
-  const { invoke } = await import("@tauri-apps/api/core");
-  const files = await invoke<PendingOpenFile[]>("take_pending_open");
+  const { invoke } = await import('@tauri-apps/api/core')
+  const files = await invoke<PendingOpenFile[]>('take_pending_open')
   for (const file of files) {
-    await openFileFromPath(file.path);
+    await openFileFromPath(file.path)
   }
 }
 
 async function bindAssociatedFileOpen() {
-  if (!isTauri()) return;
-  const { listen } = await import("@tauri-apps/api/event");
-  fileAssociationCleanup.value = await listen("open-associated-files", () => {
-    void openPendingAssociatedFiles().catch((e) => console.error("[Open With]", e));
-  });
-  await openPendingAssociatedFiles();
+  if (!isTauri()) return
+  const { listen } = await import('@tauri-apps/api/event')
+  fileAssociationCleanup.value = await listen('open-associated-files', () => {
+    void openPendingAssociatedFiles().catch((e) => console.error('[Open With]', e))
+  })
+  await openPendingAssociatedFiles()
 }
 
 onMounted(async () => {
-  if (isHostedAuthEnabled()) {
-    await refreshSession();
-    maybeConnectHostedCollab();
+  const mcp = await spawnMCPIfNeeded()
+  mcpCleanup.value = mcp?.disconnect ?? null
+  const tauri = isTauri()
+  if (import.meta.env.DEV || (tauri && mcp)) {
+    automationCleanup.value = connectAutomation(getActiveStore, mcp?.authToken ?? null).disconnect
   }
 
   try {
-    const mcp = await spawnMCPIfNeeded();
-    mcpCleanup.value = mcp?.disconnect ?? null;
-    const tauri = isTauri();
-    if (import.meta.env.DEV || tauri) {
-      automationCleanup.value = connectAutomation(
-        getActiveStore,
-        mcp?.authToken ?? null,
-      ).disconnect;
-    }
+    await bindAssociatedFileOpen()
   } catch (e) {
-    console.warn("[MCP]", e);
+    console.error('[Open With]', e)
   }
-
-  try {
-    await bindAssociatedFileOpen();
-  } catch (e) {
-    console.error("[Open With]", e);
-  }
-});
+})
 
 onUnmounted(() => {
-  mcpCleanup.value?.();
-  automationCleanup.value?.();
-  fileAssociationCleanup.value?.();
-});
+  mcpCleanup.value?.()
+  automationCleanup.value?.()
+  fileAssociationCleanup.value?.()
+})
 </script>
 
 <template>
-  <CommandSearch v-model:open="commandSearchOpen" />
   <div data-test-id="editor-root" class="flex h-screen w-screen flex-col">
     <SafariBanner />
+    <RenameSelectionDialog />
     <TabBar />
 
     <!-- Desktop layout -->
@@ -204,7 +120,7 @@ onUnmounted(() => {
       :key="activeTab?.id"
       direction="horizontal"
       class="flex-1 overflow-hidden"
-      @layout="saveWorkspaceLayout"
+      @layout="saveEditorLayout"
     >
       <SplitterPanel
         id="layers"

@@ -1,35 +1,36 @@
-import type { EditorState } from "@open-pencil/core/editor";
-import { watchDebounced } from "@vueuse/core";
+import { watchDebounced } from '@vueuse/core'
 
-type AutosaveState = EditorState & { autosaveEnabled: boolean };
+import type { EditorState } from '@open-pencil/core/editor'
+
+type AutosaveState = EditorState & { autosaveEnabled: boolean }
 
 type AutosaveOptions = {
-  state: AutosaveState;
-  getSavedVersion: () => number;
-  hasWritableSource: () => boolean;
-  saveCurrentDocument: () => Promise<void>;
-};
+  state: AutosaveState
+  getSavedVersion: () => number
+  hasWritableSource: () => boolean
+  saveCurrentDocument: () => Promise<void>
+}
 
 export function createAutosave({
   state,
   getSavedVersion,
   hasWritableSource,
-  saveCurrentDocument,
+  saveCurrentDocument
 }: AutosaveOptions) {
   const stop = watchDebounced(
     () => state.sceneVersion,
     async (version) => {
-      if (version === getSavedVersion()) return;
-      if (!state.autosaveEnabled) return;
-      if (!hasWritableSource()) return;
+      if (version === getSavedVersion()) return
+      if (!state.autosaveEnabled) return
+      if (!hasWritableSource()) return
       try {
-        await saveCurrentDocument();
+        await saveCurrentDocument()
       } catch (e) {
-        console.warn("Autosave failed:", e);
+        console.warn('Autosave failed:', e)
       }
     },
-    { debounce: 3000 },
-  );
+    { debounce: 3000 }
+  )
 
-  return { disposeAutosave: stop };
+  return { disposeAutosave: stop }
 }

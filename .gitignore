@@ -39,6 +39,7 @@ Caddyfile.dev
 test-results/
 playwright-report/
 blob-report/
+storybook-static/
 .vite/
 .turbo/
 
@@ -73,17 +74,6 @@ components.d.ts
 
 # Agent scratch space (reviews, plans, test artifacts)
 scratch/
-.omo/
-.beads*/
-
-# Build manifests (deployment artifacts)
-.build-manifests/
-
-# Local CH5 proof output
-.ch5/artifacts/
-artifacts/proof/
-.hush-materialized/
-.ch5/state/
 
 # OpenCode
 .opencode/

@@ -82,12 +82,32 @@ Main structural primitives include:
 - `LayerTreeRoot`
 - `PageListRoot`
 - `PropertyListRoot`
+- `PropertySectionRoot`
+- `SegmentedControlRoot`
 - `ToolbarRoot`
 - `ColorPickerRoot`
-- `FillPickerRoot`
 - `FontPickerRoot`
+- `NumberFieldRoot` / `NumberFieldInput` / `NumberFieldValue`
+- `BindableValueRoot` / `BindableValueTrigger` / `BindableValuePicker`
+- `LayoutControlsRoot`
+- `ConstraintsControlRoot`
 
-These components coordinate structure and state, but do not impose app styling.
+These components coordinate structure and state, but do not impose app styling. `NumberField`
+adds pointer scrubbing, Arrow-key stepping, mixed/bound state attributes, and safe arithmetic
+expressions such as `+10`, `*2`, `50%`, and `12*8+4`. `BindableValue` composes fields with a
+generic `BindingProvider` and supports detach-on-edit, read-only, and edit-variable policies.
+Focusing a bound NumberField is non-destructive; the configured policy begins only on the first
+value mutation. `LayoutControlsRoot` exposes axis-oriented sizing actions; editing a Hug or Fill
+dimension can switch that axis to Fixed inside the same provider transaction.
+`ConstraintsControlRoot` exposes eligible frame-child constraints, mixed axis values, pin actions,
+and undo-batched multi-selection updates. `AppearanceControlsRoot`
+exposes selection-derived independent-corner presentation state so consumers do not need parallel
+expansion heuristics. `PropertyListRoot` is controlled and
+editor-agnostic; OpenPencil panels connect it to selection and undo through
+`useEditorPropertyList()`. `useColorModel()` provides precise scene-color/Reka bridges, reactive
+RGB/HSL/HSB/OkHCL channels, extensible format state, and shared slider presentation data.
+`FillRoot` and `FillSwatch` separate fill behavior and binding-aware previews from popover
+composition; `ChannelSlider` provides accessible scalar OkHCL controls until Reka supports them.
 
 ## Public API tiers
 
@@ -114,7 +134,12 @@ These are the main APIs most SDK consumers should start with.
 
 - `usePosition()`
 - `useLayout()`
+- `useConstraints()`
+- `useComponentProperties()`
 - `useAppearance()`
+- `useSharedStyleBinding()`
+- `useColorModel()`
+- `useMask()`
 - `useTypography()`
 - `useExport()`
 - `useFillControls()`
@@ -133,16 +158,38 @@ These are the main APIs most SDK consumers should start with.
 - `LayerTreeRoot`
 - `PageListRoot`
 - `PropertyListRoot`
+- `PropertyListItem`
+- `PropertyListAdd` / `PropertyListRemove` / `PropertyListVisibility`
+- `PropertySectionRoot` / `PropertySectionHeader` / `PropertySectionTitle`
+- `PropertySectionActions` / `PropertySectionContent` / `PropertySectionEmptyAction`
+- `SegmentedControlRoot` / `SegmentedControlItem`
 - `ToolbarRoot`
+- `NumberFieldRoot`
+- `NumberFieldInput`
+- `NumberFieldValue`
+- `NumberFieldLeading`
+- `NumberFieldUnit`
+- `NumberFieldTrailing`
+- `NumberFieldMenu`
+- `BindableValueRoot`
+- `BindableValueTrigger`
+- `BindableValuePicker`
+- `FillRoot` / `FillSwatch`
+- `ChannelSliderRoot` / `ChannelSliderTrack` / `ChannelSliderThumb`
 
 ### Advanced API
 
 These exports are intentionally public, but they are lower-level or more specialized.
 
 - `useNodeProps()`
+- `useEditorPropertyList()`
 - `useSceneComputed()`
+- `useColorBindingProvider()`
 - `useColorVariableBinding()`
-- `useFillPicker()`
+- `provideBindingProvider()`
+- `useBindingProvider()`
+- `useNumberBindingProvider()`
+- `useFill()`
 - `useGradientStops()`
 - `useFontPicker()`
 - `useOkHCL()`
@@ -167,7 +214,7 @@ These are mostly useful when extending SDK primitives rather than building from 
 - `useLayerTree()`
 - `useToolbar()`
 - `usePropertyList()`
-- `useScrubInput()`
+- `useNumberField()`
 - `locale`
 - `localeSetting`
 - `setLocale()`

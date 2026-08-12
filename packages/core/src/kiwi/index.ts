@@ -1,7 +1,8 @@
-export { prefetchFigmaSchema } from "#core/clipboard";
-export { readFigFile, parseFigFile } from "./fig/file";
-export { importNodeChanges } from "./fig/import";
-export { deduplicateNodeChangePluginData } from "@open-pencil/kiwi/fig/parse";
+export { prefetchFigmaSchema } from '#core/clipboard'
+export { readFigFile, parseFigFile } from './fig/file'
+export { importNodeChanges } from './fig/import'
+export { populateAllLazyFigImportRoots, populateLazyFigImportRoots } from './fig/lazy-import'
+export { deduplicateNodeChangePluginData } from '@open-pencil/kiwi/fig/parse'
 export {
   initCodec,
   encodeMessage,
@@ -28,8 +29,8 @@ export {
   type VariableConsumptionEntry,
   type VariableDataValuesEntry,
   type ParentIndex,
-  type FigmaMessage,
-} from "@open-pencil/kiwi/fig/codec";
+  type FigmaMessage
+} from '@open-pencil/kiwi/fig/codec'
 export {
   MESSAGE_TYPES,
   NODE_TYPES,
@@ -40,12 +41,12 @@ export {
   KIWI,
   SESSION_ID,
   ZSTD_MAGIC,
-  buildMultiplayerUrl,
+  buildMultiplayerURL,
   isZstdCompressed,
   hasFigWireHeader,
   skipFigWireHeader,
   isKiwiMessage,
   getKiwiMessageType,
   parseVarint,
-  FIG_WIRE_MAGIC,
-} from "@open-pencil/kiwi/fig";
+  FIG_WIRE_MAGIC
+} from '@open-pencil/kiwi/fig'

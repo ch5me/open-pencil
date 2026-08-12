@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useMobileHudContext } from "@/components/MobileHud/context";
+import { useMobileHudContext } from '@/components/MobileHud/context'
 
-const hud = useMobileHudContext();
+const hud = useMobileHudContext()
 </script>
 
 <template>

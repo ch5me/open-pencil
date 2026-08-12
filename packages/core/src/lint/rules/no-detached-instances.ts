@@ -1,4 +1,4 @@
-import { defineRule } from "#core/lint/rule";
+import { defineRule } from '#core/lint/rule'
 const PATTERNS = [
   /^(button|btn)/i,
   /^(input|field|text-?field)/i,
@@ -8,27 +8,27 @@ const PATTERNS = [
   /^(header|footer|sidebar)/i,
   /^(list|item|row)/i,
   /^(chip|tag|label)/i,
-  /^(tooltip|popover|dropdown)/i,
-];
+  /^(tooltip|popover|dropdown)/i
+]
 export default defineRule({
   meta: {
-    id: "no-detached-instances",
-    category: "components",
-    description: "Frames that look like components should be instances, not detached copies",
+    id: 'no-detached-instances',
+    category: 'components',
+    description: 'Frames that look like components should be instances, not detached copies'
   },
-  match: ["FRAME"],
+  match: ['FRAME'],
   check(node, context) {
     if (
       node.componentId ||
       !PATTERNS.some((p) => p.test(node.name)) ||
       context.getChildren(node).length === 0 ||
-      node.layoutMode === "NONE"
+      node.layoutMode === 'NONE'
     )
-      return;
+      return
     context.report({
       node,
       message: `Frame "${node.name}" looks like a component but isn't an instance`,
-      suggest: "Use a component instance instead of a detached frame",
-    });
-  },
-});
+      suggest: 'Use a component instance instead of a detached frame'
+    })
+  }
+})

@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { twMerge } from "tailwind-merge";
-import { computed } from "vue";
+import { computed } from 'vue'
+import { twMerge } from 'tailwind-merge'
 
 const { ui } = defineProps<{
   ui?: {
-    base?: string;
-  };
-}>();
+    base?: string
+  }
+}>()
 
-const cls = computed(() => twMerge("text-[11px] text-muted", ui?.base));
+const cls = computed(() => twMerge('text-[11px] text-muted', ui?.base))
 </script>
 
 <template>

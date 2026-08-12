@@ -1,157 +1,165 @@
-import { transform } from "sucrase";
+import { transform } from 'sucrase'
 
-import type { RenderOptions as RenderJSXOptions } from "#core/design-jsx/types";
-import type { SceneGraph } from "#core/scene-graph";
+import type { SceneGraph } from '@open-pencil/scene-graph'
 
-import { backgroundBlur, dropShadow, foregroundBlur, innerShadow, layerBlur } from "./effects";
-import * as React from "./mini-react";
+import type { RenderOptions as RenderJSXOptions } from '#core/design-jsx/types'
+
+import { backgroundBlur, dropShadow, foregroundBlur, innerShadow, layerBlur } from './effects'
+import * as React from './mini-react'
 import {
   angularGradient,
   diamondGradient,
   gradient,
   linearGradient,
   radialGradient,
-  solid,
-} from "./paints";
-import { renderTree, type RenderResult } from "./renderer";
-import { isTreeNode, resolveToTree, type TreeNode } from "./tree";
+  solid
+} from './paints'
+import { renderTree, type RenderResult } from './renderer'
+import { isTreeNode, resolveToTree, type TreeNode } from './tree'
 
 /**
  * Build a component function from a JSX string using sucrase.
  * Works in both Node/Bun and the browser (no native bindings).
  */
 const SUPPORTED_PROPS = new Set([
-  "name",
-  "key",
-  "flex",
-  "flow",
-  "dir",
-  "gap",
-  "wrap",
-  "rowGap",
-  "columnGap",
-  "justify",
-  "justifyContent",
-  "items",
-  "align",
-  "alignItems",
-  "grow",
-  "w",
-  "h",
-  "width",
-  "height",
-  "minW",
-  "maxW",
-  "minH",
-  "maxH",
-  "x",
-  "y",
-  "top",
-  "left",
-  "position",
-  "p",
-  "padding",
-  "px",
-  "py",
-  "pt",
-  "pr",
-  "pb",
-  "pl",
-  "bg",
-  "fill",
-  "fills",
-  "background",
-  "backgroundColor",
-  "stroke",
-  "border",
-  "borderColor",
-  "strokeWidth",
-  "borderWidth",
-  "strokeAlign",
-  "strokeDash",
-  "rounded",
-  "borderRadius",
-  "roundedTL",
-  "roundedTR",
-  "roundedBL",
-  "roundedBR",
-  "cornerRadius",
-  "cornerSmoothing",
-  "opacity",
-  "blendMode",
-  "rotate",
-  "rotation",
-  "overflow",
-  "shadow",
-  "blur",
-  "effects",
-  "size",
-  "fontSize",
-  "font",
-  "fontFamily",
-  "weight",
-  "fontWeight",
-  "color",
-  "text",
-  "characters",
-  "content",
-  "value",
-  "title",
-  "textAlign",
-  "textAlignHorizontal",
-  "textHorizontalAlignment",
-  "textAlignVertical",
-  "textVerticalAlignment",
-  "textAutoResize",
-  "lineHeight",
-  "letterSpacing",
-  "textDecoration",
-  "textCase",
-  "maxLines",
-  "truncate",
-  "grid",
-  "columns",
-  "rows",
-  "colStart",
-  "rowStart",
-  "col",
-  "row",
-  "colSpan",
-  "rowSpan",
-  "points",
-  "pointCount",
-  "innerRadius",
-  "label",
-  "style",
-  "bind",
-  "component",
-  "componentId",
-  "of",
-]);
+  'name',
+  'key',
+  'flex',
+  'flow',
+  'dir',
+  'gap',
+  'wrap',
+  'rowGap',
+  'columnGap',
+  'justify',
+  'justifyContent',
+  'items',
+  'align',
+  'alignItems',
+  'grow',
+  'w',
+  'h',
+  'width',
+  'height',
+  'minW',
+  'maxW',
+  'minH',
+  'maxH',
+  'x',
+  'y',
+  'top',
+  'left',
+  'position',
+  'p',
+  'padding',
+  'px',
+  'py',
+  'pt',
+  'pr',
+  'pb',
+  'pl',
+  'bg',
+  'fill',
+  'fills',
+  'background',
+  'backgroundColor',
+  'stroke',
+  'border',
+  'borderColor',
+  'strokeWidth',
+  'borderWidth',
+  'strokeAlign',
+  'strokeDash',
+  'rounded',
+  'borderRadius',
+  'roundedTL',
+  'roundedTR',
+  'roundedBL',
+  'roundedBR',
+  'cornerRadius',
+  'cornerSmoothing',
+  'opacity',
+  'blendMode',
+  'rotate',
+  'rotation',
+  'overflow',
+  'shadow',
+  'blur',
+  'effects',
+  'size',
+  'fontSize',
+  'font',
+  'fontFamily',
+  'weight',
+  'fontWeight',
+  'color',
+  'text',
+  'characters',
+  'content',
+  'value',
+  'title',
+  'textAlign',
+  'textAlignHorizontal',
+  'textHorizontalAlignment',
+  'textAlignVertical',
+  'textVerticalAlignment',
+  'textAutoResize',
+  'lineHeight',
+  'letterSpacing',
+  'textDecoration',
+  'textCase',
+  'maxLines',
+  'truncate',
+  'grid',
+  'columns',
+  'rows',
+  'colStart',
+  'rowStart',
+  'col',
+  'row',
+  'colSpan',
+  'rowSpan',
+  'points',
+  'pointCount',
+  'innerRadius',
+  'label',
+  'style',
+  'bind',
+  'component',
+  'componentId',
+  'of'
+])
 
-function stripHtmlComments(jsxString: string): string {
-  return jsxString.replace(/<!--[\s\S]*?-->/g, "");
+function stripHTMLComments(jsxString: string): string {
+  return jsxString.replace(/<!--[\s\S]*?-->/g, '')
 }
 
 function unsupportedPropWarnings(tree: TreeNode): string[] {
-  const warnings: string[] = [];
-  collectUnsupportedPropWarnings(tree, warnings);
-  return warnings;
+  const warnings: string[] = []
+  collectUnsupportedPropWarnings(tree, warnings)
+  return warnings
 }
 
+const SVG_ROOT_PROPS = new Set([...SUPPORTED_PROPS, 'viewBox', 'body'])
+
 function collectUnsupportedPropWarnings(tree: TreeNode, warnings: string[]): void {
+  const supportedProps = tree.type === 'svg' ? SVG_ROOT_PROPS : SUPPORTED_PROPS
   for (const key of Object.keys(tree.props)) {
-    if (!SUPPORTED_PROPS.has(key)) {
-      warnings.push(`Unsupported prop "${key}" on <${tree.type}> is ignored.`);
+    if (!supportedProps.has(key)) {
+      warnings.push(`Unsupported prop "${key}" on <${tree.type}> is ignored.`)
     }
   }
+
+  // SVG descendants are parsed as markup by renderSvgNode, not as Design JSX nodes.
+  if (tree.type === 'svg') return
+
   for (const child of tree.children) {
-    if (isTreeNode(child)) collectUnsupportedPropWarnings(child, warnings);
+    if (isTreeNode(child)) collectUnsupportedPropWarnings(child, warnings)
   }
 }
 
 export function buildComponent(jsxString: string): React.ComponentType {
-  const trimmed = stripHtmlComments(jsxString).trim();
+  const trimmed = stripHTMLComments(jsxString).trim()
 
   const aliases = `
     const __h = React.createElement
@@ -161,6 +169,7 @@ export function buildComponent(jsxString: string): React.ComponentType {
     const Group = 'group', Section = 'section', View = 'frame', Rect = 'rectangle'
     const Component = 'component', ComponentSet = 'component-set', Instance = 'instance'
     const Icon = 'icon'
+    const svg = 'svg'
     const dropShadow = __helpers.dropShadow
     const innerShadow = __helpers.innerShadow
     const layerBlur = __helpers.layerBlur
@@ -179,26 +188,23 @@ export function buildComponent(jsxString: string): React.ComponentType {
     const defineVars = (vars) => Object.fromEntries(
       Object.entries(vars).map(([key, def]) => [key, designVar(def)])
     )
-  `;
+  `
   const opts = {
-    transforms: ["typescript", "jsx"] as Array<"typescript" | "jsx">,
-    jsxPragma: "__h",
-    jsxFragmentPragma: "__frag",
-    production: true,
-  };
+    transforms: ['typescript', 'jsx'] as Array<'typescript' | 'jsx'>,
+    jsxPragma: '__h',
+    jsxFragmentPragma: '__frag',
+    production: true
+  }
 
-  let code: string;
+  let code: string
   try {
-    code = transform(`${aliases}\nreturn function __render() { return ${trimmed} }`, opts).code;
+    code = transform(`${aliases}\nreturn function __render() { return ${trimmed} }`, opts).code
   } catch {
-    code = transform(
-      `${aliases}\nreturn function __render() { return <>${trimmed}</> }`,
-      opts,
-    ).code;
+    code = transform(`${aliases}\nreturn function __render() { return <>${trimmed}</> }`, opts).code
   }
 
   // eslint-disable-next-line typescript-eslint/no-implied-eval -- sucrase output must be evaluated at runtime
-  return new Function("React", "__helpers", code)(React, {
+  return new Function('React', '__helpers', code)(React, {
     backgroundBlur,
     dropShadow,
     foregroundBlur,
@@ -209,8 +215,8 @@ export function buildComponent(jsxString: string): React.ComponentType {
     gradient,
     linearGradient,
     radialGradient,
-    solid,
-  }) as React.ComponentType;
+    solid
+  }) as React.ComponentType
 }
 
 /**
@@ -220,34 +226,34 @@ export function buildComponent(jsxString: string): React.ComponentType {
 export async function renderJSX(
   graph: SceneGraph,
   jsxString: string,
-  options?: RenderJSXOptions,
+  options?: RenderJSXOptions
 ): Promise<RenderResult[]> {
-  const Component = buildComponent(jsxString);
-  const element = React.createElement(Component, null);
-  const tree = resolveToTree(element);
+  const Component = buildComponent(jsxString)
+  const element = React.createElement(Component, null)
+  const tree = resolveToTree(element)
 
   if (!tree) {
-    throw new Error("JSX must return a Figma element (Frame, Text, etc)");
+    throw new Error('JSX must return a Figma element (Frame, Text, etc)')
   }
 
-  const warnings = unsupportedPropWarnings(tree);
+  const warnings = unsupportedPropWarnings(tree)
 
-  if (tree.type === "" && tree.children.length > 0) {
-    const results: RenderResult[] = [];
+  if (tree.type === '' && tree.children.length > 0) {
+    const results: RenderResult[] = []
     for (const child of tree.children) {
-      if (typeof child === "string") continue;
-      results.push(await renderTree(graph, child, options));
+      if (typeof child === 'string') continue
+      results.push(await renderTree(graph, child, options))
     }
     if (results.length === 0) {
-      throw new Error("JSX must return a Figma element (Frame, Text, etc)");
+      throw new Error('JSX must return a Figma element (Frame, Text, etc)')
     }
-    if (warnings.length > 0) results[0].warnings = warnings;
-    return results;
+    if (warnings.length > 0) results[0].warnings = warnings
+    return results
   }
 
-  const result = await renderTree(graph, tree, options);
-  if (warnings.length > 0) result.warnings = warnings;
-  return [result];
+  const result = await renderTree(graph, tree, options)
+  if (warnings.length > 0) result.warnings = warnings
+  return [result]
 }
 
-export { renderTree as renderTreeNode };
+export { renderTree as renderTreeNode }

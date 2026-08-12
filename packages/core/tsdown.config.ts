@@ -1,14 +1,13 @@
 import { readFileSync } from 'node:fs'
 
 import { defineConfig } from 'tsdown'
-import type { Plugin } from 'rolldown'
+import type { Rolldown } from 'tsdown'
 
-const packageJson = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+const packageJSON = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
   dependencies?: Record<string, string>
-  peerDependencies?: Record<string, string>
 }
 
-function rawText(): Plugin {
+function rawText(): Rolldown.Plugin {
   return {
     name: 'raw-text',
     load(id) {
@@ -36,11 +35,7 @@ export default defineConfig({
   clean: true,
   outDir: './dist',
   deps: {
-    neverBundle: [
-      ...Object.keys(packageJson.dependencies ?? {}),
-      ...Object.keys(packageJson.peerDependencies ?? {}),
-      /^node:/
-    ],
+    neverBundle: [...Object.keys(packageJSON.dependencies ?? {}), /^node:/],
     onlyBundle: false
   }
 })

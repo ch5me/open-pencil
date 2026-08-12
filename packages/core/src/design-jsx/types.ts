@@ -1,5 +1,5 @@
 export interface RenderOptions {
-  x?: number;
-  y?: number;
-  parentId?: string;
+  x?: number
+  y?: number
+  parentId?: string
 }

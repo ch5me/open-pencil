@@ -102,7 +102,7 @@ Der MCP-Server bietet derzeit 90 Werkzeuge. Die Referenzimplementierung in [figm
 
 ### CI-Design-Werkzeuge
 
-Die headless CLI unterstützt bereits `analyze colors/typography/spacing/clusters`. Nächster Schritt: Forgejo Actions-Integration für automatisiertes Design-Linting und visuelle Regression in PRs.
+Die headless CLI unterstützt bereits `analyze colors/typography/spacing/clusters`. Nächster Schritt: GitHub Actions-Integration für automatisiertes Design-Linting und visuelle Regression in PRs.
 
 ### Prototyping
 

@@ -1,29 +1,13 @@
-import type { EditorState } from "@open-pencil/core/editor";
-import type { SceneNode, VectorSegment, VectorVertex } from "@open-pencil/core/scene-graph";
+import type { EditorState } from '@open-pencil/core/editor'
+import type { SceneNode, VectorSegment, VectorVertex } from '@open-pencil/scene-graph'
 
-export type PenState = EditorState;
-type PenStateInit = NonNullable<EditorState["penState"]>;
-
-export function absoluteVertices(node: SceneNode, vertices: VectorVertex[]): VectorVertex[] {
-  return vertices.map((v) => ({
-    ...v,
-    x: v.x + node.x,
-    y: v.y + node.y,
-  }));
-}
-
-export function cloneSegments(segments: VectorSegment[]): VectorSegment[] {
-  return segments.map((s) => ({
-    ...s,
-    tangentStart: { ...s.tangentStart },
-    tangentEnd: { ...s.tangentEnd },
-  }));
-}
+export type PenState = EditorState
+type PenStateInit = NonNullable<EditorState['penState']>
 
 export function createResumedPenState(
   node: SceneNode,
   vertices: VectorVertex[],
-  segments: VectorSegment[],
+  segments: VectorSegment[]
 ): PenStateInit {
   return {
     vertices,
@@ -34,73 +18,73 @@ export function createResumedPenState(
     pendingClose: false,
     resumingNodeId: node.id,
     resumedFills: [...node.fills],
-    resumedStrokes: [...node.strokes],
-  };
+    resumedStrokes: [...node.strokes]
+  }
 }
 
 export function walkChainToEnd(segments: { start: number; end: number }[], start: number): number {
-  let current = start;
-  const visited = new Set<number>([start]);
+  let current = start
+  const visited = new Set<number>([start])
   for (;;) {
-    let found = false;
+    let found = false
     for (const seg of segments) {
-      let next = -1;
-      if (seg.start === current && !visited.has(seg.end)) next = seg.end;
-      else if (seg.end === current && !visited.has(seg.start)) next = seg.start;
-      if (next === -1) continue;
-      visited.add(next);
-      current = next;
-      found = true;
-      break;
+      let next = -1
+      if (seg.start === current && !visited.has(seg.end)) next = seg.end
+      else if (seg.end === current && !visited.has(seg.start)) next = seg.start
+      if (next === -1) continue
+      visited.add(next)
+      current = next
+      found = true
+      break
     }
-    if (!found) break;
+    if (!found) break
   }
-  return current;
+  return current
 }
 
 export function walkChainOrdered(
   absVertices: VectorVertex[],
   absSegments: VectorSegment[],
-  start: number,
+  start: number
 ): { orderedVertices: VectorVertex[]; orderedSegments: VectorSegment[] } {
-  const orderedVertices: VectorVertex[] = [];
-  const orderedSegments: VectorSegment[] = [];
-  const visited = new Set<number>();
-  let current = start;
+  const orderedVertices: VectorVertex[] = []
+  const orderedSegments: VectorSegment[] = []
+  const visited = new Set<number>()
+  let current = start
 
-  orderedVertices.push(absVertices[current]);
-  visited.add(current);
+  orderedVertices.push(absVertices[current])
+  visited.add(current)
 
   for (;;) {
-    let foundSeg = false;
+    let foundSeg = false
     for (const seg of absSegments) {
-      let next = -1;
-      let isForward = false;
+      let next = -1
+      let isForward = false
       if (seg.start === current && !visited.has(seg.end)) {
-        next = seg.end;
-        isForward = true;
+        next = seg.end
+        isForward = true
       } else if (seg.end === current && !visited.has(seg.start)) {
-        next = seg.start;
+        next = seg.start
       }
-      if (next === -1) continue;
+      if (next === -1) continue
 
-      const fromIdx = orderedVertices.length - 1;
-      orderedVertices.push(absVertices[next]);
-      const toIdx = orderedVertices.length - 1;
+      const fromIdx = orderedVertices.length - 1
+      orderedVertices.push(absVertices[next])
+      const toIdx = orderedVertices.length - 1
 
       orderedSegments.push({
         start: fromIdx,
         end: toIdx,
         tangentStart: isForward ? { ...seg.tangentStart } : { ...seg.tangentEnd },
-        tangentEnd: isForward ? { ...seg.tangentEnd } : { ...seg.tangentStart },
-      });
+        tangentEnd: isForward ? { ...seg.tangentEnd } : { ...seg.tangentStart }
+      })
 
-      visited.add(next);
-      current = next;
-      foundSeg = true;
-      break;
+      visited.add(next)
+      current = next
+      foundSeg = true
+      break
     }
-    if (!foundSeg) break;
+    if (!foundSeg) break
   }
-  return { orderedVertices, orderedSegments };
+  return { orderedVertices, orderedSegments }
 }

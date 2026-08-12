@@ -2,5 +2,5 @@ export {
   toolbarFlyoutItemTestId,
   toolbarFlyoutTestId,
   toolbarToolTestId,
-  variablesAddTestId,
-} from "#vue/testing/test-id";
+  variablesAddTestId
+} from '#vue/testing/test-id'

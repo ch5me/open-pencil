@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import { useI18n } from "@open-pencil/vue";
-import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from "reka-ui";
+import { computed, ref } from 'vue'
+import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
 
-import { useEditorStore } from "@/app/editor/active-store";
+import { useI18n } from '@open-pencil/vue'
 
-import AppMenu from "./AppMenu.vue";
-import AssetsPanel from "./AssetsPanel.vue";
-import LayerTree from "./LayerTree.vue";
-import PagesPanel from "./PagesPanel.vue";
+import AppMenu from '@/components/Shell/AppMenu.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import AssetsPanel from './assets-panel/AssetsPanel.vue'
+import LayerTree from './LayerTree/LayerTree.vue'
+import PagesPanel from './PagesPanel.vue'
 
-const { menu, panels } = useI18n();
-const store = useEditorStore();
+const { menu, panels } = useI18n()
+const activePanel = ref<'file' | 'assets'>('file')
+const panelModel = computed({
+  get: () => activePanel.value,
+  set: (value: string) => {
+    if (value === 'file' || value === 'assets') activePanel.value = value
+  }
+})
+const panelOptions = computed(() => [
+  { value: 'file', label: menu.value.file },
+  { value: 'assets', label: panels.value.assets }
+])
+const panelTabsUI = { root: 'w-full' }
 </script>
 
 <template>
@@ -20,35 +32,28 @@ const store = useEditorStore();
     style="contain: paint layout style"
   >
     <AppMenu />
-    <div class="flex shrink-0 gap-1 border-b border-border px-2 py-1.5">
-      <button
-        data-test-id="left-panel-layers-tab"
-        class="flex-1 rounded px-2 py-1 text-xs transition-colors"
-        :class="
-          store.state.leftPanelMode === 'layers'
-            ? 'bg-hover text-surface'
-            : 'text-muted hover:text-surface'
-        "
-        @click="store.state.leftPanelMode = 'layers'"
+    <div class="shrink-0 border-b border-border px-2 py-1.5">
+      <SegmentedControl
+        v-model="panelModel"
+        :options="panelOptions"
+        :label="panels.layers"
+        :ui="panelTabsUI"
       >
-        {{ menu.file }}
-      </button>
-      <button
-        data-test-id="left-panel-assets-tab"
-        class="flex-1 rounded px-2 py-1 text-xs transition-colors"
-        :class="
-          store.state.leftPanelMode === 'assets'
-            ? 'bg-hover text-surface'
-            : 'text-muted hover:text-surface'
-        "
-        @click="store.state.leftPanelMode = 'assets'"
-      >
-        {{ panels.assets }}
-      </button>
+        <template #option="{ option }">
+          <span
+            :data-test-id="
+              option.value === 'file' ? 'left-panel-layers-tab' : 'left-panel-assets-tab'
+            "
+            class="truncate"
+          >
+            {{ option.label }}
+          </span>
+        </template>
+      </SegmentedControl>
     </div>
-    <AssetsPanel v-show="store.state.leftPanelMode === 'assets'" />
+    <AssetsPanel v-if="activePanel === 'assets'" />
     <SplitterGroup
-      v-show="store.state.leftPanelMode === 'layers'"
+      v-else
       direction="vertical"
       auto-save-id="layers-layout"
       class="flex-1 overflow-hidden"
@@ -69,7 +74,7 @@ const store = useEditorStore();
       <SplitterPanel :default-size="70" :min-size="20" class="flex flex-col overflow-hidden">
         <header
           data-test-id="layers-header"
-          class="shrink-0 px-3 py-2 text-[11px] tracking-wider text-muted uppercase"
+          class="shrink-0 px-3 py-2 text-[11px] font-semibold text-surface"
         >
           {{ panels.layers }}
         </header>

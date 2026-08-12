@@ -102,7 +102,7 @@ Il server MCP attualmente espone 90 strumenti. L'implementazione di riferimento 
 
 ### Strumenti di Design per CI
 
-La CLI headless supporta già `analyze colors/typography/spacing/clusters`. Prossimamente: integrazione con Forgejo Actions per linting automatico del design e regressione visiva nelle PR.
+La CLI headless supporta già `analyze colors/typography/spacing/clusters`. Prossimamente: integrazione con GitHub Actions per linting automatico del design e regressione visiva nelle PR.
 
 ### Prototipazione
 

@@ -1,36 +1,16 @@
 <script setup lang="ts">
-import { useI18n } from "@open-pencil/vue";
-import { TabsContent, TabsList, TabsRoot, TabsTrigger } from "reka-ui";
-import { computed, watch } from "vue";
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 
-import { useAIChat } from "@/app/ai/chat/use";
-import { useEditorStore } from "@/app/editor/active-store";
+import { useI18n } from '@open-pencil/vue'
+import { useAIChat } from '@/app/ai/chat/use'
 
-import ChatPanel from "./ChatPanel.vue";
-import CodePanel from "./CodePanel.vue";
-import DesignPanel from "./DesignPanel.vue";
-import ZoomDropdown from "./ZoomDropdown.vue";
+import ChatPanel from './ChatPanel.vue'
+import CodePanel from './CodePanel.vue'
+import DesignPanel from './DesignPanel.vue'
+import ZoomDropdown from './editor/ZoomDropdown.vue'
 
-const store = useEditorStore();
-const { activeTab: chatTab } = useAIChat();
-const { panels } = useI18n();
-
-const activeTab = computed({
-  get: () => {
-    if (store.state.activeRibbonTab === "code") return "code";
-    if (store.state.activeRibbonTab === "ai") return "ai";
-    return "design";
-  },
-  set: (value: "design" | "code" | "ai") => {
-    store.state.activeRibbonTab = value === "design" ? "panels" : value;
-    chatTab.value = value;
-  },
-});
-
-watch(chatTab, (value) => {
-  if (value === "design") store.state.activeRibbonTab = "panels";
-  else store.state.activeRibbonTab = value;
-});
+const { activeTab } = useAIChat()
+const { panels } = useI18n()
 </script>
 
 <template>
@@ -44,14 +24,14 @@ watch(chatTab, (value) => {
         <TabsTrigger
           value="design"
           data-test-id="properties-tab-design"
-          class="rounded px-2.5 py-1 text-xs text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface"
+          class="relative rounded px-2.5 py-1 text-[11px] text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface after:absolute after:inset-x-2 after:-bottom-[9px] after:h-0.5 after:rounded-full after:bg-transparent data-[state=active]:after:bg-accent"
         >
           {{ panels.design }}
         </TabsTrigger>
         <TabsTrigger
           value="code"
           data-test-id="properties-tab-code"
-          class="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface"
+          class="relative flex items-center gap-1 rounded px-2.5 py-1 text-[11px] text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface after:absolute after:inset-x-2 after:-bottom-[9px] after:h-0.5 after:rounded-full after:bg-transparent data-[state=active]:after:bg-accent"
         >
           <icon-lucide-code class="size-3" />
           {{ panels.code }}
@@ -59,7 +39,7 @@ watch(chatTab, (value) => {
         <TabsTrigger
           value="ai"
           data-test-id="properties-tab-ai"
-          class="flex items-center gap-1 rounded px-2.5 py-1 text-xs text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface"
+          class="relative flex items-center gap-1 rounded px-2.5 py-1 text-[11px] text-muted hover:text-surface data-[state=active]:font-semibold data-[state=active]:text-surface after:absolute after:inset-x-2 after:-bottom-[9px] after:h-0.5 after:rounded-full after:bg-transparent data-[state=active]:after:bg-accent"
         >
           <icon-lucide-sparkles class="size-3" />
           {{ panels.ai }}

@@ -1,12 +1,12 @@
-import { expect, mock, test } from "bun:test";
+import { expect, mock, test } from 'bun:test'
 
-import type { Font, Paint, Surface } from "canvaskit-wasm";
+import type { Font, Paint, Surface } from 'canvaskit-wasm'
 
-import type { SkiaRenderer } from "#core/canvas/renderer";
-import { destroyRenderer } from "#core/canvas/renderer/lifecycle";
+import type { SkiaRenderer } from '#core/canvas/renderer'
+import { destroyRenderer } from '#core/canvas/renderer/lifecycle'
 
 function deletable<T>() {
-  return { delete: mock() } as T & { delete: ReturnType<typeof mock> };
+  return { delete: mock() } as T & { delete: ReturnType<typeof mock> }
 }
 
 function createRenderer() {
@@ -54,21 +54,21 @@ function createRenderer() {
     sceneBacking: null,
     sceneBackingBuild: null,
     _flashPaint: null,
-    profiler: { destroy: mock() } as Partial<SkiaRenderer["profiler"]> as SkiaRenderer["profiler"],
-    surface: deletable<Surface>(),
-  };
-  return renderer as SkiaRenderer;
+    profiler: { destroy: mock() } as Partial<SkiaRenderer['profiler']> as SkiaRenderer['profiler'],
+    surface: deletable<Surface>()
+  }
+  return renderer as SkiaRenderer
 }
 
-test("destroyRenderer deletes all renderer-owned paints and label fonts", () => {
-  const renderer = createRenderer();
-  const parentOutlinePaint = renderer.parentOutlinePaint;
-  const sectionTitleFont = renderer.sectionTitleFont;
-  const componentLabelFont = renderer.componentLabelFont;
+test('destroyRenderer deletes all renderer-owned paints and label fonts', () => {
+  const renderer = createRenderer()
+  const parentOutlinePaint = renderer.parentOutlinePaint
+  const sectionTitleFont = renderer.sectionTitleFont
+  const componentLabelFont = renderer.componentLabelFont
 
-  destroyRenderer(renderer);
+  destroyRenderer(renderer)
 
-  expect(parentOutlinePaint.delete).toHaveBeenCalled();
-  expect(sectionTitleFont?.delete).toHaveBeenCalled();
-  expect(componentLabelFont?.delete).toHaveBeenCalled();
-});
+  expect(parentOutlinePaint.delete).toHaveBeenCalled()
+  expect(sectionTitleFont?.delete).toHaveBeenCalled()
+  expect(componentLabelFont?.delete).toHaveBeenCalled()
+})

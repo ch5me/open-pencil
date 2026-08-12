@@ -1,12 +1,13 @@
-import type { Editor } from "@open-pencil/core/editor";
-import { useEventListener } from "@vueuse/core";
-import { shallowRef, type Ref } from "vue";
+import { useEventListener } from '@vueuse/core'
+import { shallowRef, type Ref } from 'vue'
 
-import { createTextClipboardActions } from "./clipboard";
-import { createCaretBlink, createTextCompositionHandlers, createTextEditActions } from "./editing";
-import { createTextFormattingActions } from "./formatting";
-import { createTextKeyDownHandler } from "./keyboard";
-import { focusTextAreaOnCanvasPointerDown, useTextEditingSession } from "./textarea";
+import type { Editor } from '@open-pencil/core/editor'
+
+import { createTextClipboardActions } from './clipboard'
+import { createCaretBlink, createTextCompositionHandlers, createTextEditActions } from './editing'
+import { createTextFormattingActions } from './formatting'
+import { createTextKeyDownHandler } from './keyboard'
+import { focusTextAreaOnCanvasPointerDown, useTextEditingSession } from './textarea'
 
 /**
  * Bridges DOM text input and the editor's canvas text-editing model.
@@ -16,31 +17,31 @@ import { focusTextAreaOnCanvasPointerDown, useTextEditingSession } from "./texta
  * text/style-run updates back into the scene graph.
  */
 export function useTextEdit(canvasRef: Ref<HTMLCanvasElement | null>, store: Editor) {
-  const textareaRef = shallowRef<HTMLTextAreaElement | null>(null);
-  const { resetBlink, stopBlink } = createCaretBlink(store);
+  const textareaRef = shallowRef<HTMLTextAreaElement | null>(null)
+  const { resetBlink, stopBlink } = createCaretBlink(store)
   const {
     getEditingNode,
     insertText,
     replaceComposedText,
     restoreComposition,
     finishComposition,
-    deleteText,
-  } = createTextEditActions(store);
-  const { toggleBold, toggleItalic, toggleUnderline } = createTextFormattingActions(store);
+    deleteText
+  } = createTextEditActions(store)
+  const { toggleBold, toggleItalic, toggleUnderline } = createTextFormattingActions(store)
 
   const { handleCopy, handleCut, handlePaste } = createTextClipboardActions({
     store,
     insertText,
     deleteText,
-    resetBlink,
-  });
+    resetBlink
+  })
   const {
     isComposing,
     onCompositionStart,
     onCompositionUpdate,
     onCompositionEnd,
     onInput,
-    resetComposition,
+    resetComposition
   } = createTextCompositionHandlers({
     textareaRef,
     getEditingNode,
@@ -48,8 +49,8 @@ export function useTextEdit(canvasRef: Ref<HTMLCanvasElement | null>, store: Edi
     replaceComposedText,
     restoreComposition,
     finishComposition,
-    resetBlink,
-  });
+    resetBlink
+  })
 
   const onKeyDown = createTextKeyDownHandler({
     store,
@@ -64,17 +65,17 @@ export function useTextEdit(canvasRef: Ref<HTMLCanvasElement | null>, store: Edi
     handlePaste,
     toggleBold,
     toggleItalic,
-    toggleUnderline,
-  });
+    toggleUnderline
+  })
 
-  useEventListener(textareaRef, "input", onInput);
-  useEventListener(textareaRef, "compositionstart", onCompositionStart);
-  useEventListener(textareaRef, "compositionupdate", onCompositionUpdate);
-  useEventListener(textareaRef, "compositionend", onCompositionEnd);
-  useEventListener(textareaRef, "keydown", onKeyDown);
-  useEventListener(canvasRef, "mousedown", () =>
-    focusTextAreaOnCanvasPointerDown(textareaRef, store),
-  );
+  useEventListener(textareaRef, 'input', onInput)
+  useEventListener(textareaRef, 'compositionstart', onCompositionStart)
+  useEventListener(textareaRef, 'compositionupdate', onCompositionUpdate)
+  useEventListener(textareaRef, 'compositionend', onCompositionEnd)
+  useEventListener(textareaRef, 'keydown', onKeyDown)
+  useEventListener(canvasRef, 'mousedown', () =>
+    focusTextAreaOnCanvasPointerDown(textareaRef, store)
+  )
 
-  useTextEditingSession({ store, textareaRef, resetBlink, stopBlink, resetComposition });
+  useTextEditingSession({ store, textareaRef, resetBlink, stopBlink, resetComposition })
 }

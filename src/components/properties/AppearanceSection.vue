@@ -1,247 +1,224 @@
 <script setup lang="ts">
-import { useAppearance, useI18n } from "@open-pencil/vue";
-import { computed, ref } from "vue";
+import { AppearanceControlsRoot, MIXED, useI18n } from '@open-pencil/vue'
 
-import VariableScrubInput from "@/components/properties/VariableScrubInput.vue";
-import ScrubInput from "@/components/ScrubInput.vue";
-import { useIconButtonUI } from "@/components/ui/icon-button";
-import { useSectionUI } from "@/components/ui/section";
-import Tip from "@/components/ui/Tip.vue";
+import NumberField from '@/components/inputs/NumberField.vue'
+import VariableNumberField from '@/components/properties/VariableNumberField.vue'
+import { useBlendModeOptions } from '@/components/properties/blend-mode/use'
+import AppSelect from '@/components/ui/AppSelect.vue'
+import IconButton from '@/components/ui/IconButton.vue'
+import PanelFieldGroup from '@/components/ui/panel/PanelFieldGroup.vue'
+import PanelGrid from '@/components/ui/panel/PanelGrid.vue'
+import PanelSection from '@/components/ui/panel/PanelSection.vue'
 
-const { panels } = useI18n();
-const {
-  node,
-  isMulti,
-  active,
-  hasCornerRadius,
-  independentCorners,
-  cornerRadiusValue,
-  opacityPercent,
-  visibilityState,
-  updateProp,
-  commitProp,
-  toggleVisibility,
-  toggleIndependentCorners,
-  updateCornerProp,
-  commitCornerProp,
-} = useAppearance();
+import type { BlendMode } from '@open-pencil/scene-graph'
 
-const sectionCls = useSectionUI();
-const manualExpanded = ref<boolean | null>(null);
+const { panels } = useI18n()
+type BlendModeSelectValue = BlendMode | 'MIXED'
 
-const showIndependentCorners = computed(() => {
-  if (manualExpanded.value !== null) return manualExpanded.value;
-  if (independentCorners.value === true) return true;
-  const n = node.value;
-  if (!n) return false;
-  return !(
-    n.topLeftRadius === n.topRightRadius &&
-    n.topLeftRadius === n.bottomRightRadius &&
-    n.topLeftRadius === n.bottomLeftRadius
-  );
-});
+const baseBlendModeOptions = useBlendModeOptions(true)
 
-function onToggleCorners() {
-  manualExpanded.value = !showIndependentCorners.value;
-  toggleIndependentCorners();
+function blendModeOptions(value: BlendMode | typeof MIXED) {
+  return value === MIXED
+    ? [{ value: 'MIXED' as const, label: panels.value.mixed }, ...baseBlendModeOptions.value]
+    : baseBlendModeOptions.value
 }
 </script>
 
 <template>
-  <div v-if="active" data-test-id="appearance-section" :class="sectionCls.wrapper">
-    <div class="mb-1.5 flex items-center justify-between">
-      <label class="text-[11px] text-muted">{{ panels.appearance }}</label>
-      <Tip :label="panels.toggleVisibility">
-        <button
-          data-test-id="appearance-visibility"
-          class="flex cursor-pointer items-center justify-center rounded border-none bg-transparent p-0.5 text-muted hover:bg-hover hover:text-surface"
-          :class="{ 'text-accent': visibilityState === 'hidden' }"
-          @click="toggleVisibility"
+  <AppearanceControlsRoot
+    v-slot="{
+      node,
+      isMulti,
+      active,
+      hasCornerRadius,
+      independentCorners,
+      showIndependentCorners,
+      cornerRadiusValue,
+      cornerSmoothingPercent,
+      opacityPercent,
+      blendModeValue,
+      visibilityState,
+      actions
+    }"
+  >
+    <PanelSection v-if="active" :label="panels.appearance">
+      <template #actions>
+        <IconButton
+          :label="panels.toggleVisibility"
+          :active="visibilityState === 'hidden'"
+          @click="actions.toggleVisibility"
         >
           <icon-lucide-eye v-if="visibilityState === 'visible'" class="size-3.5" />
           <icon-lucide-eye-off v-else-if="visibilityState === 'hidden'" class="size-3.5" />
           <icon-lucide-eye v-else class="size-3.5 opacity-50" />
-        </button>
-      </Tip>
-    </div>
+        </IconButton>
+      </template>
 
-    <div class="flex gap-1.5">
-      <Tip :label="panels.opacity">
-        <VariableScrubInput
-          v-if="node"
-          suffix="%"
-          :model-value="opacityPercent"
-          :min="0"
-          :max="100"
-          :node-id="node.id"
-          binding-path="opacity"
-          @update:model-value="updateProp('opacity', $event / 100)"
-          @commit="(v: number, p: number) => commitProp('opacity', v / 100, p / 100)"
-        >
-          <template #icon>
-            <icon-lucide-blend class="size-3" />
-          </template>
-        </VariableScrubInput>
-        <ScrubInput
-          v-else
-          suffix="%"
-          :model-value="opacityPercent"
-          :min="0"
-          :max="100"
-          @update:model-value="updateProp('opacity', $event / 100)"
-          @commit="(v: number, p: number) => commitProp('opacity', v / 100, p / 100)"
-        >
-          <template #icon>
-            <icon-lucide-blend class="size-3" />
-          </template>
-        </ScrubInput>
-      </Tip>
+      <PanelGrid :columns="2" distribution="wide-first">
+        <PanelFieldGroup :label="panels.blendMode">
+          <AppSelect
+            :model-value="blendModeValue === MIXED ? 'MIXED' : blendModeValue"
+            class="w-full"
+            :label="panels.blendMode"
+            :options="blendModeOptions(blendModeValue)"
+            @update:model-value="
+              (value: BlendModeSelectValue) => value !== 'MIXED' && actions.setBlendMode(value)
+            "
+          />
+        </PanelFieldGroup>
 
-      <template v-if="hasCornerRadius">
-        <Tip :label="panels.radius">
-          <VariableScrubInput
-            v-if="!showIndependentCorners && node"
-            data-test-id="corner-radius-input"
+        <PanelFieldGroup :label="panels.opacity">
+          <VariableNumberField
+            v-if="node && !isMulti"
+            suffix="%"
+            :aria-label="panels.opacity"
+            :model-value="opacityPercent"
+            :min="0"
+            :max="100"
+            :node-id="node.id"
+            binding-path="opacity"
+            @update:model-value="actions.updateProp('opacity', $event / 100)"
+            @commit="(v: number, p: number) => actions.commitProp('opacity', v / 100, p / 100)"
+          >
+            <template #icon>
+              <icon-lucide-blend class="size-3" />
+            </template>
+          </VariableNumberField>
+          <NumberField
+            v-else
+            suffix="%"
+            data-property="opacity"
+            :aria-label="panels.opacity"
+            :model-value="opacityPercent"
+            :min="0"
+            :max="100"
+            @update:model-value="actions.updateProp('opacity', $event / 100)"
+            @commit="(v: number, p: number) => actions.commitProp('opacity', v / 100, p / 100)"
+          >
+            <template #icon>
+              <icon-lucide-blend class="size-3" />
+            </template>
+          </NumberField>
+        </PanelFieldGroup>
+      </PanelGrid>
+
+      <PanelGrid v-if="hasCornerRadius && !showIndependentCorners" :columns="2" class="mt-1.5">
+        <PanelFieldGroup :label="panels.radius">
+          <VariableNumberField
+            v-if="node && !isMulti"
+            :aria-label="panels.radius"
             :model-value="cornerRadiusValue"
             :min="0"
             :node-id="node.id"
             binding-path="cornerRadius"
-            @update:model-value="updateProp('cornerRadius', $event)"
-            @commit="(v: number, p: number) => commitProp('cornerRadius', v, p)"
+            @update:model-value="actions.updateProp('cornerRadius', $event)"
+            @commit="(v: number, p: number) => actions.commitProp('cornerRadius', v, p)"
           >
             <template #icon>
               <icon-lucide-square-round-corner class="size-3" />
             </template>
-          </VariableScrubInput>
-          <ScrubInput
-            v-else-if="!showIndependentCorners"
-            data-test-id="corner-radius-input"
+          </VariableNumberField>
+          <NumberField
+            v-else
+            data-property="cornerRadius"
+            :aria-label="panels.radius"
             :model-value="cornerRadiusValue"
             :min="0"
-            @update:model-value="updateProp('cornerRadius', $event)"
-            @commit="(v: number, p: number) => commitProp('cornerRadius', v, p)"
+            @update:model-value="actions.updateProp('cornerRadius', $event)"
+            @commit="(v: number, p: number) => actions.commitProp('cornerRadius', v, p)"
           >
             <template #icon>
               <icon-lucide-square-round-corner class="size-3" />
             </template>
-          </ScrubInput>
-        </Tip>
+          </NumberField>
+        </PanelFieldGroup>
+        <div class="flex h-6 items-center justify-end">
+          <IconButton
+            :label="panels.independentCornerRadii"
+            size="md"
+            :active="independentCorners === true"
+            @click="actions.toggleIndependentCorners"
+          >
+            <icon-lucide-square-round-corner class="size-3" />
+          </IconButton>
+        </div>
+      </PanelGrid>
 
-        <Tip :label="panels.independentCornerRadii">
-          <button
-            data-test-id="independent-corners-toggle"
-            :class="[
-              useIconButtonUI({ size: 'md', ui: { base: 'size-[26px] shrink-0' } }).base,
-              { '!border-accent !text-accent': showIndependentCorners },
-            ]"
-            @click="onToggleCorners"
+      <PanelGrid
+        v-else-if="hasCornerRadius && !isMulti && node"
+        :columns="2"
+        class="mt-1.5 [&>[data-slot=actions]]:self-start"
+        data-corner-grid
+      >
+        <VariableNumberField
+          label="TL"
+          :model-value="node.topLeftRadius"
+          :min="0"
+          :node-id="node.id"
+          binding-path="topLeftRadius"
+          @update:model-value="actions.updateCornerProp('topLeftRadius', $event)"
+          @commit="(v: number, p: number) => actions.commitCornerProp('topLeftRadius', v, p)"
+        />
+        <VariableNumberField
+          label="TR"
+          :model-value="node.topRightRadius"
+          :min="0"
+          :node-id="node.id"
+          binding-path="topRightRadius"
+          @update:model-value="actions.updateCornerProp('topRightRadius', $event)"
+          @commit="(v: number, p: number) => actions.commitCornerProp('topRightRadius', v, p)"
+        />
+        <VariableNumberField
+          label="BL"
+          :model-value="node.bottomLeftRadius"
+          :min="0"
+          :node-id="node.id"
+          binding-path="bottomLeftRadius"
+          @update:model-value="actions.updateCornerProp('bottomLeftRadius', $event)"
+          @commit="(v: number, p: number) => actions.commitCornerProp('bottomLeftRadius', v, p)"
+        />
+        <VariableNumberField
+          label="BR"
+          :model-value="node.bottomRightRadius"
+          :min="0"
+          :node-id="node.id"
+          binding-path="bottomRightRadius"
+          @update:model-value="actions.updateCornerProp('bottomRightRadius', $event)"
+          @commit="(v: number, p: number) => actions.commitCornerProp('bottomRightRadius', v, p)"
+        />
+        <template #actions>
+          <IconButton
+            :label="panels.independentCornerRadii"
+            size="md"
+            active
+            @click="actions.toggleIndependentCorners"
           >
-            <svg
-              class="size-3"
-              viewBox="0 0 12 12"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <path d="M1 4V2.5A1.5 1.5 0 0 1 2.5 1H4" />
-              <path d="M8 1h1.5A2.5 2.5 0 0 1 11 3.5V5" />
-              <path d="M11 8v1a2 2 0 0 1-2 2H8" />
-              <path d="M4 11H3a2 2 0 0 1-2-2V8" />
-            </svg>
-          </button>
-        </Tip>
-      </template>
-    </div>
+            <icon-lucide-square-round-corner class="size-3" />
+          </IconButton>
+        </template>
+      </PanelGrid>
 
-    <div
-      v-if="hasCornerRadius && showIndependentCorners && !isMulti && node"
-      data-test-id="independent-corners-grid"
-      class="mt-1.5 grid grid-cols-2 gap-1.5"
-    >
-      <VariableScrubInput
-        data-test-id="corner-tl-input"
-        :model-value="node.topLeftRadius"
-        :min="0"
-        :node-id="node.id"
-        binding-path="topLeftRadius"
-        @update:model-value="updateCornerProp('topLeftRadius', $event)"
-        @commit="(v: number, p: number) => commitCornerProp('topLeftRadius', v, p)"
-      >
-        <template #icon>
-          <svg
-            class="size-3"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
+      <PanelGrid v-if="hasCornerRadius" :columns="2" class="mt-1.5">
+        <PanelFieldGroup :label="panels.cornerSmoothing">
+          <NumberField
+            suffix="%"
+            :model-value="cornerSmoothingPercent"
+            :min="0"
+            :max="100"
+            :aria-label="panels.cornerSmoothing"
+            data-property="corner-smoothing"
+            @update:model-value="actions.updateCornerProp('cornerSmoothing', $event / 100)"
+            @commit="
+              (v: number, p: number) =>
+                actions.commitCornerProp('cornerSmoothing', v / 100, p / 100)
+            "
           >
-            <path d="M1 11V4a3 3 0 0 1 3-3h7" />
-          </svg>
-        </template>
-      </VariableScrubInput>
-      <VariableScrubInput
-        data-test-id="corner-tr-input"
-        :model-value="node.topRightRadius"
-        :min="0"
-        :node-id="node.id"
-        binding-path="topRightRadius"
-        @update:model-value="updateCornerProp('topRightRadius', $event)"
-        @commit="(v: number, p: number) => commitCornerProp('topRightRadius', v, p)"
-      >
-        <template #icon>
-          <svg
-            class="size-3"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path d="M11 11V4a3 3 0 0 0-3-3H1" />
-          </svg>
-        </template>
-      </VariableScrubInput>
-      <VariableScrubInput
-        data-test-id="corner-bl-input"
-        :model-value="node.bottomLeftRadius"
-        :min="0"
-        :node-id="node.id"
-        binding-path="bottomLeftRadius"
-        @update:model-value="updateCornerProp('bottomLeftRadius', $event)"
-        @commit="(v: number, p: number) => commitCornerProp('bottomLeftRadius', v, p)"
-      >
-        <template #icon>
-          <svg
-            class="size-3"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path d="M1 1v7a3 3 0 0 0 3 3h7" />
-          </svg>
-        </template>
-      </VariableScrubInput>
-      <VariableScrubInput
-        data-test-id="corner-br-input"
-        :model-value="node.bottomRightRadius"
-        :min="0"
-        :node-id="node.id"
-        binding-path="bottomRightRadius"
-        @update:model-value="updateCornerProp('bottomRightRadius', $event)"
-        @commit="(v: number, p: number) => commitCornerProp('bottomRightRadius', v, p)"
-      >
-        <template #icon>
-          <svg
-            class="size-3"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path d="M11 1v7a3 3 0 0 1-3 3H1" />
-          </svg>
-        </template>
-      </VariableScrubInput>
-    </div>
-  </div>
+            <template #icon>
+              <icon-lucide-squircle class="size-3" />
+            </template>
+          </NumberField>
+        </PanelFieldGroup>
+      </PanelGrid>
+    </PanelSection>
+  </AppearanceControlsRoot>
 </template>

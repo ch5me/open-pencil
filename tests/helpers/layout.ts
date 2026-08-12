@@ -1,23 +1,23 @@
-import { readFigFile } from "@open-pencil/core";
-import type { GridTrack, SceneGraph, SceneNode } from "@open-pencil/core";
+import { readFigFile } from '@open-pencil/core'
+import type { GridTrack, SceneGraph, SceneNode } from '@open-pencil/core'
 
 export function pageId(graph: SceneGraph) {
-  return graph.getPages()[0].id;
+  return graph.getPages()[0].id
 }
 
 export function autoFrame(
   graph: SceneGraph,
   parentId: string,
-  overrides: Partial<SceneNode> = {},
+  overrides: Partial<SceneNode> = {}
 ): SceneNode {
-  return graph.createNode("FRAME", parentId, {
-    layoutMode: "HORIZONTAL",
-    primaryAxisSizing: "FIXED",
-    counterAxisSizing: "FIXED",
+  return graph.createNode('FRAME', parentId, {
+    layoutMode: 'HORIZONTAL',
+    primaryAxisSizing: 'FIXED',
+    counterAxisSizing: 'FIXED',
     width: 400,
     height: 200,
-    ...overrides,
-  });
+    ...overrides
+  })
 }
 
 export function rect(
@@ -25,21 +25,21 @@ export function rect(
   parentId: string,
   w = 50,
   h = 50,
-  overrides: Partial<SceneNode> = {},
+  overrides: Partial<SceneNode> = {}
 ): SceneNode {
-  return graph.createNode("RECTANGLE", parentId, {
-    name: "Rect",
+  return graph.createNode('RECTANGLE', parentId, {
+    name: 'Rect',
     width: w,
     height: h,
-    ...overrides,
-  });
+    ...overrides
+  })
 }
 
 export async function loadFixtureGraph(name: string) {
-  const path = new URL(`../fixtures/${name}`, import.meta.url);
-  const buffer = await Bun.file(path).arrayBuffer();
-  const file = new File([buffer], name, { type: "application/octet-stream" });
-  return readFigFile(file);
+  const path = new URL(`../fixtures/${name}`, import.meta.url)
+  const buffer = await Bun.file(path).arrayBuffer()
+  const file = new File([buffer], name, { type: 'application/octet-stream' })
+  return readFigFile(file)
 }
 
 export function gridFrame(
@@ -47,24 +47,24 @@ export function gridFrame(
   parentId: string,
   columns: GridTrack[],
   rows: GridTrack[],
-  overrides: Partial<SceneNode> = {},
+  overrides: Partial<SceneNode> = {}
 ): SceneNode {
-  return graph.createNode("FRAME", parentId, {
-    layoutMode: "GRID",
+  return graph.createNode('FRAME', parentId, {
+    layoutMode: 'GRID',
     width: 400,
     height: 300,
     gridTemplateColumns: columns,
     gridTemplateRows: rows,
     gridColumnGap: 0,
     gridRowGap: 0,
-    ...overrides,
-  });
+    ...overrides
+  })
 }
 
 export function fr(value = 1): GridTrack {
-  return { sizing: "FR", value };
+  return { sizing: 'FR', value }
 }
 
 export function fixed(value: number): GridTrack {
-  return { sizing: "FIXED", value };
+  return { sizing: 'FIXED', value }
 }

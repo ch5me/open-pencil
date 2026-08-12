@@ -16,7 +16,7 @@ These APIs are public, but they are more specialized than the main component and
 ## Picker, variables, locale, and editor internals
 
 - [useColorVariableBinding](./use-color-variable-binding)
-- [useFillPicker](./use-fill-picker)
+- [useColorBindingProvider](./use-color-binding-provider)
 - [useGradientStops](./use-gradient-stops)
 - [useFontPicker](./use-font-picker)
 - [useOkHCL](./use-okhcl)
@@ -42,4 +42,4 @@ These APIs are public, but they are more specialized than the main component and
 - [useLayerTree](./use-layer-tree)
 - [useToolbar](./use-toolbar)
 - [usePropertyList](./use-property-list)
-- [useScrubInput](./use-scrub-input)
+- [useNumberField](./use-number-field)

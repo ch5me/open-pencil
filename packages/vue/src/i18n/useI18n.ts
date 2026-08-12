@@ -1,8 +1,9 @@
-import { useStore } from "@nanostores/vue";
-import type { Ref } from "vue";
+import { useStore } from '@nanostores/vue'
+import type { Store, StoreValue } from 'nanostores'
+import type { Ref } from 'vue'
 
-import { locale, setLocale, AVAILABLE_LOCALES, LOCALE_LABELS } from "#vue/i18n/locale";
-import type { Locale } from "#vue/i18n/locale";
+import { locale, setLocale, AVAILABLE_LOCALES, LOCALE_LABELS } from '#vue/i18n/locale'
+import type { Locale } from '#vue/i18n/locale'
 import {
   menuMessages,
   commandMessages,
@@ -10,8 +11,8 @@ import {
   panelMessages,
   variableTypeMessages,
   pageMessages,
-  dialogMessages,
-} from "#vue/i18n/messages";
+  dialogMessages
+} from '#vue/i18n/messages'
 
 /**
  * Reactive i18n composable for OpenPencil Vue components.
@@ -31,18 +32,50 @@ import {
  * </template>
  * ```
  */
+export function useI18nNamespace<MessagesStore extends Store>(messages: MessagesStore) {
+  return useStore(messages) as Ref<StoreValue<MessagesStore>>
+}
+
+export function useMenuMessages() {
+  return useI18nNamespace(menuMessages)
+}
+
+export function useCommandMessages() {
+  return useI18nNamespace(commandMessages)
+}
+
+export function useToolMessages() {
+  return useI18nNamespace(toolMessages)
+}
+
+export function usePanelMessages() {
+  return useI18nNamespace(panelMessages)
+}
+
+export function useVariableTypeMessages() {
+  return useI18nNamespace(variableTypeMessages)
+}
+
+export function usePageMessages() {
+  return useI18nNamespace(pageMessages)
+}
+
+export function useDialogMessages() {
+  return useI18nNamespace(dialogMessages)
+}
+
 export function useI18n() {
   return {
-    menu: useStore(menuMessages),
-    commands: useStore(commandMessages),
-    tools: useStore(toolMessages),
-    panels: useStore(panelMessages),
-    variableTypes: useStore(variableTypeMessages),
-    pages: useStore(pageMessages),
-    dialogs: useStore(dialogMessages),
+    menu: useMenuMessages(),
+    commands: useCommandMessages(),
+    tools: useToolMessages(),
+    panels: usePanelMessages(),
+    variableTypes: useVariableTypeMessages(),
+    pages: usePageMessages(),
+    dialogs: useDialogMessages(),
     locale: useStore(locale) as Ref<Locale>,
     availableLocales: AVAILABLE_LOCALES,
     localeLabels: LOCALE_LABELS,
-    setLocale,
-  };
+    setLocale
+  }
 }

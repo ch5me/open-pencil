@@ -1,1 +1,1 @@
-export { createVectorEditActions } from "./create";
+export { createVectorEditActions } from './create'

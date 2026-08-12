@@ -8,7 +8,7 @@ If you want to build on top of it instead of only using the default app, see the
 
 ## Download Desktop App
 
-Pre-built binaries for macOS, Windows, and Linux are available on the [releases page](https://git.ch5.me/ch5/open-pencil/releases/latest).
+Pre-built binaries for macOS, Windows, and Linux are available on the [releases page](https://github.com/open-pencil/open-pencil/releases/latest).
 
 | Platform | Download |
 |----------|----------|
@@ -37,7 +37,7 @@ This installs the latest signed release for macOS (Apple Silicon and Intel). The
 ## Installation
 
 ```sh
-git clone https://git.ch5.me/ch5/open-pencil.git
+git clone https://github.com/open-pencil/open-pencil.git
 cd open-pencil
 bun install
 ```

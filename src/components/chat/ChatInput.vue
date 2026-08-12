@@ -1,56 +1,78 @@
 <script setup lang="ts">
-import { ACP_AGENTS } from "@open-pencil/core/constants";
-import { useI18n } from "@open-pencil/vue";
-import { TooltipProvider } from "reka-ui";
-import { computed, ref } from "vue";
+import { TooltipProvider } from 'reka-ui'
+import { computed, ref } from 'vue'
 
-import { useAIChat } from "@/app/ai/chat/use";
-import ProviderModelSelect from "@/components/chat/ProviderModelSelect.vue";
-import ProviderSettings from "@/components/chat/ProviderSettings/ProviderSettings.vue";
-import AppInput from "@/components/ui/AppInput.vue";
-import { useButtonUI } from "@/components/ui/button";
-import Tip from "@/components/ui/Tip.vue";
+import ChatProfileSelect from '@/components/chat/ChatProfileSelect.vue'
+import ProviderModelSelect from '@/components/chat/ProviderModelSelect.vue'
+import AppInput from '@/components/ui/AppInput.vue'
+import Tip from '@/components/ui/Tip.vue'
+import { useButtonUI } from '@/components/ui/button'
+import { useAIChat } from '@/app/ai/chat/use'
+import { designModelProfile, designModelProfiles } from '@/app/ai/models'
+import { openSettingsDialog } from '@/app/settings/dialog'
+import { useI18n } from '@open-pencil/vue'
 
-const { providerID, providerDef, modelID, customModelID } = useAIChat();
-const { dialogs } = useI18n();
+import { ACP_AGENTS } from '@open-pencil/core/constants'
+
+const { providerID, providerDef, modelID, customModelID } = useAIChat()
+const { dialogs } = useI18n()
 
 const { status } = defineProps<{
-  status: "ready" | "submitted" | "streaming" | "error";
-}>();
+  status: 'ready' | 'submitted' | 'streaming' | 'error'
+}>()
 
 const emit = defineEmits<{
-  submit: [text: string];
-  stop: [];
-}>();
+  submit: [text: string]
+  stop: []
+}>()
 
-const input = ref("");
+const input = ref('')
 
-const isStreaming = computed(() => status === "streaming" || status === "submitted");
-const isACPProvider = computed(() => providerID.value.startsWith("acp:"));
+const isStreaming = computed(() => status === 'streaming' || status === 'submitted')
+const isACPProvider = computed(() => providerID.value.startsWith('acp:'))
 const acpAgentName = computed(() => {
-  const agentId = providerID.value.replace("acp:", "");
-  return ACP_AGENTS.find((a) => a.id === agentId)?.name ?? agentId;
-});
+  const agentId = providerID.value.replace('acp:', '')
+  return ACP_AGENTS.find((a) => a.id === agentId)?.name ?? agentId
+})
 const isCustomProvider = computed(
-  () => providerID.value === "openai-compatible" || providerID.value === "anthropic-compatible",
-);
-const customModelName = computed(() => customModelID.value.trim());
+  () => providerID.value === 'openai-compatible' || providerID.value === 'anthropic-compatible'
+)
+const stopButton = useButtonUI({
+  tone: 'ghost',
+  shape: 'rounded',
+  size: 'sm',
+  ui: { base: 'shrink-0 border border-border px-2 py-1.5' }
+})
+const sendButton = useButtonUI({
+  tone: 'accent',
+  shape: 'rounded',
+  size: 'sm',
+  ui: { base: 'shrink-0 px-2.5 py-1.5 font-medium' }
+})
+const customModelName = computed(() => customModelID.value.trim())
 const usesCustomModel = computed(
-  () => !!providerDef.value.supportsCustomModel && !!customModelName.value,
-);
+  () => !!providerDef.value.supportsCustomModel && !!customModelName.value
+)
 
 const selectedModelName = computed(() => {
-  if (usesCustomModel.value) return customModelName.value;
-  if (isCustomProvider.value) return "No model";
-  return providerDef.value.models.find((m) => m.id === modelID.value)?.name ?? modelID.value;
-});
+  if (usesCustomModel.value) return customModelName.value
+  if (isCustomProvider.value) return 'No model'
+  return providerDef.value.models.find((m) => m.id === modelID.value)?.name ?? modelID.value
+})
+
+// Switching between saved profiles only makes sense once more than one can drive the design agent.
+const switchableProfiles = computed(designModelProfiles)
+const canSwitchProfile = computed(() => switchableProfiles.value.length > 1)
+const selectedProfileName = computed(
+  () => designModelProfile.value?.name ?? selectedModelName.value
+)
 
 function handleSubmit(e: Event) {
-  e.preventDefault();
-  const text = input.value.trim();
-  if (!text) return;
-  emit("submit", text);
-  input.value = "";
+  e.preventDefault()
+  const text = input.value.trim()
+  if (!text) return
+  emit('submit', text)
+  input.value = ''
 }
 </script>
 
@@ -65,6 +87,11 @@ function handleSubmit(e: Event) {
             {{ acpAgentName }}
           </div>
         </template>
+        <ChatProfileSelect v-else-if="canSwitchProfile && (isCustomProvider || usesCustomModel)">
+          <template #value>
+            <span class="min-w-0 truncate">{{ selectedProfileName }}</span>
+          </template>
+        </ChatProfileSelect>
         <template v-else-if="isCustomProvider || usesCustomModel">
           <div
             class="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-muted"
@@ -79,7 +106,17 @@ function handleSubmit(e: Event) {
         </ProviderModelSelect>
 
         <div class="ml-auto">
-          <ProviderSettings />
+          <Tip :label="dialogs.providerSettings">
+            <button
+              type="button"
+              data-test-id="provider-settings-trigger"
+              :aria-label="dialogs.providerSettings"
+              class="rounded p-0.5 text-muted hover:bg-hover hover:text-surface"
+              @click="openSettingsDialog('ai')"
+            >
+              <icon-lucide-settings class="size-3" />
+            </button>
+          </Tip>
         </div>
       </div>
 
@@ -87,9 +124,9 @@ function handleSubmit(e: Event) {
       <form class="flex gap-1.5" @submit="handleSubmit">
         <AppInput
           v-model="input"
-          test-id="chat-input"
+          data-test-id="chat-input"
           :placeholder="dialogs.describeChange"
-          :ui="{ base: 'min-w-0 flex-1 placeholder:text-muted' }"
+          class="min-w-0 flex-1 placeholder:text-muted"
           :disabled="isStreaming"
           @paste.stop
           @copy.stop
@@ -99,14 +136,7 @@ function handleSubmit(e: Event) {
           <button
             type="button"
             data-test-id="chat-stop-button"
-            :class="
-              useButtonUI({
-                tone: 'ghost',
-                shape: 'rounded',
-                size: 'sm',
-                ui: { base: 'shrink-0 border border-border px-2 py-1.5' },
-              }).base
-            "
+            :class="stopButton.base"
             @click="emit('stop')"
           >
             <icon-lucide-square class="size-3" />
@@ -116,14 +146,7 @@ function handleSubmit(e: Event) {
           <button
             type="submit"
             data-test-id="chat-send-button"
-            :class="
-              useButtonUI({
-                tone: 'accent',
-                shape: 'rounded',
-                size: 'sm',
-                ui: { base: 'shrink-0 px-2.5 py-1.5 font-medium' },
-              }).base
-            "
+            :class="sendButton.base"
             :disabled="!input.trim()"
           >
             <icon-lucide-send class="size-3" />

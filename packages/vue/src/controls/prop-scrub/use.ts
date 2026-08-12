@@ -1,28 +1,28 @@
-import type { Editor } from "@open-pencil/core/editor";
-import type { SceneNode } from "@open-pencil/core/scene-graph";
+import type { Editor } from '@open-pencil/core/editor'
+import type { SceneNode } from '@open-pencil/scene-graph'
 
 export function usePropScrub(editor: Editor) {
-  const previousValues = new Map<string, Record<string, number | string>>();
+  const previousValues = new Map<string, Record<string, number | string>>()
 
   function storePreviousValues(nodes: SceneNode[], key: string) {
     for (const n of nodes) {
-      let rec = previousValues.get(n.id);
+      let rec = previousValues.get(n.id)
       if (!rec) {
-        rec = {};
-        previousValues.set(n.id, rec);
+        rec = {}
+        previousValues.set(n.id, rec)
       }
       if (!(key in rec)) {
-        rec[key] = n[key as keyof SceneNode] as number | string;
+        rec[key] = n[key as keyof SceneNode] as number | string
       }
     }
   }
 
   function updateProp(nodes: SceneNode[], key: string, value: number | string) {
     if (nodes.length > 1) {
-      storePreviousValues(nodes, key);
+      storePreviousValues(nodes, key)
     }
     for (const n of nodes) {
-      editor.updateNode(n.id, { [key]: value });
+      editor.updateNode(n.id, { [key]: value })
     }
   }
 
@@ -30,19 +30,19 @@ export function usePropScrub(editor: Editor) {
     nodes: SceneNode[],
     key: string,
     _value: number | string,
-    previous: number | string,
+    previous: number | string
   ) {
     if (nodes.length > 1) {
       for (const n of nodes) {
-        const prev = previousValues.get(n.id)?.[key] ?? previous;
-        editor.commitNodeUpdate(n.id, { [key]: prev } as Partial<SceneNode>, `Change ${key}`);
+        const prev = previousValues.get(n.id)?.[key] ?? previous
+        editor.commitNodeUpdate(n.id, { [key]: prev } as Partial<SceneNode>, `Change ${key}`)
       }
-      previousValues.clear();
+      previousValues.clear()
     } else {
-      const n = nodes[0];
-      editor.commitNodeUpdate(n.id, { [key]: previous } as Partial<SceneNode>, `Change ${key}`);
+      const n = nodes[0]
+      editor.commitNodeUpdate(n.id, { [key]: previous } as Partial<SceneNode>, `Change ${key}`)
     }
   }
 
-  return { updateProp, commitProp };
+  return { updateProp, commitProp }
 }

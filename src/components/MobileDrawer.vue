@@ -1,113 +1,114 @@
 <script setup lang="ts">
-import { useElementSize, useWindowSize } from "@vueuse/core";
-import { motion } from "motion-v";
-import type { PanInfo } from "motion-v";
-import { TabsContent, TabsList, TabsRoot, TabsTrigger } from "reka-ui";
-import { computed, ref } from "vue";
+import { useElementSize, useWindowSize } from '@vueuse/core'
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
+import { motion } from 'motion-v'
+import type { PanInfo } from 'motion-v'
+import { computed, ref } from 'vue'
+import { useI18n } from '@open-pencil/vue'
 
-import { useEditorStore } from "@/app/editor/active-store";
+import ChatPanel from './ChatPanel.vue'
+import CodePanel from './CodePanel.vue'
+import DesignPanel from './DesignPanel.vue'
+import LayerTree from './LayerTree/LayerTree.vue'
+import PagesPanel from './PagesPanel.vue'
 import {
   DRAWER_SPRING_DAMPING,
   DRAWER_SPRING_STIFFNESS,
   HALF_FRAC,
   HUD_TOP,
   SWIPE_THRESHOLD,
-  SWIPE_VELOCITY_THRESHOLD,
-} from "@/constants";
+  SWIPE_VELOCITY_THRESHOLD
+} from '@/constants'
+import { useEditorStore } from '@/app/editor/active-store'
 
-import ChatPanel from "./ChatPanel.vue";
-import CodePanel from "./CodePanel.vue";
-import DesignPanel from "./DesignPanel.vue";
-import LayerTree from "./LayerTree.vue";
-import PagesPanel from "./PagesPanel.vue";
+type Snap = 'closed' | 'half' | 'full'
+type DrawerTab = 'layers' | 'design' | 'code' | 'ai'
 
-type Snap = "closed" | "half" | "full";
-type DrawerTab = "layers" | "design" | "code" | "ai";
+const store = useEditorStore()
+const { dialogs } = useI18n()
 
-const store = useEditorStore();
+const headerRef = ref<HTMLElement | null>(null)
 
-const headerRef = ref<HTMLElement | null>(null);
-
-const { height: headerH } = useElementSize(headerRef, { width: 0, height: 56 });
-const { height: windowH } = useWindowSize();
+const { height: headerH } = useElementSize(headerRef, { width: 0, height: 56 })
+const { height: windowH } = useWindowSize()
 
 const snap = computed({
   get: (): Snap => store.state.mobileDrawerSnap,
   set: (v: Snap) => {
-    store.state.mobileDrawerSnap = v;
-  },
-});
+    store.state.mobileDrawerSnap = v
+  }
+})
 
 function getDrawerTab(): DrawerTab {
-  if (store.state.activeRibbonTab === "code") return "code";
-  if (store.state.activeRibbonTab === "ai") return "ai";
-  return store.state.panelMode === "design" ? "design" : "layers";
+  if (store.state.activeRibbonTab === 'code') return 'code'
+  if (store.state.activeRibbonTab === 'ai') return 'ai'
+  return store.state.panelMode === 'design' ? 'design' : 'layers'
 }
 
 function setDrawerTab(tab: DrawerTab) {
-  if (tab === "code" || tab === "ai") {
-    store.state.activeRibbonTab = tab;
-    return;
+  if (tab === 'code' || tab === 'ai') {
+    store.state.activeRibbonTab = tab
+    return
   }
-  store.state.activeRibbonTab = "panels";
-  store.state.panelMode = tab;
+  store.state.activeRibbonTab = 'panels'
+  store.state.panelMode = tab
 }
 
-const isOpen = computed(() => snap.value !== "closed");
+const isOpen = computed(() => snap.value !== 'closed')
 
 function toggleTab(tab: DrawerTab) {
   if (getDrawerTab() === tab && isOpen.value) {
-    snap.value = "closed";
-    targetHeight.value = snapHeight("closed");
-    return;
+    snap.value = 'closed'
+    targetHeight.value = snapHeight('closed')
+    return
   }
 
-  setDrawerTab(tab);
+  setDrawerTab(tab)
   if (!isOpen.value) {
-    snap.value = "half";
-    targetHeight.value = snapHeight("half");
+    snap.value = 'half'
+    targetHeight.value = snapHeight('half')
   }
 }
 
 function snapHeight(s: Snap): number {
   switch (s) {
-    case "full":
-      return windowH.value - HUD_TOP;
-    case "half":
-      return Math.round(windowH.value * HALF_FRAC);
+    case 'full':
+      return windowH.value - HUD_TOP
+    case 'half':
+      return Math.round(windowH.value * HALF_FRAC)
     default:
-      return headerH.value;
+      return headerH.value
   }
 }
 
-const targetHeight = ref(snapHeight(snap.value));
+const targetHeight = ref(snapHeight(snap.value))
 
 function onPan(_e: PointerEvent, info: PanInfo) {
-  const maxHeight = snapHeight("full");
-  const raw = snapHeight(snap.value) - info.offset.y;
-  targetHeight.value = Math.max(headerH.value, Math.min(maxHeight, raw));
+  const maxHeight = snapHeight('full')
+  const raw = snapHeight(snap.value) - info.offset.y
+  targetHeight.value = Math.max(headerH.value, Math.min(maxHeight, raw))
 }
 
 function onPanEnd(_e: PointerEvent, info: PanInfo) {
-  const isSwipeUp = info.offset.y < -SWIPE_THRESHOLD || info.velocity.y < -SWIPE_VELOCITY_THRESHOLD;
-  const isSwipeDown = info.offset.y > SWIPE_THRESHOLD || info.velocity.y > SWIPE_VELOCITY_THRESHOLD;
+  const isSwipeUp = info.offset.y < -SWIPE_THRESHOLD || info.velocity.y < -SWIPE_VELOCITY_THRESHOLD
+  const isSwipeDown = info.offset.y > SWIPE_THRESHOLD || info.velocity.y > SWIPE_VELOCITY_THRESHOLD
 
   if (isSwipeUp) {
-    if (snap.value === "closed") snap.value = "half";
-    else snap.value = "full";
+    if (snap.value === 'closed') snap.value = 'half'
+    else snap.value = 'full'
   } else if (isSwipeDown) {
-    if (snap.value === "full") snap.value = "half";
-    else snap.value = "closed";
+    if (snap.value === 'full') snap.value = 'half'
+    else snap.value = 'closed'
   }
 
-  targetHeight.value = snapHeight(snap.value);
+  targetHeight.value = snapHeight(snap.value)
 }
 
 const drawerTransition = {
-  type: "spring" as const,
+  type: 'spring' as const,
   stiffness: DRAWER_SPRING_STIFFNESS,
-  damping: DRAWER_SPRING_DAMPING,
-};
+  damping: DRAWER_SPRING_DAMPING
+}
 </script>
 
 <template>
@@ -120,7 +121,7 @@ const drawerTransition = {
     @panEnd="onPanEnd"
   >
     <TabsRoot :model-value="getDrawerTab()" class="flex min-h-0 flex-1 flex-col">
-      <nav ref="headerRef" aria-label="Mobile panel navigation" class="flex shrink-0 flex-col">
+      <nav ref="headerRef" :aria-label="dialogs.mobilePanelNavigation" class="flex shrink-0 flex-col">
         <div class="flex w-full justify-center pt-2">
           <div class="h-1 w-8 rounded-full bg-muted/40" />
         </div>

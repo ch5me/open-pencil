@@ -6,21 +6,21 @@ import {
   clampExportScale,
   createExportSettingActions,
   createExportTargetState,
-  formatSupportsScale,
-} from "#vue/document/export/helpers";
-import { useEditor } from "#vue/editor/context";
-import { useSceneComputed } from "#vue/internal/scene-computed/use";
+  formatSupportsScale
+} from '#vue/document/export/helpers'
+import { useEditor } from '#vue/editor/context'
+import { useSceneComputed } from '#vue/internal/scene-computed/use'
 
-export type { ExportFormatId, ExportSetting } from "@open-pencil/core/scene-graph";
-export type { ExportPanelTarget } from "#vue/document/export/helpers";
+export type { ExportFormatId, ExportSetting } from '@open-pencil/scene-graph'
+export type { ExportPanelTarget } from '#vue/document/export/helpers'
 
 export function useExport() {
-  const editor = useEditor();
+  const editor = useEditor()
 
-  const selectedIds = useSceneComputed(() => [...editor.state.selectedIds]);
+  const selectedIds = useSceneComputed(() => [...editor.state.selectedIds])
 
-  const targetState = createExportTargetState(editor, selectedIds);
-  const settingActions = createExportSettingActions(editor, targetState.targetIds);
+  const targetState = createExportTargetState(editor, selectedIds)
+  const settingActions = createExportSettingActions(editor, targetState.targetIds)
 
   return {
     editor,
@@ -32,6 +32,6 @@ export function useExport() {
     formats: EXPORT_FORMATS,
     formatSupportsScale,
     ...targetState,
-    ...settingActions,
-  };
+    ...settingActions
+  }
 }

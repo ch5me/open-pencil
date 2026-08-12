@@ -52,14 +52,14 @@ bun run check
 ### Konventionen
 
 - **Dateinamen** — kebab-case (`scene-graph.ts`, `use-canvas-input.ts`)
-- **Komponenten** — PascalCase Vue SFCs (`EditorCanvas.vue`, `ScrubInput.vue`)
+- **Komponenten** — PascalCase Vue SFCs (`EditorCanvas.vue`, `NumberField.vue`)
 - **Konstanten** — SCREAMING_SNAKE_CASE
 - **Funktionen/Variablen** — camelCase
 - **Typen/Interfaces** — PascalCase
 
 ### KI-Agent-Konventionen
 
-Entwickler und KI-Agenten sollten `AGENTS.md` im Repo-Root lesen ([auf Forgejo ansehen](https://git.ch5.me/ch5/open-pencil/src/branch/main/AGENTS.md)). Behandelt Rendering, Szenengraph, Komponenten & Instanzen, Layout, UI, Dateiformat, Tauri-Konventionen und bekannte Probleme.
+Entwickler und KI-Agenten sollten `AGENTS.md` im Repo-Root lesen ([auf GitHub ansehen](https://github.com/open-pencil/open-pencil/blob/master/AGENTS.md)). Behandelt Rendering, Szenengraph, Komponenten & Instanzen, Layout, UI, Dateiformat, Tauri-Konventionen und bekannte Probleme.
 
 ## Änderungen vornehmen
 
@@ -73,14 +73,14 @@ Der Core-Engine-Quellcode lebt in `packages/core/src/`. App-spezifischer Editor-
 
 | Datei | Zweck |
 |-------|-------|
-| `packages/core/src/scene-graph/` | Szenengraph: Knoten, Variablen, Instanzen, Hit-Testing |
+| `packages/scene-graph/src/` | Szenengraph: Knoten, Variablen, Instanzen, Hit-Testing und Undo |
 | `packages/core/src/canvas/renderer.ts` | CanvasKit-Rendering-Pipeline |
-| `packages/core/src/layout.ts` | Yoga-Layout-Adapter |
-| `packages/core/src/scene-graph/undo.ts` | Rückgängig/Wiederherstellen-Manager |
+| `packages/core/src/layout/` | Yoga-Layout-Adapter |
 | `packages/core/src/clipboard.ts` | Figma-kompatible Zwischenablage |
 | `packages/core/src/vector/` | Vektornetzwerk-Modell |
-| `packages/core/src/kiwi/binary/codec.ts` | Kiwi-Binär-Encoder/Decoder |
-| `packages/core/src/kiwi/fig-import.ts` | .fig-Datei-Import-Logik |
+| `packages/kiwi/src/schema-runtime/` | Kiwi-Schema-Runtime und Binär-Codec |
+| `packages/fig/src/node-change/` | SceneGraph- und Figma-NodeChange-Konvertierung |
+| `packages/core/src/io/formats/fig/` | App-seitige .fig-Lese-/Schreiborchestrierung |
 | `packages/core/src/tools/` | Vereinheitlichte Werkzeugdefinitionen (KI, MCP, CLI) |
 | `packages/core/src/figma-api/` | Figma Plugin API-Implementierung |
 | `packages/mcp/src/server.ts` | MCP-Server-Factory |

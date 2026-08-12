@@ -1,73 +1,31 @@
-import type { Editor, EditorState } from "@open-pencil/core/editor";
-import { exportFigFile } from "@open-pencil/core/io/formats/fig";
+import type { Editor, EditorState } from '@open-pencil/core/editor'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 
-import { createAutosave } from "@/app/document/autosave";
-import type { DocumentBackend } from "@/app/document/io/backend";
-import {
-  createHostedDocumentBackend,
-  type HostedDocumentClient,
-  type HostedDocumentDescriptor,
-} from "@/app/document/io/hosted-backend";
-import { createLocalDocumentBackend } from "@/app/document/io/local-backend";
+import { createAutosave } from '@/app/document/autosave'
 import {
   documentNameFromFigPath,
   downloadNameFromPath,
-  figDownloadName,
-} from "@/app/document/io/names";
-import { createDocumentSourceState } from "@/app/document/io/source-state";
+  figDownloadName
+} from '@/app/document/io/names'
+import { createSaveActions } from '@/app/document/io/save'
+import { createDocumentSourceState } from '@/app/document/io/source-state'
+import type { DocumentSourceAccess } from '@/app/document/io/types'
+import type { StorageDocumentBinding } from '@/app/integrations/storage/types'
 
 type DocumentSourceState = EditorState & {
-  documentName: string;
-  autosaveEnabled: boolean;
-  documentSavedVersion: number;
-};
-
-export type BackendChoice =
-  | { kind: "local" }
-  | { kind: "hosted"; descriptor: HostedDocumentDescriptor | null; client?: HostedDocumentClient };
-
-export { createDocumentSourceState };
-
-type LocalOptions = {
-  state: DocumentSourceState;
-  getFilePath: () => string | null;
-  setFilePath: (path: string | null) => void;
-  getFileHandle: () => FileSystemFileHandle | null;
-  setFileHandle: (handle: FileSystemFileHandle | null) => void;
-  getDownloadName: () => string | null;
-  setDownloadName: (name: string | null) => void;
-  setSavedVersion: (version: number) => void;
-  setLastWriteTime: (time: number) => void;
-  startWatchingFile: () => void;
-};
-
-function resolveBackend(choice: BackendChoice, localOptions: LocalOptions): DocumentBackend {
-  if (choice.kind === "hosted") {
-    return createHostedDocumentBackend({
-      descriptor: choice.descriptor,
-      client: choice.client,
-    });
-  }
-  return createLocalDocumentBackend(localOptions);
+  documentName: string
+  autosaveEnabled: boolean
 }
 
-type DocumentSourceOptions = {
-  editor: Editor;
-  state: DocumentSourceState;
-  stopWatchingFile: () => void;
-  startWatchingFile: () => Promise<void>;
-  getFileHandle: () => FileSystemFileHandle | null;
-  setFileHandle: (handle: FileSystemFileHandle | null) => void;
-  getFilePath: () => string | null;
-  setFilePath: (path: string | null) => void;
-  getDownloadName: () => string | null;
-  setDownloadName: (name: string | null) => void;
-  getSavedVersion: () => number;
-  setSavedVersion: (version: number) => void;
-  setLastWriteTime: (time: number) => void;
-  getRenderer: () => Editor["renderer"];
-  backendChoice?: BackendChoice;
-};
+export { createDocumentSourceState }
+
+type DocumentSourceOptions = DocumentSourceAccess & {
+  editor: Editor
+  state: DocumentSourceState
+  stopWatchingFile: () => void
+  startWatchingFile: () => Promise<void>
+  getRenderer: () => Editor['renderer']
+}
 
 export function createDocumentSourceActions({
   editor,
@@ -80,103 +38,104 @@ export function createDocumentSourceActions({
   setFilePath,
   getDownloadName,
   setDownloadName,
+  getStorageBinding,
+  setStorageBinding,
+  setSourceIdentity,
   getSavedVersion,
   setSavedVersion,
   setLastWriteTime,
-  getRenderer,
-  backendChoice = { kind: "local" },
+  getRenderer
 }: DocumentSourceOptions) {
   function buildFigFile() {
-    return exportFigFile(editor.graph, undefined, getRenderer() ?? undefined, state.currentPageId);
+    return exportFigFile(editor.graph, undefined, getRenderer() ?? undefined, state.currentPageId)
   }
 
-  const localOptions: LocalOptions = {
+  const { saveFigFile, saveFigFileAs, writeFile } = createSaveActions({
     state,
+    buildFigFile,
     getFilePath,
     setFilePath,
     getFileHandle,
     setFileHandle,
     getDownloadName,
     setDownloadName,
+    getStorageBinding,
+    setStorageBinding,
+    setSourceIdentity,
     setSavedVersion,
     setLastWriteTime,
     startWatchingFile: () => {
-      void startWatchingFile();
-    },
-  };
-
-  const documentBackend: DocumentBackend = resolveBackend(backendChoice, localOptions);
-
-  function markSaved() {
-    setSavedVersion(state.sceneVersion);
-    state.documentSavedVersion = state.sceneVersion;
-  }
+      void startWatchingFile()
+    }
+  })
 
   const { disposeAutosave } = createAutosave({
     state,
     getSavedVersion,
-    hasWritableSource: () =>
-      documentBackend.hasCapability("localFileSave") && (!!getFileHandle() || !!getFilePath()),
-    saveCurrentDocument: async () => documentBackend.autosave(await buildFigFile()),
-  });
-
-  async function saveFigFile() {
-    await documentBackend.save(await buildFigFile());
-    markSaved();
-  }
-
-  async function saveFigFileAs() {
-    await documentBackend.saveAs(await buildFigFile());
-    markSaved();
-  }
-
-  function isDirty() {
-    return state.sceneVersion !== state.documentSavedVersion;
-  }
+    hasWritableSource: () => !!getFileHandle() || !!getFilePath() || !!getStorageBinding(),
+    saveCurrentDocument: async () => {
+      await writeFile(await buildFigFile())
+    }
+  })
 
   function setDocumentSource(
     fileName: string,
     sourceFormat: string,
     handle?: FileSystemFileHandle,
-    path?: string,
+    path?: string
   ) {
-    stopWatchingFile();
-    const isFig = sourceFormat === "fig";
-    setFileHandle(isFig ? (handle ?? null) : null);
-    setFilePath(isFig ? (path ?? null) : null);
-    setDownloadName(figDownloadName(fileName, sourceFormat));
-    markSaved();
+    stopWatchingFile()
+    setStorageBinding(null)
+    const isFig = sourceFormat === 'fig'
+    setFileHandle(isFig ? (handle ?? null) : null)
+    setFilePath(isFig ? (path ?? null) : null)
+    setDownloadName(figDownloadName(fileName, sourceFormat))
+    setSourceIdentity({ handle: handle ?? null, path: path ?? null })
+    setSavedVersion(state.sceneVersion)
     if (isFig && (handle || path)) {
-      void startWatchingFile();
+      void startWatchingFile()
     }
   }
 
+  function setStorageDocumentSource(binding: StorageDocumentBinding, documentName: string) {
+    stopWatchingFile()
+    setFileHandle(null)
+    setFilePath(null)
+    setDownloadName(`${documentName}.fig`)
+    setSourceIdentity({ handle: null, path: null })
+    setStorageBinding(binding)
+    state.documentName = documentName
+    state.autosaveEnabled = true
+    setSavedVersion(state.sceneVersion)
+  }
+
   function setPlannedFilePath(path: string) {
-    stopWatchingFile();
-    setFileHandle(null);
-    setFilePath(path);
-    const downloadName = downloadNameFromPath(path);
-    setDownloadName(downloadName);
-    state.documentName = documentNameFromFigPath(downloadName);
+    stopWatchingFile()
+    setStorageBinding(null)
+    setFileHandle(null)
+    setFilePath(path)
+    const downloadName = downloadNameFromPath(path)
+    setDownloadName(downloadName)
+    state.documentName = documentNameFromFigPath(downloadName)
   }
 
   function startWatchingCurrentFile() {
-    void startWatchingFile();
+    void startWatchingFile()
   }
 
   function disposeDocumentIO() {
-    stopWatchingFile();
-    disposeAutosave();
+    stopWatchingFile()
+    disposeAutosave()
   }
 
   return {
     setDocumentSource,
+    setStorageDocumentSource,
     setPlannedFilePath,
     startWatchingCurrentFile,
     disposeDocumentIO,
-    documentBackend,
     saveFigFile,
     saveFigFileAs,
-    isDirty,
-  };
+    getStorageBinding
+  }
 }

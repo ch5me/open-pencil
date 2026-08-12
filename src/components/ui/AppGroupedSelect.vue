@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string | number">
-import { vTestId, type TestIdProps } from "@open-pencil/vue";
+import { tv } from 'tailwind-variants'
 import {
   SelectContent,
   SelectGroup,
@@ -10,75 +10,69 @@ import {
   SelectRoot,
   SelectSeparator,
   SelectTrigger,
-  SelectViewport,
-} from "reka-ui";
+  SelectViewport
+} from 'reka-ui'
 
-import { useSelectUI } from "@/components/ui/select";
+import theme from '@/theme/app-grouped-select'
+import type { AppGroupedSelectTheme } from '@/theme/app-grouped-select'
+import type { ComponentUI } from '@/components/ui/types'
 
 interface SelectOption<TValue extends string | number> {
-  value: TValue;
-  label: string;
+  value: TValue
+  label: string
 }
 
 interface SelectGroupDef<TValue extends string | number> {
-  label?: string;
-  items: SelectOption<TValue>[];
+  label?: string
+  items: SelectOption<TValue>[]
 }
 
-interface GroupedSelectUi {
-  trigger?: string;
-  content?: string;
-  item?: string;
-  label?: string;
-  separator?: string;
+interface AppGroupedSelectProps<TValue extends string | number> {
+  groups: SelectGroupDef<TValue>[]
+  displayValue: string
+  ui?: ComponentUI<AppGroupedSelectTheme>
 }
 
-interface AppGroupedSelectProps<TValue extends string | number> extends TestIdProps {
-  groups: SelectGroupDef<TValue>[];
-  displayValue: string;
-  ui?: GroupedSelectUi;
-}
+defineOptions({ inheritAttrs: false })
 
-const { groups, displayValue, ui, testId } = defineProps<AppGroupedSelectProps<T>>();
+const { groups, displayValue, ui } = defineProps<AppGroupedSelectProps<T>>()
 
-const modelValue = defineModel<T>({ required: true });
+const modelValue = defineModel<T>({ required: true })
 
-const select = useSelectUI({
-  trigger:
-    ui?.trigger ??
-    "w-full justify-between rounded border border-border bg-input px-2 py-1 text-[11px] text-surface",
-  content: ui?.content ?? "isolate z-[52]",
-  contentVariants: { radius: "lg", padding: "md" },
-  item: ui?.item ?? "rounded px-2 py-1 text-[11px]",
-});
-const label = ui?.label ?? "px-2 py-1 text-[10px] text-muted";
-const separator = ui?.separator ?? "mx-1 my-1 h-px bg-border";
+const styles = tv(theme)()
 </script>
 
 <template>
   <SelectRoot v-model="modelValue">
-    <SelectTrigger v-test-id="testId" :class="select.trigger">
+    <SelectTrigger v-bind="$attrs" :class="styles.trigger({ class: ui?.trigger })">
       <slot name="value">{{ displayValue }}</slot>
       <icon-lucide-chevron-down class="size-2.5 shrink-0 text-muted" />
     </SelectTrigger>
     <SelectPortal>
-      <SelectContent position="popper" :side-offset="4" :class="select.content">
-        <SelectViewport>
+      <SelectContent
+        position="popper"
+        :side-offset="4"
+        :class="styles.content({ class: ui?.content })"
+      >
+        <SelectViewport :class="styles.viewport({ class: ui?.viewport })">
           <template v-for="(group, index) in groups" :key="index">
             <SelectGroup>
-              <SelectLabel v-if="group.label" :class="label">
+              <SelectLabel v-if="group.label" :class="styles.label({ class: ui?.label })">
                 {{ group.label }}
               </SelectLabel>
               <SelectItem
                 v-for="item in group.items"
                 :key="String(item.value)"
                 :value="item.value"
-                :class="select.item"
+                :class="styles.item({ class: ui?.item })"
               >
                 <SelectItemText>{{ item.label }}</SelectItemText>
               </SelectItem>
             </SelectGroup>
-            <SelectSeparator v-if="index < groups.length - 1" :class="separator" />
+            <SelectSeparator
+              v-if="index < groups.length - 1"
+              :class="styles.separator({ class: ui?.separator })"
+            />
           </template>
         </SelectViewport>
       </SelectContent>

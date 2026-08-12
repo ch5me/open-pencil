@@ -1,79 +1,77 @@
-import type { Editor, EditorState } from "@open-pencil/core/editor";
-import { prefetchFigmaSchema } from "@open-pencil/core/kiwi";
+import type { Editor, EditorState } from '@open-pencil/core/editor'
+import { prefetchFigmaSchema } from '@open-pencil/core/kiwi'
 
-import { createDocumentViewportActions, downloadBlob } from "@/app/document/io/browser";
-import { createDOMOpenActions } from "@/app/document/io/dom";
-import { createOpenActions, createReloadActions } from "@/app/document/io/read";
-import { createDocumentSourceActions, createDocumentSourceState } from "@/app/document/io/source";
-import type { ViewportSize } from "@/app/document/io/types";
-import { createFileWatcher } from "@/app/document/io/watch";
+import { createDocumentViewportActions, downloadBlob } from '@/app/document/io/browser'
+import { createDOMOpenActions } from '@/app/document/io/dom'
+import { createOpenActions, createReloadActions } from '@/app/document/io/read'
+import { createDocumentSourceActions, createDocumentSourceState } from '@/app/document/io/source'
+import type { ViewportSize } from '@/app/document/io/types'
+import { createFileWatcher } from '@/app/document/io/watch'
 
 type DocumentIOState = EditorState & {
-  documentName: string;
-  loading: boolean;
-  autosaveEnabled: boolean;
-  documentSavedVersion: number;
-};
+  documentName: string
+  loading: boolean
+  autosaveEnabled: boolean
+}
 
 export function createDocumentIOActions(
   editor: Editor,
   state: DocumentIOState,
-  viewportSize: ViewportSize,
+  viewportSize: ViewportSize
 ) {
-  const sourceState = createDocumentSourceState();
+  const sourceState = createDocumentSourceState()
 
-  void prefetchFigmaSchema();
+  void prefetchFigmaSchema()
 
   const { reloadFromDisk } = createReloadActions({
     editor,
     state,
     getFilePath: sourceState.getFilePath,
     getFileHandle: sourceState.getFileHandle,
-    setSavedVersion: (version) => {
-      sourceState.setSavedVersion(version);
-      state.documentSavedVersion = version;
-    },
-  });
+    setSavedVersion: sourceState.setSavedVersion
+  })
   const { startWatchingFile, stopWatchingFile } = createFileWatcher({
     getFilePath: sourceState.getFilePath,
     getFileHandle: sourceState.getFileHandle,
     getLastWriteTime: sourceState.getLastWriteTime,
     reloadFromDisk: () => {
-      void reloadFromDisk();
-    },
-  });
+      void reloadFromDisk()
+    }
+  })
   const { setViewportSize, fitCurrentPageToViewport } = createDocumentViewportActions(
     editor,
-    viewportSize,
-  );
+    viewportSize
+  )
   const sourceActions = createDocumentSourceActions({
     editor,
     state,
     stopWatchingFile,
     startWatchingFile,
     getRenderer: () => editor.renderer,
-    ...sourceState,
-  });
+    ...sourceState
+  })
   const { openFigFile } = createOpenActions({
     editor,
     state,
-    documentBackend: sourceActions.documentBackend,
     setDocumentSource: sourceActions.setDocumentSource,
-    fitCurrentPageToViewport,
-  });
+    fitCurrentPageToViewport
+  })
   const { openDOMFile, importDOMText } = createDOMOpenActions({
     editor,
     state,
     setDocumentSource: sourceActions.setDocumentSource,
-    fitCurrentPageToViewport,
-  });
+    fitCurrentPageToViewport
+  })
 
   return {
     downloadBlob,
     setViewportSize,
     fitCurrentPageToViewport,
     getDocumentFilePath: sourceState.getFilePath,
+    getSourceIdentity: sourceState.getSourceIdentity,
+    getStorageBinding: sourceState.getStorageBinding,
     setDocumentSource: sourceActions.setDocumentSource,
+    setStorageDocumentSource: sourceActions.setStorageDocumentSource,
     setPlannedFilePath: sourceActions.setPlannedFilePath,
     startWatchingCurrentFile: sourceActions.startWatchingCurrentFile,
     disposeDocumentIO: sourceActions.disposeDocumentIO,
@@ -81,7 +79,6 @@ export function createDocumentIOActions(
     openDOMFile,
     importDOMText,
     saveFigFile: sourceActions.saveFigFile,
-    saveFigFileAs: sourceActions.saveFigFileAs,
-    isDirty: sourceActions.isDirty,
-  };
+    saveFigFileAs: sourceActions.saveFigFileAs
+  }
 }

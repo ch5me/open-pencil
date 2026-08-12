@@ -1,78 +1,41 @@
-import { createRouter, createWebHistory } from "vue-router";
+import { createRouter, createWebHistory } from 'vue-router'
 
-import { isHostedAuthEnabled } from "@/app/hosted/flags";
-import { isAuthenticated, refreshSession } from "@/app/hosted/session";
+import { isHostedAuthEnabled } from '@/app/hosted/flags'
+import { isAuthenticated, refreshSession } from '@/app/hosted/session'
 
-import AuthCallbackView from "./views/AuthCallbackView.vue";
-import EditorView from "./views/EditorView.vue";
-import LoginView from "./views/LoginView.vue";
+import AuthCallbackView from './views/AuthCallbackView.vue'
+import EditorView from './views/EditorView.vue'
+import LoginView from './views/LoginView.vue'
+import StorageView from './views/StorageView.vue'
 
-async function requireAuth(next: (value?: string | { path: string }) => void) {
-  if (!isHostedAuthEnabled()) {
-    next();
-    return;
-  }
-  if (!isAuthenticated()) {
-    await refreshSession();
-  }
-  if (!isAuthenticated()) {
-    next({ path: "/login" });
-    return;
-  }
-  next();
+async function requireHostedAuth() {
+  if (!isHostedAuthEnabled()) return true
+  if (!isAuthenticated()) await refreshSession()
+  return isAuthenticated() ? true : { path: '/login' }
 }
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/login', component: LoginView },
+    { path: '/auth/callback', component: AuthCallbackView },
+    { path: '/', component: EditorView, beforeEnter: requireHostedAuth },
+    { path: '/storage', component: StorageView },
+    { path: '/demo', component: EditorView, meta: { demo: true }, beforeEnter: requireHostedAuth },
+    { path: '/share/:roomId', component: EditorView, beforeEnter: requireHostedAuth },
     {
-      path: "/login",
-      component: LoginView,
-      meta: { requiresGuest: true },
-    },
-    {
-      path: "/auth/callback",
-      component: AuthCallbackView,
-    },
-    {
-      path: "/",
-      component: EditorView,
-      beforeEnter: async (_to, _from, next) => {
-        await requireAuth(next);
-      },
-    },
-    {
-      path: "/demo",
-      component: EditorView,
-      meta: { demo: true },
-      beforeEnter: async (_to, _from, next) => {
-        await requireAuth(next);
-      },
-    },
-    {
-      path: "/share/:roomId",
-      component: EditorView,
-      beforeEnter: async (_to, _from, next) => {
-        await requireAuth(next);
-      },
-    },
-    {
-      path: "/hosted",
+      path: '/hosted',
       component: EditorView,
       meta: { hostedOnly: true },
-      beforeEnter: async (_to, _from, next) => {
-        await requireAuth(next);
-      },
+      beforeEnter: requireHostedAuth
     },
     {
-      path: "/hosted/:documentId",
+      path: '/hosted/:documentId',
       component: EditorView,
       meta: { hostedOnly: true },
-      beforeEnter: async (_to, _from, next) => {
-        await requireAuth(next);
-      },
-    },
-  ],
-});
+      beforeEnter: requireHostedAuth
+    }
+  ]
+})
 
-export default router;
+export default router

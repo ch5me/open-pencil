@@ -1,34 +1,37 @@
 <script setup lang="ts">
-import { vTestId, type RequiredTestIdProps } from "@open-pencil/vue";
-import type { Component } from "vue";
+import { computed } from 'vue'
+import { tv } from 'tailwind-variants'
 
-interface ToolButtonProps extends RequiredTestIdProps {
-  icon: Component;
-  active?: boolean;
-  mobile?: boolean;
+import toolbarTheme from '@/theme/toolbar'
+
+import type { Component } from 'vue'
+import type { ToolbarUI } from '@/components/Toolbar/types'
+
+interface ToolButtonProps {
+  icon: Component
+  label?: string
+  active?: boolean
+  mobile?: boolean
+  ui?: ToolbarUI
 }
 
-const { icon, active = false, mobile = false, testId } = defineProps<ToolButtonProps>();
+const { icon, label, active = false, mobile = false, ui } = defineProps<ToolButtonProps>()
+const toolbar = tv(toolbarTheme)
+const styles = computed(() => toolbar({ active, mobile }))
 
 const emit = defineEmits<{
-  click: [];
-}>();
+  click: []
+}>()
 </script>
 
 <template>
   <button
-    v-test-id="testId"
-    class="flex size-8 cursor-pointer items-center justify-center border-none transition-colors"
-    :class="[
-      mobile ? 'rounded-[6px] select-none' : 'rounded-lg',
-      active
-        ? 'bg-accent text-white'
-        : mobile
-          ? 'bg-transparent text-muted active:bg-hover'
-          : 'bg-transparent text-muted hover:bg-hover hover:text-surface',
-    ]"
+    :data-active="active || undefined"
+    :data-mobile="mobile || undefined"
+    :aria-label="label"
+    :class="styles.button({ class: ui?.button })"
     @click="emit('click')"
   >
-    <component :is="icon" class="size-4" />
+    <component :is="icon" :class="styles.icon({ class: ui?.icon })" />
   </button>
 </template>

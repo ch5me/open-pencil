@@ -1,22 +1,26 @@
-import { pick } from "es-toolkit/object";
+import { pick } from 'es-toolkit/object'
 
-import { cloneVectorNetwork } from "#core/scene-graph";
-import type { SceneNode } from "#core/scene-graph";
-import type { UndoEntry } from "#core/scene-graph/undo";
-import type { Rect, Vector } from "#core/types";
+import { cloneVectorNetwork, type SceneNode } from '@open-pencil/scene-graph'
+import { copyGeometryPaths } from '@open-pencil/scene-graph/copy'
+import type { Rect, Vector } from '@open-pencil/scene-graph/primitives'
+import type { UndoEntry } from '@open-pencil/scene-graph/undo'
 
-import { restoreSubtree, snapshotSubtree } from "./clipboard/subtree-history";
-import { collectNodePositions, pushPositionUndo } from "./history/position";
+import { restoreSubtree, snapshotSubtree } from './clipboard/subtree-history'
+import { collectNodePositions, pushPositionUndo } from './history/position'
 import {
   restorePageFromSnapshot as restorePageSnapshot,
   snapshotPage as createPageSnapshot,
-  type PageSnapshot,
-} from "./history/snapshot";
-import { textAutoResizeChanges } from "./text/auto-resize";
-import type { EditorContext } from "./types";
+  type PageSnapshot
+} from './history/snapshot'
+import { textAutoResizeChanges } from './text/auto-resize'
+import type { EditorContext } from './types'
 
-type ResizeSnapshot = Pick<SceneNode, "x" | "y" | "width" | "height" | "vectorNetwork">;
-type ResizeOriginal = Rect & { vectorNetwork?: SceneNode["vectorNetwork"] };
+type ResizeSnapshot = Pick<
+  SceneNode,
+  'x' | 'y' | 'width' | 'height' | 'vectorNetwork' | 'fillGeometry' | 'strokeGeometry'
+>
+type ResizeOriginal = Rect &
+  Partial<Pick<SceneNode, 'vectorNetwork' | 'fillGeometry' | 'strokeGeometry'>>
 
 function createResizeSnapshot(node: SceneNode): ResizeSnapshot {
   return {
@@ -25,179 +29,182 @@ function createResizeSnapshot(node: SceneNode): ResizeSnapshot {
     width: node.width,
     height: node.height,
     vectorNetwork: node.vectorNetwork ? cloneVectorNetwork(node.vectorNetwork) : null,
-  };
+    fillGeometry: copyGeometryPaths(node.fillGeometry),
+    strokeGeometry: copyGeometryPaths(node.strokeGeometry)
+  }
 }
 
 export function createUndoActions(ctx: EditorContext) {
   function commitMove(originals: Map<string, Vector>) {
-    pushPositionUndo(ctx, "Move", originals, collectNodePositions(ctx, originals.keys()));
+    pushPositionUndo(ctx, 'Move', originals, collectNodePositions(ctx, originals.keys()))
   }
 
   function commitMoveWithReparent(
-    originals: Map<string, { x: number; y: number; parentId: string }>,
+    originals: Map<string, { x: number; y: number; parentId: string }>
   ) {
-    const finals = new Map<string, { x: number; y: number; parentId: string }>();
+    const finals = new Map<string, { x: number; y: number; parentId: string }>()
     for (const [id] of originals) {
-      const n = ctx.graph.getNode(id);
-      if (n) finals.set(id, { x: n.x, y: n.y, parentId: n.parentId ?? ctx.state.currentPageId });
+      const n = ctx.graph.getNode(id)
+      if (n) finals.set(id, { x: n.x, y: n.y, parentId: n.parentId ?? ctx.state.currentPageId })
     }
     ctx.undo.push({
-      label: "Move",
+      label: 'Move',
       forward: () => {
         for (const [id, pos] of finals) {
-          ctx.graph.reparentNode(id, pos.parentId);
-          ctx.graph.updateNode(id, { x: pos.x, y: pos.y });
-          ctx.runLayoutForNode(id);
+          ctx.graph.reparentNode(id, pos.parentId)
+          ctx.graph.updateNode(id, { x: pos.x, y: pos.y })
+          ctx.runLayoutForNode(id)
         }
       },
       inverse: () => {
         for (const [id, pos] of originals) {
-          ctx.graph.reparentNode(id, pos.parentId);
-          ctx.graph.updateNode(id, { x: pos.x, y: pos.y });
-          ctx.runLayoutForNode(id);
+          ctx.graph.reparentNode(id, pos.parentId)
+          ctx.graph.updateNode(id, { x: pos.x, y: pos.y })
+          ctx.runLayoutForNode(id)
         }
-      },
-    });
+      }
+    })
   }
 
   function commitDuplicateMove(rootIds: string[], previousSelection: Set<string>) {
-    const snapshots = new Map<string, SceneNode>();
+    const snapshots = new Map<string, SceneNode>()
     for (const id of rootIds) {
-      const subtree = snapshotSubtree(ctx.graph, id);
-      for (const [nodeId, snapshot] of subtree) snapshots.set(nodeId, snapshot);
+      const subtree = snapshotSubtree(ctx.graph, id)
+      for (const [nodeId, snapshot] of subtree) snapshots.set(nodeId, snapshot)
     }
-    const nextSelection = new Set(rootIds);
+    const nextSelection = new Set(rootIds)
 
     ctx.undo.push({
-      label: "Duplicate",
+      label: 'Duplicate',
       forward: () => {
         for (const id of rootIds) {
-          if (ctx.graph.getNode(id)) continue;
-          const snapshot = snapshots.get(id);
-          if (!snapshot) continue;
+          if (ctx.graph.getNode(id)) continue
+          const snapshot = snapshots.get(id)
+          if (!snapshot) continue
           restoreSubtree(
             ctx.graph,
             snapshot,
             snapshot.parentId ?? ctx.state.currentPageId,
-            snapshots,
-          );
-          ctx.runLayoutForNode(id);
+            snapshots
+          )
+          ctx.runLayoutForNode(id)
         }
-        ctx.setSelectedIds(new Set(nextSelection));
+        ctx.setSelectedIds(new Set(nextSelection))
       },
       inverse: () => {
-        for (const id of rootIds.toReversed()) ctx.graph.deleteNode(id);
-        ctx.setSelectedIds(new Set(previousSelection));
-      },
-    });
+        for (const id of rootIds.toReversed()) ctx.graph.deleteNode(id)
+        ctx.setSelectedIds(new Set(previousSelection))
+      }
+    })
   }
 
   function commitResize(nodeId: string, original: ResizeOriginal) {
-    const node = ctx.graph.getNode(nodeId);
-    if (!node) return;
-    const final: ResizeOriginal =
-      "vectorNetwork" in original
-        ? createResizeSnapshot(node)
-        : { x: node.x, y: node.y, width: node.width, height: node.height };
+    const node = ctx.graph.getNode(nodeId)
+    if (!node) return
+    const includesGeometry =
+      'vectorNetwork' in original || 'fillGeometry' in original || 'strokeGeometry' in original
+    const final: ResizeOriginal = includesGeometry
+      ? createResizeSnapshot(node)
+      : { x: node.x, y: node.y, width: node.width, height: node.height }
     ctx.undo.push({
-      label: "Resize",
+      label: 'Resize',
       forward: () => {
-        ctx.graph.updateNode(nodeId, final);
-        ctx.runLayoutForNode(nodeId);
+        ctx.graph.updateNode(nodeId, final)
+        ctx.runLayoutForNode(nodeId)
       },
       inverse: () => {
-        ctx.graph.updateNode(nodeId, original);
-        ctx.runLayoutForNode(nodeId);
-      },
-    });
+        ctx.graph.updateNode(nodeId, original)
+        ctx.runLayoutForNode(nodeId)
+      }
+    })
   }
 
   function commitGroupResize(
     nodeId: string,
     origRect: Rect,
-    origChildren: Map<string, ResizeSnapshot>,
+    origChildren: Map<string, ResizeSnapshot>
   ) {
-    const node = ctx.graph.getNode(nodeId);
-    if (!node) return;
-    const finalRect = { x: node.x, y: node.y, width: node.width, height: node.height };
-    const finalChildren = new Map<string, ResizeSnapshot>();
+    const node = ctx.graph.getNode(nodeId)
+    if (!node) return
+    const finalRect = { x: node.x, y: node.y, width: node.width, height: node.height }
+    const finalChildren = new Map<string, ResizeSnapshot>()
     for (const [childId] of origChildren) {
-      const child = ctx.graph.getNode(childId);
-      if (child) finalChildren.set(childId, createResizeSnapshot(child));
+      const child = ctx.graph.getNode(childId)
+      if (child) finalChildren.set(childId, createResizeSnapshot(child))
     }
     ctx.undo.push({
-      label: "Resize",
+      label: 'Resize',
       forward: () => {
-        ctx.graph.updateNode(nodeId, finalRect);
-        for (const [childId, final] of finalChildren) ctx.graph.updateNode(childId, final);
-        ctx.runLayoutForNode(nodeId);
+        ctx.graph.updateNode(nodeId, finalRect)
+        for (const [childId, final] of finalChildren) ctx.graph.updateNode(childId, final)
+        ctx.runLayoutForNode(nodeId)
       },
       inverse: () => {
-        ctx.graph.updateNode(nodeId, origRect);
-        for (const [childId, orig] of origChildren) ctx.graph.updateNode(childId, orig);
-        ctx.runLayoutForNode(nodeId);
-      },
-    });
+        ctx.graph.updateNode(nodeId, origRect)
+        for (const [childId, orig] of origChildren) ctx.graph.updateNode(childId, orig)
+        ctx.runLayoutForNode(nodeId)
+      }
+    })
   }
 
   function commitRotation(nodeId: string, origRotation: number) {
-    const node = ctx.graph.getNode(nodeId);
-    if (!node) return;
-    const finalRotation = node.rotation;
+    const node = ctx.graph.getNode(nodeId)
+    if (!node) return
+    const finalRotation = node.rotation
     ctx.undo.push({
-      label: "Rotate",
+      label: 'Rotate',
       forward: () => {
-        ctx.graph.updateNode(nodeId, { rotation: finalRotation });
+        ctx.graph.updateNode(nodeId, { rotation: finalRotation })
       },
       inverse: () => {
-        ctx.graph.updateNode(nodeId, { rotation: origRotation });
-      },
-    });
+        ctx.graph.updateNode(nodeId, { rotation: origRotation })
+      }
+    })
   }
 
-  function commitNodeUpdate(nodeId: string, previous: Partial<SceneNode>, label = "Update") {
-    const node = ctx.graph.getNode(nodeId);
-    if (!node) return;
-    const restoredPrevious = { ...previous, ...textAutoResizeChanges(node, previous) };
+  function commitNodeUpdate(nodeId: string, previous: Partial<SceneNode>, label = 'Update') {
+    const node = ctx.graph.getNode(nodeId)
+    if (!node) return
+    const restoredPrevious = { ...previous, ...textAutoResizeChanges(node, previous) }
     const current = pick(
       node,
-      Object.keys(restoredPrevious) as (keyof SceneNode)[],
-    ) as Partial<SceneNode>;
+      Object.keys(restoredPrevious) as (keyof SceneNode)[]
+    ) as Partial<SceneNode>
     ctx.undo.push({
       label,
       forward: () => {
-        ctx.graph.updateNode(nodeId, current);
-        ctx.runLayoutForNode(nodeId);
+        ctx.graph.updateNode(nodeId, current)
+        ctx.runLayoutForNode(nodeId)
       },
       inverse: () => {
-        ctx.graph.updateNode(nodeId, restoredPrevious);
-        ctx.runLayoutForNode(nodeId);
-      },
-    });
+        ctx.graph.updateNode(nodeId, restoredPrevious)
+        ctx.runLayoutForNode(nodeId)
+      }
+    })
   }
 
   function undoAction(validateEnteredContainer: () => void) {
-    ctx.undo.undo();
-    validateEnteredContainer();
-    ctx.requestRender();
+    ctx.undo.undo()
+    validateEnteredContainer()
+    ctx.requestRender()
   }
 
   function redoAction(validateEnteredContainer: () => void) {
-    ctx.undo.redo();
-    validateEnteredContainer();
-    ctx.requestRender();
+    ctx.undo.redo()
+    validateEnteredContainer()
+    ctx.requestRender()
   }
 
   function snapshotPage(): PageSnapshot {
-    return createPageSnapshot(ctx.graph, ctx.state.currentPageId);
+    return createPageSnapshot(ctx.graph, ctx.state.currentPageId)
   }
 
   function restorePageFromSnapshot(snapshot: PageSnapshot) {
-    restorePageSnapshot(ctx, snapshot);
+    restorePageSnapshot(ctx, snapshot)
   }
 
   function pushUndoEntry(entry: UndoEntry) {
-    ctx.undo.push(entry);
+    ctx.undo.push(entry)
   }
 
   return {
@@ -212,6 +219,6 @@ export function createUndoActions(ctx: EditorContext) {
     redoAction,
     snapshotPage,
     restorePageFromSnapshot,
-    pushUndoEntry,
-  };
+    pushUndoEntry
+  }
 }

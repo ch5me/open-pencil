@@ -3,7 +3,7 @@
 ## Setup
 
 ```bash
-git clone https://git.ch5.me/ch5/open-pencil.git
+git clone https://github.com/open-pencil/open-pencil.git
 cd open-pencil
 git clone https://github.com/open-pencil/vue-stream-markdown.git
 bun install
@@ -18,6 +18,31 @@ bun run tauri dev    # Tauri desktop app with hot reload
 # For macOS release builds with ad-hoc signing (no Apple Developer account, local testing only):
 APPLE_SIGNING_IDENTITY=- bun run tauri build -c '{"bundle": { "createUpdaterArtifacts": false }}'
 ```
+
+## Pull requests
+
+Pull requests must be reviewable without guessing the author's intent.
+
+### PR title
+
+- Write the title in English.
+- Be specific about the actual change; avoid vague titles such as `fix`, `update`, `some fixes`, `changes`, or `WIP`.
+- Use Conventional Commits when it fits the change, for example `fix: handle empty exports` or `docs: clarify CLI setup`.
+
+### PR body
+
+- Follow the PR template when one is provided.
+- Explain what changed and why it changed.
+- Include a concrete list or paragraph of meaningful changes.
+- Document validation, such as `bun run check`, targeted tests, docs-only review, or an explicit reason validation was not run.
+- Complete the AI assistance section. If an LLM materially helped create or modify the PR, list the model names you know. Write `None` otherwise. This is review context, not authorship attribution; prompts and transcripts are not required.
+- Keep the body primarily in English. Code identifiers, file paths, logs, error messages, and short quoted examples may use their original language.
+
+### Reviewability
+
+Do not submit placeholder PRs. Remove template comments before opening a PR. Do not leave dangling issue references such as `Fixes #`, `TODO`, `TBD`, empty headings, unfilled sections, or similar unfinished text.
+
+CodeRabbit may flag PR description or readability issues for maintainers to review. Missing template sections or validation details are normal review feedback; they are not, by themselves, a personal judgment on the contributor. Maintainers may close PRs manually when they are clearly automated, not written in English, unrelated to the project, or impossible to review without substantial guesswork. If you are unsure how to fix something, please open a detailed issue instead of submitting a placeholder PR.
 
 ## Quality checks
 
@@ -100,7 +125,7 @@ Every interactive or structurally significant element must have a `data-test-id`
 | `editor-` | Editor root | `editor-root`, `editor-document-name`, `editor-show-ui` |
 | `app-` | App chrome | `app-logo`, `app-document-name`, `app-toggle-ui`, `app-select-trigger` |
 | `tabbar-` | Tab bar | `tabbar-tab`, `tabbar-new`, `tabbar-close` |
-| `scrub-input` | Scrub input | `scrub-input`, `scrub-input-field` |
+| `number-field` | Number field | `number-field`, `number-field-input` |
 | `toast-` | Toast notifications | `toast-item`, `toast-close`, `toast-copy-error` |
 | `safari-banner` | Safari warning | `safari-banner`, `safari-banner-dismiss` |
 

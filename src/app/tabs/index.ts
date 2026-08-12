@@ -1,247 +1,272 @@
-import {
-  BUILTIN_IO_FORMATS,
-  IOCancelledError,
-  IORegistry,
-  throwIfIOCancelled,
-} from "@open-pencil/core/io";
-import { readFigFile } from "@open-pencil/core/io/formats/fig";
-import { computeAllLayouts } from "@open-pencil/core/layout";
-import type { SceneGraph } from "@open-pencil/core/scene-graph";
-import { shallowRef, computed, triggerRef } from "vue";
+import { shallowRef, computed, triggerRef } from 'vue'
 
-import { setOpenPencilStore } from "@/app/browser-bridge";
-import { setActiveEditorStore } from "@/app/editor/active-store";
-import { createEditorStore } from "@/app/editor/session";
-import type { EditorStore } from "@/app/editor/session";
-import { beginFileOpen } from "@/app/tabs/open-controller";
+import { BUILTIN_IO_FORMATS, IORegistry } from '@open-pencil/core/io'
+import { readFigFile } from '@open-pencil/core/io/formats/fig'
+import { computeAllLayouts } from '@open-pencil/core/layout'
+import type { SceneGraph } from '@open-pencil/scene-graph'
+
+import { setOpenPencilStore } from '@/app/browser-bridge'
+import type { DocumentSourceIdentity } from '@/app/document/io/types'
+import { setActiveEditorStore } from '@/app/editor/active-store'
+import { createEditorStore } from '@/app/editor/session'
+import type { EditorStore } from '@/app/editor/session'
+import {
+  activeStorageProviderID,
+  createActiveStorageAdapter,
+  type StorageDocument
+} from '@/app/integrations/storage'
+import { getLocalCanvasStore } from '@/app/storage/local-store'
+import { seedStorageCanvasFromRemote } from '@/app/storage/sync/persist'
+import { createFileOpenCoordinator } from '@/app/tabs/open/coordinator'
+import { findTabByFileIdentity } from '@/app/tabs/open/identity'
 
 export interface Tab {
-  id: string;
-  store: EditorStore;
+  id: string
+  store: EditorStore
 }
 
-export interface RecentDocument {
-  name: string;
-  path: string;
-}
+const io = new IORegistry(BUILTIN_IO_FORMATS)
+const fileOpenCoordinator = createFileOpenCoordinator()
 
-const io = new IORegistry(BUILTIN_IO_FORMATS);
-const RECENT_DOCUMENTS_KEY = "open-pencil.recent-documents";
-const RECENT_DOCUMENT_LIMIT = 10;
-
-let nextTabId = 1;
+let nextTabId = 1
 
 function generateTabId(): string {
-  return `tab-${nextTabId++}`;
+  return `tab-${nextTabId++}`
 }
 
-const tabsRef = shallowRef<Tab[]>([]);
-const activeTabId = shallowRef("");
-const recentDocumentsRef = shallowRef<RecentDocument[]>(loadRecentDocuments());
+const tabsRef = shallowRef<Tab[]>([])
+const activeTabId = shallowRef('')
 
-export const activeTab = computed(() => tabsRef.value.find((t) => t.id === activeTabId.value));
+export const activeTab = computed(() => tabsRef.value.find((t) => t.id === activeTabId.value))
 
 export const allTabs = computed(() =>
   tabsRef.value.map((t) => ({
     id: t.id,
     name: t.store.state.documentName,
-    isDirty: t.store.isDirty(),
-    isActive: t.id === activeTabId.value,
-  })),
-);
-
-export const recentDocuments = computed(() => recentDocumentsRef.value);
-
-function loadRecentDocuments(): RecentDocument[] {
-  if (typeof localStorage === "undefined") return [];
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(RECENT_DOCUMENTS_KEY) ?? "[]");
-    if (!Array.isArray(value)) return [];
-    return value.filter(
-      (entry): entry is RecentDocument =>
-        typeof entry === "object" &&
-        entry !== null &&
-        typeof entry.name === "string" &&
-        typeof entry.path === "string" &&
-        entry.path.length > 0,
-    );
-  } catch {
-    return [];
-  }
-}
-
-function persistRecentDocuments() {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(RECENT_DOCUMENTS_KEY, JSON.stringify(recentDocumentsRef.value));
-}
-
-export function recordRecentDocument(name: string, path: string): void {
-  if (!path) return;
-  const entry = { name, path };
-  recentDocumentsRef.value = [
-    entry,
-    ...recentDocumentsRef.value.filter((recent) => recent.path !== path),
-  ].slice(0, RECENT_DOCUMENT_LIMIT);
-  persistRecentDocuments();
-}
-
-export function getRecentDocuments(): RecentDocument[] {
-  return [...recentDocumentsRef.value];
-}
-
-export function clearRecentDocuments(): void {
-  recentDocumentsRef.value = [];
-  persistRecentDocuments();
-}
+    isActive: t.id === activeTabId.value
+  }))
+)
 
 export function getActiveStore(): EditorStore {
-  const tab = tabsRef.value.find((t) => t.id === activeTabId.value);
-  if (!tab) throw new Error("No active tab");
-  return tab.store;
+  const tab = tabsRef.value.find((t) => t.id === activeTabId.value)
+  if (!tab) throw new Error('No active tab')
+  return tab.store
 }
 
 export function getActiveTabId(): string {
-  return activeTabId.value;
+  return activeTabId.value
 }
 
 export function getTabById(tabId: string): Tab | undefined {
-  return tabsRef.value.find((tab) => tab.id === tabId);
+  return tabsRef.value.find((tab) => tab.id === tabId)
 }
 
 export function getTabForStore(store: EditorStore): Tab | undefined {
-  return tabsRef.value.find((tab) => tab.store === store);
+  return tabsRef.value.find((tab) => tab.store === store)
 }
 
 export function getTabsSnapshot(): Tab[] {
-  return [...tabsRef.value];
+  return [...tabsRef.value]
 }
 
 export function createTab(store?: EditorStore, initialGraph?: SceneGraph): Tab {
-  const s = store ?? createEditorStore(initialGraph);
-  const tab: Tab = { id: generateTabId(), store: s };
-  tabsRef.value = [...tabsRef.value, tab];
-  activateTab(tab);
-  return tab;
+  const s = store ?? createEditorStore(initialGraph)
+  const tab: Tab = { id: generateTabId(), store: s }
+  tabsRef.value = [...tabsRef.value, tab]
+  activateTab(tab)
+  return tab
 }
 
 function activateTab(tab: Tab) {
-  activeTabId.value = tab.id;
-  setActiveEditorStore(tab.store);
-  triggerRef(tabsRef);
-  setOpenPencilStore(tab.store);
+  activeTabId.value = tab.id
+  setActiveEditorStore(tab.store)
+  triggerRef(tabsRef)
+  setOpenPencilStore(tab.store)
 }
 
 export function switchTab(tabId: string) {
-  const tab = tabsRef.value.find((t) => t.id === tabId);
-  if (!tab) return;
-  activateTab(tab);
+  const tab = tabsRef.value.find((t) => t.id === tabId)
+  if (!tab) return
+  activateTab(tab)
 }
 
 export function closeTab(tabId: string) {
-  const idx = tabsRef.value.findIndex((t) => t.id === tabId);
-  if (idx === -1) return;
+  const idx = tabsRef.value.findIndex((t) => t.id === tabId)
+  if (idx === -1) return
 
-  const closingTab = tabsRef.value[idx];
-  if (
-    closingTab.store.isDirty() &&
-    typeof window !== "undefined" &&
-    !window.confirm(`Unsaved changes in "${closingTab.store.state.documentName}". Close anyway?`)
-  ) {
-    return;
-  }
-  const wasActive = activeTabId.value === tabId;
-  tabsRef.value = tabsRef.value.filter((t) => t.id !== tabId);
+  const closingTab = tabsRef.value[idx]
+  const wasActive = activeTabId.value === tabId
+  tabsRef.value = tabsRef.value.filter((t) => t.id !== tabId)
 
   if (tabsRef.value.length === 0) {
-    createTab();
-    closingTab.store.dispose();
-    return;
+    createTab()
+    closingTab.store.dispose()
+    return
   }
 
   if (wasActive) {
-    const newIdx = Math.min(idx, tabsRef.value.length - 1);
-    activateTab(tabsRef.value[newIdx]);
+    const newIdx = Math.min(idx, tabsRef.value.length - 1)
+    activateTab(tabsRef.value[newIdx])
   }
 
-  closingTab.store.dispose();
+  closingTab.store.dispose()
 }
 
 function yieldToUI(): Promise<void> {
   return new Promise((resolve) => {
-    requestAnimationFrame(() => resolve());
-  });
+    requestAnimationFrame(() => resolve())
+  })
 }
 
 function isDOMImportFile(file: File): boolean {
-  return /\.(html?|xhtml)$/i.test(file.name);
+  return /\.(html?|xhtml)$/i.test(file.name)
+}
+
+function reusableTabStore(): EditorStore {
+  const current = activeTab.value
+  const isUntouched =
+    current?.store.state.documentName === 'Untitled' && !current.store.undo.canUndo
+  return isUntouched ? current.store : createTab().store
+}
+
+function findStorageTab(providerId: string, documentId: string): Tab | undefined {
+  return tabsRef.value.find((tab) => {
+    const binding = tab.store.getStorageBinding()
+    return binding?.providerId === providerId && binding.documentId === documentId
+  })
+}
+
+export async function openStorageDocumentInNewTab(document: StorageDocument): Promise<void> {
+  const providerId = activeStorageProviderID.value
+  const existing = findStorageTab(providerId, document.id)
+  if (existing) {
+    switchTab(existing.id)
+    return
+  }
+
+  const store = reusableTabStore()
+  store.state.documentName = document.name
+  store.state.loading = true
+  try {
+    const local = getLocalCanvasStore()
+    const localMetadata = await local.getMeta(document.id)
+    const localBytes = localMetadata?.hasFig ? await local.readFig(document.id) : null
+    const localIsAuthoritative =
+      localMetadata?.syncStatus !== 'synced' ||
+      !document.metadataAuthoritative ||
+      localMetadata.updatedAt >= document.updatedAt
+    let bytes = localBytes && localIsAuthoritative ? localBytes : null
+
+    if (!bytes) {
+      bytes = await createActiveStorageAdapter(providerId).getDocument(document.id)
+      await seedStorageCanvasFromRemote({
+        providerId,
+        canvasId: document.id,
+        name: document.name,
+        updatedAt: document.updatedAt,
+        figBytes: bytes
+      })
+    }
+
+    const fileBytes = new Uint8Array(bytes.byteLength)
+    fileBytes.set(bytes)
+    const file = new File([fileBytes.buffer], `${document.name}.fig`, {
+      type: 'application/octet-stream'
+    })
+    const imported = await readFigFile(file, { populate: 'first-page' })
+    const firstPageId = imported.getPages()[0]?.id
+    if (firstPageId) computeAllLayouts(imported, firstPageId)
+    store.replaceGraph(imported)
+    store.undo.clear()
+    store.setStorageDocumentSource({ providerId, documentId: document.id }, document.name)
+    store.clearSelection()
+    const pageId = store.graph.getPages()[0]?.id ?? store.graph.rootId
+    await store.switchPage(pageId)
+    await store.fitCurrentPageToViewport()
+  } finally {
+    store.state.loading = false
+  }
 }
 
 export async function openFileInNewTab(
   file: File,
   handle?: FileSystemFileHandle,
-  path?: string,
-  parentSignal?: AbortSignal,
+  path?: string
 ): Promise<void> {
-  throwIfIOCancelled(parentSignal);
-  const open = beginFileOpen(parentSignal);
-  const { signal } = open;
-  const current = activeTab.value;
-  const isUntouched =
-    current?.store.state.documentName === "Untitled" && !current.store.undo.canUndo;
-  const store = isUntouched ? current.store : createTab().store;
-  const documentName = file.name.replace(/\.[^.]+$/i, "");
-
-  store.state.loading = true;
-
-  try {
-    await yieldToUI();
-    throwIfIOCancelled(signal);
-    if (isDOMImportFile(file)) {
-      await store.openDOMFile(file, { handle, path, signal });
-      return;
+  const identity: DocumentSourceIdentity = {
+    handle: handle ?? null,
+    path: path ?? null
+  }
+  const decision = await fileOpenCoordinator.decide(async () => {
+    const pending = await fileOpenCoordinator.findPending(identity)
+    if (pending) {
+      const tab = getTabForStore(pending.store)
+      if (tab) switchTab(tab.id)
+      return { kind: 'pending' as const, completion: pending.completion }
     }
-    const isFig = file.name.toLowerCase().endsWith(".fig");
-    let imported: SceneGraph;
-    let sourceFormat: string;
-    if (isFig) {
-      imported = await readFigFile(file, { populate: "first-page", signal });
-      sourceFormat = "fig";
-    } else {
-      throwIfIOCancelled(signal);
-      const data = new Uint8Array(await file.arrayBuffer());
-      throwIfIOCancelled(signal);
-      ({ graph: imported, sourceFormat } = await io.readDocument(
-        {
+
+    const existing = await findTabByFileIdentity(tabsRef.value, identity)
+    if (existing) {
+      switchTab(existing.id)
+      return { kind: 'existing' as const }
+    }
+
+    const store = reusableTabStore()
+    store.state.documentName = file.name.replace(/\.[^.]+$/i, '')
+    store.state.loading = true
+
+    const completion = Promise.withResolvers<undefined>()
+    void completion.promise.catch(() => undefined)
+    const pendingOpen = { completion: completion.promise, identity, store }
+    fileOpenCoordinator.add(pendingOpen)
+    return { kind: 'owner' as const, completion, pendingOpen, store }
+  })
+
+  if (decision.kind === 'existing') return
+  if (decision.kind === 'pending') {
+    await decision.completion
+    return
+  }
+
+  const { completion, pendingOpen, store } = decision
+  try {
+    if (isDOMImportFile(file)) {
+      await store.openDOMFile(file, { handle, path })
+      completion.resolve(undefined)
+      return
+    }
+
+    await yieldToUI()
+    const isFig = file.name.toLowerCase().endsWith('.fig')
+    const { graph: imported, sourceFormat } = isFig
+      ? { graph: await readFigFile(file, { populate: 'first-page' }), sourceFormat: 'fig' }
+      : await io.readDocument({
           name: file.name,
           mimeType: file.type || undefined,
-          data,
-        },
-        { signal },
-      ));
-    }
+          data: new Uint8Array(await file.arrayBuffer())
+        })
 
-    const firstPageId = imported.getPages()[0]?.id;
-    if (firstPageId) computeAllLayouts(imported, firstPageId);
-    throwIfIOCancelled(signal);
-    store.state.documentName = documentName;
-    store.replaceGraph(imported);
-    store.undo.clear();
-    store.setDocumentSource(file.name, sourceFormat, handle, path);
-    if (path) recordRecentDocument(file.name, path);
-    store.clearSelection();
-    const pageId = store.graph.getPages()[0]?.id ?? store.graph.rootId;
-    await store.switchPage(pageId);
-    await store.fitCurrentPageToViewport();
+    const firstPageId = imported.getPages()[0]?.id
+    if (firstPageId) computeAllLayouts(imported, firstPageId)
+    store.replaceGraph(imported)
+    store.undo.clear()
+    store.setDocumentSource(file.name, sourceFormat, handle, path)
+    store.clearSelection()
+    const pageId = store.graph.getPages()[0]?.id ?? store.graph.rootId
+    await store.switchPage(pageId)
+    await store.fitCurrentPageToViewport()
+    completion.resolve(undefined)
   } catch (error) {
-    if (!(error instanceof IOCancelledError)) throw error;
+    completion.reject(error)
+    throw error
   } finally {
-    if (open.isCurrent()) store.state.loading = false;
-    open.finish();
+    store.state.loading = false
+    fileOpenCoordinator.remove(pendingOpen)
   }
 }
 
 export function tabCount(): number {
-  return tabsRef.value.length;
+  return tabsRef.value.length
 }
 
 export function useTabsStore() {
@@ -256,10 +281,8 @@ export function useTabsStore() {
     getTabForStore,
     getTabsSnapshot,
     openFileInNewTab,
+    openStorageDocumentInNewTab,
     getActiveStore,
-    tabCount,
-    recentDocuments,
-    getRecentDocuments,
-    clearRecentDocuments,
-  };
+    tabCount
+  }
 }

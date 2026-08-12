@@ -1,54 +1,81 @@
 <script setup lang="ts">
-import { useI18n, useSelectionState, useEditorCommands } from "@open-pencil/vue";
-import { computed, ref } from "vue";
+import { computed, ref } from 'vue'
 
-import AppearanceSection from "./properties/AppearanceSection.vue";
-import BooleanOperationsControl from "./properties/BooleanOperationsControl.vue";
-import EffectsSection from "./properties/EffectsSection.vue";
-import ExportSection from "./properties/ExportSection.vue";
-import FillSection from "./properties/FillSection.vue";
-import LayoutSection from "./properties/LayoutSection/LayoutSection.vue";
-import PageSection from "./properties/PageSection.vue";
-import PositionSection from "./properties/PositionSection.vue";
-import StrokeSection from "./properties/StrokeSection.vue";
-import TypographySection from "./properties/TypographySection.vue";
-import VariablesSection from "./properties/VariablesSection.vue";
-import VariantSection from "./properties/VariantSection.vue";
-import VariablesDialog from "./VariablesDialog.vue";
+import { useI18n, useSelectionState, useEditorCommands } from '@open-pencil/vue'
 
-const variablesOpen = ref(false);
-const { selectedNode: node, selectedCount: multiCount } = useSelectionState();
-const showBooleanOperations = computed(() => multiCount.value >= 2);
-const { getCommand } = useEditorCommands();
-const goToMainComponent = getCommand("selection.goToMainComponent");
-const detachInstance = getCommand("selection.detachInstance");
+import { useEditorStore } from '@/app/editor/active-store'
+import { COMPONENT_TYPES, nodeIcon } from '@/app/editor/icons'
+import PanelHeader from '@/components/ui/panel/PanelHeader.vue'
+import Tip from '@/components/ui/Tip.vue'
+
+import VariablesDialog from './variables/VariablesDialog.vue'
+import AppearanceSection from './properties/AppearanceSection.vue'
+import EffectsSection from './properties/EffectsSection.vue'
+import ExportSection from './properties/ExportSection.vue'
+import FillSection from './properties/FillSection.vue'
+import LayoutGridSection from './properties/LayoutSection/LayoutGridSection.vue'
+import LayoutSection from './properties/LayoutSection/LayoutSection.vue'
+import MaskSection from './properties/MaskSection.vue'
+import PageSection from './properties/PageSection.vue'
+import ConstraintsSection from './properties/constraints/ConstraintsSection.vue'
+import PositionSection from './properties/PositionSection.vue'
+import SelectionActionsControl from './properties/SelectionActionsControl.vue'
+import StrokeSection from './properties/StrokeSection.vue'
+import TypographySection from './properties/TypographySection.vue'
+import VariablesSection from './properties/VariablesSection.vue'
+import ComponentPropertiesSection from './properties/component-properties/ComponentPropertiesSection.vue'
+import FramePresetsSection from './properties/frame-presets/FramePresetsSection.vue'
+import FramePresetSelect from './properties/frame-presets/FramePresetSelect.vue'
+
+const variablesOpen = ref(false)
+const store = useEditorStore()
+const activeTool = computed(() => store.state.activeTool)
+const { selectedNode: node, selectedCount: multiCount } = useSelectionState()
+const showBooleanOperations = computed(() => multiCount.value >= 2)
+const { getCommand } = useEditorCommands()
+const goToMainComponent = getCommand('selection.goToMainComponent')
+const detachInstance = getCommand('selection.detachInstance')
 const isComponentType = computed(() => {
-  const t = node.value?.type;
-  return t === "COMPONENT" || t === "COMPONENT_SET" || t === "INSTANCE";
-});
-const { panels } = useI18n();
+  const type = node.value?.type
+  return type ? COMPONENT_TYPES.has(type) : false
+})
+const selectedIcon = computed(() => (node.value ? nodeIcon(node.value) : undefined))
+const supportsLayoutGuides = computed(() => {
+  const type = node.value?.type
+  return type === 'FRAME' || type === 'COMPONENT' || type === 'COMPONENT_SET' || type === 'INSTANCE'
+})
+const { panels } = useI18n()
 </script>
 
 <template>
+  <!-- Frame tool presets replace selection properties, matching Figma. -->
+  <div
+    v-if="activeTool === 'FRAME'"
+    class="scrollbar-thin flex-1 overflow-x-hidden overflow-y-auto pb-4"
+  >
+    <FramePresetsSection />
+  </div>
+
   <!-- Multi-select summary -->
   <div
-    v-if="multiCount > 1"
+    v-else-if="multiCount > 1"
     data-test-id="design-panel-multi"
     class="scrollbar-thin flex-1 overflow-x-hidden overflow-y-auto pb-4"
   >
-    <div
-      data-test-id="design-multi-header"
-      class="flex items-center gap-1.5 border-b border-border px-3 py-2"
-    >
-      <span class="text-[11px] text-muted">{{ panels.mixed }}</span>
-      <span class="text-xs font-semibold">{{
-        panels.layersCount({ count: String(multiCount) })
-      }}</span>
-      <div class="ml-auto flex items-center">
-        <BooleanOperationsControl v-if="showBooleanOperations" />
-      </div>
-    </div>
+    <PanelHeader>
+      <template #icon>
+        <icon-lucide-layers-3 class="size-3.5" aria-hidden="true" />
+      </template>
+      <span role="heading" aria-level="2">
+        {{ panels.layersCount({ count: String(multiCount) }) }}
+      </span>
+      <template #actions>
+        <SelectionActionsControl :show-boolean-operations="showBooleanOperations" />
+      </template>
+    </PanelHeader>
+    <ComponentPropertiesSection />
     <PositionSection />
+    <ConstraintsSection />
     <AppearanceSection />
     <FillSection />
     <StrokeSection />
@@ -62,15 +89,19 @@ const { panels } = useI18n();
     data-test-id="design-panel-single"
     class="scrollbar-thin flex-1 overflow-x-hidden overflow-y-auto pb-4"
   >
-    <div
-      data-test-id="design-node-header"
-      class="flex items-center gap-1.5 border-b border-border px-3 py-2"
-    >
-      <span class="text-[11px]" :class="isComponentType ? 'text-component' : 'text-muted'">{{
-        node.type
-      }}</span>
-      <span class="text-xs font-semibold">{{ node.name }}</span>
-    </div>
+    <PanelHeader :component="isComponentType">
+      <template #icon>
+        <Tip :label="node.type">
+          <span role="img" :aria-label="node.type" class="contents">
+            <component :is="selectedIcon" class="size-3.5" />
+          </span>
+        </Tip>
+      </template>
+      <span role="heading" aria-level="2">{{ node.name }}</span>
+      <template #actions>
+        <SelectionActionsControl />
+      </template>
+    </PanelHeader>
 
     <!-- Component actions -->
     <div
@@ -78,14 +109,14 @@ const { panels } = useI18n();
       class="flex flex-col gap-1 border-b border-border px-3 py-2"
     >
       <button
-        data-test-id="design-go-to-component"
+        type="button"
         class="rounded bg-component/10 px-2 py-1 text-left text-[11px] text-component hover:bg-component/20"
         @click="goToMainComponent.run()"
       >
         {{ panels.goToMainComponent }}
       </button>
       <button
-        data-test-id="design-detach-instance"
+        type="button"
         class="rounded px-2 py-1 text-left text-[11px] text-muted hover:bg-hover"
         @click="detachInstance.run()"
       >
@@ -93,14 +124,19 @@ const { panels } = useI18n();
       </button>
     </div>
 
-    <VariantSection v-if="node.type === 'INSTANCE'" />
+    <ComponentPropertiesSection v-if="node.type === 'INSTANCE'" />
+
+    <FramePresetSelect v-if="node.type === 'FRAME'" />
 
     <PositionSection />
+    <ConstraintsSection />
     <LayoutSection />
     <AppearanceSection />
+    <MaskSection />
     <TypographySection v-if="node.type === 'TEXT'" />
     <FillSection />
     <StrokeSection />
+    <LayoutGridSection v-if="supportsLayoutGuides" />
     <EffectsSection />
 
     <ExportSection />

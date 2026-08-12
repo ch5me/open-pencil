@@ -1,73 +1,86 @@
 <script setup lang="ts">
-import type { EditorToolDef } from "@open-pencil/core/editor";
+import { computed } from 'vue'
+import { tv } from 'tailwind-variants'
 import {
+  DropdownMenuContent,
+  DropdownMenuItemIndicator,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuRoot,
+  DropdownMenuTrigger
+} from 'reka-ui'
+
+import IconChevronDown from '~icons/lucide/chevron-down'
+
+import AppShortcutText from '@/components/ui/AppShortcutText.vue'
+import { menu } from '@/components/ui/menu'
+import toolbarTheme from '@/theme/toolbar'
+import ToolButton from '@/components/Toolbar/ToolButton.vue'
+import {
+  isToolbarToolActive,
   toolbarFlyoutItemTestId,
   toolbarFlyoutTestId,
   toolbarToolTestId,
-  vTestId,
-  ToolbarItem,
-} from "@open-pencil/vue";
-import type { Tool } from "@open-pencil/vue";
-import {
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuRoot,
-  DropdownMenuTrigger,
-} from "reka-ui";
-import IconChevronDown from "~icons/lucide/chevron-down";
+  useI18n,
+  vTestId
+} from '@open-pencil/vue'
 
-import ToolButton from "@/components/Toolbar/ToolButton.vue";
-import type { ToolbarUi, ToolIconMap, ToolLabels } from "@/components/Toolbar/types";
-import AppShortcutText from "@/components/ui/AppShortcutText.vue";
-import { menu } from "@/components/ui/menu";
+import type { Tool } from '@open-pencil/vue'
+import type { EditorToolDef } from '@open-pencil/core/editor'
+import type { ToolbarUI, ToolIconMap, ToolLabels } from '@/components/Toolbar/types'
 
 const {
   tool,
   activeTool,
+  selectedTool,
   toolIcons,
   toolLabels,
   toolShortcuts,
   ui,
-  mobile = false,
+  mobile = false
 } = defineProps<{
-  tool: EditorToolDef;
-  activeTool: Tool;
-  toolIcons: ToolIconMap;
-  toolLabels: ToolLabels;
-  toolShortcuts: Record<Tool, string>;
-  ui?: ToolbarUi;
-  mobile?: boolean;
-}>();
+  tool: EditorToolDef
+  activeTool: Tool
+  selectedTool: Tool
+  toolIcons: ToolIconMap
+  toolLabels: ToolLabels
+  toolShortcuts: Record<Tool, string>
+  ui?: ToolbarUI
+  mobile?: boolean
+}>()
+
+const toolbar = tv(toolbarTheme)
+const { dialogs } = useI18n()
+const triggerActive = computed(() => isToolbarToolActive(tool, activeTool))
+const styles = computed(() => toolbar({ active: triggerActive.value, mobile }))
 
 const emit = defineEmits<{
-  select: [tool: Tool];
-}>();
+  select: [tool: Tool]
+}>()
 
 defineSlots<{
-  default(props: { label: string }): unknown;
-}>();
+  default(props: { label: string }): unknown
+}>()
 
-function isActiveTool(key: Tool) {
-  return (
-    tool.key === activeTool || (tool.flyout?.includes(activeTool) ?? false) || key === activeTool
-  );
-}
-
-function activeKeyForTool() {
-  return tool.flyout?.includes(activeTool) ? activeTool : tool.key;
+function flyoutItemClass() {
+  return menu({ justify: 'start' }).item({
+    class: toolbar().flyoutItem({ class: ui?.flyoutItem })
+  })
 }
 </script>
 
 <template>
-  <div class="flex items-center">
-    <slot :label="`${toolLabels[activeKeyForTool()]} (${tool.shortcut})`">
+  <div :class="styles.flyoutGroup({ class: ui?.flyoutGroup })">
+    <slot :label="`${toolLabels[selectedTool]} (${tool.shortcut})`">
       <ToolButton
-        :test-id="toolbarToolTestId(activeKeyForTool(), mobile)"
-        :icon="toolIcons[activeKeyForTool()]"
-        :active="isActiveTool(activeKeyForTool())"
+        :data-test-id="toolbarToolTestId(selectedTool, mobile)"
+        :icon="toolIcons[selectedTool]"
+        :label="toolLabels[selectedTool]"
+        :active="triggerActive"
         :mobile="mobile"
-        @click="emit('select', activeKeyForTool())"
+        :ui="ui"
+        @click="emit('select', selectedTool)"
       />
     </slot>
 
@@ -75,40 +88,52 @@ function activeKeyForTool() {
       <DropdownMenuTrigger as-child>
         <button
           v-test-id="toolbarFlyoutTestId(tool.key, mobile)"
-          class="flex h-8 w-3 cursor-pointer items-center justify-center border-none transition-colors"
-          :class="[
-            mobile ? 'rounded-[6px] select-none' : 'rounded-lg',
-            isActiveTool(activeKeyForTool())
-              ? 'bg-accent text-white'
-              : mobile
-                ? 'bg-transparent text-muted active:bg-hover'
-                : 'bg-transparent text-muted hover:bg-hover hover:text-surface',
-          ]"
+          :data-mobile="mobile || undefined"
+          :aria-label="dialogs.toolOptions({ tool: toolLabels[tool.key] })"
+          :class="styles.flyoutTrigger({ class: ui?.flyoutTrigger })"
         >
-          <IconChevronDown class="size-2.5" />
+          <IconChevronDown :class="styles.flyoutTriggerIcon({ class: ui?.flyoutTriggerIcon })" />
         </button>
       </DropdownMenuTrigger>
 
       <DropdownMenuPortal>
-        <DropdownMenuContent side="top" :side-offset="8" align="start" :class="ui?.flyoutContent">
-          <ToolbarItem
-            v-for="sub in tool.flyout"
-            :key="sub"
-            v-slot="{ active: subActive, actions }"
-            :tool="sub"
-          >
-            <DropdownMenuItem
+        <DropdownMenuContent
+          side="top"
+          :side-offset="8"
+          align="start"
+          :class="styles.flyoutContent({ class: ui?.flyoutContent })"
+        >
+          <DropdownMenuRadioGroup :model-value="selectedTool">
+            <DropdownMenuRadioItem
+              v-for="sub in tool.flyout"
+              :key="sub"
               v-test-id="toolbarFlyoutItemTestId(sub, mobile)"
-              :class="menu().item({ class: subActive ? 'bg-accent text-white' : undefined })"
-              @select="actions.select"
+              :value="sub"
+              :data-active="sub === selectedTool || undefined"
+              :class="flyoutItemClass()"
+              @select="emit('select', sub)"
             >
-              <component :is="toolIcons[sub]" class="size-3.5" />
-              <span class="flex-1">{{ toolLabels[sub] }}</span>
+              <span
+                data-slot="flyout-item-indicator"
+                :class="styles.flyoutItemIndicator({ class: ui?.flyoutItemIndicator })"
+                aria-hidden="true"
+              >
+                <DropdownMenuItemIndicator>
+                  <icon-lucide-check class="size-3.5" />
+                </DropdownMenuItemIndicator>
+              </span>
+              <component
+                :is="toolIcons[sub]"
+                :class="styles.flyoutItemIcon({ class: ui?.flyoutItemIcon })"
+              />
+              <span :class="styles.flyoutItemLabel({ class: ui?.flyoutItemLabel })">
+                {{ toolLabels[sub] }}
+              </span>
               <AppShortcutText v-if="!mobile && toolShortcuts[sub]">
                 {{ toolShortcuts[sub] }}
               </AppShortcutText>
-            </DropdownMenuItem>
-          </ToolbarItem>
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenuPortal>
     </DropdownMenuRoot>

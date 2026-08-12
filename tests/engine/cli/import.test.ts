@@ -1,19 +1,19 @@
-import { expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtemp } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { expect, setDefaultTimeout, test } from 'bun:test'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
-import { parseFigFile } from "@open-pencil/core/io";
-import type { SceneNode } from "@open-pencil/core/scene-graph";
+import { parseFigFile } from '@open-pencil/core/io'
+import type { SceneNode } from '@open-pencil/scene-graph'
 
-import { runOpenPencilCLI } from "#tests/helpers/cli";
+import { runOpenPencilCLI } from '#tests/helpers/cli'
 
-setDefaultTimeout(30_000);
+setDefaultTimeout(30_000)
 
 async function createFixture() {
-  const dir = await mkdtemp(join(tmpdir(), "open-pencil-import-cli-"));
-  const htmlPath = join(dir, "card.html");
-  const cssPath = join(dir, "card.css");
+  const dir = await mkdtemp(join(tmpdir(), 'open-pencil-import-cli-'))
+  const htmlPath = join(dir, 'card.html')
+  const cssPath = join(dir, 'card.css')
 
   await Bun.write(
     htmlPath,
@@ -22,8 +22,8 @@ async function createFixture() {
         <h1>DOM/CSS card</h1>
         <p>Imported from HTML and CSS.</p>
       </article>
-    `,
-  );
+    `
+  )
   await Bun.write(
     cssPath,
     `
@@ -40,50 +40,50 @@ async function createFixture() {
       h1 {
         font-size: 24px;
       }
-    `,
-  );
+    `
+  )
 
-  return { dir, htmlPath, cssPath };
+  return { dir, htmlPath, cssPath }
 }
 
 function findNode(nodes: Iterable<SceneNode>, name: string): SceneNode | undefined {
   for (const node of nodes) {
-    if (node.name === name) return node;
+    if (node.name === name) return node
   }
 }
 
-test("import CLI writes DesignDOM JSON output", async () => {
-  const { htmlPath, cssPath, dir } = await createFixture();
-  const output = join(dir, "card.json");
+test('import CLI writes DesignDOM JSON output', async () => {
+  const { htmlPath, cssPath, dir } = await createFixture()
+  const output = join(dir, 'card.json')
 
   const { stdout, stderr, exitCode } = await runOpenPencilCLI([
-    "import",
+    'import',
     htmlPath,
-    "--css",
+    '--css',
     cssPath,
-    "--format",
-    "json",
-    "--output",
+    '--format',
+    'json',
+    '--output',
     output,
-    "--json",
-  ]);
+    '--json'
+  ])
 
-  expect(stderr).toBe("");
-  expect(exitCode).toBe(0);
+  expect(stderr).toBe('')
+  expect(exitCode).toBe(0)
 
-  const summary = JSON.parse(stdout);
-  expect(summary).toMatchObject({ format: "json", output, pages: 1, rootElements: 1 });
+  const summary = JSON.parse(stdout)
+  expect(summary).toMatchObject({ format: 'json', output, pages: 1, rootElements: 1 })
 
-  const document = JSON.parse(await Bun.file(output).text());
-  expect(document.children[0].tagName).toBe("article");
-  expect(document.children[0].computedStyle.display).toBe("flex");
-  expect(document.children[0].computedStyle.width).toBe("240px");
-});
+  const document = JSON.parse(await Bun.file(output).text())
+  expect(document.children[0].tagName).toBe('article')
+  expect(document.children[0].computedStyle.display).toBe('flex')
+  expect(document.children[0].computedStyle.width).toBe('240px')
+})
 
-test("import CLI reads embedded HTML styles without a sidecar CSS file", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "open-pencil-import-cli-embedded-"));
-  const htmlPath = join(dir, "embedded.html");
-  const output = join(dir, "embedded.json");
+test('import CLI reads embedded HTML styles without a sidecar CSS file', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'open-pencil-import-cli-embedded-'))
+  const htmlPath = join(dir, 'embedded.html')
+  const output = join(dir, 'embedded.json')
 
   await Bun.write(
     htmlPath,
@@ -95,86 +95,86 @@ test("import CLI reads embedded HTML styles without a sidecar CSS file", async (
         </style>
       </head>
       <body><article class="card"><h1>Embedded CSS</h1></article></body>
-    </html>`,
-  );
+    </html>`
+  )
 
   const { stdout, stderr, exitCode } = await runOpenPencilCLI([
-    "import",
+    'import',
     htmlPath,
-    "--format",
-    "json",
-    "--output",
+    '--format',
+    'json',
+    '--output',
     output,
-    "--json",
-  ]);
+    '--json'
+  ])
 
-  expect(stderr).toBe("");
-  expect(exitCode).toBe(0);
-  expect(JSON.parse(stdout)).toMatchObject({ format: "json", output, rootElements: 1 });
+  expect(stderr).toBe('')
+  expect(exitCode).toBe(0)
+  expect(JSON.parse(stdout)).toMatchObject({ format: 'json', output, rootElements: 1 })
 
-  const document = JSON.parse(await Bun.file(output).text());
-  expect(document.children[0].tagName).toBe("article");
-  expect(document.children[0].computedStyle.width).toBe("280px");
-  expect(document.children[0].computedStyle.gap).toBe("10px");
-});
+  const document = JSON.parse(await Bun.file(output).text())
+  expect(document.children[0].tagName).toBe('article')
+  expect(document.children[0].computedStyle.width).toBe('280px')
+  expect(document.children[0].computedStyle.gap).toBe('10px')
+})
 
-test("import CLI writes a .fig that core IO can import", async () => {
-  const { htmlPath, cssPath, dir } = await createFixture();
-  const output = join(dir, "card.fig");
+test('import CLI writes a .fig that core IO can import', async () => {
+  const { htmlPath, cssPath, dir } = await createFixture()
+  const output = join(dir, 'card.fig')
 
   const { stdout, stderr, exitCode } = await runOpenPencilCLI([
-    "import",
+    'import',
     htmlPath,
-    "--css",
+    '--css',
     cssPath,
-    "--output",
+    '--output',
     output,
-    "--json",
-  ]);
+    '--json'
+  ])
 
-  expect(stderr).toBe("");
-  expect(exitCode).toBe(0);
-  expect(JSON.parse(stdout)).toMatchObject({ format: "fig", output, pages: 1, rootElements: 1 });
+  expect(stderr).toBe('')
+  expect(exitCode).toBe(0)
+  expect(JSON.parse(stdout)).toMatchObject({ format: 'fig', output, pages: 1, rootElements: 1 })
 
-  const bytes = new Uint8Array(await Bun.file(output).arrayBuffer());
-  const graph = await parseFigFile(bytes);
-  const nodes = [...graph.nodes.values()];
-  const card = findNode(nodes, "card");
-  const title = findNode(nodes, "DOM/CSS card");
+  const bytes = new Uint8Array(await Bun.file(output).arrayBuffer())
+  const graph = await parseFigFile(bytes)
+  const nodes = [...graph.nodes.values()]
+  const card = findNode(nodes, 'card')
+  const title = findNode(nodes, 'DOM/CSS card')
 
-  expect(graph.getPages()).toHaveLength(1);
-  expect(card?.type).toBe("FRAME");
-  expect(title?.type).toBe("TEXT");
-});
+  expect(graph.getPages()).toHaveLength(1)
+  expect(card?.type).toBe('FRAME')
+  expect(title?.type).toBe('TEXT')
+})
 
-test("import CLI compiles Tailwind candidates before import", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "open-pencil-import-cli-tailwind-"));
-  const htmlPath = join(dir, "tailwind.html");
-  const output = join(dir, "tailwind.json");
-  const classes = ["flex", "flex-col", "gap-2", "w-60", "p-6", "rounded-xl", "bg-white"];
+test('import CLI compiles Tailwind candidates before import', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'open-pencil-import-cli-tailwind-'))
+  const htmlPath = join(dir, 'tailwind.html')
+  const output = join(dir, 'tailwind.json')
+  const classes = ['flex', 'flex-col', 'gap-2', 'w-60', 'p-6', 'rounded-xl', 'bg-white']
 
   await Bun.write(
     htmlPath,
-    `<article class="${classes.join(" ")}"><h1 class="text-2xl">Tailwind card</h1></article>`,
-  );
+    `<article class="${classes.join(' ')}"><h1 class="text-2xl">Tailwind card</h1></article>`
+  )
 
   const { stdout, stderr, exitCode } = await runOpenPencilCLI([
-    "import",
+    'import',
     htmlPath,
-    "--tailwind",
-    classes.join(" "),
-    "--format",
-    "json",
-    "--output",
+    '--tailwind',
+    classes.join(' '),
+    '--format',
+    'json',
+    '--output',
     output,
-    "--json",
-  ]);
+    '--json'
+  ])
 
-  expect(stderr).toBe("");
-  expect(exitCode).toBe(0);
-  expect(JSON.parse(stdout)).toMatchObject({ format: "json", output });
+  expect(stderr).toBe('')
+  expect(exitCode).toBe(0)
+  expect(JSON.parse(stdout)).toMatchObject({ format: 'json', output })
 
-  const document = JSON.parse(await Bun.file(output).text());
-  expect(document.children[0].computedStyle.display).toBe("flex");
-  expect(document.children[0].computedStyle.width).toBe("240px");
-});
+  const document = JSON.parse(await Bun.file(output).text())
+  expect(document.children[0].computedStyle.display).toBe('flex')
+  expect(document.children[0].computedStyle.width).toBe('240px')
+})

@@ -1,6 +1,6 @@
-import { createDefaultEditorState, type EditorState } from "@open-pencil/core/editor";
+import { createDefaultEditorState, type EditorState } from '@open-pencil/core/editor'
 
-import type { NodeEditState } from "@/app/editor/vector-edit/types";
+import type { NodeEditState } from '@/app/editor/vector-edit/types'
 
 export function createInitialAppEditorState(pageId: string): AppEditorState {
   return {
@@ -8,35 +8,35 @@ export function createInitialAppEditorState(pageId: string): AppEditorState {
     showUI: true,
     showRulers: true,
     showRemoteCursors: true,
-    activeRibbonTab: "panels",
-    panelMode: "design",
-    leftPanelMode: "layers",
+    activeRibbonTab: 'panels',
+    panelMode: 'design',
     actionToast: null,
-    mobileDrawerSnap: "closed",
-    clipboardHtml: "",
+    mobileDrawerSnap: 'closed',
+    clipboardHTML: '',
     autosaveEnabled: false,
-    documentSavedVersion: 0,
     cursorCanvasX: null,
     cursorCanvasY: null,
     nodeEditState: null,
-    scrubInputFocused: false,
-  };
+    renameSelectionOpen: false,
+    renameNodeId: null,
+    numberFieldFocused: false
+  }
 }
 
 export type AppEditorState = EditorState & {
-  showUI: boolean;
-  showRulers: boolean;
-  showRemoteCursors: boolean;
-  activeRibbonTab: "panels" | "code" | "ai";
-  panelMode: "layers" | "design";
-  leftPanelMode: "layers" | "assets";
-  actionToast: string | null;
-  mobileDrawerSnap: "closed" | "half" | "full";
-  clipboardHtml: string;
-  autosaveEnabled: boolean;
-  documentSavedVersion: number;
-  cursorCanvasX: number | null;
-  cursorCanvasY: number | null;
-  nodeEditState: NodeEditState | null;
-  scrubInputFocused: boolean;
-};
+  showUI: boolean
+  showRulers: boolean
+  showRemoteCursors: boolean
+  activeRibbonTab: 'panels' | 'code' | 'ai'
+  panelMode: 'layers' | 'design'
+  actionToast: string | null
+  mobileDrawerSnap: 'closed' | 'half' | 'full'
+  clipboardHTML: string
+  autosaveEnabled: boolean
+  cursorCanvasX: number | null
+  cursorCanvasY: number | null
+  nodeEditState: NodeEditState | null
+  renameSelectionOpen: boolean
+  renameNodeId: string | null
+  numberFieldFocused: boolean
+}

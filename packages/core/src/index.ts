@@ -1,26 +1,21 @@
-export type { GUID, Color, Vector, Matrix, Rect } from "./types";
-export {
-  computeBounds,
-  computeAbsoluteBounds,
-  degToRad,
-  radToDeg,
-  rotatePoint,
-  rotatedCorners,
-  rotatedBBox,
-} from "./geometry";
-export { randomHex, randomInt, randomIndex } from "./random";
+import codegenPrompt from './tools/prompts/codegen.md'
+import jsxReference from './tools/prompts/jsx-reference.md'
 
-export * from "./constants";
+export { randomHex, randomInt, randomIndex } from './random'
 
-export { createDefaultEditorState, createEditor, EDITOR_TOOLS, TOOL_SHORTCUTS } from "./editor";
+export * from './constants'
+
+export { createDefaultEditorState, createEditor, EDITOR_TOOLS, TOOL_SHORTCUTS } from './editor'
 export type {
+  ClipboardImageResolution,
   Editor,
   EditorContext,
   EditorOptions,
   EditorState,
   EditorToolDef,
-  Tool,
-} from "./editor";
+  FigmaClipboardImageResolver,
+  Tool
+} from './editor'
 
 export {
   SceneGraph,
@@ -73,10 +68,10 @@ export {
   type CharacterStyleOverride,
   type StyleRun,
   type SceneGraphEvents,
-  type DocumentColorSpace,
-} from "./scene-graph";
+  type DocumentColorSpace
+} from '@open-pencil/scene-graph'
 
-export { FigmaAPI, FigmaNodeProxy, computeImageHash, type FigmaFontName } from "./figma-api";
+export { FigmaAPI, FigmaNodeProxy, computeImageHash, type FigmaFontName } from './figma-api'
 export {
   ALL_TOOLS,
   CORE_TOOLS,
@@ -86,8 +81,8 @@ export {
   buildDebugLog,
   requireNode,
   NodeNotFoundError,
-  calcClusterConfidence,
-} from "./tools";
+  calcClusterConfidence
+} from './tools'
 export type {
   ToolDef,
   ParamDef,
@@ -95,11 +90,11 @@ export type {
   ToolLogEntry,
   ToolDebugLog,
   AIAdapterOptions,
-  StepBudget,
-} from "./tools";
-export { executeRpcCommand, ALL_RPC_COMMANDS } from "./rpc";
-export { queryByXPath, matchByXPath, nodeToXPath } from "./xpath";
-export type { XPathQueryOptions } from "./xpath";
+  StepBudget
+} from './tools'
+export { executeRPCCommand, ALL_RPC_COMMANDS } from './rpc'
+export { queryByXPath, matchByXPath, nodeToXPath } from './xpath'
+export type { XPathQueryOptions } from './xpath'
 export {
   okhclToRGBA,
   rgbaToOkHCL,
@@ -113,8 +108,8 @@ export {
   getFillOkHCL,
   getStrokeOkHCL,
   type OkHCLColor,
-  type OkHCLPayload,
-} from "./color/okhcl";
+  type OkHCLPayload
+} from './color/okhcl'
 export type {
   InfoResult,
   PageItem,
@@ -137,10 +132,10 @@ export type {
   SpacingValue,
   AnalyzeClustersArgs,
   AnalyzeClustersResult,
-  TypographyStyle,
-} from "./rpc";
-export { SkiaRenderer, type RenderOverlays } from "./canvas";
-export { LabelCache, type CachedSection, type CachedComponent } from "./canvas/labels/cache";
+  TypographyStyle
+} from './rpc'
+export { SkiaRenderer, type RenderOverlays } from './canvas'
+export { LabelCache, type CachedSection, type CachedComponent } from './canvas/labels/cache'
 export {
   RenderProfiler,
   FrameStats,
@@ -148,20 +143,20 @@ export {
   DrawCallCounter,
   PhaseTimer,
   CaptureStack,
-  toSpeedscopeJSON,
-} from "./profiler";
-export type { FrameCapture, NodeProfile } from "./profiler";
-export { computeLayout, computeAllLayouts, setTextMeasurer } from "./layout";
-export type { TextMeasurer } from "./layout";
-export { getCanvasKit, type CanvasKitOptions } from "./canvaskit";
+  toSpeedscopeJSON
+} from './profiler'
+export type { FrameCapture, NodeProfile } from './profiler'
+export { computeLayout, computeAllLayouts, setTextMeasurer } from './layout'
+export type { TextMeasurer } from './layout'
+export { getCanvasKit, type CanvasKitOptions } from './canvaskit'
 export {
   detectTextDirection,
   resolveTextDirection,
   resolveNodeTextDirection,
   resolveNodeLayoutDirection,
   isLogicalTextAlignStart,
-  isLogicalTextAlignEnd,
-} from "./text/direction";
+  isLogicalTextAlignEnd
+} from './text/direction'
 export {
   FONT_WEIGHT_NAMES,
   FontManager,
@@ -175,16 +170,16 @@ export {
   styleToVariant,
   type DownloadedFontCache,
   type FontInfo,
-  type LocalFontAccessState,
-} from "./text/fonts";
+  type LocalFontAccessState
+} from './text/fonts'
 export {
   fontFaceFromFigmaFontName,
   fontFaceRenderFamily,
   normalizeFontStyleName,
   parseFontStyle,
   type FontFaceRef,
-  type ParsedFontStyle,
-} from "./text/face";
+  type ParsedFontStyle
+} from './text/face'
 export {
   ARABIC_LOCAL_FALLBACK_FAMILIES,
   ARABIC_REMOTE_FALLBACK_FAMILIES,
@@ -192,8 +187,8 @@ export {
   fontFallbackEntry,
   fontFallbackManifest,
   type FontFallbackManifestEntry,
-  type FontFallbackScript,
-} from "./text/fallbacks";
+  type FontFallbackScript
+} from './text/fallbacks'
 export {
   parseColor,
   normalizeColor,
@@ -205,27 +200,28 @@ export {
   colorToCSSCompact,
   rgba255ToColor,
   colorToFill,
-  colorDistance,
-} from "./color";
+  colorDistance
+} from './color'
 export {
   resolveOkHCLForPreview,
   resolveRGBAForPreview,
   resolveNodeFillColor,
   resolveNodeStrokeColor,
-  colorToDisplayCss,
+  colorToDisplayCSS,
   getDefaultRenderColorSpace,
   type RenderColorSpace,
   type ColorIntentSpace,
   type ColorPreviewOptions,
-  type ResolvedRenderColor,
-} from "./color/management";
+  type ResolvedRenderColor
+} from './color/management'
 export {
   vectorNetworkToPath,
   geometryBlobToPath,
   decodeVectorNetworkBlob,
   encodeVectorNetworkBlob,
   buildStyleOverrideTable,
-} from "./vector";
+  regenerateFillGeometry
+} from './vector'
 export {
   evalCubic,
   splitCubicAt,
@@ -246,11 +242,11 @@ export {
   extractSubNetwork,
   type CubicPoints,
   type NearestResult,
-  type NetworkNearestResult,
-} from "./vector/bezier";
-export { computeSelectionBounds, computeSnap, type SnapGuide } from "./scene-graph/snap";
-export { UndoManager, type UndoEntry, type UndoManagerOptions } from "./scene-graph/undo";
-export { TextEditor, type TextCaret, type TextEditorState } from "./text/editor";
+  type NetworkNearestResult
+} from './vector/bezier'
+export { computeSelectionBounds, computeSnap, type SnapGuide } from '@open-pencil/scene-graph/snap'
+export { UndoManager, type UndoEntry, type UndoManagerOptions } from '@open-pencil/scene-graph/undo'
+export { TextEditor, type TextCaret, type TextEditorState } from './text/editor'
 export {
   getStyleAt,
   applyStyleToRange,
@@ -260,8 +256,8 @@ export {
   toggleItalicInRange,
   toggleDecorationInRange,
   adjustRunsForInsert,
-  adjustRunsForDelete,
-} from "./text/style-runs";
+  adjustRunsForDelete
+} from './text/style-runs'
 export {
   renderNodesToImage,
   renderThumbnail,
@@ -270,16 +266,16 @@ export {
   headlessRenderNodes,
   headlessRenderThumbnail,
   type RasterExportFormat,
-  type ExportFormat,
-} from "./io/formats/raster";
+  type ExportFormat
+} from './io/formats/raster'
 export {
   renderNodesToSVG,
   geometryBlobToSVGPath,
   vectorNetworkToSVGPaths,
-  type SVGExportOptions,
-} from "./io/formats/svg/export";
-export { svg, renderSVGNode, type SVGNode } from "./io/formats/svg/node";
-export { parseSVGPath } from "./io/formats/svg/parse-path";
+  type SVGExportOptions
+} from './io/formats/svg/export'
+export { svg, renderSVGNode, type SVGNode } from './io/formats/svg/node'
+export { parseSVGPath } from '@open-pencil/scene-graph/parse-path'
 export {
   fetchIcon,
   fetchIcons,
@@ -288,9 +284,9 @@ export {
   clearIconCache,
   type IconData,
   type IconPath,
-  type IconSearchResult,
-} from "./icons";
-export { exportFigFile, compressFigData, compressFigDataSync } from "./io/formats/fig/export";
+  type IconSearchResult
+} from './icons'
+export { exportFigFile, compressFigData, compressFigDataSync } from './io/formats/fig/export'
 export {
   FIG_KIWI_DEFAULT_VERSION,
   buildFigKiwi,
@@ -299,9 +295,9 @@ export {
   buildFontDigestMap,
   sceneNodeToKiwi,
   fractionalPosition,
-  mapToFigmaType,
-} from "./kiwi/fig/node-change/serialize";
-export { buildDerivedTextDataV4 } from "./text/derived-text/clipboard";
+  mapToFigmaType
+} from './kiwi/fig/node-change/serialize'
+export { buildDerivedTextDataV4 } from './text/derived-text/clipboard'
 
 export {
   createElement,
@@ -363,8 +359,8 @@ export {
   type RenderResult,
   sceneNodeToJSX,
   selectionToJSX,
-  type JSXFormat,
-} from "./design-jsx";
+  type JSXFormat
+} from './design-jsx'
 export {
   parseFigmaClipboard,
   importClipboardNodes,
@@ -374,11 +370,11 @@ export {
   buildOpenPencilClipboardHTML,
   prefetchFigmaSchema,
   type TextPictureBuilder,
-  type OpenPencilClipboardData,
-} from "./clipboard";
-export { probeGlyphOutlineCommands, type GlyphOutlineProbe } from "./text/opentype";
+  type OpenPencilClipboardData
+} from './clipboard'
+export { probeGlyphOutlineCommands, type GlyphOutlineProbe } from './text/opentype'
 
-export { readPenFile, parsePenFile } from "./io/formats/pen";
+export { readPenFile, parsePenFile } from '@open-pencil/pen'
 
 export {
   readFigFile,
@@ -415,47 +411,26 @@ export {
   KIWI,
   SESSION_ID,
   ZSTD_MAGIC,
-  buildMultiplayerUrl,
+  buildMultiplayerURL,
   isZstdCompressed,
   hasFigWireHeader,
   skipFigWireHeader,
   isKiwiMessage,
   getKiwiMessageType,
   parseVarint,
-  FIG_WIRE_MAGIC,
-} from "./kiwi";
+  FIG_WIRE_MAGIC
+} from './kiwi'
 
-export * from "./io";
-export * from "./lint";
+export * from './io'
+export * from './lint'
 
-export { default as CODEGEN_PROMPT } from "./tools/prompts/codegen.md";
-export { default as JSX_REFERENCE } from "./tools/prompts/jsx-reference.md";
+export const CODEGEN_PROMPT: string = codegenPrompt
+export const JSX_REFERENCE: string = jsxReference
 export {
-  setPexelsApiKey,
+  setPexelsAPIKey,
   setUnsplashAccessKey,
   registerStockPhotoProvider,
   setActiveStockPhotoProvider,
-  getStockPhotoProviders,
-} from "./tools/stock-photo";
-export type { StockPhotoProvider, StockPhotoResult } from "./tools/stock-photo";
-
-export {
-  getAbsoluteRotation,
-  getWorldHandles,
-  getWorldMatrix,
-  getAbsolutePosition,
-} from "./canvas/coordinate";
-export { default as TransformMatrix } from "./canvas/matrix";
-
-export * from "./editor/image-brush";
-export * from "./editor/image-accessibility";
-export * from "./editor/image-capabilities";
-export * from "./editor/image-geometry";
-export * from "./editor/image-observability";
-export * from "./editor/image-footprint";
-export * from "./editor/image-qa";
-export * from "./editor/image-deferred";
-export * from "./editor/image-raster";
-export * from "./editor/image-selection";
-export * from "./editor/image-session";
-export * from "./editor/storage/persistence";
+  getStockPhotoProviders
+} from './tools/stock-photo'
+export type { StockPhotoProvider, StockPhotoResult } from './tools/stock-photo'

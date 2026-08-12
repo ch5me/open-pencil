@@ -5,9 +5,9 @@ import {
   analyzeSpacing,
   analyzeTypography,
   diffCreate,
-  diffShow,
-} from "./analyze";
-import { designToComponentMap, designToTokens } from "./codegen";
+  diffShow
+} from './analyze'
+import { designToComponentMap, designToTokens } from './codegen'
 import {
   createComponent,
   createInstance,
@@ -16,10 +16,10 @@ import {
   createSlice,
   createVector,
   fetchIconsTool,
-  importSvg,
+  importSVG,
   insertIcon,
-  searchIconsTool,
-} from "./create";
+  searchIconsTool
+} from './create'
 import {
   setBlend,
   setConstraints,
@@ -33,10 +33,10 @@ import {
   setRotation,
   setStrokeAlign,
   setTextResize,
-  setVisible,
-} from "./modify";
+  setVisible
+} from './modify'
 import {
-  diffJsx,
+  diffJSX,
   getComponents,
   getCurrentPage,
   getPageTree,
@@ -46,9 +46,9 @@ import {
   pageBounds,
   queryNodes,
   selectNodes,
-  switchPage,
-} from "./read";
-import type { ToolDef } from "./schema";
+  switchPage
+} from './read'
+import type { ToolDef } from './schema'
 import {
   arrangeNodes,
   cloneNode,
@@ -63,8 +63,8 @@ import {
   nodeToComponent,
   nodeTree,
   renameNode,
-  ungroupNode,
-} from "./structure";
+  ungroupNode
+} from './structure'
 import {
   bindVariable,
   createCollection,
@@ -77,24 +77,24 @@ import {
   listCollections,
   listVariables,
   setVariable,
-  unbindVariable,
-} from "./variables";
+  unbindVariable
+} from './variables'
 import {
   booleanExclude,
   booleanIntersect,
   booleanSubtract,
   booleanUnion,
   exportImage,
-  exportPdf,
-  exportSvg,
+  exportPDF,
+  exportSVG,
   pathFlip,
   pathGet,
   pathMove,
   pathScale,
   pathSet,
   viewportGet,
-  viewportSet,
-} from "./vector";
+  viewportSet
+} from './vector'
 
 /**
  * Extended tools not in CORE_TOOLS — variables, vector ops, analysis,
@@ -112,7 +112,7 @@ export const EXTENDED_TOOLS: ToolDef[] = [
   pageBounds,
   listFonts,
   listAvailableFonts,
-  diffJsx,
+  diffJSX,
   // Create (advanced)
   createShape,
   searchIconsTool,
@@ -123,7 +123,7 @@ export const EXTENDED_TOOLS: ToolDef[] = [
   createPage,
   createVector,
   createSlice,
-  importSvg,
+  importSVG,
   // Modify (advanced)
   setEffects,
   setOpacity,
@@ -178,8 +178,8 @@ export const EXTENDED_TOOLS: ToolDef[] = [
   pathMove,
   viewportGet,
   viewportSet,
-  exportSvg,
-  exportPdf,
+  exportSVG,
+  exportPDF,
   exportImage,
   // Analyze & diff
   analyzeColors,
@@ -191,5 +191,5 @@ export const EXTENDED_TOOLS: ToolDef[] = [
   diffShow,
   // Codegen
   designToTokens,
-  designToComponentMap,
-];
+  designToComponentMap
+]

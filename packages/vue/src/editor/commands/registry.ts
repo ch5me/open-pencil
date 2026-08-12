@@ -1,105 +1,120 @@
-import type { EditorCommandId } from "./types";
+import type { EditorCommandId } from './types'
 
 export interface EditorCommandMetadata {
-  shortcut?: string;
-  keybinding?: string | string[];
-  contextTestId?: string;
+  shortcut?: string
+  keybinding?: string | string[]
+  contextTestId?: string
 }
 
 export const EDITOR_COMMAND_METADATA = {
-  "edit.undo": { shortcut: "MOD+Z", keybinding: "$mod+KeyZ" },
-  "edit.redo": { shortcut: "MOD+SHIFT+Z", keybinding: ["$mod+Shift+KeyZ", "$mod+KeyY"] },
-  "selection.selectAll": { shortcut: "MOD+A", keybinding: "$mod+KeyA" },
-  "selection.duplicate": {
-    shortcut: "MOD+D",
-    keybinding: "$mod+KeyD",
-    contextTestId: "context-duplicate",
+  'edit.undo': { shortcut: 'MOD+Z', keybinding: '$mod+KeyZ' },
+  'edit.redo': { shortcut: 'MOD+SHIFT+Z', keybinding: ['$mod+Shift+KeyZ', '$mod+KeyY'] },
+  'selection.selectAll': { shortcut: 'MOD+A', keybinding: '$mod+KeyA' },
+  'selection.selectInverse': { shortcut: 'MOD+SHIFT+A', keybinding: '$mod+Shift+KeyA' },
+  'selection.duplicate': {
+    shortcut: 'MOD+D',
+    keybinding: '$mod+KeyD',
+    contextTestId: 'context-duplicate'
   },
-  "selection.delete": {
-    shortcut: "⌫",
-    keybinding: ["Backspace", "Delete"],
-    contextTestId: "context-delete",
+  'selection.delete': { shortcut: '⌫', contextTestId: 'context-delete' },
+  'selection.group': { shortcut: 'MOD+G', keybinding: '$mod+KeyG', contextTestId: 'context-group' },
+  'selection.frameSelection': {
+    shortcut: 'MOD+ALT+G',
+    keybinding: '$mod+Alt+KeyG',
+    contextTestId: 'context-frame-selection'
   },
-  "selection.group": { shortcut: "MOD+G", keybinding: "$mod+KeyG", contextTestId: "context-group" },
-  "selection.frameSelection": {
-    shortcut: "MOD+ALT+G",
-    keybinding: "$mod+Alt+KeyG",
-    contextTestId: "context-frame-selection",
+  'selection.ungroup': { shortcut: 'MOD+SHIFT+G', keybinding: '$mod+Shift+KeyG' },
+  'selection.createComponent': {
+    shortcut: 'MOD+ALT+K',
+    keybinding: '$mod+Alt+KeyK',
+    contextTestId: 'context-create-component'
   },
-  "selection.ungroup": { shortcut: "MOD+SHIFT+G", keybinding: "$mod+Shift+KeyG" },
-  "selection.createComponent": {
-    shortcut: "MOD+ALT+K",
-    keybinding: "$mod+Alt+KeyK",
-    contextTestId: "context-create-component",
+  'selection.createComponentSet': { shortcut: 'MOD+SHIFT+K', keybinding: '$mod+Shift+KeyK' },
+  'selection.detachInstance': { shortcut: 'MOD+ALT+B', keybinding: '$mod+Alt+KeyB' },
+  'selection.goToMainComponent': {},
+  'selection.createInstance': {},
+  'selection.wrapInAutoLayout': { shortcut: 'SHIFT+A', keybinding: 'Shift+KeyA' },
+  'selection.toggleMask': {
+    shortcut: 'MOD+ALT+M',
+    keybinding: ['Control+Meta+KeyM', '$mod+Alt+KeyM'],
+    contextTestId: 'context-toggle-mask'
   },
-  "selection.createComponentSet": { shortcut: "MOD+SHIFT+K", keybinding: "$mod+Shift+KeyK" },
-  "selection.detachInstance": { shortcut: "MOD+ALT+B", keybinding: "$mod+Alt+KeyB" },
-  "selection.goToMainComponent": {},
-  "selection.createInstance": {},
-  "selection.wrapInAutoLayout": { shortcut: "SHIFT+A", keybinding: "Shift+KeyA" },
-  "selection.bringToFront": {
-    shortcut: "]",
-    keybinding: "BracketRight",
-    contextTestId: "context-bring-to-front",
+  'selection.bringForward': {
+    shortcut: 'MOD+]',
+    keybinding: '$mod+BracketRight',
+    contextTestId: 'context-bring-forward'
   },
-  "selection.sendToBack": {
-    shortcut: "[",
-    keybinding: "BracketLeft",
-    contextTestId: "context-send-to-back",
+  'selection.bringToFront': {
+    shortcut: ']',
+    keybinding: 'BracketRight',
+    contextTestId: 'context-bring-to-front'
   },
-  "selection.toggleVisibility": {
-    shortcut: "MOD+SHIFT+H",
-    keybinding: "$mod+Shift+KeyH",
-    contextTestId: "context-toggle-visibility",
+  'selection.sendBackward': {
+    shortcut: 'MOD+[',
+    keybinding: '$mod+BracketLeft',
+    contextTestId: 'context-send-backward'
   },
-  "selection.toggleLock": {
-    shortcut: "MOD+SHIFT+L",
-    keybinding: "$mod+Shift+KeyL",
-    contextTestId: "context-toggle-lock",
+  'selection.sendToBack': {
+    shortcut: '[',
+    keybinding: 'BracketLeft',
+    contextTestId: 'context-send-to-back'
   },
-  "selection.flipHorizontal": {
-    shortcut: "SHIFT+H",
-    keybinding: "Shift+KeyH",
-    contextTestId: "context-flip-horizontal",
+  'selection.toggleVisibility': {
+    shortcut: 'MOD+SHIFT+H',
+    keybinding: '$mod+Shift+KeyH',
+    contextTestId: 'context-toggle-visibility'
   },
-  "selection.flipVertical": {
-    shortcut: "SHIFT+V",
-    keybinding: "Shift+KeyV",
-    contextTestId: "context-flip-vertical",
+  'selection.toggleLock': {
+    shortcut: 'MOD+SHIFT+L',
+    keybinding: '$mod+Shift+KeyL',
+    contextTestId: 'context-toggle-lock'
   },
-  "selection.booleanUnion": {
-    shortcut: "ALT+SHIFT+U",
-    keybinding: "Alt+Shift+KeyU",
-    contextTestId: "context-boolean-union",
+  'selection.flipHorizontal': {
+    shortcut: 'SHIFT+H',
+    keybinding: 'Shift+KeyH',
+    contextTestId: 'context-flip-horizontal'
   },
-  "selection.booleanSubtract": {
-    shortcut: "ALT+SHIFT+S",
-    keybinding: "Alt+Shift+KeyS",
-    contextTestId: "context-boolean-subtract",
+  'selection.flipVertical': {
+    shortcut: 'SHIFT+V',
+    keybinding: 'Shift+KeyV',
+    contextTestId: 'context-flip-vertical'
   },
-  "selection.booleanIntersect": {
-    shortcut: "ALT+SHIFT+I",
-    keybinding: "Alt+Shift+KeyI",
-    contextTestId: "context-boolean-intersect",
+  'selection.distributeHorizontal': {},
+  'selection.distributeVertical': {},
+  'selection.booleanUnion': {
+    shortcut: 'ALT+SHIFT+U',
+    keybinding: 'Alt+Shift+KeyU',
+    contextTestId: 'context-boolean-union'
   },
-  "selection.booleanExclude": {
-    shortcut: "ALT+SHIFT+E",
-    keybinding: "Alt+Shift+KeyE",
-    contextTestId: "context-boolean-exclude",
+  'selection.booleanSubtract': {
+    shortcut: 'ALT+SHIFT+S',
+    keybinding: 'Alt+Shift+KeyS',
+    contextTestId: 'context-boolean-subtract'
   },
-  "selection.flatten": {
-    shortcut: "ALT+SHIFT+F",
-    keybinding: "Alt+Shift+KeyF",
-    contextTestId: "context-flatten",
+  'selection.booleanIntersect': {
+    shortcut: 'ALT+SHIFT+I',
+    keybinding: 'Alt+Shift+KeyI',
+    contextTestId: 'context-boolean-intersect'
   },
-  "selection.outlineText": { contextTestId: "context-outline-text" },
-  "selection.outlineStroke": { contextTestId: "context-outline-stroke" },
-  "selection.moveToPage": {},
-  "view.zoom100": { keybinding: "$mod+Digit0" },
-  "view.zoomFit": { keybinding: ["$mod+Digit1", "Shift+Digit1"] },
-  "view.zoomSelection": { keybinding: ["$mod+Digit2", "Shift+Digit2"] },
-} satisfies Record<EditorCommandId, EditorCommandMetadata>;
+  'selection.booleanExclude': {
+    shortcut: 'ALT+SHIFT+E',
+    keybinding: 'Alt+Shift+KeyE',
+    contextTestId: 'context-boolean-exclude'
+  },
+  'selection.flatten': {
+    shortcut: 'ALT+SHIFT+F',
+    keybinding: 'Alt+Shift+KeyF',
+    contextTestId: 'context-flatten'
+  },
+  'selection.outlineText': { contextTestId: 'context-outline-text' },
+  'selection.outlineStroke': { contextTestId: 'context-outline-stroke' },
+  'selection.moveToPage': {},
+  'selection.setOpacity': { shortcut: '1-9, 0' },
+  'view.zoom100': { keybinding: '$mod+Digit0' },
+  'view.zoomFit': { keybinding: ['$mod+Digit1', 'Shift+Digit1'] },
+  'view.zoomSelection': { keybinding: ['$mod+Digit2', 'Shift+Digit2'] }
+} satisfies Record<EditorCommandId, EditorCommandMetadata>
 
 export function editorCommandMetadata(id: EditorCommandId): EditorCommandMetadata {
-  return EDITOR_COMMAND_METADATA[id];
+  return EDITOR_COMMAND_METADATA[id]
 }

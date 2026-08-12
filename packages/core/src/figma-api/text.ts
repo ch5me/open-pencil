@@ -1,36 +1,36 @@
-import type { SceneGraph, SceneNode } from "#core/scene-graph";
+import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
 
-import { styleNameToWeight, weightToStyleName, type FigmaFontName } from "./fonts";
+import { styleNameToWeight, weightToStyleName, type FigmaFontName } from './fonts'
 
 export function getFontName(node: SceneNode): FigmaFontName {
-  return { family: node.fontFamily, style: weightToStyleName(node.fontWeight, node.italic) };
+  return { family: node.fontFamily, style: weightToStyleName(node.fontWeight, node.italic) }
 }
 
 export function setFontName(graph: SceneGraph, nodeId: string, fontName: FigmaFontName): void {
-  const { weight, italic } = styleNameToWeight(fontName.style);
+  const { weight, italic } = styleNameToWeight(fontName.style)
   graph.updateNode(nodeId, {
     fontFamily: fontName.family,
     fontWeight: weight,
-    italic,
-  });
+    italic
+  })
 }
 
 export function insertCharacters(
   graph: SceneGraph,
   node: SceneNode,
   start: number,
-  characters: string,
+  characters: string
 ): void {
-  const text = node.text.slice(0, start) + characters + node.text.slice(start);
-  graph.updateNode(node.id, { text });
+  const text = node.text.slice(0, start) + characters + node.text.slice(start)
+  graph.updateNode(node.id, { text })
 }
 
 export function deleteCharacters(
   graph: SceneGraph,
   node: SceneNode,
   start: number,
-  end: number,
+  end: number
 ): void {
-  const text = node.text.slice(0, start) + node.text.slice(end);
-  graph.updateNode(node.id, { text });
+  const text = node.text.slice(0, start) + node.text.slice(end)
+  graph.updateNode(node.id, { text })
 }

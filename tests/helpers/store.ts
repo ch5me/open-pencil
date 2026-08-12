@@ -1,17 +1,17 @@
-import type { Page } from "@playwright/test";
+import type { Page } from '@playwright/test'
 
 export function getSelectedIds(page: Page) {
   return page.evaluate(() => {
-    const store = window.openPencil?.getStore?.();
-    if (!store) throw new Error("OpenPencil store not initialized");
-    return store.state.selectedIds.size;
-  });
+    const store = window.openPencil?.getStore?.()
+    if (!store) throw new Error('OpenPencil store not initialized')
+    return store.state.selectedIds.size
+  })
 }
 
 export function getPageChildren(page: Page) {
   return page.evaluate(() => {
-    const store = window.openPencil?.getStore?.();
-    if (!store) throw new Error("OpenPencil store not initialized");
+    const store = window.openPencil?.getStore?.()
+    if (!store) throw new Error('OpenPencil store not initialized')
     return store.graph.getChildren(store.state.currentPageId).map((n) => ({
       id: n.id,
       type: n.type,
@@ -21,19 +21,19 @@ export function getPageChildren(page: Page) {
       height: n.height,
       layoutMode: n.layoutMode,
       childIds: n.childIds,
-      vectorNetwork: n.vectorNetwork,
-    }));
-  });
+      vectorNetwork: n.vectorNetwork
+    }))
+  })
 }
 
 export function getSelectedNode(page: Page) {
   return page.evaluate(() => {
-    const store = window.openPencil?.getStore?.();
-    if (!store) throw new Error("OpenPencil store not initialized");
-    const id = [...store.state.selectedIds][0];
-    if (!id) return null;
-    const n = store.graph.getNode(id);
-    if (!n) return null;
+    const store = window.openPencil?.getStore?.()
+    if (!store) throw new Error('OpenPencil store not initialized')
+    const id = [...store.state.selectedIds][0]
+    if (!id) return null
+    const n = store.graph.getNode(id)
+    if (!n) return null
     return {
       id: n.id,
       type: n.type,
@@ -61,17 +61,18 @@ export function getSelectedNode(page: Page) {
       fontFamily: n.fontFamily,
       fontWeight: n.fontWeight,
       italic: n.italic,
-    };
-  });
+      textAutoResize: n.textAutoResize
+    }
+  })
 }
 
 export function getSelectedNodes(page: Page) {
   return page.evaluate(() => {
-    const store = window.openPencil?.getStore?.();
-    if (!store) throw new Error("OpenPencil store not initialized");
+    const store = window.openPencil?.getStore?.()
+    if (!store) throw new Error('OpenPencil store not initialized')
     return [...store.state.selectedIds].map((id) => {
-      const n = store.graph.getNode(id);
-      if (!n) throw new Error(`Selected node ${id} not found`);
+      const n = store.graph.getNode(id)
+      if (!n) throw new Error(`Selected node ${id} not found`)
       return {
         id: n.id,
         name: n.name,
@@ -80,18 +81,18 @@ export function getSelectedNodes(page: Page) {
         y: n.y,
         width: n.width,
         height: n.height,
-        fills: n.fills,
-      };
-    });
-  });
+        fills: n.fills
+      }
+    })
+  })
 }
 
 export function getNodeById(page: Page, id: string) {
   return page.evaluate((nodeId: string) => {
-    const store = window.openPencil?.getStore?.();
-    if (!store) throw new Error("OpenPencil store not initialized");
-    const n = store.graph.getNode(nodeId);
-    if (!n) return null;
+    const store = window.openPencil?.getStore?.()
+    if (!store) throw new Error('OpenPencil store not initialized')
+    const n = store.graph.getNode(nodeId)
+    if (!n) return null
     return {
       id: n.id,
       type: n.type,
@@ -101,6 +102,10 @@ export function getNodeById(page: Page, id: string) {
       height: n.height,
       rotation: n.rotation,
       layoutMode: n.layoutMode,
+      primaryAxisSizing: n.primaryAxisSizing,
+      counterAxisSizing: n.counterAxisSizing,
+      layoutGrow: n.layoutGrow,
+      layoutAlignSelf: n.layoutAlignSelf,
       primaryAxisAlign: n.primaryAxisAlign,
       counterAxisAlign: n.counterAxisAlign,
       itemSpacing: n.itemSpacing,
@@ -121,15 +126,15 @@ export function getNodeById(page: Page, id: string) {
       fills: n.fills,
       fontWeight: n.fontWeight,
       italic: n.italic,
-      styleRuns: n.styleRuns,
-    };
-  }, id);
+      styleRuns: n.styleRuns
+    }
+  }, id)
 }
 
 export function getEditingTextId(page: Page) {
   return page.evaluate(() => {
-    const store = window.openPencil?.getStore?.();
-    if (!store) throw new Error("OpenPencil store not initialized");
-    return store.state.editingTextId;
-  });
+    const store = window.openPencil?.getStore?.()
+    if (!store) throw new Error('OpenPencil store not initialized')
+    return store.state.editingTextId
+  })
 }

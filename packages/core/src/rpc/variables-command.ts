@@ -1,67 +1,68 @@
-import { colorToHex } from "#core/color";
-import type { SceneGraph, Variable } from "#core/scene-graph";
+import type { SceneGraph, Variable } from '@open-pencil/scene-graph'
 
-import type { RpcCommand } from "./types";
+import { colorToHex } from '#core/color'
+
+import type { RPCCommand } from './types'
 
 // ── variables ──
 
 export interface VariablesArgs {
-  collection?: string;
-  type?: string;
+  collection?: string
+  type?: string
 }
 
 function formatVariableValue(variable: Variable, graph: SceneGraph): string {
-  const modeId = graph.getActiveModeId(variable.collectionId);
-  const raw = variable.valuesByMode[modeId];
+  const modeId = graph.getActiveModeId(variable.collectionId)
+  const raw = variable.valuesByMode[modeId]
 
-  if (typeof raw === "object" && "aliasId" in raw) {
-    const alias = graph.variables.get(raw.aliasId);
-    return alias ? `→ ${alias.name}` : `→ ${raw.aliasId}`;
+  if (typeof raw === 'object' && 'aliasId' in raw) {
+    const alias = graph.variables.get(raw.aliasId)
+    return alias ? `→ ${alias.name}` : `→ ${raw.aliasId}`
   }
 
-  if (typeof raw === "object" && "r" in raw) {
-    return colorToHex(raw).toLowerCase();
+  if (typeof raw === 'object' && 'r' in raw) {
+    return colorToHex(raw).toLowerCase()
   }
 
-  return String(raw);
+  return String(raw)
 }
 
 export interface VariablesResult {
   collections: Array<{
-    id: string;
-    name: string;
-    modes: string[];
+    id: string
+    name: string
+    modes: string[]
     variables: Array<{
-      id: string;
-      name: string;
-      type: string;
-      value: string;
-    }>;
-  }>;
-  totalVariables: number;
-  totalCollections: number;
+      id: string
+      name: string
+      type: string
+      value: string
+    }>
+  }>
+  totalVariables: number
+  totalCollections: number
 }
 
-export const variablesCommand: RpcCommand<VariablesArgs, VariablesResult> = {
-  name: "variables",
+export const variablesCommand: RPCCommand<VariablesArgs, VariablesResult> = {
+  name: 'variables',
   execute: (graph, args) => {
-    const typeFilter = args.type?.toUpperCase();
-    const collFilter = args.collection?.toLowerCase();
+    const typeFilter = args.type?.toUpperCase()
+    const collFilter = args.collection?.toLowerCase()
 
     const result: VariablesResult = {
       collections: [],
       totalVariables: graph.variables.size,
-      totalCollections: graph.variableCollections.size,
-    };
+      totalCollections: graph.variableCollections.size
+    }
 
     for (const coll of graph.variableCollections.values()) {
-      if (collFilter && !coll.name.toLowerCase().includes(collFilter)) continue;
+      if (collFilter && !coll.name.toLowerCase().includes(collFilter)) continue
 
       const collVars = graph
         .getVariablesForCollection(coll.id)
-        .filter((v) => !typeFilter || v.type === typeFilter);
+        .filter((v) => !typeFilter || v.type === typeFilter)
 
-      if (collVars.length === 0) continue;
+      if (collVars.length === 0) continue
 
       result.collections.push({
         id: coll.id,
@@ -71,11 +72,11 @@ export const variablesCommand: RpcCommand<VariablesArgs, VariablesResult> = {
           id: v.id,
           name: v.name,
           type: v.type,
-          value: formatVariableValue(v, graph),
-        })),
-      });
+          value: formatVariableValue(v, graph)
+        }))
+      })
     }
 
-    return result;
-  },
-};
+    return result
+  }
+}

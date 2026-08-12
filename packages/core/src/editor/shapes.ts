@@ -1,23 +1,25 @@
+import type { Fill, NodeType, SceneNode } from '@open-pencil/scene-graph'
+
 import {
   BLACK,
   DEFAULT_FRAME_FILL,
   DEFAULT_SHAPE_FILL,
   SECTION_DEFAULT_FILL,
-  SECTION_DEFAULT_STROKE,
-} from "#core/constants";
-import type { Fill, NodeType, SceneNode } from "#core/scene-graph";
+  SECTION_DEFAULT_STROKE
+} from '#core/constants'
 
-import { createPenActions } from "./shapes/pen";
-import { adoptNodesIntoSection as adoptNodesIntoSectionImpl } from "./shapes/section-adopt";
-import type { EditorContext } from "./types";
-export type { PenDragOptions } from "./shapes/pen";
+import { createFramePresetActions } from './shapes/frame-presets'
+import { createPenActions } from './shapes/pen'
+import { adoptNodesIntoSection as adoptNodesIntoSectionImpl } from './shapes/section-adopt'
+import type { EditorContext } from './types'
+export type { PenDragOptions } from './shapes/pen'
 
 const BLACK_FILL: Fill = {
-  type: "SOLID",
+  type: 'SOLID',
   color: BLACK,
   opacity: 1,
-  visible: true,
-};
+  visible: true
+}
 
 const DEFAULT_FILLS: Record<string, Fill> = {
   FRAME: DEFAULT_FRAME_FILL,
@@ -27,8 +29,8 @@ const DEFAULT_FILLS: Record<string, Fill> = {
   POLYGON: DEFAULT_SHAPE_FILL,
   STAR: DEFAULT_SHAPE_FILL,
   LINE: BLACK_FILL,
-  TEXT: BLACK_FILL,
-};
+  TEXT: BLACK_FILL
+}
 
 export function createShapeActions(ctx: EditorContext) {
   function createShape(
@@ -38,55 +40,59 @@ export function createShapeActions(ctx: EditorContext) {
     w: number,
     h: number,
     parentId?: string,
+    name?: string
   ): string {
-    const fill = DEFAULT_FILLS[type] ?? DEFAULT_FILLS.RECTANGLE;
-    const pid = parentId ?? ctx.state.currentPageId;
+    const fill = DEFAULT_FILLS[type] ?? DEFAULT_FILLS.RECTANGLE
+    const pid = parentId ?? ctx.state.currentPageId
     const overrides: Partial<SceneNode> = {
       x,
       y,
       width: w,
       height: h,
       fills: [{ ...fill }],
-    };
-    if (type === "SECTION") {
-      overrides.strokes = [{ ...SECTION_DEFAULT_STROKE }];
-      overrides.cornerRadius = 5;
+      ...(name ? { name } : {})
     }
-    if (type === "POLYGON") {
-      overrides.pointCount = 3;
+    if (type === 'SECTION') {
+      overrides.strokes = [{ ...SECTION_DEFAULT_STROKE }]
+      overrides.cornerRadius = 5
     }
-    if (type === "STAR") {
-      overrides.pointCount = 5;
-      overrides.starInnerRadius = 0.38;
+    if (type === 'POLYGON') {
+      overrides.pointCount = 3
     }
-    const node = ctx.graph.createNode(type, pid, overrides);
-    const id = node.id;
-    const snapshot = { ...node };
+    if (type === 'STAR') {
+      overrides.pointCount = 5
+      overrides.starInnerRadius = 0.38
+    }
+    const node = ctx.graph.createNode(type, pid, overrides)
+    const id = node.id
+    const snapshot = { ...node }
     ctx.undo.push({
       label: `Create ${type.toLowerCase()}`,
       forward: () => {
-        ctx.graph.createNode(snapshot.type, pid, snapshot);
+        ctx.graph.createNode(snapshot.type, pid, snapshot)
       },
       inverse: () => {
-        ctx.graph.deleteNode(id);
-        const next = new Set(ctx.state.selectedIds);
-        next.delete(id);
-        ctx.setSelectedIds(next);
-      },
-    });
-    return id;
+        ctx.graph.deleteNode(id)
+        const next = new Set(ctx.state.selectedIds)
+        next.delete(id)
+        ctx.setSelectedIds(next)
+      }
+    })
+    return id
   }
 
-  const penActions = createPenActions(ctx, createShape);
+  const penActions = createPenActions(ctx, createShape)
+  const framePresetActions = createFramePresetActions(ctx, createShape)
 
   function setTool(tool: typeof ctx.state.activeTool) {
-    ctx.setActiveTool(tool);
+    ctx.setActiveTool(tool)
   }
 
   return {
     createShape,
     ...penActions,
+    ...framePresetActions,
     adoptNodesIntoSection: (sectionId: string) => adoptNodesIntoSectionImpl(ctx, sectionId),
-    setTool,
-  };
+    setTool
+  }
 }

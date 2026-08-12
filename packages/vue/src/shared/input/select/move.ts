@@ -1,58 +1,58 @@
-import type { Editor } from "@open-pencil/core/editor";
+import type { Editor } from '@open-pencil/core/editor'
 
-import type { DragOriginal as MoveOriginal } from "#vue/shared/input/drag-original";
-import { duplicateAndDrag } from "#vue/shared/input/duplicate-drag";
-import type { DragState } from "#vue/shared/input/types";
+import type { DragOriginal as MoveOriginal } from '#vue/shared/input/drag-original'
+import { duplicateAndDrag } from '#vue/shared/input/duplicate-drag'
+import type { DragState } from '#vue/shared/input/types'
 
 export function selectionIsLocked(editor: Editor) {
-  return [...editor.state.selectedIds].every((id) => editor.graph.getNode(id)?.locked);
+  return [...editor.state.selectedIds].every((id) => editor.graph.getNode(id)?.locked)
 }
 
 function autoLayoutMoveTarget(id: string, editor: Editor): string {
-  let current = editor.graph.getNode(id);
-  let target = current;
+  let current = editor.graph.getNode(id)
+  let target = current
 
   while (current?.parentId) {
-    const parent = editor.graph.getNode(current.parentId);
-    if (!parent) break;
+    const parent = editor.graph.getNode(current.parentId)
+    if (!parent) break
     if (
-      current.type === "INSTANCE" &&
-      parent.layoutMode !== "NONE" &&
-      current.layoutPositioning !== "ABSOLUTE"
+      current.type === 'INSTANCE' &&
+      parent.layoutMode !== 'NONE' &&
+      current.layoutPositioning !== 'ABSOLUTE'
     ) {
-      target = current;
+      target = current
     }
-    current = parent;
+    current = parent
   }
 
-  return target?.id ?? id;
+  return target?.id ?? id
 }
 
 function collectMoveOriginals(editor: Editor) {
-  const originals = new Map<string, MoveOriginal>();
+  const originals = new Map<string, MoveOriginal>()
   for (const selectedId of editor.state.selectedIds) {
-    const id = autoLayoutMoveTarget(selectedId, editor);
-    const node = editor.graph.getNode(id);
+    const id = autoLayoutMoveTarget(selectedId, editor)
+    const node = editor.graph.getNode(id)
     if (node) {
       originals.set(id, {
         x: node.x,
         y: node.y,
-        parentId: node.parentId ?? editor.state.currentPageId,
-      });
+        parentId: node.parentId ?? editor.state.currentPageId
+      })
     }
   }
-  return originals;
+  return originals
 }
 
 function detectDragAutoLayoutParent(originals: Map<string, MoveOriginal>, editor: Editor) {
-  if (originals.size !== 1) return undefined;
-  const [id, original] = [...originals][0];
-  const node = editor.graph.getNode(id);
-  const parent = editor.graph.getNode(original.parentId);
-  if (parent && parent.layoutMode !== "NONE" && node?.layoutPositioning !== "ABSOLUTE") {
-    return parent.id;
+  if (originals.size !== 1) return undefined
+  const [id, original] = [...originals][0]
+  const node = editor.graph.getNode(id)
+  const parent = editor.graph.getNode(original.parentId)
+  if (parent && parent.layoutMode !== 'NONE' && node?.layoutPositioning !== 'ABSOLUTE') {
+    return parent.id
   }
-  return undefined;
+  return undefined
 }
 
 export function createSelectionMoveDrag(
@@ -61,15 +61,15 @@ export function createSelectionMoveDrag(
   sx: number,
   sy: number,
   editor: Editor,
-  duplicate: boolean,
+  duplicate: boolean
 ): DragState {
   if (duplicate && editor.state.selectedIds.size > 0)
-    return duplicateAndDrag(cx, cy, sx, sy, editor).drag;
+    return duplicateAndDrag(cx, cy, sx, sy, editor).drag
 
-  const originals = collectMoveOriginals(editor);
+  const originals = collectMoveOriginals(editor)
 
   return {
-    type: "move",
+    type: 'move',
     startX: cx,
     startY: cy,
     currentX: cx,
@@ -78,6 +78,6 @@ export function createSelectionMoveDrag(
     startScreenY: sy,
     dragStarted: false,
     originals,
-    autoLayoutParentId: detectDragAutoLayoutParent(originals, editor),
-  };
+    autoLayoutParentId: detectDragAutoLayoutParent(originals, editor)
+  }
 }

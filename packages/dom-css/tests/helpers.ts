@@ -1,6 +1,6 @@
-import { colorToCSS } from "@open-pencil/core/color";
+import { colorToCSS } from '@open-pencil/core/color'
 
-import type { DesignDocument } from "../src/index";
+import type { DesignDocument } from '../src/index'
 
 export const TEST_COLORS = {
   white: colorToCSS({ r: 1, g: 1, b: 1, a: 1 }),
@@ -10,34 +10,34 @@ export const TEST_COLORS = {
   slate200: colorToCSS({ r: 226 / 255, g: 232 / 255, b: 240 / 255, a: 1 }),
   slateShadow: colorToCSS({ r: 15 / 255, g: 23 / 255, b: 42 / 255, a: 0.16 }),
   sky100: colorToCSS({ r: 224 / 255, g: 242 / 255, b: 254 / 255, a: 1 }),
-  sky700: colorToCSS({ r: 3 / 255, g: 105 / 255, b: 161 / 255, a: 1 }),
-} as const;
+  sky700: colorToCSS({ r: 3 / 255, g: 105 / 255, b: 161 / 255, a: 1 })
+} as const
 
 export const cardDocument: DesignDocument = {
-  type: "document",
+  type: 'document',
   children: [
     {
-      type: "element",
-      tagName: "article",
-      attrs: { class: "card" },
+      type: 'element',
+      tagName: 'article',
+      attrs: { class: 'card' },
       children: [
         {
-          type: "element",
-          tagName: "h1",
-          attrs: { class: "title" },
-          children: [{ type: "text", text: "OpenPencil" }],
-        },
-      ],
-    },
-  ],
-};
+          type: 'element',
+          tagName: 'h1',
+          attrs: { class: 'title' },
+          children: [{ type: 'text', text: 'OpenPencil' }]
+        }
+      ]
+    }
+  ]
+}
 
 export const cardHTML = `
   <article class="card">
     <h1 class="title">OpenPencil</h1>
     <p class="description">Design with code-shaped CSS.</p>
   </article>
-`;
+`
 
 export const cardCSS = `
   .card {
@@ -63,7 +63,7 @@ export const cardCSS = `
     line-height: 20px;
     color: ${TEST_COLORS.slate700};
   }
-`;
+`
 
 export const fixtureHTML = `
   <section class="shell">
@@ -73,7 +73,7 @@ export const fixtureHTML = `
     </nav>
     <input class="input" value="https://openpencil.dev" />
   </section>
-`;
+`
 
 export const fixtureCSS = `
   .shell {
@@ -119,28 +119,28 @@ export const fixtureCSS = `
     color: ${TEST_COLORS.slate950};
     font-size: 14px;
   }
-`;
+`
 
 export const tailwindCardClasses = [
-  "flex",
-  "flex-col",
-  "gap-3",
-  "w-80",
-  "h-44",
-  "p-6",
-  "rounded-xl",
-  "bg-white",
-  "text-slate-900",
-] as const;
+  'flex',
+  'flex-col',
+  'gap-3',
+  'w-80',
+  'h-44',
+  'p-6',
+  'rounded-xl',
+  'bg-white',
+  'text-slate-900'
+] as const
 
 export const tailwindInputClasses = [
-  "h-10",
-  "w-80",
-  "rounded-md",
-  "border",
-  "border-slate-300",
-  "bg-white",
-  "px-3",
-  "text-sm",
-  "text-slate-900",
-] as const;
+  'h-10',
+  'w-80',
+  'rounded-md',
+  'border',
+  'border-slate-300',
+  'bg-white',
+  'px-3',
+  'text-sm',
+  'text-slate-900'
+] as const

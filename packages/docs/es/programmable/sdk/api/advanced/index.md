@@ -16,7 +16,6 @@ Estas APIs son públicas, pero son más especializadas que la superficie princip
 ## Selector, variables, idioma e internos del editor
 
 - [useColorVariableBinding](./use-color-variable-binding)
-- [useFillPicker](./use-fill-picker)
 - [useGradientStops](./use-gradient-stops)
 - [useFontPicker](./use-font-picker)
 - [useOkHCL](./use-okhcl)
@@ -42,4 +41,4 @@ Estas APIs son públicas, pero son más especializadas que la superficie princip
 - [useLayerTree](./use-layer-tree)
 - [useToolbar](./use-toolbar)
 - [usePropertyList](./use-property-list)
-- [useScrubInput](./use-scrub-input)
+- [useNumberField](/programmable/sdk/api/advanced/use-number-field)

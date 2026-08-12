@@ -1,44 +1,45 @@
-import type { Editor } from "@open-pencil/core/editor";
-import { useEventListener } from "@vueuse/core";
-import type { Ref } from "vue";
+import { useEventListener } from '@vueuse/core'
+import type { Ref } from 'vue'
 
-import { createRafScheduler } from "#vue/shared/input/raf-scheduler";
+import type { Editor } from '@open-pencil/core/editor'
+
+import { createRafScheduler } from '#vue/shared/input/raf-scheduler'
 
 type WheelAccum = {
-  deltaX: number;
-  deltaY: number;
-  zoomScale: number;
-  zoomCenterX: number;
-  zoomCenterY: number;
-  hasZoom: boolean;
-};
+  deltaX: number
+  deltaY: number
+  zoomScale: number
+  zoomCenterX: number
+  zoomCenterY: number
+  hasZoom: boolean
+}
 
 function isMacOs() {
-  return typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+  return typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform)
 }
 
 function normalizeWheelDelta(e: WheelEvent): { dx: number; dy: number } {
-  let { deltaX, deltaY } = e;
+  let { deltaX, deltaY } = e
   if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) {
-    deltaX *= 40;
-    deltaY *= 40;
+    deltaX *= 40
+    deltaY *= 40
   } else if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
-    deltaX *= 800;
-    deltaY *= 800;
+    deltaX *= 800
+    deltaY *= 800
   }
-  return { dx: deltaX, dy: deltaY };
+  return { dx: deltaX, dy: deltaY }
 }
 
-const WHEEL_ZOOM_SPEED = 1.25;
+const WHEEL_ZOOM_SPEED = 1.25
 
 function wheelDeltaModeScale(event: WheelEvent) {
-  if (event.deltaMode === 1) return 0.05;
-  return event.deltaMode ? 1 : 0.002;
+  if (event.deltaMode === 1) return 0.05
+  return event.deltaMode ? 1 : 0.002
 }
 
 function wheelZoomDelta(event: WheelEvent) {
-  const factor = event.ctrlKey && isMacOs() ? 10 : 1;
-  return -event.deltaY * wheelDeltaModeScale(event) * factor * WHEEL_ZOOM_SPEED;
+  const factor = event.ctrlKey && isMacOs() ? 10 : 1
+  return -event.deltaY * wheelDeltaModeScale(event) * factor * WHEEL_ZOOM_SPEED
 }
 
 export function setupWheelPanZoom(canvasRef: Ref<HTMLCanvasElement | null>, editor: Editor) {
@@ -48,53 +49,53 @@ export function setupWheelPanZoom(canvasRef: Ref<HTMLCanvasElement | null>, edit
     zoomScale: 1,
     zoomCenterX: 0,
     zoomCenterY: 0,
-    hasZoom: false,
-  };
+    hasZoom: false
+  }
 
   function flushWheel() {
-    editor.setHoveredNode(null);
+    editor.setHoveredNode(null)
     if (wheelAccum.hasZoom) {
       editor.setZoomAroundPoint(
         editor.state.zoom * wheelAccum.zoomScale,
         wheelAccum.zoomCenterX,
-        wheelAccum.zoomCenterY,
-      );
+        wheelAccum.zoomCenterY
+      )
     } else {
-      editor.pan(wheelAccum.deltaX, wheelAccum.deltaY);
+      editor.pan(wheelAccum.deltaX, wheelAccum.deltaY)
     }
-    wheelAccum.deltaX = 0;
-    wheelAccum.deltaY = 0;
-    wheelAccum.zoomScale = 1;
-    wheelAccum.hasZoom = false;
+    wheelAccum.deltaX = 0
+    wheelAccum.deltaY = 0
+    wheelAccum.zoomScale = 1
+    wheelAccum.hasZoom = false
   }
 
-  const wheelScheduler = createRafScheduler(flushWheel);
+  const wheelScheduler = createRafScheduler(flushWheel)
 
   function onWheel(e: WheelEvent) {
-    const canvas = canvasRef.value;
-    if (!canvas) return;
-    const { dx, dy } = normalizeWheelDelta(e);
+    const canvas = canvasRef.value
+    if (!canvas) return
+    const { dx, dy } = normalizeWheelDelta(e)
 
     if (e.ctrlKey || e.metaKey) {
-      const rect = canvas.getBoundingClientRect();
-      wheelAccum.zoomCenterX = e.clientX - rect.left;
-      wheelAccum.zoomCenterY = e.clientY - rect.top;
-      wheelAccum.zoomScale *= 2 ** wheelZoomDelta(e);
-      wheelAccum.hasZoom = true;
+      const rect = canvas.getBoundingClientRect()
+      wheelAccum.zoomCenterX = e.clientX - rect.left
+      wheelAccum.zoomCenterY = e.clientY - rect.top
+      wheelAccum.zoomScale *= 2 ** wheelZoomDelta(e)
+      wheelAccum.hasZoom = true
     } else {
-      wheelAccum.deltaX -= dx;
-      wheelAccum.deltaY -= dy;
+      wheelAccum.deltaX -= dx
+      wheelAccum.deltaY -= dy
     }
-    wheelScheduler.schedule();
+    wheelScheduler.schedule()
   }
 
   useEventListener(
     canvasRef,
-    "wheel",
+    'wheel',
     (event) => {
-      event.preventDefault();
-      onWheel(event);
+      event.preventDefault()
+      onWheel(event)
     },
-    { passive: false },
-  );
+    { passive: false }
+  )
 }

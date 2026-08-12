@@ -1,50 +1,50 @@
 <script setup lang="ts">
-import { useHead } from "@unhead/vue";
-import { onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { useHead } from '@unhead/vue'
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 
-import { getHostedConfig, isHostedAuthEnabled } from "@/app/hosted/flags";
-import { isAuthenticated, refreshSession } from "@/app/hosted/session";
+import { getHostedConfig, isHostedAuthEnabled } from '@/app/hosted/flags'
+import { isAuthenticated, refreshSession } from '@/app/hosted/session'
 
-useHead({ title: "Sign In — OpenPencil" });
+useHead({ title: 'Sign In — OpenPencil' })
 
-const router = useRouter();
+const router = useRouter()
 
 onMounted(async () => {
   // If auth is not enabled, redirect to home
   if (!isHostedAuthEnabled()) {
-    router.replace("/");
-    return;
+    router.replace('/')
+    return
   }
 
   // Check if already authenticated
-  await refreshSession();
+  await refreshSession()
   if (isAuthenticated()) {
-    router.replace("/");
+    router.replace('/')
   }
-});
+})
 
 function signInWithElf() {
-  const config = getHostedConfig();
-  const apiOrigin = config.apiOrigin;
-  const callbackUrl = config.authCallbackUrl;
+  const config = getHostedConfig()
+  const apiOrigin = config.apiOrigin
+  const callbackURL = config.authCallbackUrl
 
-  if (!apiOrigin || !callbackUrl) {
-    console.error("[Auth] Missing API origin or callback URL");
-    return;
+  if (!apiOrigin || !callbackURL) {
+    console.error('[Auth] Missing API origin or callback URL')
+    return
   }
 
   // Redirect to ELF auth provider
   // The API handles the OAuth flow and redirects back to the callback URL
-  const authUrl = new URL("/api/elf-auth/authorize", apiOrigin);
-  authUrl.searchParams.set("redirect_uri", callbackUrl);
-  authUrl.searchParams.set("response_type", "code");
-  window.location.href = authUrl.toString();
+  const authURL = new URL('/api/elf-auth/authorize', apiOrigin)
+  authURL.searchParams.set('redirect_uri', callbackURL)
+  authURL.searchParams.set('response_type', 'code')
+  window.location.href = authURL.toString()
 }
 </script>
 
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-background">
+  <div class="flex min-h-screen items-center justify-center bg-canvas p-6">
     <div class="w-full max-w-md space-y-8 rounded-xl border border-border bg-panel p-8 shadow-lg">
       <!-- Logo and title -->
       <div class="text-center">
@@ -60,7 +60,7 @@ function signInWithElf() {
       <!-- Sign in button -->
       <button
         data-test-id="login-elf-button"
-        class="flex w-full items-center justify-center gap-3 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        class="flex w-full items-center justify-center gap-3 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white transition-colors hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-accent"
         @click="signInWithElf"
       >
         <icon-lucide-log-in class="size-4" />
