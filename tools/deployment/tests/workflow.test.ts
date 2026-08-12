@@ -26,6 +26,19 @@ afterEach(() => {
 })
 
 describe('deployment workflow', () => {
+  test('keeps staging and production on separate Pages projects', () => {
+    const root = join(import.meta.dir, '../../..')
+    const stagingWorkflow = readFileSync(join(root, '.forgejo/workflows/app.yml'), 'utf8')
+    const productionWorkflow = readFileSync(
+      join(root, '.forgejo/workflows/promote-production.yml'),
+      'utf8'
+    )
+
+    expect(stagingWorkflow).toContain('--project-name open-pencil-staging --branch main')
+    expect(stagingWorkflow).not.toContain('--project-name open-pencil --branch main')
+    expect(productionWorkflow).toContain('--project-name open-pencil --branch main')
+  })
+
   test('records the current commit and branch as the staging candidate', () => {
     const root = temporaryRoot()
     const commands: string[] = []

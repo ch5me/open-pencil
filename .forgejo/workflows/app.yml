@@ -48,7 +48,7 @@ jobs:
           SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
 
       - name: Deploy app to Cloudflare Pages
-        run: hush run --target wrangler-deploy-staging -- bunx wrangler pages deploy dist --project-name open-pencil --branch main
+        run: hush run --target wrangler-deploy-staging -- bunx wrangler pages deploy dist --project-name open-pencil-staging --branch main
 
       - name: Smoke test staging
         run: |
