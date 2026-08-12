@@ -2,7 +2,11 @@ import { afterEach, expect, test } from 'bun:test'
 
 import { SceneGraph } from '@open-pencil/scene-graph'
 
-import { RasterWorkerFontUnavailableError, renderRasterViaWorker } from '#core/io/formats/raster'
+import {
+  RasterWorkerFontUnavailableError,
+  RasterWorkerProtocolError,
+  renderRasterViaWorker
+} from '#core/io/formats/raster'
 import { IOCancelledError } from '#core/io/limits'
 import { fontManager } from '#core/text/fonts'
 
@@ -168,6 +172,34 @@ test('timeout still terminates raster work with a caller signal', async () => {
   ).rejects.toBeInstanceOf(IOCancelledError)
   expect(controller.signal.aborted).toBe(false)
   expect(terminated).toBe(true)
+})
+
+test('malformed raster worker response rejects typed and terminates immediately', async () => {
+  const workers: FakeWorker[] = []
+  class FakeWorker {
+    onmessage: ((event: MessageEvent) => void) | null = null
+    onerror = null
+    terminated = false
+
+    constructor() {
+      workers.push(this)
+    }
+
+    postMessage() {
+      this.onmessage?.({ data: null } as MessageEvent)
+    }
+
+    terminate() {
+      this.terminated = true
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker })
+
+  const { graph, pageId, nodeId } = graphWithImage()
+  await expect(
+    renderRasterViaWorker(graph, pageId, [nodeId], { format: 'PNG' }, undefined, 10_000)
+  ).rejects.toBeInstanceOf(RasterWorkerProtocolError)
+  expect(workers[0]?.terminated).toBe(true)
 })
 
 test('cancelled font acquisition cannot mutate loaded font state after settling', async () => {

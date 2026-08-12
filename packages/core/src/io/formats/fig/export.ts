@@ -727,6 +727,9 @@ export function compressFigData(
   signal?: AbortSignal,
   timeoutMs = FIG_COMPRESSION_TIMEOUT_MS
 ): Promise<Uint8Array> {
+  if (signal?.aborted) {
+    return Promise.reject(new IOCancelledError('IO export cancelled'))
+  }
   if (canUseWorker()) {
     return compressViaWorker(
       schemaDeflated,

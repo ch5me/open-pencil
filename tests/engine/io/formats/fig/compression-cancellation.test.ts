@@ -91,6 +91,28 @@ test('compression timeout terminates active worker with typed cancellation', asy
   expect(worker.terminated).toBe(true)
 })
 
+test('pre-aborted non-worker compression rejects before synchronous work', async () => {
+  const controller = new AbortController()
+  controller.abort()
+  Object.assign(globalThis, { Worker: undefined })
+
+  try {
+    await expect(
+      compressFigData(
+        new Uint8Array(),
+        new Uint8Array(),
+        new Uint8Array(),
+        '{}',
+        [],
+        undefined,
+        controller.signal
+      )
+    ).rejects.toBeInstanceOf(IOCancelledError)
+  } finally {
+    Object.assign(globalThis, { Worker: FakeWorker })
+  }
+})
+
 test('compression worker failures reject without synchronous fallback', async () => {
   workers = []
   constructorError = new Error('constructor blocked by CSP')
