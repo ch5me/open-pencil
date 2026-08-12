@@ -9,8 +9,10 @@ import {
 } from '@/app/integrations/storage'
 import { evictLocalFigCache } from '@/app/storage/cache-eviction'
 import { getLocalCanvasStore } from '@/app/storage/local-store'
+import type { LocalCanvasStore } from '@/app/storage/local-store/store'
 import {
   StorageSyncAuthorityUnsupportedError,
+  withCanvasMutationAuthority,
   withCanvasSyncAuthority
 } from '@/app/storage/sync/authority-lock'
 import { getOutbox } from '@/app/storage/sync/outbox'
@@ -299,9 +301,23 @@ export async function enqueuePutThumb(canvasId: string, revision: number): Promi
   void kickSyncEngine()
 }
 
-export async function enqueueDeleteCanvas(canvasId: string): Promise<void> {
-  await getLocalCanvasStore().publishCanvasDeletion(canvasId)
-  void kickSyncEngine()
+export type StorageDeletionDependencies = {
+  store: Pick<LocalCanvasStore, 'publishCanvasDeletion'>
+  kickSync(): void
+}
+
+export async function enqueueDeleteCanvas(
+  canvasId: string,
+  dependencies?: StorageDeletionDependencies
+): Promise<void> {
+  const runtime = dependencies ?? {
+    store: getLocalCanvasStore(),
+    kickSync: () => void kickSyncEngine()
+  }
+  await withCanvasMutationAuthority(canvasId, async () => {
+    await runtime.store.publishCanvasDeletion(canvasId)
+  })
+  runtime.kickSync()
 }
 
 /** Retry durable work immediately after storage settings or credentials change. */

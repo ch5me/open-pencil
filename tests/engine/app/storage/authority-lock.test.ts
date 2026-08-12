@@ -5,6 +5,8 @@ import {
   withCanvasMutationAuthority,
   withCanvasSyncAuthority
 } from '@/app/storage/sync/authority-lock'
+import { createMemoryLocalCanvasStore } from '@/app/storage/local-store'
+import { enqueueDeleteCanvas } from '@/app/storage/sync/engine'
 
 const originalNavigator = globalThis.navigator
 
@@ -115,7 +117,14 @@ test('mutation authority falls back only when Web Locks are unsupported', async 
   expect(attempts).toBe(1)
 })
 
-test('save publication and remote effects share one per-canvas lock', async () => {
+test('save publication, deletion publication, and remote effects share one per-canvas lock', async () => {
+  const store = createMemoryLocalCanvasStore()
+  await store.publishCanvas({
+    id: 'canvas-1',
+    providerId: 's3-compatible',
+    name: 'Original',
+    figBytes: new Uint8Array([1])
+  })
   const tails = new Map<string, Promise<void>>()
   Object.defineProperty(globalThis, 'navigator', {
     configurable: true,
@@ -145,9 +154,28 @@ test('save publication and remote effects share one per-canvas lock', async () =
   })
 
   const publication = withCanvasMutationAuthority('canvas-1', async () => {
-    order.push('publication:start')
+    order.push('save:start')
     await publicationHeld
-    order.push('publication:end')
+    await store.publishCanvas(
+      {
+        id: 'canvas-1',
+        providerId: 's3-compatible',
+        name: 'Saved',
+        figBytes: new Uint8Array([2])
+      },
+      { expectedRevision: 1 }
+    )
+    order.push('save:end')
+  })
+  await Promise.resolve()
+  const publishCanvasDeletion = store.publishCanvasDeletion.bind(store)
+  store.publishCanvasDeletion = async (canvasId) => {
+    order.push('delete')
+    return publishCanvasDeletion(canvasId)
+  }
+  const deletion = enqueueDeleteCanvas('canvas-1', {
+    store,
+    kickSync: () => order.push('kick')
   })
   await Promise.resolve()
   const remoteEffect = withCanvasSyncAuthority('canvas-1', async () => {
@@ -155,10 +183,10 @@ test('save publication and remote effects share one per-canvas lock', async () =
   })
   await Promise.resolve()
 
-  expect(order).toEqual(['publication:start'])
+  expect(order).toEqual(['save:start'])
   releasePublication()
-  await Promise.all([publication, remoteEffect])
-  expect(order).toEqual(['publication:start', 'publication:end', 'remote'])
+  await Promise.all([publication, deletion, remoteEffect])
+  expect(order).toEqual(['save:start', 'save:end', 'delete', 'remote', 'kick'])
 })
 
 test('action-thrown NotSupportedError executes once and keeps original rejection', async () => {
