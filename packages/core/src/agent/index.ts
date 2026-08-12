@@ -1,1 +1,1 @@
-export * from './contracts'
+export * from '@open-pencil/agent-contracts'

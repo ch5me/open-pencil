@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 
 import {
+  AGENT_CONTINUATION_SCHEMA,
+  AGENT_ERROR_SCHEMA,
+  AGENT_EVENT_SCHEMA,
+  AGENT_RECEIPT_SCHEMA,
+  AGENT_RUN_SCHEMA,
   parseAgentError,
   parseAgentEvent,
   parseAgentRunReceipt,
@@ -9,33 +14,127 @@ import {
 } from '@open-pencil/core/agent'
 
 const receipt = {
-  schemaVersion: '1', sessionId: 'session', runId: 'run', requestId: 'request',
-  traceId: 'trace', lastEventId: 'event-9', status: 'completed'
+  schema: AGENT_RECEIPT_SCHEMA,
+  receiptId: 'receipt',
+  requestId: 'request',
+  sessionId: 'session',
+  runId: 'run',
+  status: 'completed',
+  acceptedAt: '2026-08-12T12:00:00.000Z',
+  completedAt: '2026-08-12T12:00:01.000Z',
+  lastSequence: 9,
+  gateway: { service: 'local-test', protocolVersion: '1' }
+}
+
+const error = {
+  schema: AGENT_ERROR_SCHEMA,
+  code: 'session-conflict',
+  message: 'Different result',
+  retryable: false,
+  phase: 'tool'
 }
 
 describe('agent gateway contracts', () => {
   test('parses valid requests, events, errors, receipts, and continuations', () => {
-    expect(parseAgentRunRequest({
-      schemaVersion: '1', requestId: 'request', idempotencyKey: 'once', conversationId: 'conversation',
-      messageId: 'message', input: 'Draw a card', target: { documentId: 'document', selectionIds: [] },
-      actionManifestId: 'sha256:abc', capabilities: ['actions']
-    }).requestId).toBe('request')
-    expect(parseAgentEvent({ schemaVersion: '1', eventId: 'event-9', sequence: 9, traceId: 'trace', type: 'run.completed', receipt }).type).toBe('run.completed')
-    const error = { schemaVersion: '1', code: 'conflict', message: 'Different result', retryable: false, traceId: 'trace' }
-    expect(parseAgentError(error).code).toBe('conflict')
+    expect(
+      parseAgentRunRequest({
+        schema: AGENT_RUN_SCHEMA,
+        requestId: 'request',
+        idempotencyKey: 'once',
+        conversation: { clientId: 'conversation' },
+        input: { messageId: 'message', text: 'Draw a card' },
+        context: { documentId: 'document', selectedNodeIds: [] },
+        tools: { manifestId: 'sha256:abc' },
+        capabilities: {
+          toolResults: true,
+          reconnect: true,
+          cancellation: true,
+          approvals: true
+        }
+      }).requestId
+    ).toBe('request')
+    expect(
+      parseAgentEvent({
+        schema: AGENT_EVENT_SCHEMA,
+        sessionId: 'session',
+        runId: 'run',
+        seq: 9,
+        eventId: 'event-9',
+        timestamp: '2026-08-12T12:00:01.000Z',
+        type: 'run.completed',
+        data: { receipt }
+      }).type
+    ).toBe('run.completed')
+    expect(parseAgentError(error).code).toBe('session-conflict')
     expect(parseAgentRunReceipt(receipt).status).toBe('completed')
-    expect(parseAgentToolResultContinuation({ schemaVersion: '1', requestId: 'request', idempotencyKey: 'once', sessionId: 'session', runId: 'run', callId: 'call', outcome: { type: 'error', error } }).callId).toBe('call')
+    expect(
+      parseAgentToolResultContinuation({
+        schema: AGENT_CONTINUATION_SCHEMA,
+        requestId: 'request',
+        idempotencyKey: 'once',
+        sessionId: 'session',
+        runId: 'run',
+        callId: 'call',
+        continuationId: 'continuation',
+        manifestId: 'sha256:abc',
+        target: { documentId: 'document' },
+        status: 'error',
+        error
+      }).callId
+    ).toBe('call')
   })
 
   test('fails closed on unknown versions and recursively forbidden infrastructure', () => {
-    expect(() => parseAgentRunReceipt({ ...receipt, schemaVersion: '2' })).toThrow()
-    expect(() => parseAgentEvent({ schemaVersion: '1', eventId: 'event', sequence: 1, traceId: 'trace', type: 'action.result', callId: 'call', result: { nested: { provider: 'secret' } } })).toThrow()
-    expect(() => parseAgentError({ schemaVersion: '1', code: 'conflict', message: 'bad', retryable: false, traceId: 'trace', details: { runtime_id: 'hidden' } })).toThrow()
+    expect(() => parseAgentRunReceipt({ ...receipt, schema: 'openpencil.agent.receipt.v2' })).toThrow()
+    expect(() =>
+      parseAgentEvent({
+        schema: AGENT_EVENT_SCHEMA,
+        sessionId: 'session',
+        runId: 'run',
+        seq: 1,
+        eventId: 'event',
+        timestamp: '2026-08-12T12:00:00.000Z',
+        type: 'tool.call',
+        data: {
+          callId: 'call',
+          continuationId: 'continuation',
+          manifestId: 'manifest',
+          name: 'get_node',
+          arguments: { nested: { provider: 'secret' } },
+          target: { documentId: 'document' }
+        }
+      })
+    ).toThrow()
+    expect(() => parseAgentError({ ...error, details: { runtime_id: 'hidden' } })).toThrow()
   })
 
   test('rejects malformed and oversized payloads', () => {
-    expect(() => parseAgentEvent({ schemaVersion: '1', eventId: 'event', sequence: -1, traceId: 'trace', type: 'message.delta', messageId: 'message', text: 'hello' })).toThrow()
-    expect(() => parseAgentEvent({ schemaVersion: '1', eventId: 'event', sequence: 1, traceId: 'trace', type: 'action.result', callId: 'call', result: { text: 'x'.repeat(70_000) } })).toThrow()
-    expect(() => parseAgentToolResultContinuation({ schemaVersion: '1', requestId: 'request', idempotencyKey: 'once', sessionId: 'session', runId: 'run', callId: 'call', outcome: { type: 'result' } })).toThrow()
+    expect(() =>
+      parseAgentEvent({
+        schema: AGENT_EVENT_SCHEMA,
+        sessionId: 'session',
+        runId: 'run',
+        seq: -1,
+        eventId: 'event',
+        timestamp: '2026-08-12T12:00:00.000Z',
+        type: 'message.delta',
+        data: { messageId: 'message', text: 'hello' }
+      })
+    ).toThrow()
+    expect(() => parseAgentError({ ...error, details: { text: 'x'.repeat(70_000) } })).toThrow()
+    expect(() =>
+      parseAgentToolResultContinuation({
+        schema: AGENT_CONTINUATION_SCHEMA,
+        requestId: 'request',
+        idempotencyKey: 'once',
+        sessionId: 'session',
+        runId: 'run',
+        callId: 'call',
+        continuationId: 'continuation',
+        manifestId: 'manifest',
+        target: { documentId: 'document' },
+        status: 'ok'
+      })
+    ).toThrow()
   })
 })

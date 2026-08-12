@@ -22,7 +22,7 @@ function loadWranglerConfig(): {
     d1_databases?: Array<{ database_name: string }>
   }>
 } {
-  const source = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8")
+  const source = readFileSync(`${import.meta.dir}/../wrangler.jsonc`, "utf8")
   // Bun's JSON parser rejects JSONC comments; strip line comments that are not inside a string.
   const stripped = source
     .split("\n")

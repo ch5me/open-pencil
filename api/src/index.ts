@@ -10,6 +10,7 @@ import {
   serializeElfSessionCookie,
   verifyElfToken
 } from './auth'
+import { agentRoutes } from './agent/routes'
 import { hydrateHostedSnapshotAssets } from './documents/assets'
 import {
   createHostedDocument,
@@ -22,7 +23,6 @@ import {
 } from './documents/crud'
 import { DocumentRoomDO } from './documents/room'
 import { deriveHostedRoomId } from './documents/room/id'
-import { FireflyRuntimeError, sendFireflyRuntimeChat } from './runtime'
 export { DocumentRoomDO }
 
 export interface Env {
@@ -34,11 +34,14 @@ export interface Env {
   ELF_ISSUER?: string
   ELF_AUDIENCE?: string
   ALLOW_DEV_STUB_AUTH?: string
-  FIREFLY_API_ORIGIN?: string
-  FIREFLY_AUTH_ORIGIN?: string
+  OPENPENCIL_AGENT_GATEWAY_ORIGIN?: string
+  OPENPENCIL_AGENT_GATEWAY_TOKEN?: string
 }
 
-export const app = new Hono<{ Bindings: Env }>()
+export const app = new Hono<{
+  Bindings: Env
+  Variables: { userId: string; sessionToken: string }
+}>()
 
 app.onError((err, c) => {
   console.error(
@@ -84,7 +87,7 @@ function resolveRoomDocumentOwner(
 app.use(
   cors({
     origin: (origin) => (origin && allowedOrigins.has(origin) ? origin : undefined),
-    allowHeaders: ['Authorization', 'Content-Type'],
+    allowHeaders: ['Authorization', 'Content-Type', 'Last-Event-ID'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
     maxAge: 86400
@@ -109,6 +112,7 @@ app.get('/', (c) => {
       health: '/health',
       session: '/api/session',
       authCallback: 'GET|POST /api/auth/firefly/callback',
+      agent: 'POST /api/agent/runs',
       documents: {
         list: 'GET /api/documents',
         create: 'POST /api/documents',
@@ -200,27 +204,7 @@ app.get('/api/auth/firefly/callback', async (c) => {
   return c.redirect(returnTo, 302)
 })
 
-app.post('/api/runtime/chat', requireSession(), async (c) => {
-  const sessionToken = (c as any).get('sessionToken') as string
-  const body = await c.req.json<{ message?: string; chatSessionId?: string }>()
-  if (!body.message?.trim()) {
-    return c.json({ error: 'message-required', message: 'A chat message is required.' }, 400)
-  }
-
-  try {
-    return c.json(
-      await sendFireflyRuntimeChat(
-        { env: c.env, sessionToken },
-        { message: body.message, chatSessionId: body.chatSessionId }
-      )
-    )
-  } catch (error) {
-    if (error instanceof FireflyRuntimeError) {
-      return c.json({ error: error.code, message: error.message }, error.status as never)
-    }
-    throw error
-  }
-})
+app.route('/api/agent', agentRoutes)
 
 app.get('/api/documents', requireSession(), async (c) => {
   const userId = (c as any).get('userId') as string

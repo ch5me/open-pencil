@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ch5me/elf-auth-client": "^0.3.2",
+    "@open-pencil/agent-contracts": "file:../packages/agent-contracts",
     "hono": "^4.12.5",
     "yjs": "^13.6.29"
   },
