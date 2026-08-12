@@ -11,6 +11,7 @@ import {
 import { createSaveActions } from '@/app/document/io/save'
 import { createDocumentSourceState } from '@/app/document/io/source-state'
 import type { DocumentSourceAccess } from '@/app/document/io/types'
+import type { DocumentWrite } from '@/app/document/io/write'
 import type { StorageDocumentBinding } from '@/app/integrations/storage/types'
 
 type DocumentSourceState = EditorState & {
@@ -48,9 +49,10 @@ export function createDocumentSourceActions({
   getRenderer
 }: DocumentSourceOptions) {
   const saveOperation = createAbortableSaveOperation()
-  let currentSaveSignal: AbortSignal | undefined
 
-  async function buildFigFile(signal = currentSaveSignal) {
+  async function buildFigFile(signal?: AbortSignal): Promise<DocumentWrite> {
+    signal?.throwIfAborted()
+    const sceneVersion = state.sceneVersion
     const renderer = canUseRasterExportWorker() ? undefined : (getRenderer() ?? undefined)
     const data = await exportFigFile(
       editor.graph,
@@ -61,7 +63,7 @@ export function createDocumentSourceActions({
       signal
     )
     signal?.throwIfAborted()
-    return data
+    return { data, sceneVersion }
   }
 
   const {
@@ -87,15 +89,8 @@ export function createDocumentSourceActions({
     }
   })
 
-  function runSave<T>(save: () => Promise<T>) {
-    return saveOperation.run(async (signal) => {
-      currentSaveSignal = signal
-      try {
-        return await save()
-      } finally {
-        currentSaveSignal = undefined
-      }
-    })
+  function runSave<T>(save: (signal: AbortSignal) => Promise<T>) {
+    return saveOperation.run(save)
   }
 
   const saveFigFile = () => runSave(saveFigFileUncontrolled)
@@ -105,7 +100,8 @@ export function createDocumentSourceActions({
     state,
     getSavedVersion,
     hasWritableSource: () => !!getFileHandle() || !!getFilePath() || !!getStorageBinding(),
-    saveCurrentDocument: () => runSave(async () => void (await writeFile(await buildFigFile())))
+    saveCurrentDocument: () =>
+      runSave(async (signal) => void (await writeFile(await buildFigFile(signal), signal)))
   })
 
   function setDocumentSource(
@@ -114,6 +110,7 @@ export function createDocumentSourceActions({
     handle?: FileSystemFileHandle,
     path?: string
   ) {
+    saveOperation.dispose()
     stopWatchingFile()
     setStorageBinding(null)
     const isFig = sourceFormat === 'fig'
@@ -128,6 +125,7 @@ export function createDocumentSourceActions({
   }
 
   function setStorageDocumentSource(binding: StorageDocumentBinding, documentName: string) {
+    saveOperation.dispose()
     stopWatchingFile()
     setFileHandle(null)
     setFilePath(null)
@@ -140,6 +138,7 @@ export function createDocumentSourceActions({
   }
 
   function setPlannedFilePath(path: string) {
+    saveOperation.dispose()
     stopWatchingFile()
     setStorageBinding(null)
     setFileHandle(null)

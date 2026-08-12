@@ -45,7 +45,7 @@ describe('Tauri document IO helpers', () => {
       setLastWriteTime: () => undefined
     })
 
-    await write(new Uint8Array([1, 2, 3]))
+    await write({ data: new Uint8Array([1, 2, 3]), sceneVersion: 42 })
 
     expect(calls).toHaveLength(1)
     expect(calls[0]?.cmd).toBe('plugin:fs|write_file')
@@ -54,6 +54,54 @@ describe('Tauri document IO helpers', () => {
       headers: { path: '%2Ftmp%2Fdocument.fig', options: undefined }
     })
     expect(savedVersions).toEqual([42])
+  })
+
+  test('publishes only the scene version represented by written bytes', async () => {
+    let sceneVersion = 42
+    await mockTauriIPC(() => {
+      sceneVersion = 43
+      return null
+    })
+    const savedVersions: number[] = []
+    const write = createDocumentWriter({
+      state: {
+        get sceneVersion() {
+          return sceneVersion
+        }
+      } as Parameters<typeof createDocumentWriter>[0]['state'],
+      getFilePath: () => '/tmp/document.fig',
+      getFileHandle: () => null,
+      getStorageBinding: () => null,
+      setSavedVersion: (version) => savedVersions.push(version),
+      setLastWriteTime: () => undefined
+    })
+
+    await write({ data: new Uint8Array([1, 2, 3]), sceneVersion: 42 })
+
+    expect(sceneVersion).toBe(43)
+    expect(savedVersions).toEqual([42])
+  })
+
+  test('does not publish a write superseded while native IO is active', async () => {
+    const controller = new AbortController()
+    await mockTauriIPC(() => {
+      controller.abort()
+      return null
+    })
+    const savedVersions: number[] = []
+    const write = createDocumentWriter({
+      state: { sceneVersion: 42 } as Parameters<typeof createDocumentWriter>[0]['state'],
+      getFilePath: () => '/tmp/document.fig',
+      getFileHandle: () => null,
+      getStorageBinding: () => null,
+      setSavedVersion: (version) => savedVersions.push(version),
+      setLastWriteTime: () => undefined
+    })
+
+    await expect(
+      write({ data: new Uint8Array([1, 2, 3]), sceneVersion: 42 }, controller.signal)
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(savedVersions).toEqual([])
   })
 
   test('chooses a Tauri save path through plugin-dialog', async () => {
