@@ -19,7 +19,7 @@ export const currentPermission = computed(() => permissionQueue.value[0] ?? null
 
 function findRejectOption(request: ProductPermissionRequest): string {
   const reject = request.options.find((o) => o.kind.startsWith('reject'))
-  return reject?.optionId ?? request.options.at(0)?.optionId ?? ''
+  return reject?.optionId ?? ''
 }
 
 function removeEntry(entry: PendingPermission) {

@@ -8,6 +8,8 @@ export function makeFigmaFromStore(
   store: EditorStore,
   pageId = store.state.currentPageId
 ): FigmaAPI {
+  const viewportWidth = typeof window === 'undefined' ? 0 : window.innerWidth
+  const viewportHeight = typeof window === 'undefined' ? 0 : window.innerHeight
   const api = new FigmaAPI(store.graph)
   api.setRenderer(store.renderer ?? null)
   api.currentPage = api.wrapNode(pageId)
@@ -16,8 +18,8 @@ export function makeFigmaFromStore(
     .filter((n): n is NonNullable<typeof n> => n !== null)
   api.viewport = {
     center: {
-      x: (-store.state.panX + window.innerWidth / 2) / store.state.zoom,
-      y: (-store.state.panY + window.innerHeight / 2) / store.state.zoom
+      x: (-store.state.panX + viewportWidth / 2) / store.state.zoom,
+      y: (-store.state.panY + viewportHeight / 2) / store.state.zoom
     },
     zoom: store.state.zoom
   }

@@ -10,10 +10,11 @@ import { useEngineTransport } from '@/app/ai/acp/feature'
 import { resolveLanguageModelID } from '@/app/ai/chat/model'
 import SYSTEM_PROMPT from '@/app/ai/chat/system-prompt.md?raw'
 import { createAIModelRuntime } from '@/app/ai/models'
-import { createFireflyChatTransport } from '@/app/ai/runtime/firefly'
+import { createAgentServiceChatTransport } from '@/app/ai/agent-service/transport'
 import { MAX_AGENT_STEPS, createAITools, recordStepUsage, resetRunSteps } from '@/app/ai/tools'
 import type { getActiveEditorStore } from '@/app/editor/active-store'
-import { isHostedMode } from '@/app/hosted/flags'
+import { isHostedAgentEnabled } from '@/app/hosted/flags'
+import { getActiveTabId } from '@/app/tabs'
 
 type EditorStore = ReturnType<typeof getActiveEditorStore>
 
@@ -159,8 +160,8 @@ export function createChatSessionManager({
 
   async function ensureChat(): Promise<Chat<UIMessage> | null> {
     await credentialsReady
-    const useFireflyRuntime = isHostedMode()
-    if (!useFireflyRuntime && !isConfigured.value) return null
+    const useHostedAgent = isHostedAgentEnabled()
+    if (!useHostedAgent && !isConfigured.value) return null
 
     const store = getActiveEditorStore()
     if (currentChatStore && chat) {
@@ -170,8 +171,11 @@ export function createChatSessionManager({
     if (!chat || transportDirty || currentChatStore !== store) {
       const messages = currentChatMessages.get(store)
       let transport: ChatTransport<UIMessage>
-      if (useFireflyRuntime) {
-        transport = createFireflyChatTransport()
+      if (useHostedAgent) {
+        transport = createAgentServiceChatTransport({
+          store,
+          documentId: getActiveTabId()
+        })
       } else if (isACPProvider.value) {
         transport = await createActiveACPTransport()
       } else {

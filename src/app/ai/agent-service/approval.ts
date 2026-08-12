@@ -9,6 +9,20 @@ export interface ToolApprovalRequest {
 
 export type ToolApprovalHandler = (request: ToolApprovalRequest) => boolean | Promise<boolean>
 
+export async function requestToolApprovalFromUser(request: ToolApprovalRequest): Promise<boolean> {
+  const { requestPermissionFromUser } = await import('@/app/ai/acp/permission')
+  const response = await requestPermissionFromUser({
+    requestId: request.callId,
+    sessionId: request.runId,
+    toolCall: { title: request.toolName, rawInput: request.input },
+    options: [
+      { optionId: 'allow-once', kind: 'allow_once', name: 'Allow once' },
+      { optionId: 'reject-once', kind: 'reject_once', name: 'Reject' }
+    ]
+  })
+  return response.outcome.optionId === 'allow-once'
+}
+
 /** A missing, failed, or slow approval is always a rejection. */
 export async function requestBoundedToolApproval(
   handler: ToolApprovalHandler | undefined,
