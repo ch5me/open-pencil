@@ -147,6 +147,87 @@ describe('document persistence', () => {
     expect(setSavedVersion).not.toHaveBeenCalled()
   })
 
+  test('browser close waits for a mandatory successor overwrite before reporting supersession', async () => {
+    const firstClose = deferred()
+    const closeStarted = deferred()
+    const committed: number[] = []
+    const secondWrite = vi.fn(async (bytes: Uint8Array) => {
+      committed.push(bytes[0] ?? 0)
+    })
+    const createWritable = vi
+      .fn()
+      .mockResolvedValueOnce({
+        write: vi.fn(async (bytes: Uint8Array) => {
+          committed.push(bytes[0] ?? 0)
+        }),
+        close: vi.fn(() => {
+          closeStarted.resolve()
+          return firstClose.promise
+        }),
+        abort: vi.fn(async () => undefined)
+      })
+      .mockResolvedValueOnce({
+        write: secondWrite,
+        close: vi.fn(async () => undefined),
+        abort: vi.fn(async () => undefined)
+      })
+    const handle = { createWritable } as FileSystemFileHandle
+    const { setSavedVersion, write } = createWriter()
+
+    const stale = write({ data: new Uint8Array([1]), sceneVersion: 1 }, undefined, { handle })
+    void stale.catch(() => undefined)
+    await closeStarted.promise
+    const latest = write({ data: new Uint8Array([2]), sceneVersion: 2 }, undefined, { handle })
+
+    expect(secondWrite).not.toHaveBeenCalled()
+    firstClose.resolve()
+    await latest
+    await expect(stale).rejects.toMatchObject({ name: 'AbortError' })
+    expect(committed).toEqual([1, 2])
+    expect(setSavedVersion).toHaveBeenCalledTimes(1)
+    expect(setSavedVersion).toHaveBeenCalledWith(2)
+  })
+
+  test('failed browser replacement surfaces failure after the stale close committed', async () => {
+    const firstClose = deferred()
+    const closeStarted = deferred()
+    const committed: number[] = []
+    const createWritable = vi
+      .fn()
+      .mockResolvedValueOnce({
+        write: vi.fn(async (bytes: Uint8Array) => {
+          committed.push(bytes[0] ?? 0)
+        }),
+        close: vi.fn(() => {
+          closeStarted.resolve()
+          return firstClose.promise
+        }),
+        abort: vi.fn(async () => undefined)
+      })
+      .mockResolvedValueOnce({
+        write: vi.fn(async () => {
+          throw new Error('replacement failed')
+        }),
+        close: vi.fn(async () => undefined),
+        abort: vi.fn(async () => undefined)
+      })
+    const handle = { createWritable } as FileSystemFileHandle
+    const { setSavedVersion, write } = createWriter()
+
+    const stale = write({ data: new Uint8Array([1]), sceneVersion: 1 }, undefined, { handle })
+    void stale.catch(() => undefined)
+    await closeStarted.promise
+    const replacement = write({ data: new Uint8Array([2]), sceneVersion: 2 }, undefined, {
+      handle
+    })
+
+    firstClose.resolve()
+    await expect(replacement).rejects.toThrow('replacement failed')
+    await expect(stale).rejects.toThrow('replacement failed')
+    expect(committed).toEqual([1])
+    expect(setSavedVersion).not.toHaveBeenCalled()
+  })
+
   test('native writes replace the target only from the current generation', async () => {
     const firstWrite = deferred()
     const files = new Map<string, Uint8Array>()

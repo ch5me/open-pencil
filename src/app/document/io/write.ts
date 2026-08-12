@@ -33,8 +33,20 @@ export function createDocumentWriter({
   setSavedVersion,
   setLastWriteTime
 }: DocumentWriterOptions) {
+  type WriteOperation = {
+    generation: number
+    superseded: boolean
+    commitInProgress: boolean
+    supersedeAfterCommit: boolean
+    abort?: () => void
+    successor?: WriteOperation
+    completion: Promise<void>
+    complete: () => void
+    fail: (error: unknown) => void
+  }
+
   let currentGeneration = 0
-  let activeAbort: (() => void) | null = null
+  let currentOperation: WriteOperation | null = null
   let writeTail = Promise.resolve()
 
   return async function writeFile(
@@ -55,17 +67,52 @@ export function createDocumentWriter({
       })()
     if (!resolvedTarget) return false
 
-    const generation = ++currentGeneration
-    activeAbort?.()
-    const throwIfStale = () => {
+    let complete!: () => void
+    let fail!: (error: unknown) => void
+    const completion = new Promise<void>((resolve, reject) => {
+      complete = resolve
+      fail = reject
+    })
+    void completion.catch(() => undefined)
+    const operation: WriteOperation = {
+      generation: ++currentGeneration,
+      superseded: false,
+      commitInProgress: false,
+      supersedeAfterCommit: false,
+      completion,
+      complete,
+      fail
+    }
+    if (currentOperation) {
+      currentOperation.successor = operation
+      if (currentOperation.commitInProgress) {
+        currentOperation.supersedeAfterCommit = true
+      } else {
+        currentOperation.superseded = true
+        currentOperation.abort?.()
+      }
+    }
+    currentOperation = operation
+
+    const throwIfCancelled = () => {
       signal?.throwIfAborted()
-      if (generation !== currentGeneration) {
+      if (operation.superseded) {
         throw new DOMException('Save superseded', 'AbortError')
       }
     }
+    const commitIfCurrent = async <T>(commit: () => Promise<T>): Promise<T> => {
+      throwIfCancelled()
+      operation.commitInProgress = true
+      try {
+        return await commit()
+      } finally {
+        operation.commitInProgress = false
+        if (operation.supersedeAfterCommit) operation.superseded = true
+      }
+    }
 
-    const result = writeTail.then(async () => {
-      throwIfStale()
+    const internal = writeTail.then(async () => {
+      throwIfCancelled()
       setLastWriteTime(Date.now())
       if ('storage' in resolvedTarget) {
         const storage = resolvedTarget.storage
@@ -73,23 +120,21 @@ export function createDocumentWriter({
           providerId: storage.providerId,
           canvasId: storage.documentId,
           name: state.documentName || 'Untitled',
-          figBytes: write.data
+          figBytes: write.data,
+          commitIfCurrent
         })
-        throwIfStale()
-        setSavedVersion(write.sceneVersion)
+        if (!operation.superseded) setSavedVersion(write.sceneVersion)
         return true
       }
 
       if ('path' in resolvedTarget) {
         const { remove, rename, writeFile: tauriWrite } = await import('@tauri-apps/plugin-fs')
-        const temporaryPath = `${resolvedTarget.path}.open-pencil-${generation}.tmp`
+        const temporaryPath = `${resolvedTarget.path}.open-pencil-${operation.generation}.tmp`
         try {
-          throwIfStale()
+          throwIfCancelled()
           await tauriWrite(temporaryPath, write.data)
-          throwIfStale()
-          await rename(temporaryPath, resolvedTarget.path)
-          throwIfStale()
-          setSavedVersion(write.sceneVersion)
+          await commitIfCurrent(() => rename(temporaryPath, resolvedTarget.path))
+          if (!operation.superseded) setSavedVersion(write.sceneVersion)
           return true
         } catch (error) {
           await remove(temporaryPath).catch(() => undefined)
@@ -104,29 +149,51 @@ export function createDocumentWriter({
         abortRequested = true
         void writable.abort(signal?.reason).catch(() => undefined)
       }
-      activeAbort = abortWritable
+      operation.abort = abortWritable
       signal?.addEventListener('abort', abortWritable, { once: true })
       if (signal?.aborted) abortWritable()
       try {
-        throwIfStale()
+        throwIfCancelled()
         await writable.write(new Uint8Array(write.data))
-        throwIfStale()
-        await writable.close()
-        throwIfStale()
-        setSavedVersion(write.sceneVersion)
+        throwIfCancelled()
+        operation.abort = undefined
+        await commitIfCurrent(() => writable.close())
+        if (!operation.superseded) setSavedVersion(write.sceneVersion)
         return true
       } catch (error) {
         abortWritable()
         throw error
       } finally {
-        if (activeAbort === abortWritable) activeAbort = null
+        operation.abort = undefined
         signal?.removeEventListener('abort', abortWritable)
       }
     })
-    writeTail = result.then(
+    void internal.then(operation.complete, operation.fail)
+    writeTail = internal.then(
       () => undefined,
       () => undefined
     )
-    return result
+
+    try {
+      const result = await internal
+      if (!operation.superseded) return result
+
+      let successor = operation.successor
+      while (successor) {
+        try {
+          await successor.completion
+        } catch (error) {
+          if (
+            !(error instanceof DOMException && error.name === 'AbortError' && successor.superseded)
+          ) {
+            throw error
+          }
+        }
+        successor = successor.successor
+      }
+      throw new DOMException('Save superseded', 'AbortError')
+    } finally {
+      if (currentOperation === operation) currentOperation = null
+    }
   }
 }

@@ -17,6 +17,7 @@ export type PersistStorageCanvasOptions = {
   canvasId: string
   name: string
   figBytes: Uint8Array
+  commitIfCurrent?: <T>(commit: () => Promise<T>) => Promise<T>
 }
 
 /** Write locally before scheduling remote synchronization. */
@@ -34,21 +35,23 @@ export async function persistStorageCanvasLocally(
       return options.figBytes.subarray(start, endExclusive)
     }
   })
-  const metadata = await runtime.store.writeCanvas({
-    id: options.canvasId,
-    providerId: options.providerId,
-    name: options.name,
-    figBytes: options.figBytes,
-    thumbBytes: thumbnailBytes,
-    syncStatus: 'pending'
+  return (options.commitIfCurrent ?? ((commit) => commit()))(async () => {
+    const metadata = await runtime.store.writeCanvas({
+      id: options.canvasId,
+      providerId: options.providerId,
+      name: options.name,
+      figBytes: options.figBytes,
+      thumbBytes: thumbnailBytes,
+      syncStatus: 'pending'
+    })
+    await runtime.enqueueCanvas(options.canvasId, metadata.revision)
+    emitStorageWorkspaceEvent({
+      providerId: options.providerId,
+      documentId: options.canvasId,
+      kind: 'changed'
+    })
+    return { revision: metadata.revision }
   })
-  await runtime.enqueueCanvas(options.canvasId, metadata.revision)
-  emitStorageWorkspaceEvent({
-    providerId: options.providerId,
-    documentId: options.canvasId,
-    kind: 'changed'
-  })
-  return { revision: metadata.revision }
 }
 
 export type SeedStorageCanvasOptions = {
