@@ -186,7 +186,8 @@ export const figFormat: IOFormatAdapter = {
       context?.canvasKit,
       context?.renderer,
       options?.thumbnailPageId,
-      options?.renderThumbnail ?? false
+      options?.renderThumbnail ?? false,
+      context?.signal
     )
     return {
       format: 'fig',
@@ -202,7 +203,8 @@ export const figFormat: IOFormatAdapter = {
       context?.canvasKit,
       context?.renderer,
       options?.thumbnailPageId ?? extracted.pageId ?? undefined,
-      options?.renderThumbnail ?? false
+      options?.renderThumbnail ?? false,
+      context?.signal
     )
     return {
       format: 'fig',
