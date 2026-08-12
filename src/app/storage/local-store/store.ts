@@ -24,7 +24,10 @@ export type LocalCanvasStore = {
     options?: UpdateLocalCanvasMetaOptions
   ): Promise<{ metadata: LocalCanvasMeta; job: OutboxJob } | null>
   /** Index-only row for remote canvases not yet downloaded (no fig body). */
-  upsertIndexMeta(meta: LocalCanvasIndexInput): Promise<LocalCanvasMeta>
+  upsertIndexMeta(
+    meta: LocalCanvasIndexInput,
+    options?: UpdateLocalCanvasMetaOptions
+  ): Promise<LocalCanvasMeta | null>
   /** Seed only if the local revision has not changed since the remote read began. */
   seedCanvas(
     input: LocalCanvasWriteInput,
@@ -42,6 +45,8 @@ export type LocalCanvasStore = {
   /** Drop only the cached fig blob (eviction) — meta and thumb stay. */
   clearFig(id: string): Promise<LocalCanvasMeta | null>
   remove(id: string): Promise<void>
+  /** Remove only the exact tombstone revision confirmed absent remotely. */
+  purgeTombstone(id: string, expectedRevision: number): Promise<boolean>
   clearAll(): Promise<void>
   listOutboxJobs(): Promise<OutboxJob[]>
   enqueueOutboxJob(job: OutboxEnqueueInput): Promise<OutboxJob>

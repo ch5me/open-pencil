@@ -181,6 +181,92 @@ describe('local canvas store (IndexedDB)', () => {
     expect(await seedContext.readFig(id)).toEqual(new Uint8Array([9]))
   })
 
+  test('index CAS cannot overwrite a cross-context save or revive a tombstone', async () => {
+    const refreshContext = createIdbLocalCanvasStore()
+    const mutationContext = createIdbLocalCanvasStore()
+    const savedID = `index-save-${crypto.randomUUID()}`
+    await mutationContext.publishCanvas(
+      {
+        id: savedID,
+        providerId: 's3-compatible',
+        name: 'Local save',
+        figBytes: new Uint8Array([9])
+      },
+      { expectedRevision: 0 }
+    )
+
+    expect(
+      await refreshContext.upsertIndexMeta(
+        {
+          id: savedID,
+          providerId: 's3-compatible',
+          name: 'Stale remote',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          syncStatus: 'synced',
+          lastSyncedAt: '2026-01-01T00:00:00.000Z',
+          lastSyncError: null
+        },
+        { expectedRevision: 0 }
+      )
+    ).toBeNull()
+    expect(await refreshContext.getMeta(savedID)).toMatchObject({
+      name: 'Local save',
+      revision: 1,
+      syncStatus: 'pending',
+      tombstoned: false
+    })
+
+    const deletedID = `index-delete-${crypto.randomUUID()}`
+    await mutationContext.writeCanvas({
+      id: deletedID,
+      providerId: 's3-compatible',
+      name: 'Deleted',
+      figBytes: new Uint8Array([1])
+    })
+    const tombstone = expectDefined(await mutationContext.publishCanvasDeletion(deletedID)).metadata
+    expect(
+      await refreshContext.upsertIndexMeta(
+        {
+          id: deletedID,
+          providerId: 's3-compatible',
+          name: 'Stale remote',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          syncStatus: 'synced',
+          lastSyncedAt: '2026-01-01T00:00:00.000Z',
+          lastSyncError: null
+        },
+        { expectedRevision: tombstone.revision }
+      )
+    ).toBeNull()
+    expect(await refreshContext.getMeta(deletedID)).toMatchObject({
+      revision: tombstone.revision,
+      syncStatus: 'pending',
+      tombstoned: true
+    })
+  })
+
+  test('tombstone purge is revision guarded across contexts', async () => {
+    const refreshContext = createIdbLocalCanvasStore()
+    const deleteContext = createIdbLocalCanvasStore()
+    const id = `purge-${crypto.randomUUID()}`
+    await deleteContext.writeCanvas({
+      id,
+      providerId: 's3-compatible',
+      name: 'Deleted',
+      figBytes: new Uint8Array([1])
+    })
+    const first = expectDefined(await deleteContext.publishCanvasDeletion(id)).metadata
+    const newer = expectDefined(await deleteContext.publishCanvasDeletion(id)).metadata
+
+    expect(await refreshContext.purgeTombstone(id, first.revision)).toBe(false)
+    expect(await refreshContext.getMeta(id)).toMatchObject({
+      revision: newer.revision,
+      tombstoned: true
+    })
+    expect(await refreshContext.purgeTombstone(id, newer.revision)).toBe(true)
+    expect(await refreshContext.getMeta(id)).toBeNull()
+  })
+
   test('stale success settlement cannot remove or sync a newer revision', async () => {
     const store = createIdbLocalCanvasStore()
     const id = `settle-${crypto.randomUUID()}`
@@ -260,9 +346,7 @@ describe('local canvas store (IndexedDB)', () => {
       })
     )
 
-    const claimed = expectDefined(
-      await secondContext.claimOutboxJob(published.job, 'context-two')
-    )
+    const claimed = expectDefined(await secondContext.claimOutboxJob(published.job, 'context-two'))
     expect(claimed.claimToken).toBe('context-two')
     expect(
       await firstContext.settleOutboxJob(published.job, {
@@ -288,9 +372,7 @@ describe('local canvas store (IndexedDB)', () => {
         figBytes: new Uint8Array([3])
       })
     )
-    const claimed = expectDefined(
-      await secondContext.claimOutboxJob(published.job, 'context-two')
-    )
+    const claimed = expectDefined(await secondContext.claimOutboxJob(published.job, 'context-two'))
 
     await firstContext.updateOutboxJob({ ...published.job, nextAttemptAt: 0 })
     expect(
@@ -318,9 +400,7 @@ describe('local canvas store (IndexedDB)', () => {
     const deletion = expectDefined(await secondContext.publishCanvasDeletion(id))
     expect(deletion.metadata).toMatchObject({ tombstoned: true, revision: 2 })
     expect(deletion.job).toMatchObject({ type: 'deleteCanvas', revision: 2 })
-    const claimed = expectDefined(
-      await firstContext.claimOutboxJob(deletion.job, 'delete-context')
-    )
+    const claimed = expectDefined(await firstContext.claimOutboxJob(deletion.job, 'delete-context'))
     expect(await firstContext.settleOutboxJob(claimed, { kind: 'success' })).toBe(true)
     expect(await secondContext.getMeta(id)).toMatchObject({
       tombstoned: true,

@@ -173,11 +173,19 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
       return { metadata, job }
     },
 
-    async upsertIndexMeta(input) {
+    async upsertIndexMeta(input, options) {
       const database = await db()
       const tx = database.transaction(STORE_META, 'readwrite')
       const store = tx.objectStore(STORE_META)
       const existing = await readMetaRow(store, input.id)
+      if (
+        existing?.tombstoned ||
+        (options?.expectedRevision != null &&
+          (existing?.revision ?? 0) !== options.expectedRevision)
+      ) {
+        await txDone(tx)
+        return null
+      }
       const meta = buildIndexMeta(input, existing)
       store.put(meta)
       await txDone(tx)
@@ -326,6 +334,22 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
       tx.objectStore(STORE_FIG).delete(id)
       tx.objectStore(STORE_THUMB).delete(id)
       await txDone(tx)
+    },
+
+    async purgeTombstone(id, expectedRevision) {
+      const database = await db()
+      const tx = database.transaction([STORE_META, STORE_FIG, STORE_THUMB], 'readwrite')
+      const metaStore = tx.objectStore(STORE_META)
+      const existing = await readMetaRow(metaStore, id)
+      if (!existing?.tombstoned || existing.revision !== expectedRevision) {
+        await txDone(tx)
+        return false
+      }
+      metaStore.delete(id)
+      tx.objectStore(STORE_FIG).delete(id)
+      tx.objectStore(STORE_THUMB).delete(id)
+      await txDone(tx)
+      return true
     },
 
     async clearAll() {

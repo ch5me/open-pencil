@@ -68,8 +68,16 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
       return { metadata, job }
     },
 
-    async upsertIndexMeta(input) {
-      const meta = buildIndexMeta(input, metas.get(input.id) ?? null)
+    async upsertIndexMeta(input, options) {
+      const existing = metas.get(input.id) ?? null
+      if (
+        existing?.tombstoned ||
+        (options?.expectedRevision != null &&
+          (existing?.revision ?? 0) !== options.expectedRevision)
+      ) {
+        return null
+      }
+      const meta = buildIndexMeta(input, existing)
       metas.set(input.id, meta)
       return meta
     },
@@ -149,6 +157,15 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
       metas.delete(id)
       figs.delete(id)
       thumbs.delete(id)
+    },
+
+    async purgeTombstone(id, expectedRevision) {
+      const existing = metas.get(id)
+      if (!existing?.tombstoned || existing.revision !== expectedRevision) return false
+      metas.delete(id)
+      figs.delete(id)
+      thumbs.delete(id)
+      return true
     },
 
     async clearAll() {
