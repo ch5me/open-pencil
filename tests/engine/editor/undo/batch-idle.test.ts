@@ -34,8 +34,8 @@ describe('UndoManager idle-timer batching', () => {
 
   test('changing batch key flushes the previous batch', () => {
     const undo = createUndoManager()
-    let a = 0
-    let b = 0
+    let a: number
+    let b: number
 
     undo.beginBatch('batch A')
     undo.push(
@@ -50,6 +50,7 @@ describe('UndoManager idle-timer batching', () => {
       )
     )
     a = 1
+    expect(a).toBe(1)
     undo.push(
       undoEntry(
         'a2',
@@ -90,7 +91,7 @@ describe('UndoManager idle-timer batching', () => {
 
   test('discrete action between batches is separate undo entry', () => {
     const undo = createUndoManager()
-    let v = 0
+    let v: number
 
     undo.beginBatch('drag')
     undo.push(
@@ -105,6 +106,7 @@ describe('UndoManager idle-timer batching', () => {
       )
     )
     v = 1
+    expect(v).toBe(1)
     undo.push(
       undoEntry(
         'd2',
@@ -117,6 +119,7 @@ describe('UndoManager idle-timer batching', () => {
       )
     )
     v = 2
+    expect(v).toBe(2)
     undo.commitBatch()
 
     undo.push(
