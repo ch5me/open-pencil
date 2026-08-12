@@ -4,6 +4,7 @@ import type { StorageProviderID } from '@/app/integrations/storage/types'
 import { evictLocalFigCache } from '@/app/storage/cache-eviction'
 import { getLocalCanvasStore } from '@/app/storage/local-store'
 import type { LocalCanvasStore } from '@/app/storage/local-store/store'
+import { withCanvasMutationAuthority } from '@/app/storage/sync/authority-lock'
 import { kickSyncEngine } from '@/app/storage/sync/engine'
 import { emitStorageWorkspaceEvent } from '@/app/storage/workspace/events'
 
@@ -20,6 +21,16 @@ export type PersistStorageCanvasOptions = {
   commitIfCurrent?: <T>(
     commit: (markCommitted: () => void, throwIfCancelled: () => void) => Promise<T>
   ) => Promise<T>
+}
+
+export class StorageSaveConflictError extends Error {
+  readonly canvasId: string
+
+  constructor(canvasId: string) {
+    super(`Document changed in another context before this save could commit: ${canvasId}`)
+    this.name = 'StorageSaveConflictError'
+    this.canvasId = canvasId
+  }
 }
 
 /** Write locally before scheduling remote synchronization. */
@@ -46,23 +57,26 @@ export async function persistStorageCanvasLocally(
       ))
   )(async (markCommitted, throwIfCancelled) => {
     throwIfCancelled()
-    const expectedRevision = (await runtime.store.getMeta(options.canvasId))?.revision ?? 0
-    throwIfCancelled()
-    const publication = await runtime.store.publishCanvas(
-      {
-        id: options.canvasId,
-        providerId: options.providerId,
-        name: options.name,
-        figBytes: options.figBytes,
-        thumbBytes: thumbnailBytes,
-        syncStatus: 'pending'
-      },
-      { expectedRevision }
-    )
+    const publication = await withCanvasMutationAuthority(options.canvasId, async () => {
+      const expectedRevision = (await runtime.store.getMeta(options.canvasId))?.revision ?? 0
+      throwIfCancelled()
+      // IndexedDB commit is irreversible; cancellation must stop before this transaction starts.
+      markCommitted()
+      return runtime.store.publishCanvas(
+        {
+          id: options.canvasId,
+          providerId: options.providerId,
+          name: options.name,
+          figBytes: options.figBytes,
+          thumbBytes: thumbnailBytes,
+          syncStatus: 'pending'
+        },
+        { expectedRevision }
+      )
+    })
     if (!publication) {
-      throw new DOMException('Save superseded by newer durable revision', 'AbortError')
+      throw new StorageSaveConflictError(options.canvasId)
     }
-    markCommitted()
     runtime.kickSync()
     emitStorageWorkspaceEvent({
       providerId: options.providerId,

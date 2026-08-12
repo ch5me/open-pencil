@@ -9,6 +9,8 @@ export type OutboxJob = {
   createdAt: number
   attempts: number
   nextAttemptAt: number
+  /** Durable ownership marker assigned after cross-context authority is acquired. */
+  claimToken?: string
 }
 
 export type OutboxEnqueueInput = Omit<
@@ -58,7 +60,8 @@ export function buildOutboxJob(partial: OutboxEnqueueInput): OutboxJob {
     revision: partial.revision,
     createdAt: Date.now(),
     attempts: partial.attempts ?? 0,
-    nextAttemptAt: partial.nextAttemptAt ?? Date.now()
+    nextAttemptAt: partial.nextAttemptAt ?? Date.now(),
+    claimToken: partial.claimToken
   }
 }
 

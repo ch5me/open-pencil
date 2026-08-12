@@ -37,13 +37,18 @@ export type LocalCanvasStore = {
     options?: UpdateLocalCanvasMetaOptions
   ): Promise<LocalCanvasMeta | null>
   tombstone(id: string): Promise<LocalCanvasMeta | null>
+  /** Atomically tombstone a canvas and publish its revision-bound delete job. */
+  publishCanvasDeletion(id: string): Promise<{ metadata: LocalCanvasMeta; job: OutboxJob } | null>
   /** Drop only the cached fig blob (eviction) — meta and thumb stay. */
   clearFig(id: string): Promise<LocalCanvasMeta | null>
   remove(id: string): Promise<void>
   clearAll(): Promise<void>
   listOutboxJobs(): Promise<OutboxJob[]>
   enqueueOutboxJob(job: OutboxEnqueueInput): Promise<OutboxJob>
+  /** Update an existing job without clearing its durable claim or recreating a removed row. */
   updateOutboxJob(job: OutboxJob): Promise<void>
+  /** Re-read and claim the exact queued job after cross-context authority is held. */
+  claimOutboxJob(job: OutboxJob, claimToken: string): Promise<OutboxJob | null>
   removeOutboxJob(id: string): Promise<void>
   /** Atomically settle a job and revision-guarded metadata. */
   settleOutboxJob(job: OutboxJob, settlement: OutboxSettlement): Promise<boolean>

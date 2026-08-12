@@ -1,21 +1,72 @@
 /** Shared IndexedDB plumbing for the local canvas store and the sync outbox. */
 
-export function openIdb(
+export class IndexedDBOpenBlockedError extends Error {
+  constructor(name: string) {
+    super(`Opening ${name} remained blocked by another context`)
+    this.name = 'IndexedDBOpenBlockedError'
+  }
+}
+
+const BLOCKED_OPEN_TIMEOUT_MS = 250
+const OPEN_ATTEMPTS = 2
+
+function openIdbAttempt(
   name: string,
   version: number,
   upgrade: (db: IDBDatabase) => void
 ): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') {
-      reject(new Error('IndexedDB is not available'))
-      return
-    }
     const req = indexedDB.open(name, version)
-    req.onerror = () => reject(req.error ?? new Error(`Failed to open ${name}`))
-    req.onblocked = () => reject(new Error(`Opening ${name} blocked by another tab's connection`))
-    req.onsuccess = () => resolve(req.result)
+    let settled = false
+    let blockedTimer: ReturnType<typeof setTimeout> | null = null
+    const finish = (action: () => void) => {
+      if (settled) return
+      settled = true
+      if (blockedTimer != null) clearTimeout(blockedTimer)
+      action()
+    }
+    req.onerror = () =>
+      finish(() => reject(req.error ?? new Error(`Failed to open ${name}`)))
+    req.onblocked = () => {
+      if (blockedTimer != null) return
+      blockedTimer = setTimeout(
+        () => finish(() => reject(new IndexedDBOpenBlockedError(name))),
+        BLOCKED_OPEN_TIMEOUT_MS
+      )
+    }
+    req.onsuccess = () => {
+      const db = req.result
+      db.onversionchange = () => db.close()
+      if (settled) {
+        db.close()
+        return
+      }
+      finish(() => resolve(db))
+    }
     req.onupgradeneeded = () => upgrade(req.result)
   })
+}
+
+export async function openIdb(
+  name: string,
+  version: number,
+  upgrade: (db: IDBDatabase) => void
+): Promise<IDBDatabase> {
+  if (typeof indexedDB === 'undefined') {
+    throw new TypeError('IndexedDB is not available')
+  }
+  let lastError: unknown
+  for (let attempt = 0; attempt < OPEN_ATTEMPTS; attempt++) {
+    try {
+      return await openIdbAttempt(name, version, upgrade)
+    } catch (error) {
+      lastError = error
+      if (!(error instanceof IndexedDBOpenBlockedError) || attempt === OPEN_ATTEMPTS - 1) {
+        throw error
+      }
+    }
+  }
+  throw lastError
 }
 
 export function reqToPromise<T>(req: IDBRequest<T>): Promise<T> {

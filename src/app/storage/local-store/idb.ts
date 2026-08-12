@@ -134,6 +134,10 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
       const tx = database.transaction([STORE_META, STORE_FIG, STORE_THUMB, STORE_JOBS], 'readwrite')
       const metaStore = tx.objectStore(STORE_META)
       const existing = await readMetaRow(metaStore, input.id)
+      if (existing?.tombstoned) {
+        await txDone(tx)
+        return null
+      }
       if (
         options?.expectedRevision != null &&
         (existing?.revision ?? 0) !== options.expectedRevision
@@ -248,11 +252,55 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
     },
 
     async tombstone(id: string) {
-      return this.updateMeta(id, {
+      const database = await db()
+      const tx = database.transaction(STORE_META, 'readwrite')
+      const store = tx.objectStore(STORE_META)
+      const existing = await readMetaRow(store, id)
+      if (!existing) {
+        await txDone(tx)
+        return null
+      }
+      const next: LocalCanvasMeta = {
+        ...existing,
         tombstoned: true,
+        revision: existing.revision + 1,
         syncStatus: 'pending',
         updatedAt: new Date().toISOString()
+      }
+      store.put(next)
+      await txDone(tx)
+      return next
+    },
+
+    async publishCanvasDeletion(id: string) {
+      const database = await db()
+      const tx = database.transaction([STORE_META, STORE_JOBS], 'readwrite')
+      const metaStore = tx.objectStore(STORE_META)
+      const existing = await readMetaRow(metaStore, id)
+      if (!existing) {
+        await txDone(tx)
+        return null
+      }
+      const metadata: LocalCanvasMeta = {
+        ...existing,
+        tombstoned: true,
+        revision: existing.revision + 1,
+        syncStatus: 'pending',
+        updatedAt: new Date().toISOString()
+      }
+      metaStore.put(metadata)
+      const job = buildOutboxJob({
+        canvasId: id,
+        type: 'deleteCanvas',
+        revision: metadata.revision
       })
+      const jobStore = tx.objectStore(STORE_JOBS)
+      const jobs = (await readJobs(jobStore)).filter((candidate) => candidate.canvasId !== id)
+      jobStore.clear()
+      for (const candidate of jobs) jobStore.put(candidate)
+      jobStore.put(job)
+      await txDone(tx)
+      return { metadata, job }
     },
 
     async clearFig(id: string) {
@@ -311,8 +359,30 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
     async updateOutboxJob(job) {
       const database = await db()
       const tx = database.transaction(STORE_JOBS, 'readwrite')
-      tx.objectStore(STORE_JOBS).put(job)
+      const store = tx.objectStore(STORE_JOBS)
+      const stored = (await reqToPromise(store.get(job.id))) as OutboxJob | undefined
+      if (stored) store.put({ ...job, claimToken: stored.claimToken })
       await txDone(tx)
+    },
+
+    async claimOutboxJob(job, claimToken) {
+      const database = await db()
+      const tx = database.transaction(STORE_JOBS, 'readwrite')
+      const store = tx.objectStore(STORE_JOBS)
+      const stored = (await reqToPromise(store.get(job.id))) as OutboxJob | undefined
+      if (
+        !stored ||
+        stored.canvasId !== job.canvasId ||
+        stored.type !== job.type ||
+        stored.revision !== job.revision
+      ) {
+        await txDone(tx)
+        return null
+      }
+      const claimed = { ...stored, claimToken }
+      store.put(claimed)
+      await txDone(tx)
+      return claimed
     },
 
     async removeOutboxJob(id) {
@@ -331,7 +401,8 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
         !stored ||
         stored.canvasId !== job.canvasId ||
         stored.type !== job.type ||
-        stored.revision !== job.revision
+        stored.revision !== job.revision ||
+        stored.claimToken !== job.claimToken
       ) {
         await txDone(tx)
         return false
@@ -339,8 +410,10 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
 
       const metaStore = tx.objectStore(STORE_META)
       const metadata = await readMetaRow(metaStore, job.canvasId)
-      const currentRevision = metadata?.revision === job.revision
-      if (!currentRevision) {
+      const validMetadata =
+        metadata?.revision === job.revision &&
+        (job.type === 'deleteCanvas' ? metadata.tombstoned : !metadata.tombstoned)
+      if (!validMetadata) {
         jobStore.delete(job.id)
         await txDone(tx)
         return false

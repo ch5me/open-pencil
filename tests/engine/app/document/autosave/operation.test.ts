@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test'
 
-import { createAbortableSaveOperation } from '@/app/document/autosave/create'
+import {
+  createAbortableSaveOperation,
+  isExpectedSaveCancellation
+} from '@/app/document/autosave/create'
+import { StorageSaveConflictError } from '@/app/storage/sync/persist'
 
 function deferred() {
   let resolve!: () => void
@@ -70,4 +74,9 @@ test('real save errors reach their caller without blocking the next save', async
 
   await expect(failed).rejects.toThrow('write failed')
   await expect(next).resolves.toBe('saved')
+})
+
+test('durable storage conflicts are not classified as expected cancellation', () => {
+  expect(isExpectedSaveCancellation(new DOMException('superseded', 'AbortError'))).toBe(true)
+  expect(isExpectedSaveCancellation(new StorageSaveConflictError('canvas-1'))).toBe(false)
 })

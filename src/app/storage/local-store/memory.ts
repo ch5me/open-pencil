@@ -51,6 +51,7 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
 
     async publishCanvas(input, options) {
       const existing = metas.get(input.id) ?? null
+      if (existing?.tombstoned) return null
       if (
         options?.expectedRevision != null &&
         (existing?.revision ?? 0) !== options.expectedRevision
@@ -112,11 +113,27 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
       const next: LocalCanvasMeta = {
         ...existing,
         tombstoned: true,
+        revision: existing.revision + 1,
         syncStatus: 'pending',
         updatedAt: new Date().toISOString()
       }
       metas.set(id, next)
       return next
+    },
+
+    async publishCanvasDeletion(id: string) {
+      const metadata = await this.tombstone(id)
+      if (!metadata) return null
+      const job = buildOutboxJob({
+        canvasId: id,
+        type: 'deleteCanvas',
+        revision: metadata.revision
+      })
+      jobs = queueOutboxJob(
+        jobs.filter((candidate) => candidate.canvasId !== id),
+        job
+      )
+      return { metadata, job }
     },
 
     async clearFig(id: string) {
@@ -152,7 +169,24 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
     },
 
     async updateOutboxJob(job) {
-      jobs = jobs.map((current) => (current.id === job.id ? job : current))
+      jobs = jobs.map((current) =>
+        current.id === job.id ? { ...job, claimToken: current.claimToken } : current
+      )
+    },
+
+    async claimOutboxJob(job, claimToken) {
+      const stored = jobs.find((candidate) => candidate.id === job.id)
+      if (
+        !stored ||
+        stored.canvasId !== job.canvasId ||
+        stored.type !== job.type ||
+        stored.revision !== job.revision
+      ) {
+        return null
+      }
+      const claimed = { ...stored, claimToken }
+      jobs = jobs.map((candidate) => (candidate.id === job.id ? claimed : candidate))
+      return claimed
     },
 
     async removeOutboxJob(id) {
@@ -165,12 +199,16 @@ export function createMemoryLocalCanvasStore(): LocalCanvasStore {
         !stored ||
         stored.canvasId !== job.canvasId ||
         stored.type !== job.type ||
-        stored.revision !== job.revision
+        stored.revision !== job.revision ||
+        stored.claimToken !== job.claimToken
       ) {
         return false
       }
       const metadata = metas.get(job.canvasId)
-      if (metadata?.revision !== job.revision) {
+      const validMetadata =
+        metadata?.revision === job.revision &&
+        (job.type === 'deleteCanvas' ? metadata.tombstoned : !metadata.tombstoned)
+      if (!validMetadata) {
         jobs = jobs.filter((candidate) => candidate.id !== job.id)
         return false
       }

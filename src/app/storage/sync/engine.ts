@@ -9,7 +9,10 @@ import {
 } from '@/app/integrations/storage'
 import { evictLocalFigCache } from '@/app/storage/cache-eviction'
 import { getLocalCanvasStore } from '@/app/storage/local-store'
-import { withCanvasSyncAuthority } from '@/app/storage/sync/authority-lock'
+import {
+  StorageSyncAuthorityUnsupportedError,
+  withCanvasSyncAuthority
+} from '@/app/storage/sync/authority-lock'
 import { getOutbox } from '@/app/storage/sync/outbox'
 import { setUploadProgress } from '@/app/storage/sync/progress'
 import { setPendingSyncCount, setSyncUI } from '@/app/storage/sync/status'
@@ -181,9 +184,12 @@ async function pumpOnce(): Promise<void> {
   }
 
   await withCanvasSyncAuthority(job.canvasId, async () => {
+    const claimToken = crypto.randomUUID()
+    const claimedJob = await getLocalCanvasStore().claimOutboxJob(job, claimToken)
+    if (!claimedJob) return
     try {
-      await runJob(job)
-      await settleCompletedStorageJob(job)
+      await runJob(claimedJob)
+      await settleCompletedStorageJob(claimedJob)
       const remaining = await outbox.list()
       setPendingSyncCount(remaining.length)
       if (remaining.length === 0) setSyncUI('idle')
@@ -191,7 +197,7 @@ async function pumpOnce(): Promise<void> {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       if (error instanceof StorageSyncBlockedError) {
-        await getLocalCanvasStore().settleOutboxJob(job, {
+        await getLocalCanvasStore().settleOutboxJob(claimedJob, {
           kind: 'blocked',
           nextAttemptAt: Number.MAX_SAFE_INTEGER
         })
@@ -199,17 +205,17 @@ async function pumpOnce(): Promise<void> {
         return
       }
 
-      const attempts = job.attempts + 1
+      const attempts = claimedJob.attempts + 1
       const permanent = isPermanentError(error) || attempts >= MAX_ATTEMPTS
-      console.warn('[Storage sync] job failed:', job.type, job.canvasId, message)
+      console.warn('[Storage sync] job failed:', claimedJob.type, claimedJob.canvasId, message)
 
       if (permanent) {
-        const settled = await settleFailedStorageJob(job, message, attempts, true)
-        if (settled && job.type !== 'putThumb') {
+        const settled = await settleFailedStorageJob(claimedJob, message, attempts, true)
+        if (settled && claimedJob.type !== 'putThumb') {
           setSyncUI('error', message.slice(0, 120))
         }
-        if (job.type === 'putThumb') {
-          await outbox.remove(job.id)
+        if (settled && claimedJob.type === 'putThumb') {
+          await outbox.remove(claimedJob.id)
           const remaining = await outbox.list()
           setPendingSyncCount(remaining.length)
           if (remaining.length > 0) scheduleWake(1000)
@@ -218,7 +224,7 @@ async function pumpOnce(): Promise<void> {
         return
       }
 
-      await settleFailedStorageJob(job, message, attempts, false)
+      await settleFailedStorageJob(claimedJob, message, attempts, false)
       // Wake for the next ready job across the whole queue — not this job's
       // full backoff, which starved other jobs that were ready sooner.
       const all = await outbox.list()
@@ -266,7 +272,11 @@ export async function kickSyncEngine(): Promise<void> {
     // Never let an escaped rejection strand the queue — retry shortly.
     pumpFailed = true
     console.warn('[Storage sync] pump failed:', error)
-    scheduleWake(5000)
+    if (error instanceof StorageSyncAuthorityUnsupportedError) {
+      setSyncUI('error', error.message)
+    } else {
+      scheduleWake(5000)
+    }
   } finally {
     pumping = false
   }
@@ -290,7 +300,7 @@ export async function enqueuePutThumb(canvasId: string, revision: number): Promi
 }
 
 export async function enqueueDeleteCanvas(canvasId: string): Promise<void> {
-  await getOutbox().enqueue({ canvasId, type: 'deleteCanvas', revision: 0 })
+  await getLocalCanvasStore().publishCanvasDeletion(canvasId)
   void kickSyncEngine()
 }
 

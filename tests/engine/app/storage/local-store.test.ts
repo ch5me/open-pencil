@@ -246,4 +246,107 @@ describe('local canvas store (IndexedDB)', () => {
       lastSyncError: null
     })
   })
+
+  test('re-reads and claims the exact durable job before settlement', async () => {
+    const firstContext = createIdbLocalCanvasStore()
+    const secondContext = createIdbLocalCanvasStore()
+    const id = `claim-${crypto.randomUUID()}`
+    const published = expectDefined(
+      await firstContext.publishCanvas({
+        id,
+        providerId: 's3-compatible',
+        name: 'Claimed',
+        figBytes: new Uint8Array([3])
+      })
+    )
+
+    const claimed = expectDefined(
+      await secondContext.claimOutboxJob(published.job, 'context-two')
+    )
+    expect(claimed.claimToken).toBe('context-two')
+    expect(
+      await firstContext.settleOutboxJob(published.job, {
+        kind: 'success'
+      })
+    ).toBe(false)
+    expect(
+      await firstContext.settleOutboxJob(claimed, {
+        kind: 'success'
+      })
+    ).toBe(true)
+  })
+
+  test('stale outbox updates preserve claims and cannot resurrect settled jobs', async () => {
+    const firstContext = createIdbLocalCanvasStore()
+    const secondContext = createIdbLocalCanvasStore()
+    const id = `stale-update-${crypto.randomUUID()}`
+    const published = expectDefined(
+      await firstContext.publishCanvas({
+        id,
+        providerId: 's3-compatible',
+        name: 'Claimed',
+        figBytes: new Uint8Array([3])
+      })
+    )
+    const claimed = expectDefined(
+      await secondContext.claimOutboxJob(published.job, 'context-two')
+    )
+
+    await firstContext.updateOutboxJob({ ...published.job, nextAttemptAt: 0 })
+    expect(
+      (await secondContext.listOutboxJobs()).find((job) => job.id === published.job.id)
+    ).toEqual({ ...published.job, claimToken: 'context-two', nextAttemptAt: 0 })
+    expect(await secondContext.settleOutboxJob(claimed, { kind: 'success' })).toBe(true)
+
+    await firstContext.updateOutboxJob({ ...published.job, nextAttemptAt: 0 })
+    expect(
+      (await secondContext.listOutboxJobs()).find((job) => job.id === published.job.id)
+    ).toBeUndefined()
+  })
+
+  test('delete settlement follows tombstone revision instead of revision zero', async () => {
+    const firstContext = createIdbLocalCanvasStore()
+    const secondContext = createIdbLocalCanvasStore()
+    const id = `delete-${crypto.randomUUID()}`
+    await firstContext.publishCanvas({
+      id,
+      providerId: 's3-compatible',
+      name: 'Delete me',
+      figBytes: new Uint8Array([7])
+    })
+
+    const deletion = expectDefined(await secondContext.publishCanvasDeletion(id))
+    expect(deletion.metadata).toMatchObject({ tombstoned: true, revision: 2 })
+    expect(deletion.job).toMatchObject({ type: 'deleteCanvas', revision: 2 })
+    const claimed = expectDefined(
+      await firstContext.claimOutboxJob(deletion.job, 'delete-context')
+    )
+    expect(await firstContext.settleOutboxJob(claimed, { kind: 'success' })).toBe(true)
+    expect(await secondContext.getMeta(id)).toMatchObject({
+      tombstoned: true,
+      revision: 2,
+      syncStatus: 'synced'
+    })
+  })
+
+  test('stale put cannot finish after a newer tombstone revision', async () => {
+    const firstContext = createIdbLocalCanvasStore()
+    const secondContext = createIdbLocalCanvasStore()
+    const id = `delete-race-${crypto.randomUUID()}`
+    const published = expectDefined(
+      await firstContext.publishCanvas({
+        id,
+        providerId: 's3-compatible',
+        name: 'N',
+        figBytes: new Uint8Array([1])
+      })
+    )
+    const claimedPut = expectDefined(
+      await firstContext.claimOutboxJob(published.job, 'put-context')
+    )
+    await secondContext.publishCanvasDeletion(id)
+
+    expect(await firstContext.settleOutboxJob(claimedPut, { kind: 'success' })).toBe(false)
+    expect(await firstContext.getMeta(id)).toMatchObject({ tombstoned: true, revision: 2 })
+  })
 })

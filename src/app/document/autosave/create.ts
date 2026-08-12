@@ -11,6 +11,12 @@ type AutosaveOptions = {
   saveCurrentDocument: () => Promise<void>
 }
 
+export function isExpectedSaveCancellation(error: unknown): boolean {
+  return (
+    error instanceof Error && (error.name === 'IOCancelledError' || error.name === 'AbortError')
+  )
+}
+
 export function createAbortableSaveOperation() {
   let activeController: AbortController | null = null
   let tail: Promise<void> = Promise.resolve()
@@ -60,7 +66,7 @@ export function createAutosave({
       try {
         await saveCurrentDocument()
       } catch (e) {
-        if (e instanceof Error && (e.name === 'IOCancelledError' || e.name === 'AbortError')) return
+        if (isExpectedSaveCancellation(e)) return
         console.warn('Autosave failed:', e)
       }
     },

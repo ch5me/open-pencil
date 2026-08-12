@@ -2,7 +2,11 @@ import type { Editor, EditorState } from '@open-pencil/core/editor'
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { canUseRasterExportWorker } from '@open-pencil/core/io/formats/raster'
 
-import { createAbortableSaveOperation, createAutosave } from '@/app/document/autosave/create'
+import {
+  createAbortableSaveOperation,
+  createAutosave,
+  isExpectedSaveCancellation
+} from '@/app/document/autosave/create'
 import {
   documentNameFromFigPath,
   downloadNameFromPath,
@@ -20,12 +24,6 @@ type DocumentSourceState = EditorState & {
 }
 
 export { createDocumentSourceState }
-
-function isExpectedSaveCancellation(error: unknown): boolean {
-  return (
-    error instanceof Error && (error.name === 'IOCancelledError' || error.name === 'AbortError')
-  )
-}
 
 export function observeSaveAction<T>(result: Promise<T>): Promise<T> {
   void result.catch((error) => {

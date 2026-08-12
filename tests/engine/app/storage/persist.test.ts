@@ -2,7 +2,10 @@ import { describe, expect, test, vi } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
 import { createMemoryLocalCanvasStore } from '@/app/storage/local-store'
-import { persistStorageCanvasLocally } from '@/app/storage/sync/persist'
+import {
+  persistStorageCanvasLocally,
+  StorageSaveConflictError
+} from '@/app/storage/sync/persist'
 import { onStorageWorkspaceEvent } from '@/app/storage/workspace/events'
 
 function deferred<T = void>() {
@@ -137,5 +140,71 @@ describe('local-first storage persistence', () => {
     })
     expect(await store.readFig('canvas-race')).toEqual(new Uint8Array([9, 8, 7]))
     expect((await store.listOutboxJobs()).map((job) => job.revision)).toEqual([1])
+  })
+
+  test('marks the save irreversible before durable publication starts', async () => {
+    const store = createMemoryLocalCanvasStore()
+    const publishCanvas = store.publishCanvas.bind(store)
+    let committed = false
+    store.publishCanvas = async (input, options) => {
+      expect(committed).toBe(true)
+      return publishCanvas(input, options)
+    }
+
+    await persistStorageCanvasLocally(
+      {
+        providerId: 's3-compatible',
+        canvasId: 'irreversible',
+        name: 'Irreversible',
+        figBytes: new Uint8Array([1]),
+        commitIfCurrent: (commit) =>
+          commit(
+            () => {
+              committed = true
+            },
+            () => undefined
+          )
+      },
+      { store, kickSync: vi.fn() }
+    )
+  })
+
+  test('surfaces concurrent valid save CAS conflict and preserves winner bytes', async () => {
+    const store = createMemoryLocalCanvasStore()
+    const originalGetMeta = store.getMeta.bind(store)
+    let reads = 0
+    store.getMeta = async (id) => {
+      const metadata = await originalGetMeta(id)
+      if (reads++ === 0) {
+        await store.publishCanvas(
+          {
+            id,
+            providerId: 's3-compatible',
+            name: 'Other tab',
+            figBytes: new Uint8Array([9])
+          },
+          { expectedRevision: 0 }
+        )
+      }
+      return metadata
+    }
+
+    await expect(
+      persistStorageCanvasLocally(
+        {
+          providerId: 's3-compatible',
+          canvasId: 'concurrent-save',
+          name: 'This tab',
+          figBytes: new Uint8Array([1])
+        },
+        { store, kickSync: vi.fn() }
+      )
+    ).rejects.toBeInstanceOf(StorageSaveConflictError)
+    expect(await store.readFig('concurrent-save')).toEqual(new Uint8Array([9]))
+    expect(await store.getMeta('concurrent-save')).toMatchObject({
+      name: 'Other tab',
+      revision: 1,
+      syncStatus: 'pending'
+    })
   })
 })
