@@ -496,7 +496,10 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
           pageId: this.options.store.state.currentPageId,
           selectedNodeIds: [...this.options.store.state.selectedIds]
         },
-        tools: { manifestId: this.manifest.manifestId },
+        tools: {
+          manifestId: this.manifest.manifestId,
+          definitions: this.manifest.actions
+        },
         capabilities: {
           toolResults: true,
           reconnect: true,

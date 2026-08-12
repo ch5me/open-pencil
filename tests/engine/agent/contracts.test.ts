@@ -6,11 +6,13 @@ import {
   AGENT_EVENT_SCHEMA,
   AGENT_RECEIPT_SCHEMA,
   AGENT_RUN_SCHEMA,
+  createAgentGatewayManifestId,
   parseAgentError,
   parseAgentEvent,
   parseAgentRunReceipt,
   parseAgentRunRequest,
-  parseAgentToolResultContinuation
+  parseAgentToolResultContinuation,
+  verifyAgentGatewayToolManifest
 } from '@open-pencil/core/agent'
 
 const receipt = {
@@ -35,7 +37,21 @@ const error = {
 }
 
 describe('agent gateway contracts', () => {
-  test('parses valid requests, events, errors, receipts, and continuations', () => {
+  test('parses valid requests, events, errors, receipts, and continuations', async () => {
+    const definitions = [
+      {
+        name: 'get_node',
+        description: 'Get a node',
+        mutates: false,
+        requiresApproval: false,
+        inputSchema: {
+          type: 'object' as const,
+          additionalProperties: false as const,
+          properties: {},
+          required: []
+        }
+      }
+    ]
     expect(
       parseAgentRunRequest({
         schema: AGENT_RUN_SCHEMA,
@@ -44,7 +60,7 @@ describe('agent gateway contracts', () => {
         conversation: { clientId: 'conversation' },
         input: { messageId: 'message', text: 'Draw a card' },
         context: { documentId: 'document', selectedNodeIds: [] },
-        tools: { manifestId: 'sha256:abc' },
+        tools: { manifestId: await createAgentGatewayManifestId(definitions), definitions },
         capabilities: {
           toolResults: true,
           reconnect: true,
@@ -82,6 +98,52 @@ describe('agent gateway contracts', () => {
         error
       }).callId
     ).toBe('call')
+  })
+
+  test('rejects malformed gateway definitions and verifies content identity', async () => {
+    const definitions = [
+      {
+        name: 'get_node',
+        description: 'Get a node',
+        mutates: false,
+        requiresApproval: false,
+        inputSchema: {
+          type: 'object' as const,
+          additionalProperties: false as const,
+          properties: {},
+          required: []
+        }
+      }
+    ]
+    const manifestId = await createAgentGatewayManifestId(definitions)
+    expect(await verifyAgentGatewayToolManifest({ manifestId, definitions })).toBe(true)
+    expect(
+      await verifyAgentGatewayToolManifest({
+        manifestId: `sha256:${'0'.repeat(64)}`,
+        definitions
+      })
+    ).toBe(false)
+    const base = {
+      schema: AGENT_RUN_SCHEMA,
+      requestId: 'request',
+      idempotencyKey: 'once',
+      conversation: { clientId: 'conversation' },
+      input: { messageId: 'message', text: 'Inspect' },
+      context: { documentId: 'document', selectedNodeIds: [] },
+      capabilities: { toolResults: true, reconnect: true, cancellation: true, approvals: true }
+    }
+    expect(() =>
+      parseAgentRunRequest({
+        ...base,
+        tools: { manifestId, definitions: [...definitions, definitions[0]] }
+      })
+    ).toThrow()
+    expect(() =>
+      parseAgentRunRequest({
+        ...base,
+        tools: { manifestId, definitions: [{ ...definitions[0], runtime: 'hidden' }] }
+      })
+    ).toThrow()
   })
 
   test('fails closed on unknown versions and recursively forbidden infrastructure', () => {

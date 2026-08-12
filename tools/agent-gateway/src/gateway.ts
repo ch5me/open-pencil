@@ -3,7 +3,8 @@ import {
   AGENT_EVENT_SCHEMA,
   AGENT_RECEIPT_SCHEMA,
   parseAgentRunRequest,
-  parseAgentToolResultContinuation
+  parseAgentToolResultContinuation,
+  verifyAgentGatewayToolManifest
 } from '@open-pencil/agent-contracts'
 import type {
   AgentEvent,
@@ -34,6 +35,25 @@ type RunRoute = {
 
 function json(data: unknown, status = 200): Response {
   return Response.json(data, { status })
+}
+
+function actionAcceptsArguments(
+  action: AgentRunRequest['tools']['definitions'][number],
+  argumentsValue: Record<string, unknown>
+): boolean {
+  const { properties, required } = action.inputSchema
+  return (
+    Object.keys(argumentsValue).every((name) => Object.hasOwn(properties, name)) &&
+    required.every((name) => Object.hasOwn(argumentsValue, name)) &&
+    Object.entries(argumentsValue).every(([name, value]) => {
+      const property = properties[name]
+      if (!property) return false
+      if (property.type === 'array') {
+        return Array.isArray(value) && value.every((item) => typeof item === 'string')
+      }
+      return typeof value === property.type
+    })
+  )
 }
 
 function receipt(state: RunState, status: AgentRunReceipt['status']): AgentRunReceipt {
@@ -116,6 +136,27 @@ async function startRun(
   } catch {
     return json({ code: 'invalid-request', message: 'Malformed run request.' }, 400)
   }
+  if (!(await verifyAgentGatewayToolManifest(body.tools))) {
+    return json({ code: 'invalid-request', message: 'Manifest identity mismatch.' }, 400)
+  }
+  const action = body.tools.definitions.find((definition) => definition.name === 'create_shape')
+  if (!action) {
+    return json({ code: 'tool-not-allowed', message: 'Requested tool is not defined.' }, 403)
+  }
+  if (!action.mutates || !action.requiresApproval) {
+    return json({ code: 'invalid-request', message: 'Action policy diverges from runtime.' }, 400)
+  }
+  const actionArguments = {
+    type: 'RECTANGLE',
+    x: 120,
+    y: 120,
+    width: 240,
+    height: 160,
+    name: 'Gateway rectangle'
+  }
+  if (!actionAcceptsArguments(action, actionArguments)) {
+    return json({ code: 'invalid-request', message: 'Action schema diverges from runtime.' }, 400)
+  }
   const principal = request.headers.get('x-openpencil-principal')
   if (!principal)
     return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
@@ -156,14 +197,7 @@ async function startRun(
       continuationId: 'continuation-1',
       manifestId: body.tools.manifestId,
       name: 'create_shape',
-      arguments: {
-        type: 'RECTANGLE',
-        x: 120,
-        y: 120,
-        width: 240,
-        height: 160,
-        name: 'Gateway rectangle'
-      },
+      arguments: actionArguments,
       target: { documentId: body.context.documentId, pageId: body.context.pageId }
     }
   })

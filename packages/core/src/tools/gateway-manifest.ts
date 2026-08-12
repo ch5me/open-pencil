@@ -1,19 +1,18 @@
+import {
+  AGENT_GATEWAY_MANIFEST_VERSION,
+  createAgentGatewayManifestId
+} from '@open-pencil/agent-contracts'
+import type {
+  AgentGatewayActionDefinition,
+  AgentGatewayPropertySchema,
+  AgentJSONValue
+} from '@open-pencil/agent-contracts'
+
 import type { ParamDef, ToolDef, ToolRemotePolicy } from './schema'
 
-export const GATEWAY_MANIFEST_VERSION = '1' as const
+export const GATEWAY_MANIFEST_VERSION = AGENT_GATEWAY_MANIFEST_VERSION
 
-export interface GatewayActionSchema {
-  name: string
-  description: string
-  mutates: boolean
-  requiresApproval: boolean
-  inputSchema: {
-    type: 'object'
-    additionalProperties: false
-    properties: Record<string, Record<string, unknown>>
-    required: string[]
-  }
-}
+export type GatewayActionSchema = AgentGatewayActionDefinition
 
 export interface GatewayActionManifest {
   schemaVersion: typeof GATEWAY_MANIFEST_VERSION
@@ -29,11 +28,10 @@ export const GATEWAY_REMOTE_POLICIES: Readonly<Partial<Record<string, ToolRemote
   node_resize: { enabled: true, requiresApproval: true }
 }
 
-function paramSchema(param: ParamDef): Record<string, unknown> {
-  let type: string = param.type
-  if (param.type === 'color') type = 'string'
-  if (param.type === 'string[]') type = 'array'
-  const schema: Record<string, unknown> = {
+function paramSchema(param: ParamDef): AgentGatewayPropertySchema {
+  const type: AgentGatewayPropertySchema['type'] =
+    param.type === 'color' ? 'string' : param.type === 'string[]' ? 'array' : param.type
+  const schema: AgentGatewayPropertySchema = {
     description: param.description,
     type
   }
@@ -41,7 +39,7 @@ function paramSchema(param: ParamDef): Record<string, unknown> {
   if (param.enum) schema.enum = [...param.enum]
   if (param.min !== undefined) schema.minimum = param.min
   if (param.max !== undefined) schema.maximum = param.max
-  if (param.default !== undefined) schema.default = param.default
+  if (param.default !== undefined) schema.default = param.default as AgentJSONValue
   return schema
 }
 
@@ -65,27 +63,6 @@ export function toolToGatewayAction(tool: ToolDef): GatewayActionSchema | undefi
   }
 }
 
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function canonicalJSON(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJSON).join(',')}]`
-  if (value && typeof value === 'object') {
-    if (!isPlainRecord(value)) throw new TypeError('Gateway manifest content must be plain JSON.')
-    const entries = Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJSON(item)}`)
-    return `{${entries.join(',')}}`
-  }
-  return JSON.stringify(value)
-}
-
-async function sha256(value: string): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
-}
-
 export async function createGatewayManifest(
   tools: readonly ToolDef[]
 ): Promise<GatewayActionManifest> {
@@ -93,6 +70,9 @@ export async function createGatewayManifest(
     .map(toolToGatewayAction)
     .filter((action): action is GatewayActionSchema => action !== undefined)
     .sort((left, right) => left.name.localeCompare(right.name))
-  const content = { schemaVersion: GATEWAY_MANIFEST_VERSION, actions }
-  return { ...content, manifestId: `sha256:${await sha256(canonicalJSON(content))}` }
+  return {
+    schemaVersion: GATEWAY_MANIFEST_VERSION,
+    actions,
+    manifestId: await createAgentGatewayManifestId(actions)
+  }
 }

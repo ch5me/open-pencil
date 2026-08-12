@@ -6,10 +6,13 @@ export const AGENT_ERROR_SCHEMA = 'openpencil.agent.error.v1' as const
 export const AGENT_CONTINUATION_SCHEMA = 'openpencil.agent.continuation.v1' as const
 export const AGENT_RECEIPT_SCHEMA = 'openpencil.agent.receipt.v1' as const
 export const AGENT_PROTOCOL_VERSION = '1' as const
+export const AGENT_GATEWAY_MANIFEST_VERSION = '1' as const
 
 const MAX_DETAIL_BYTES = 64 * 1024
 const MAX_DETAIL_DEPTH = 12
 const MAX_DETAIL_ENTRIES = 1_000
+const MAX_GATEWAY_ACTIONS = 128
+const MAX_GATEWAY_PROPERTIES = 128
 const FORBIDDEN_FIELDS = new Set([
   'account',
   'billing',
@@ -28,6 +31,34 @@ const FORBIDDEN_FIELDS = new Set([
 type JsonPrimitive = boolean | number | string | null
 export type AgentJSONValue = JsonPrimitive | AgentJSONValue[] | { [key: string]: AgentJSONValue }
 
+export interface AgentGatewayActionDefinition {
+  name: string
+  description: string
+  mutates: boolean
+  requiresApproval: boolean
+  inputSchema: {
+    type: 'object'
+    additionalProperties: false
+    properties: Record<string, AgentGatewayPropertySchema>
+    required: string[]
+  }
+}
+
+export interface AgentGatewayPropertySchema {
+  type: 'string' | 'number' | 'boolean' | 'array'
+  description: string
+  items?: { type: 'string' }
+  enum?: string[]
+  minimum?: number
+  maximum?: number
+  default?: AgentJSONValue
+}
+
+export interface AgentGatewayToolManifest {
+  manifestId: `sha256:${string}`
+  definitions: AgentGatewayActionDefinition[]
+}
+
 export interface AgentRunRequest {
   schema: typeof AGENT_RUN_SCHEMA
   requestId: string
@@ -35,7 +66,7 @@ export interface AgentRunRequest {
   conversation: { clientId: string; sessionId?: string }
   input: { messageId: string; text: string }
   context: { documentId: string; pageId?: string; selectedNodeIds: string[] }
-  tools: { manifestId: string }
+  tools: AgentGatewayToolManifest
   capabilities: {
     toolResults: boolean
     reconnect: boolean
@@ -195,6 +226,134 @@ function safeJSON(value: unknown): value is AgentJSONValue {
   }
 }
 
+function validGatewayProperty(value: unknown): value is AgentGatewayPropertySchema {
+  if (!exact(value, ['type', 'description'], ['items', 'enum', 'minimum', 'maximum', 'default'])) {
+    return false
+  }
+  const property = value as Record<string, unknown>
+  if (
+    !['string', 'number', 'boolean', 'array'].includes(property.type as string) ||
+    !shortText(property.description, 4_096)
+  ) {
+    return false
+  }
+  if ('items' in property) {
+    if (property.type !== 'array' || !exact(property.items, ['type'])) return false
+    if ((property.items as Record<string, unknown>).type !== 'string') return false
+  } else if (property.type === 'array') return false
+  if (
+    'enum' in property &&
+    (property.type !== 'string' ||
+      !Array.isArray(property.enum) ||
+      property.enum.length === 0 ||
+      property.enum.length > 128 ||
+      !property.enum.every((item) => shortText(item)) ||
+      new Set(property.enum).size !== property.enum.length)
+  ) {
+    return false
+  }
+  for (const bound of ['minimum', 'maximum'] as const) {
+    if (
+      bound in property &&
+      (typeof property[bound] !== 'number' || !Number.isFinite(property[bound]))
+    )
+      return false
+  }
+  if (
+    'minimum' in property &&
+    'maximum' in property &&
+    (property.minimum as number) > (property.maximum as number)
+  ) {
+    return false
+  }
+  return !('default' in property) || safeJSON(property.default)
+}
+
+function validGatewayAction(value: unknown): value is AgentGatewayActionDefinition {
+  if (!exact(value, ['name', 'description', 'mutates', 'requiresApproval', 'inputSchema']))
+    return false
+  const action = value as Record<string, unknown>
+  const inputSchema = record(action.inputSchema)
+  if (
+    !identifier(action.name) ||
+    forbiddenField(action.name) ||
+    !shortText(action.description, 16_384) ||
+    typeof action.mutates !== 'boolean' ||
+    typeof action.requiresApproval !== 'boolean' ||
+    !inputSchema ||
+    !exact(inputSchema, ['type', 'additionalProperties', 'properties', 'required']) ||
+    inputSchema.type !== 'object' ||
+    inputSchema.additionalProperties !== false
+  ) {
+    return false
+  }
+  const properties = record(inputSchema.properties)
+  if (!properties || Object.keys(properties).length > MAX_GATEWAY_PROPERTIES) return false
+  if (
+    !Object.entries(properties).every(
+      ([name, schema]) => identifier(name) && !forbiddenField(name) && validGatewayProperty(schema)
+    )
+  ) {
+    return false
+  }
+  return (
+    Array.isArray(inputSchema.required) &&
+    inputSchema.required.length <= MAX_GATEWAY_PROPERTIES &&
+    inputSchema.required.every((name) => identifier(name) && Object.hasOwn(properties, name)) &&
+    new Set(inputSchema.required).size === inputSchema.required.length
+  )
+}
+
+function validGatewayTools(value: unknown): value is AgentGatewayToolManifest {
+  if (!exact(value, ['manifestId', 'definitions'])) return false
+  const tools = value as Record<string, unknown>
+  return (
+    typeof tools.manifestId === 'string' &&
+    /^sha256:[0-9a-f]{64}$/u.test(tools.manifestId) &&
+    Array.isArray(tools.definitions) &&
+    tools.definitions.length > 0 &&
+    tools.definitions.length <= MAX_GATEWAY_ACTIONS &&
+    tools.definitions.every(validGatewayAction) &&
+    new Set(tools.definitions.map((definition) => definition.name)).size ===
+      tools.definitions.length &&
+    safeJSON(value)
+  )
+}
+
+function canonicalJSON(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJSON).join(',')}]`
+  const object = record(value)
+  if (object) {
+    return `{${Object.entries(object)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJSON(item)}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+export async function createAgentGatewayManifestId(
+  definitions: readonly AgentGatewayActionDefinition[]
+): Promise<`sha256:${string}`> {
+  const content = {
+    schemaVersion: AGENT_GATEWAY_MANIFEST_VERSION,
+    actions: definitions
+  }
+  const bytes = new TextEncoder().encode(canonicalJSON(content))
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes)
+  const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `sha256:${hex}`
+}
+
+export async function verifyAgentGatewayToolManifest(
+  tools: AgentGatewayToolManifest
+): Promise<boolean> {
+  return (
+    validGatewayTools(tools) &&
+    tools.manifestId === (await createAgentGatewayManifestId(tools.definitions))
+  )
+}
+
 const ERROR_CODES = new Set<AgentErrorCode>([
   'unauthorized',
   'invalid-request',
@@ -334,8 +493,7 @@ function validRequest(value: unknown): value is AgentRunRequest {
     shortText(input.text) &&
     validTarget(request.context, true) &&
     !!tools &&
-    exact(tools, ['manifestId']) &&
-    identifier(tools.manifestId) &&
+    validGatewayTools(tools) &&
     !!capabilities &&
     exact(capabilities, ['toolResults', 'reconnect', 'cancellation', 'approvals']) &&
     Object.values(capabilities).every((capability) => typeof capability === 'boolean') &&
