@@ -1,6 +1,6 @@
 {
   "name": "@open-pencil/core",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -69,6 +69,11 @@
       "types": "./dist/canvas/image-editor/index.d.ts",
       "import": "./dist/canvas/image-editor/index.js",
       "default": "./dist/canvas/image-editor/index.js"
+    },
+    "./scene-graph": {
+      "types": "./dist/scene-graph.d.ts",
+      "import": "./dist/scene-graph.js",
+      "default": "./dist/scene-graph.js"
     },
     "./design-jsx": {
       "types": "./dist/design-jsx/index.d.ts",

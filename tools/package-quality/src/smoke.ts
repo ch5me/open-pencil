@@ -75,6 +75,10 @@ try {
   nodeEval("await import('@open-pencil/pen')", tempDir)
   nodeEval("await import('@open-pencil/core')", tempDir)
   nodeEval(
+    "const { SceneGraph } = await import('@open-pencil/core/scene-graph'); const graph = new SceneGraph(); if (graph.getPages().length !== 1) throw new Error('Core SceneGraph compatibility smoke failed')",
+    tempDir
+  )
+  nodeEval(
     `const { createCompositionPlan } = await import('@open-pencil/core/canvas/composition');
      const { composeRasterRGBA8 } = await import('@open-pencil/core/canvas/image-editor');
      const node = (entry) => ({ id: entry.id, type: entry.type, name: entry.id,

@@ -39,6 +39,12 @@ describe('publishPackageJSON', () => {
         scripts: { build: 'tsdown' },
         dependencies: { '@open-pencil/core': 'workspace:*', zod: '^4.0.0' },
         devDependencies: { typescript: '^5.0.0' },
+        exports: {
+          '.': {
+            bun: './src/index.ts',
+            import: './dist/index.js'
+          }
+        },
         publishConfig: { access: 'public', main: './dist/index.js' }
       },
       '0.13.2'
@@ -47,6 +53,7 @@ describe('publishPackageJSON', () => {
     expect(json).toEqual({
       name: '@open-pencil/example',
       dependencies: { '@open-pencil/core': '^0.13.2', zod: '^4.0.0' },
+      exports: { '.': { import: './dist/index.js' } },
       main: './dist/index.js'
     })
   })

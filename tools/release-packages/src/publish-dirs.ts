@@ -26,6 +26,15 @@ type PackageJSON = Record<string, unknown> & {
 const PACKAGE_FIELDS = ['dependencies', 'devDependencies', 'peerDependencies'] as const
 const PUBLISH_CONFIG_FIELDS = new Set(['access', 'provenance', 'registry'])
 
+function stripUnpackedExportConditions(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== 'bun')
+      .map(([key, entry]) => [key, stripUnpackedExportConditions(entry)])
+  )
+}
+
 export const DEFAULT_PACKAGES: PackagePublishConfig[] = [
   { dir: 'packages/scene-graph', include: ['dist'], extraFiles: ['README.md'] },
   { dir: 'packages/pen', include: ['dist'], extraFiles: ['README.md'] },
@@ -74,6 +83,7 @@ export function publishPackageJSON(source: PackageJSON, coreVersion: string): Pa
 
   delete json.scripts
   delete json.devDependencies
+  if (json.exports) json.exports = stripUnpackedExportConditions(json.exports)
 
   if (json.publishConfig) {
     for (const [key, value] of Object.entries(json.publishConfig)) {

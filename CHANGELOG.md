@@ -6,6 +6,13 @@
 
 - Complete translated app, accessibility, font, color, collaboration, import, connection-test, and browser fallback text across all supported locales, and keep the document language synchronized with the selected locale.
 
+## 0.14.1 - 2026-08-12
+
+### Fixed
+
+- Publish the complete dependency-closed package set and restore the missing `@open-pencil/core/canvas/composition` and `@open-pencil/core/canvas/image-editor` artifacts.
+- Keep `@open-pencil/core/scene-graph` as a compatibility export for the existing Mahjong consumer.
+
 ## 0.14.0 - 2026-08-10
 
 ### Breaking changes

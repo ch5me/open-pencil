@@ -7,8 +7,12 @@ const execFileAsync = promisify(execFile)
 
 type PackageJSON = {
   bin?: Record<string, string> | string
+  exports?: Record<string, ExportTarget>
   name: string
+  version: string
 }
+
+type ExportTarget = Record<string, ExportTarget | string> | string
 
 export function packageBinTargets(packageJSON: PackageJSON): Record<string, string> {
   if (typeof packageJSON.bin === 'string') return { [packageJSON.name]: packageJSON.bin }
@@ -39,9 +43,30 @@ export async function validateTarballBinTargets(tarballPath: string): Promise<vo
   }
 }
 
+function exportTargetPaths(target: ExportTarget): string[] {
+  if (typeof target === 'string') return [target]
+  return Object.values(target).flatMap(exportTargetPaths)
+}
+
+export async function validateTarballExportTargets(tarballPath: string): Promise<void> {
+  const entries = await tarballEntries(tarballPath)
+  const packageJSON = await tarballPackageJSON(tarballPath)
+
+  for (const [name, target] of Object.entries(packageJSON.exports ?? {})) {
+    for (const path of exportTargetPaths(target)) {
+      const entry = `package/${path.replace(/^\.\//, '')}`
+      if (!entries.has(entry)) {
+        throw new Error(`${tarballPath}: export ${name} target missing from tarball: ${entry}`)
+      }
+    }
+  }
+}
+
 export async function validatePackedTarballs(directory: string): Promise<void> {
   const tarballs = (await readdir(directory)).filter((name) => name.endsWith('.tgz'))
   for (const tarball of tarballs) {
-    await validateTarballBinTargets(join(directory, tarball))
+    const path = join(directory, tarball)
+    await validateTarballBinTargets(path)
+    await validateTarballExportTargets(path)
   }
 }

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "prepare-publish-dirs": "bun src/prepare-publish-dirs.ts",
+    "release": "bun src/cli.ts",
     "validate-tarballs": "bun src/validate-tarballs.ts",
     "test": "bun test tests"
   }
