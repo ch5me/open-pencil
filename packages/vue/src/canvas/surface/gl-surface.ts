@@ -34,19 +34,6 @@ export function makeGLSurface(
   contextCreated: boolean
   contextDeleted: boolean
 } {
-  const webglContext = canvas.getContext('webgl2', {
-    preserveDrawingBuffer: options?.preserveDrawingBuffer ?? false
-  })
-  if (!webglContext) {
-    return {
-      surface: null,
-      glContext,
-      webglContext: null,
-      contextCreated: false,
-      contextDeleted: false
-    }
-  }
-
   let context = glContext
   let ownsContext = false
   if (!context) {
@@ -80,6 +67,23 @@ export function makeGLSurface(
       }
     }
     ownsContext = true
+  }
+
+  const webglContext = canvas.getContext('webgl2', {
+    preserveDrawingBuffer: options?.preserveDrawingBuffer ?? false
+  })
+  if (!webglContext) {
+    if (ownsContext) {
+      context.delete()
+      context = null
+    }
+    return {
+      surface: null,
+      glContext: context,
+      webglContext: null,
+      contextCreated: ownsContext,
+      contextDeleted: ownsContext
+    }
   }
 
   const preferredSpace = editor.graph.documentColorSpace

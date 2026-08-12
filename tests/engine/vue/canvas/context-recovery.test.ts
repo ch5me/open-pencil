@@ -5,6 +5,7 @@ import type { CanvasKit, Surface } from 'canvaskit-wasm'
 import type { SkiaRenderer } from '#core/canvas'
 import { createEditor } from '#core/editor'
 import { createCanvasContextRecovery } from '#vue/canvas/surface/context-recovery'
+import { makeGLSurface } from '#vue/canvas/surface/gl-surface'
 import { createCanvasSurfaceManager } from '#vue/canvas/surface/lifecycle'
 
 function canvas() {
@@ -12,6 +13,41 @@ function canvas() {
 }
 
 describe('canvas context recovery', () => {
+  test('lets CanvasKit acquire WebGL2 before retrieving the renderer context', () => {
+    const calls: string[] = []
+    const webglContext = {} as WebGL2RenderingContext
+    const target = Object.assign(new EventTarget(), {
+      width: 800,
+      height: 600,
+      getContext: mock((kind: string, attributes?: WebGLContextAttributes) => {
+        calls.push(`canvas:${kind}:${String(attributes?.preserveDrawingBuffer)}`)
+        return webglContext
+      })
+    }) as HTMLCanvasElement
+    const ck = {
+      ColorSpace: { SRGB: 'srgb' },
+      GetWebGLContext: mock((_canvas, attributes?: { preserveDrawingBuffer?: number }) => {
+        calls.push(`canvaskit:${String(attributes?.preserveDrawingBuffer)}`)
+        return 1
+      }),
+      MakeGrContext: () => ({ delete: () => undefined }),
+      deleteContext: () => undefined,
+      MakeOnScreenGLSurface: () => ({ delete: () => undefined }) as Surface
+    }
+
+    const result = makeGLSurface(
+      ck as CanvasKit,
+      target,
+      createEditor(),
+      { preserveDrawingBuffer: true },
+      null
+    )
+
+    expect(calls).toEqual(['canvaskit:1', 'canvas:webgl2:true'])
+    expect(result.webglContext).toBe(webglContext)
+    result.glContext?.delete()
+  })
+
   test('prevents default on loss and restores once', () => {
     const target = canvas()
     let restored = 0
