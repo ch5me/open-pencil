@@ -44,7 +44,10 @@ Use for `program`, unclear historical intent, or hard-fork-scale drift.
    `bun run upstream:replay-start -- --allow-program --confirm-upstream-first`.
 4. Port one capability and its focused tests at a time. Delete code upstream
    now supplies.
-5. Run `bun run upstream:finish` without push and stop for review.
+5. For product extensions, keep upstream authorities for scene graph, undo,
+   tabs, renderer, and document storage. Add public subpaths or one narrow
+   registration seam instead of restoring a parallel subsystem.
+6. Run `bun run upstream:finish` without push and stop for review.
 
 ## Proof
 

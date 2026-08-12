@@ -82,14 +82,22 @@ Replayed:
 - ELF auth, hosted flags, session, login, callback, and router integration.
 - Hosted API document, asset, room, and persistence baseline.
 - Core hosted contract and focused auth/API tests.
+- Hosted document frontend through upstream storage adapters, tabs, and
+  local-first sync.
+- Firefly runtime and billing transport for hosted chat.
+- Strict CLI review receipts and implementation provenance.
+- Additive PSD staging/rasterization, image composition/resilience, and atomic
+  image-persistence extension APIs with focused regressions.
 
 Not replayed:
 
-- Hosted document frontend integration is in progress through upstream's
-  storage-adapter seam.
-- Firefly runtime and billing adapters.
-- CLI review receipts and CH5 MCP targeting.
-- PSD, image editor, atomic persistence, and CH5 layer-model program.
+- A second private document backend, image store, journal, tab/session model, or
+  renderer. Upstream remains authoritative for those concerns.
+- Native Photoshop-compatible editable PSD decoding/export. Current PSD support
+  is a bounded staged metadata and raster contract.
+- User-facing image-editor UI activation. Public extension APIs are present;
+  app activation requires a concrete workflow built on upstream editor
+  commands, undo, `SceneGraph.images`, renderer, and storage.
 - Historical UI/core patches not yet proven necessary.
 
 The candidate is aligned to the inspected `upstream/master`
@@ -103,8 +111,9 @@ The candidate is aligned to the inspected `upstream/master`
 3. Recreate hosted flags, routing, auth, document backend, and collaboration
    seams against upstream's current app architecture.
 4. Run hosted contract tests before any product-extension replay.
-5. Treat the image-editor/PSD/storage body as its own bounded program. Port one
-   capability and its tests at a time.
+5. Treat image extensions as a bounded program. Keep proven PSD, raster,
+   resilience, and persistence primitives additive; do not restore parallel
+   product authorities.
 6. Re-run old CH5 regression tests against upstream before porting their
    implementation. A passing test means the old patch is obsolete.
 7. Regenerate docs and evidence last.

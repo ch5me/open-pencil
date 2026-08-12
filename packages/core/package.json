@@ -60,6 +60,16 @@
       "import": "./dist/canvas/index.js",
       "default": "./dist/canvas/index.js"
     },
+    "./canvas/composition": {
+      "types": "./dist/canvas/composition/index.d.ts",
+      "import": "./dist/canvas/composition/index.js",
+      "default": "./dist/canvas/composition/index.js"
+    },
+    "./canvas/image-editor": {
+      "types": "./dist/canvas/image-editor/index.d.ts",
+      "import": "./dist/canvas/image-editor/index.js",
+      "default": "./dist/canvas/image-editor/index.js"
+    },
     "./design-jsx": {
       "types": "./dist/design-jsx/index.d.ts",
       "import": "./dist/design-jsx/index.js",
@@ -69,6 +79,16 @@
       "types": "./dist/editor/index.d.ts",
       "import": "./dist/editor/index.js",
       "default": "./dist/editor/index.js"
+    },
+    "./editor/assets": {
+      "types": "./dist/editor/assets/index.d.ts",
+      "import": "./dist/editor/assets/index.js",
+      "default": "./dist/editor/assets/index.js"
+    },
+    "./editor/storage": {
+      "types": "./dist/editor/storage/index.d.ts",
+      "import": "./dist/editor/storage/index.js",
+      "default": "./dist/editor/storage/index.js"
     },
     "./tools": {
       "types": "./dist/tools/index.d.ts",
@@ -105,6 +125,11 @@
       "import": "./dist/io/formats/jsx/index.js",
       "default": "./dist/io/formats/jsx/index.js"
     },
+    "./io/formats/psd": {
+      "types": "./dist/io/formats/psd/index.d.ts",
+      "import": "./dist/io/formats/psd/index.js",
+      "default": "./dist/io/formats/psd/index.js"
+    },
     "./io/formats/raster": {
       "types": "./dist/io/formats/raster/index.d.ts",
       "import": "./dist/io/formats/raster/index.js",
@@ -114,6 +139,11 @@
       "types": "./dist/io/formats/svg/index.d.ts",
       "import": "./dist/io/formats/svg/index.js",
       "default": "./dist/io/formats/svg/index.js"
+    },
+    "./io/transactional": {
+      "types": "./dist/io/transactional/index.d.ts",
+      "import": "./dist/io/transactional/index.js",
+      "default": "./dist/io/transactional/index.js"
     },
     "./kiwi": {
       "types": "./dist/kiwi/index.d.ts",

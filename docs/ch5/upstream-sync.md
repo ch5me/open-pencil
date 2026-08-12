@@ -63,6 +63,7 @@ individual conflicts would preserve obsolete architecture.
    parent two, replaces the candidate tree with upstream, then restores only
    config-declared additive CH5 seed paths. It does not replay edits to
    upstream-owned source.
+
 5. Port capabilities from `upstream-capabilities.md` in order. Each port brings
    its focused regression tests. Delete patches upstream now satisfies.
 6. Add one drift-ledger row for every surviving edit to an upstream-owned file.
@@ -103,9 +104,9 @@ This is a one-time upstream-first replay program, not a safe weekly merge. The
 scripts correctly refuse routine automatic integration until that baseline is
 repaired.
 
-The existing replay candidate is based on upstream
-`9ceb7a7bea2ff63d18dacf28a9747b83100113e7` and is one upstream commit behind.
-Refresh parent two before landing.
+The refreshed replay candidate records exact upstream
+`51ab21571ad29cf86e4862e145dcf9e937860390` as parent two and private main
+`5fb8973d48161cb3dd77c82c7e6359df314acc72` as parent one.
 
 ## Current verification status
 
@@ -133,8 +134,9 @@ the repo gate baseline are green.
   missing contract.
 - ELF auth, hosted API, Firefly authority, and CH5 deployment stay explicit
   additive surfaces.
-- PSD/image-editor/persistence is a required CH5 product program, isolated
-  behind narrow extension seams.
+- PSD/image-editor/persistence is a required CH5 product program. Proven
+  primitives stay additive behind explicit package subpaths; upstream owns the
+  app's scene graph, undo, tabs, renderer, and document storage.
 - Production promotion remains manual after exact staging proof.
 
 Maintenance optimizes for a small upstream-owned-file delta, not a shallow
