@@ -3,8 +3,8 @@ import { useHead } from '@unhead/vue'
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { getHostedConfig, isHostedAuthEnabled } from '@/app/hosted/flags'
-import { isAuthenticated, refreshSession } from '@/app/hosted/session'
+import { isHostedAuthEnabled } from '@/app/hosted/flags'
+import { getLoginURL, isAuthenticated, refreshSession } from '@/app/hosted/session'
 
 useHead({ title: 'Sign In — OpenPencil' })
 
@@ -25,21 +25,12 @@ onMounted(async () => {
 })
 
 function signInWithElf() {
-  const config = getHostedConfig()
-  const apiOrigin = config.apiOrigin
-  const callbackURL = config.authCallbackUrl
-
-  if (!apiOrigin || !callbackURL) {
-    console.error('[Auth] Missing API origin or callback URL')
+  const authURL = getLoginURL()
+  if (!authURL) {
+    console.error('[Auth] Missing ELF auth origin or callback URL')
     return
   }
-
-  // Redirect to ELF auth provider
-  // The API handles the OAuth flow and redirects back to the callback URL
-  const authURL = new URL('/api/elf-auth/authorize', apiOrigin)
-  authURL.searchParams.set('redirect_uri', callbackURL)
-  authURL.searchParams.set('response_type', 'code')
-  window.location.href = authURL.toString()
+  window.location.href = authURL
 }
 </script>
 

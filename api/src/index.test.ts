@@ -4,8 +4,8 @@ import { describe, expect, test } from 'bun:test'
 // is only honoured when this opt-in flag is set (deployed envs never set it).
 process.env.ALLOW_DEV_STUB_AUTH = '1'
 
-import { worker } from './index'
 import { DEV_STUB_ELF_TOKEN } from './auth'
+import { worker } from './index'
 
 const TEST_USER = 'stub-user-001'
 
@@ -22,7 +22,9 @@ function createMockBucket(store: Record<string, Uint8Array>) {
     async get(key: string) {
       const bytes = store[key]
       if (!bytes) return null
-      return { arrayBuffer: () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
+      return {
+        arrayBuffer: () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      }
     },
     async delete(keys: string | string[]) {
       const list = Array.isArray(keys) ? keys : [keys]
@@ -44,7 +46,11 @@ function createMockDb(rows: Record<string, any[]>) {
               }
               if (sql.includes('FROM hosted_assets')) {
                 const [assetId, documentId] = bindings
-                return (rows.hosted_assets ?? []).find((row) => row.id === assetId && row.document_id === documentId) ?? null
+                return (
+                  (rows.hosted_assets ?? []).find(
+                    (row) => row.id === assetId && row.document_id === documentId
+                  ) ?? null
+                )
               }
               return null
             },
@@ -68,7 +74,9 @@ function createMockDb(rows: Record<string, any[]>) {
                 })
               }
               if (sql.startsWith('DELETE FROM hosted_assets')) {
-                rows.hosted_assets = (rows.hosted_assets ?? []).filter((row) => row.id !== bindings[0])
+                rows.hosted_assets = (rows.hosted_assets ?? []).filter(
+                  (row) => row.id !== bindings[0]
+                )
               }
               return { success: true }
             }
@@ -85,17 +93,19 @@ function createMockDb(rows: Record<string, any[]>) {
 function createEnv() {
   const assets: Record<string, Uint8Array> = {}
   const rows: Record<string, any[]> = {
-    hosted_documents: [{
-      id: 'doc-assets',
-      owner_user_id: TEST_USER,
-      title: 'Asset test',
-      source_format: 'fig',
-      current_snapshot_id: 'snap-assets',
-      current_snapshot_storage_key: 'documents/doc-assets/snapshots/snap-assets.fig',
-      lifecycle_state: 'active',
-      created_at: '2026-05-29T00:00:00Z',
-      updated_at: '2026-05-29T00:00:00Z'
-    }],
+    hosted_documents: [
+      {
+        id: 'doc-assets',
+        owner_user_id: TEST_USER,
+        title: 'Asset test',
+        source_format: 'fig',
+        current_snapshot_id: 'snap-assets',
+        current_snapshot_storage_key: 'documents/doc-assets/snapshots/snap-assets.fig',
+        lifecycle_state: 'active',
+        created_at: '2026-05-29T00:00:00Z',
+        updated_at: '2026-05-29T00:00:00Z'
+      }
+    ],
     hosted_assets: []
   }
   return {
@@ -127,16 +137,19 @@ function encodeBase64(bytes: Uint8Array): string {
 describe('hosted document asset API routes', () => {
   test('POST /api/documents/:documentId/assets writes asset metadata and bytes', async () => {
     const { env, assets, rows } = createEnv()
-    const response = await worker.fetch(apiRequest('/api/documents/doc-assets/assets', {
-      method: 'POST',
-      body: JSON.stringify({
-        assetId: 'img-1',
-        snapshotId: 'snap-assets',
-        kind: 'image',
-        bytesBase64: encodeBase64(new Uint8Array([1, 2, 3])),
-        mediaType: 'image/png'
-      })
-    }), env as any)
+    const response = await worker.fetch(
+      apiRequest('/api/documents/doc-assets/assets', {
+        method: 'POST',
+        body: JSON.stringify({
+          assetId: 'img-1',
+          snapshotId: 'snap-assets',
+          kind: 'image',
+          bytesBase64: encodeBase64(new Uint8Array([1, 2, 3])),
+          mediaType: 'image/png'
+        })
+      }),
+      env as any
+    )
 
     expect(response.status).toBe(201)
     await expect(response.json()).resolves.toMatchObject({
@@ -158,13 +171,101 @@ describe('hosted document asset API routes', () => {
       storage_key: 'documents/doc-assets/assets/img-2'
     })
 
-    const response = await worker.fetch(apiRequest('/api/documents/doc-assets/assets/img-2', {
-      method: 'DELETE'
-    }), env as any)
+    const response = await worker.fetch(
+      apiRequest('/api/documents/doc-assets/assets/img-2', {
+        method: 'DELETE'
+      }),
+      env as any
+    )
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ assetId: 'img-2', deleted: true })
     expect(assets['documents/doc-assets/assets/img-2']).toBeUndefined()
     expect(rows.hosted_assets).toEqual([])
+  })
+})
+
+describe('Firefly delegated auth callback', () => {
+  test('sets the host-only session cookie after verifying a delegated token', async () => {
+    const { env } = createEnv()
+    const response = await worker.fetch(
+      new Request('https://staging-openpencil-api.elf.dance/api/auth/firefly/callback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: DEV_STUB_ELF_TOKEN })
+      }),
+      env as any
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      user: { id: TEST_USER }
+    })
+    expect(response.headers.get('set-cookie')).toBe(
+      `__Host-OpenPencilSession=${DEV_STUB_ELF_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=900`
+    )
+  })
+
+  test('sets the cookie and returns the browser to the allowlisted app origin', async () => {
+    const { env } = createEnv()
+    const response = await worker.fetch(
+      new Request('https://staging-openpencil-api.elf.dance/api/auth/firefly/callback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          returnTo: 'https://staging.design.elf.dance/',
+          token: DEV_STUB_ELF_TOKEN
+        })
+      }),
+      env as any
+    )
+
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe('https://staging.design.elf.dance/')
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(response.headers.get('set-cookie')).toBe(
+      `__Host-OpenPencilSession=${DEV_STUB_ELF_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=900`
+    )
+  })
+
+  test('rejects missing and invalid delegated tokens', async () => {
+    const { env } = createEnv()
+    const missing = await worker.fetch(
+      new Request('http://localhost/api/auth/firefly/callback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}'
+      }),
+      env as any
+    )
+    const invalid = await worker.fetch(
+      new Request('http://localhost/api/auth/firefly/callback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: 'invalid' })
+      }),
+      env as any
+    )
+
+    expect(missing.status).toBe(400)
+    expect(invalid.status).toBe(401)
+  })
+
+  test('rejects a delegated browser callback with an untrusted return URL', async () => {
+    const { env } = createEnv()
+    const response = await worker.fetch(
+      new Request('http://localhost/api/auth/firefly/callback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          returnTo: 'https://evil.example/',
+          token: DEV_STUB_ELF_TOKEN
+        })
+      }),
+      env as any
+    )
+
+    expect(response.status).toBe(400)
   })
 })

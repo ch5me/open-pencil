@@ -6,7 +6,9 @@ import {
   AuthConfigurationError,
   assertAuthConfigured,
   resolveSession,
-  requireSession
+  requireSession,
+  serializeElfSessionCookie,
+  verifyElfToken
 } from './auth'
 import { hydrateHostedSnapshotAssets } from './documents/assets'
 import {
@@ -105,6 +107,7 @@ app.get('/', (c) => {
     endpoints: {
       health: '/health',
       session: '/api/session',
+      authCallback: 'GET|POST /api/auth/firefly/callback',
       documents: {
         list: 'GET /api/documents',
         create: 'POST /api/documents',
@@ -130,6 +133,70 @@ app.get('/api/session', async (c) => {
     user: { id: result.userId },
     mode: 'authenticated'
   })
+})
+
+app.post('/api/auth/firefly/callback', async (c) => {
+  const contentType = c.req.header('content-type') ?? ''
+  let body: { token?: string; returnTo?: string } | null
+  if (contentType.includes('application/json')) {
+    body = await c.req.json<{ token?: string; returnTo?: string }>().catch(() => null)
+  } else {
+    const form = await c.req.formData()
+    const token = form.get('token')
+    const returnTo = form.get('returnTo')
+    body = {
+      token: typeof token === 'string' ? token : undefined,
+      returnTo: typeof returnTo === 'string' ? returnTo : undefined
+    }
+  }
+  const token = body?.token?.trim()
+  const returnTo = body?.returnTo?.trim()
+  const allowedReturnTo = new Set([
+    'https://design.elf.dance/',
+    'https://staging.design.elf.dance/',
+    'http://localhost:1420/'
+  ])
+  if (!token) {
+    return c.json({ error: 'token-required', message: 'A delegated ELF token is required.' }, 400)
+  }
+  if (returnTo && !allowedReturnTo.has(returnTo)) {
+    return c.json({ error: 'invalid-return-to', message: 'The return URL is not allowed.' }, 400)
+  }
+
+  const payload = await verifyElfToken(token, c.env)
+  if (!payload) {
+    return c.json({ error: 'invalid-token', message: 'The delegated ELF token is invalid.' }, 401)
+  }
+
+  c.header('Set-Cookie', serializeElfSessionCookie(token, c.req.url))
+  c.header('Cache-Control', 'no-store')
+  if (returnTo) return c.redirect(returnTo, 303)
+  return c.json({ ok: true, user: { id: payload.elfUserId } })
+})
+
+app.get('/api/auth/firefly/callback', async (c) => {
+  const token = c.req.query('token')?.trim()
+  const returnTo = c.req.query('returnTo')
+  const allowedReturnTo = new Set([
+    'https://design.elf.dance/',
+    'https://staging.design.elf.dance/',
+    'http://localhost:1420/'
+  ])
+
+  if (!token) {
+    return c.json({ error: 'token-required', message: 'A delegated ELF token is required.' }, 400)
+  }
+  if (!returnTo || !allowedReturnTo.has(returnTo)) {
+    return c.json({ error: 'invalid-return-to', message: 'The return URL is not allowed.' }, 400)
+  }
+
+  const payload = await verifyElfToken(token, c.env)
+  if (!payload) {
+    return c.json({ error: 'invalid-token', message: 'The delegated ELF token is invalid.' }, 401)
+  }
+
+  c.header('Set-Cookie', serializeElfSessionCookie(token, c.req.url))
+  return c.redirect(returnTo, 302)
 })
 
 app.post('/api/runtime/chat', requireSession(), async (c) => {

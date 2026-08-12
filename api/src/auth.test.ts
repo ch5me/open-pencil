@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from 'bun:test'
+
 import { exportJWK, generateKeyPair, SignJWT } from 'jose'
 
 import {
@@ -10,6 +11,7 @@ import {
   cookieToken,
   protocolToken,
   resolveSession,
+  serializeElfSessionCookie,
   verifyElfToken,
   type AuthEnv,
   type SessionResult
@@ -21,7 +23,7 @@ const audience = 'open-pencil-test'
 const keyId = 'open-pencil-test-key'
 const { privateKey, publicKey } = await generateKeyPair('RS256')
 const jwk = {
-  ...await exportJWK(publicKey),
+  ...(await exportJWK(publicKey)),
   alg: 'RS256',
   kid: keyId,
   use: 'sig'
@@ -81,11 +83,21 @@ describe('token extraction', () => {
   })
 
   it('extracts named cookie from cookie header', () => {
-    expect(cookieToken('foo=bar; ELF_JWT=tok1', 'ELF_JWT')).toBe('tok1')
-    expect(cookieToken('ELF_JWT=tok2; foo=bar', 'ELF_JWT')).toBe('tok2')
-    expect(cookieToken('foo=bar', 'ELF_JWT')).toBeNull()
+    expect(cookieToken('foo=bar; session=tok1', 'session')).toBe('tok1')
+    expect(cookieToken('session=tok2; foo=bar', 'session')).toBe('tok2')
+    expect(cookieToken('session=one; session=two', 'session')).toBeNull()
+    expect(cookieToken('foo=bar', 'session')).toBeNull()
     expect(cookieToken(undefined, 'test')).toBeNull()
     expect(cookieToken(null, 'test')).toBeNull()
+  })
+
+  it('serializes a host-only delegated session cookie', () => {
+    expect(
+      serializeElfSessionCookie('token value', 'https://openpencil-api.elf.dance/callback')
+    ).toBe(
+      '__Host-OpenPencilSession=token%20value; Path=/; HttpOnly; SameSite=Lax; Secure; Max-Age=900'
+    )
+    expect(serializeElfSessionCookie('token', 'http://localhost/callback')).toContain('Secure')
   })
 })
 
@@ -159,39 +171,63 @@ describe('resolveSession', () => {
   })
 
   it('authenticates with cookie-only credentials', async () => {
-    const result = expectAuthenticated(await resolveSession(makeRequest({
-      cookie: `${ELF_JWT_COOKIE}=${DEV_STUB_ELF_TOKEN}`
-    }), { env: stubAuthEnv }))
+    const result = expectAuthenticated(
+      await resolveSession(
+        makeRequest({
+          cookie: `${ELF_JWT_COOKIE}=${DEV_STUB_ELF_TOKEN}`
+        }),
+        { env: stubAuthEnv }
+      )
+    )
     expect(result.userId).toBe('stub-user-001')
   })
 
   it('authenticates with bearer-only credentials', async () => {
-    const result = expectAuthenticated(await resolveSession(makeRequest({
-      authorization: `Bearer ${DEV_STUB_ELF_TOKEN}`
-    }), { env: stubAuthEnv }))
+    const result = expectAuthenticated(
+      await resolveSession(
+        makeRequest({
+          authorization: `Bearer ${DEV_STUB_ELF_TOKEN}`
+        }),
+        { env: stubAuthEnv }
+      )
+    )
     expect(result.userId).toBe('stub-user-001')
   })
 
   it('accepts matching cookie and bearer credentials', async () => {
-    const result = expectAuthenticated(await resolveSession(makeRequest({
-      cookie: `${ELF_JWT_COOKIE}=${DEV_STUB_ELF_TOKEN}`,
-      authorization: `Bearer ${DEV_STUB_ELF_TOKEN}`
-    }), { env: stubAuthEnv }))
+    const result = expectAuthenticated(
+      await resolveSession(
+        makeRequest({
+          cookie: `${ELF_JWT_COOKIE}=${DEV_STUB_ELF_TOKEN}`,
+          authorization: `Bearer ${DEV_STUB_ELF_TOKEN}`
+        }),
+        { env: stubAuthEnv }
+      )
+    )
     expect(result.userId).toBe('stub-user-001')
   })
 
   it('rejects conflicting cookie and bearer credentials before verification', async () => {
-    const result = expectUnauthorized(await resolveSession(makeRequest({
-      cookie: `${ELF_JWT_COOKIE}=cookie-token`,
-      authorization: 'Bearer bearer-token'
-    })))
+    const result = expectUnauthorized(
+      await resolveSession(
+        makeRequest({
+          cookie: `${ELF_JWT_COOKIE}=cookie-token`,
+          authorization: 'Bearer bearer-token'
+        })
+      )
+    )
     expect(result.reason).toBe('identity-conflict')
   })
 
   it('uses a custom cookie name', async () => {
-    const result = expectAuthenticated(await resolveSession(makeRequest({
-      cookie: `custom_session=${DEV_STUB_ELF_TOKEN}`
-    }), { cookieName: 'custom_session', env: stubAuthEnv }))
+    const result = expectAuthenticated(
+      await resolveSession(
+        makeRequest({
+          cookie: `custom_session=${DEV_STUB_ELF_TOKEN}`
+        }),
+        { cookieName: 'custom_session', env: stubAuthEnv }
+      )
+    )
     expect(result.userId).toBe('stub-user-001')
   })
 
@@ -204,10 +240,11 @@ describe('resolveSession', () => {
     const headers = new Headers({
       'sec-websocket-protocol': `openpencil-room.v1, bearer.${DEV_STUB_ELF_TOKEN}`
     })
-    const result = expectAuthenticated(await resolveSession(
-      new Request('http://localhost/api/test', { headers }),
-      { env: stubAuthEnv }
-    ))
+    const result = expectAuthenticated(
+      await resolveSession(new Request('http://localhost/api/test', { headers }), {
+        env: stubAuthEnv
+      })
+    )
     expect(result.token).toBe(DEV_STUB_ELF_TOKEN)
   })
 })

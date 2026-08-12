@@ -33,25 +33,31 @@ const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
   local: {
     flags: { hostedAuth: false, hostedDocs: false, hostedCollab: false },
     apiOrigin: '',
+    authOrigin: '',
     authCallbackUrl: '',
     appUrl: 'http://localhost:1420'
   },
   preview: {
     flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
     apiOrigin: 'https://staging-openpencil-api.elf.dance',
-    authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
+    authOrigin: 'https://staging.app.elf.dance',
+    authCallbackUrl: '',
     appUrl: '' // resolved at deploy time by Pages
   },
   staging: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
     apiOrigin: 'https://staging-openpencil-api.elf.dance',
-    authCallbackUrl: 'https://staging.design.elf.dance/api/auth/callback',
+    authOrigin: 'https://staging.app.elf.dance',
+    authCallbackUrl:
+      'https://staging-openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fstaging.design.elf.dance%2F',
     appUrl: 'https://staging.design.elf.dance'
   },
   production: {
     flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
     apiOrigin: 'https://openpencil-api.elf.dance',
-    authCallbackUrl: 'https://design.elf.dance/api/auth/callback',
+    authOrigin: 'https://app.elf.dance',
+    authCallbackUrl:
+      'https://openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fdesign.elf.dance%2F',
     appUrl: 'https://design.elf.dance'
   }
 }
@@ -66,6 +72,7 @@ const ENV_VAR_NAMES = {
   DOCS_ENABLED: 'VITE_HOSTED_DOCS_ENABLED' as const,
   COLLAB_ENABLED: 'VITE_HOSTED_COLLAB_ENABLED' as const,
   API_ORIGIN: 'VITE_API_ORIGIN' as const,
+  AUTH_ORIGIN: 'VITE_AUTH_ORIGIN' as const,
   AUTH_CALLBACK: 'VITE_AUTH_CALLBACK_URL' as const,
   APP_URL: 'VITE_APP_URL' as const
 } as const
@@ -102,12 +109,21 @@ function resolveFlag(env: HostedEnv, flagKey: keyof HostedFeatureFlags, envVar: 
 /** Resolve a string config value: env var override > environment default. */
 function resolveString(
   env: HostedEnv,
-  key: Extract<keyof HostedEnvironmentConfig, 'apiOrigin' | 'authCallbackUrl' | 'appUrl'>,
+  key: Extract<
+    keyof HostedEnvironmentConfig,
+    'apiOrigin' | 'authOrigin' | 'authCallbackUrl' | 'appUrl'
+  >,
   envVar: string
 ): string {
   const forced = window.openPencil?.test?.forceHostedCollab
   if (forced && key === 'apiOrigin') {
     return window.openPencil?.test?.hostedApiOrigin ?? 'http://127.0.0.1:8787'
+  }
+  if (forced && key === 'authCallbackUrl') {
+    const apiOrigin = window.openPencil?.test?.hostedApiOrigin ?? 'http://127.0.0.1:8787'
+    const callback = new URL('/api/auth/firefly/callback', apiOrigin)
+    callback.searchParams.set('returnTo', 'http://localhost:1420/')
+    return callback.toString()
   }
   const raw = import.meta.env[envVar] as string | undefined
   if (raw !== undefined && raw !== '') return raw
@@ -130,6 +146,7 @@ export function resolveHostedConfig(): HostedEnvironmentConfig {
       hostedCollab: resolveFlag(env, 'hostedCollab', ENV_VAR_NAMES.COLLAB_ENABLED)
     },
     apiOrigin: resolveString(env, 'apiOrigin', ENV_VAR_NAMES.API_ORIGIN),
+    authOrigin: resolveString(env, 'authOrigin', ENV_VAR_NAMES.AUTH_ORIGIN),
     authCallbackUrl: resolveString(env, 'authCallbackUrl', ENV_VAR_NAMES.AUTH_CALLBACK),
     appUrl: resolveString(env, 'appUrl', ENV_VAR_NAMES.APP_URL)
   }

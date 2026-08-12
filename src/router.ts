@@ -3,7 +3,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { isHostedAuthEnabled } from '@/app/hosted/flags'
 import { isAuthenticated, refreshSession } from '@/app/hosted/session'
 
-import AuthCallbackView from './views/AuthCallbackView.vue'
 import EditorView from './views/EditorView.vue'
 import LoginView from './views/LoginView.vue'
 import StorageView from './views/StorageView.vue'
@@ -18,7 +17,6 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView },
-    { path: '/auth/callback', component: AuthCallbackView },
     { path: '/', component: EditorView, beforeEnter: requireHostedAuth },
     { path: '/storage', component: StorageView, beforeEnter: requireHostedAuth },
     { path: '/demo', component: EditorView, meta: { demo: true }, beforeEnter: requireHostedAuth },

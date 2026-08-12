@@ -9,14 +9,14 @@
   // activate the canonical @ch5me/elf-auth-client verifier. Values are verified
   // against firefly-cloud's authority (packages/runtime-config production
   // hostMap + DELEGATED_SUB_APP_AUDIENCES.openpencil): tokens minted for
-  // OpenPencil carry iss=https://app.elf.dance, aud=https://api.elf.dance.
-  // NOTE the issuer host (app.elf.dance) differs from the JWKS/audience host
-  // (api.elf.dance); a mismatch fails every real token. Never set
+  // OpenPencil carry iss=https://app.elf.dance, aud=https://openpencil-api.elf.dance.
+  // NOTE the issuer, JWKS, and OpenPencil audience are distinct authorities;
+  // a mismatch fails every real token. Never set
   // ALLOW_DEV_STUB_AUTH here — that flag is local-dev only.
   "vars": {
     "ELF_JWKS_URL": "https://api.elf.dance/.well-known/jwks.json",
     "ELF_ISSUER": "https://app.elf.dance",
-    "ELF_AUDIENCE": "https://api.elf.dance",
+    "ELF_AUDIENCE": "https://openpencil-api.elf.dance",
     "FIREFLY_API_ORIGIN": "https://api.elf.dance"
   },
   // Top-level config is the default (production) environment: openpencil-api.elf.dance.
@@ -62,9 +62,9 @@
     "staging": {
       "workers_dev": true,
       "vars": {
-        "ELF_JWKS_URL": "https://api.elf.dance/.well-known/jwks.json",
-        "ELF_ISSUER": "https://app.elf.dance",
-        "ELF_AUDIENCE": "https://api.elf.dance",
+        "ELF_JWKS_URL": "https://api.staging.elf.dance/.well-known/jwks.json",
+        "ELF_ISSUER": "https://staging.app.elf.dance",
+        "ELF_AUDIENCE": "https://staging-openpencil-api.elf.dance",
         "FIREFLY_API_ORIGIN": "https://api.staging.elf.dance"
       },
       "routes": [

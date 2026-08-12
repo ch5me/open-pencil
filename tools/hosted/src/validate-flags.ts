@@ -68,7 +68,9 @@ const validConfig: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
   apiOrigin: 'https://staging-openpencil-api.elf.dance',
-  authCallbackUrl: 'https://staging.design.elf.dance/api/auth/callback',
+  authOrigin: 'https://staging.app.elf.dance',
+  authCallbackUrl:
+    'https://staging-openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fstaging.design.elf.dance%2F',
   appUrl: 'https://staging.design.elf.dance'
 }
 assert(validateHostedConfig(validConfig).length === 0, 'valid staging config passes validation')
@@ -77,6 +79,7 @@ const collabWithoutAuth: HostedEnvironmentConfig = {
   env: 'local',
   flags: { hostedAuth: false, hostedDocs: false, hostedCollab: true },
   apiOrigin: '',
+  authOrigin: '',
   authCallbackUrl: '',
   appUrl: ''
 }
@@ -91,6 +94,7 @@ const docsWithoutAuth: HostedEnvironmentConfig = {
   env: 'local',
   flags: { hostedAuth: false, hostedDocs: true, hostedCollab: false },
   apiOrigin: '',
+  authOrigin: '',
   authCallbackUrl: '',
   appUrl: ''
 }
@@ -101,6 +105,7 @@ const hostedNoAPI: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
   apiOrigin: '',
+  authOrigin: '',
   authCallbackUrl: '',
   appUrl: 'https://staging.design.elf.dance'
 }
@@ -114,6 +119,7 @@ const hostedAuthNoCallback: HostedEnvironmentConfig = {
   env: 'staging',
   flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
   apiOrigin: 'https://staging-openpencil-api.elf.dance',
+  authOrigin: 'https://staging.app.elf.dance',
   authCallbackUrl: '',
   appUrl: 'https://staging.design.elf.dance'
 }
@@ -121,6 +127,21 @@ const cbErrs = validateHostedConfig(hostedAuthNoCallback)
 assert(
   cbErrs.some((e) => e.includes('authCallbackUrl')),
   'hostedAuth without callback URL produces violation'
+)
+
+const hostedAuthNoOrigin: HostedEnvironmentConfig = {
+  env: 'staging',
+  flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
+  apiOrigin: 'https://staging-openpencil-api.elf.dance',
+  authOrigin: '',
+  authCallbackUrl:
+    'https://staging-openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fstaging.design.elf.dance%2F',
+  appUrl: 'https://staging.design.elf.dance'
+}
+const authOriginErrs = validateHostedConfig(hostedAuthNoOrigin)
+assert(
+  authOriginErrs.some((e) => e.includes('authOrigin')),
+  'hostedAuth without authOrigin produces violation'
 )
 
 // --- 4. Operating mode derivation ---
@@ -189,7 +210,16 @@ assert(
 // --- 6. Callback URLs are explicit per environment ---
 output('\n6. Callback URLs explicit per environment')
 assert(topology.environments.local.authCallbackUrl === '', 'local: no callback URL')
-assert(topology.environments.preview.authCallbackUrl !== '', 'preview: callback URL set')
+assert(topology.environments.local.authOrigin === '', 'local: no auth origin')
+assert(topology.environments.preview.authCallbackUrl === '', 'preview: no fixed callback URL')
+assert(
+  topology.environments.staging.authOrigin === 'https://staging.app.elf.dance',
+  'staging uses the staging ELF app authority'
+)
+assert(
+  topology.environments.production.authOrigin === 'https://app.elf.dance',
+  'production uses the production ELF app authority'
+)
 assert(topology.environments.staging.authCallbackUrl !== '', 'staging: callback URL set')
 assert(topology.environments.production.authCallbackUrl !== '', 'production: callback URL set')
 assert(

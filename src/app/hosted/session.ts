@@ -20,14 +20,14 @@ function apiOrigin(): string {
 
 export function getLoginURL(): string | null {
   const config = getHostedConfig()
-  const apiOrigin = config.apiOrigin
+  const authOrigin = config.authOrigin
   const callbackURL = config.authCallbackUrl
 
-  if (!apiOrigin || !callbackURL) return null
+  if (!authOrigin || !callbackURL) return null
 
-  const authURL = new URL('/api/elf-auth/authorize', apiOrigin)
-  authURL.searchParams.set('redirect_uri', callbackURL)
-  authURL.searchParams.set('response_type', 'code')
+  const authURL = new URL('/auth/delegate', authOrigin)
+  authURL.searchParams.set('subApp', 'openpencil')
+  authURL.searchParams.set('redirectUri', callbackURL)
   return authURL.toString()
 }
 

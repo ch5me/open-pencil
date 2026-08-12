@@ -9,6 +9,7 @@
       "type": "development",
       "appUrl": "http://localhost:1420",
       "apiOrigin": "",
+      "authOrigin": "",
       "authCallbackUrl": "",
       "flags": {
         "hostedAuth": false,
@@ -21,7 +22,8 @@
       "type": "preview",
       "appUrl": "",
       "apiOrigin": "https://staging-openpencil-api.elf.dance",
-      "authCallbackUrl": "https://design.elf.dance/api/auth/callback",
+      "authOrigin": "https://staging.app.elf.dance",
+      "authCallbackUrl": "",
       "flags": {
         "hostedAuth": true,
         "hostedDocs": false,
@@ -33,7 +35,8 @@
       "type": "staging",
       "appUrl": "https://staging.design.elf.dance",
       "apiOrigin": "https://staging-openpencil-api.elf.dance",
-      "authCallbackUrl": "https://staging.design.elf.dance/api/auth/callback",
+      "authOrigin": "https://staging.app.elf.dance",
+      "authCallbackUrl": "https://staging-openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fstaging.design.elf.dance%2F",
       "flags": {
         "hostedAuth": true,
         "hostedDocs": true,
@@ -45,7 +48,8 @@
       "type": "production",
       "appUrl": "https://design.elf.dance",
       "apiOrigin": "https://openpencil-api.elf.dance",
-      "authCallbackUrl": "https://design.elf.dance/api/auth/callback",
+      "authOrigin": "https://app.elf.dance",
+      "authCallbackUrl": "https://openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fdesign.elf.dance%2F",
       "flags": {
         "hostedAuth": true,
         "hostedDocs": true,
@@ -79,8 +83,13 @@
       "default": "per-environment default",
       "required": false
     },
+    "VITE_AUTH_ORIGIN": {
+      "description": "Override for the ELF app origin that owns delegated sign-in.",
+      "default": "per-environment default",
+      "required": false
+    },
     "VITE_AUTH_CALLBACK_URL": {
-      "description": "Override for the ELF auth callback URL.",
+      "description": "Override for the OpenPencil API callback that verifies the delegated ELF token and returns to the app.",
       "default": "per-environment default",
       "required": false
     },
@@ -90,11 +99,7 @@
       "required": false
     }
   },
-  "rolloutOrder": [
-    "hostedAuth",
-    "hostedDocs",
-    "hostedCollab"
-  ],
+  "rolloutOrder": ["hostedAuth", "hostedDocs", "hostedCollab"],
   "notes": [
     "Collaboration is OFF in all environments until task 12 (DO room transport) lands.",
     "Preview enables hostedAuth for session verification smoke tests but keeps hostedDocs off to isolate auth from storage risk.",

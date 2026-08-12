@@ -27,7 +27,9 @@ export interface HostedEnvironmentConfig {
   flags: HostedFeatureFlags
   /** Base URL for the OpenPencil API Worker. Empty string in local-only mode. */
   apiOrigin: string
-  /** OAuth callback URL for ELF auth. Empty string when hostedAuth is off. */
+  /** ELF app origin that owns delegated sign-in. Empty string when hostedAuth is off. */
+  authOrigin: string
+  /** OpenPencil API callback URL for delegated ELF auth. Empty string when hostedAuth is off. */
   authCallbackUrl: string
   /** Public app URL for this environment. */
   appUrl: string
@@ -64,8 +66,13 @@ export function validateHostedConfig(config: HostedEnvironmentConfig): string[] 
     violations.push('apiOrigin is required when any hosted feature is enabled')
   }
 
-  // authCallbackUrl must be set when hostedAuth is on
-  if (config.flags.hostedAuth && !config.authCallbackUrl) {
+  if (config.flags.hostedAuth && !config.authOrigin) {
+    violations.push('authOrigin is required when hostedAuth is enabled')
+  }
+
+  // Stable environments need an exact callback. Ephemeral previews may leave it
+  // unset until their paired API/app origins are known.
+  if (config.flags.hostedAuth && config.env !== 'preview' && !config.authCallbackUrl) {
     violations.push('authCallbackUrl is required when hostedAuth is enabled')
   }
 

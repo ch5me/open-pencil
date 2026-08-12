@@ -29,7 +29,7 @@ export class AuthConfigurationError extends Error {
   }
 }
 
-export const ELF_JWT_COOKIE = 'ELF_JWT'
+export const ELF_JWT_COOKIE = '__Host-OpenPencilSession'
 export const DEV_STUB_ELF_TOKEN = 'call_30525cb2f86a407bad6be0f6'
 
 let verifierCache: { key: string; verifier: ElfVerifier } | null = null
@@ -84,7 +84,10 @@ async function stubVerify(token: string): Promise<ElfTokenPayload | null> {
   }
 }
 
-export async function verifyElfToken(token: string, env?: AuthEnv): Promise<ElfTokenPayload | null> {
+export async function verifyElfToken(
+  token: string,
+  env?: AuthEnv
+): Promise<ElfTokenPayload | null> {
   const verifier = getRealVerifier(env)
   if (verifier) {
     const result = await verifier.verify(token)
@@ -113,8 +116,10 @@ export function bearerToken(header: string | undefined | null): string | null {
 
 export function cookieToken(cookieHeader: string | undefined | null, name: string): string | null {
   if (!cookieHeader) return null
-  const match = cookieHeader.match(new RegExp(`(?:^|;)\\s*${name}=([^;]*)`))
-  return match?.[1] ? decodeURIComponent(match[1]) : null
+  const matches = [...cookieHeader.matchAll(new RegExp(`(?:^|;)\\s*${name}=([^;]*)`, 'g'))]
+  if (matches.length !== 1) return null
+  const value = matches[0]?.[1]
+  return value ? decodeURIComponent(value) : null
 }
 
 export function protocolToken(header: string | undefined | null): string | null {
@@ -127,6 +132,23 @@ export function protocolToken(header: string | undefined | null): string | null 
     if (part.startsWith('bearer.')) return decodeURIComponent(part.slice('bearer.'.length))
   }
   return null
+}
+
+export function serializeElfSessionCookie(
+  token: string,
+  _requestUrl: string,
+  maxAgeSeconds = 15 * 60
+): string {
+  return [
+    `${ELF_JWT_COOKIE}=${encodeURIComponent(token)}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    'Secure',
+    `Max-Age=${maxAgeSeconds}`
+  ]
+    .filter(Boolean)
+    .join('; ')
 }
 
 // ---------------------------------------------------------------------------
