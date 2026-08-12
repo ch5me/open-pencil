@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test'
 
-const fixture = new URL('../../../helpers/io/fig-adapter-cancellation-fixture.ts', import.meta.url)
+const fixture = new URL('../../../../helpers/io/fig-adapter-cancellation-fixture.ts', import.meta.url)
 
 test.each(['writeDocument', 'exportContent'] as const)(
   'FIG adapter %s abort terminates thumbnail worker and ignores late settlement',
