@@ -1,0 +1,167 @@
+{
+  "schema": "ch5.open-pencil.g135-production-effect/3",
+  "status": "PASS",
+  "identity": {
+    "repositoryHead": "6d107206eb953ba936ef0310eba10aba7ce5cb5d",
+    "originMain": "6d107206eb953ba936ef0310eba10aba7ce5cb5d",
+    "proofInputDiffSha256": "cf95b1554e19a80224c4af9f586e91ca9f4862cef046707db06d1b62dd90d24c",
+    "productionImplementationCommit": "39501fffc4d79a30114dcd21ee6c6b1fa220d94d",
+    "runtime": {
+      "node": "v24.3.0",
+      "bun": "1.3.14",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "backend": "canvas2d"
+  },
+  "package": {
+    "name": "@open-pencil/core",
+    "version": "0.14.0",
+    "tarball": {
+      "filename": "open-pencil-core-0.14.0.tgz",
+      "sha256": "4dfa3e8d82cab51186020412a0f130731223c3bb2da31c89cbb2fb7813a9043f",
+      "integrity": "sha512-7EdNezDih9hslgYhCFv10iMyo+3hvrbUvfLIj4+wGR6/a6G2eQkSprxVC3Xd6EzBxlAHGW9auUvjIqIU3r59ng==",
+      "bytes": 1844646
+    },
+    "isolatedInstall": true,
+    "workspaceResolution": false,
+    "resolvedEntrypoint": "node_modules/@open-pencil/core/dist/canvas/image-editor/index.js",
+    "resolvedImplementation": "node_modules/@open-pencil/core/dist/canvas/image-editor/raster.js",
+    "distTree": {
+      "path": "artifacts/proof/image-editor-g135-production-effect/core-dist-tree.json",
+      "artifactSha256": "c62b1b136efa6c5265b892ba71abd49bdbf8470bb89b61bc659e480c80e370e5",
+      "fileCount": 1469,
+      "sha256": "bdaa02030b4cf5212f882838f5474ecc7b9d98b902076be0f9499c6c0efd2115"
+    }
+  },
+  "boundInputs": {
+    "generator": {
+      "path": "tools/image-editor-proof/src/g135-production-effect.ts",
+      "sha256": "5f48f42000cc6ad97d993b439b94283c3d3defb3e33f015f05b00e8a8909567d",
+      "bytes": 15310,
+      "gitBlob": "1b25e7f203222a8ea439c67755d31f92165227b3"
+    },
+    "golden": {
+      "path": "tests/helpers/image-editor/g135-production-effect.golden.json",
+      "sha256": "b5c02b89bccf31fc057b0b914472266a94776ab883a37ef32d45125b233c3cb3",
+      "bytes": 517,
+      "gitBlob": "b7885d04314bfec167d6004a31f6bf76ef0817fb"
+    },
+    "fixture": {
+      "path": "tests/helpers/image-editor/g135-production-effect.ts",
+      "sha256": "046aa31c880fba411d4aead00a0165e6200c182756bfa4dc6b74597bbf7eeb5c",
+      "bytes": 686,
+      "gitBlob": "14ec6d7358841dc33ab2dfb77cf60bfe0a39d6e0"
+    },
+    "oracleReference": {
+      "path": "tests/helpers/image-editor/g135-reference-oracle.ts",
+      "sha256": "aedbf70d1296139f3588ce6ec0e056385f6d2c0a6a3f528f96f7aa076d808195",
+      "bytes": 1022,
+      "gitBlob": "beb725529c72a7dd1fa26abcd56cb3c8036060de"
+    },
+    "test": {
+      "path": "tests/engine/editor/image/raster-composition.test.ts",
+      "sha256": "d0694675b516c89901d4486afd661dfb68aa7be63ee14bd2c42d0987ce27532c",
+      "bytes": 44044,
+      "gitBlob": "32c236ec0699c248d9e2693685dd09823a1e2e57"
+    },
+    "rootManifest": {
+      "path": "package.json",
+      "sha256": "3a4375c051616f172e8735be5c14cd0251006c4cecdd5e0c02c6602b24737c2b",
+      "bytes": 10157,
+      "gitBlob": "5e70b727d64a84ceab52a30363c8066281b5bfe0"
+    },
+    "lockfile": {
+      "path": "bun.lock",
+      "sha256": "cc78eda9fea17c035dc4beead5366632417aa0a71d31bc8cf0861d1b4dbb2cbb",
+      "bytes": 467320,
+      "gitBlob": "f0706093c4e73853365312dc59ba6f2a7b107aa5"
+    },
+    "packageManifest": {
+      "path": "packages/core/package.json",
+      "sha256": "f07054cd2121d219b54b3e6064c4beb37db2ce7c95662b3895e1351b3eeea510",
+      "bytes": 7277,
+      "gitBlob": "ad001428d39780ca1fa7fcaf5c49e99ad88d6fa9"
+    },
+    "buildConfig": {
+      "path": "packages/core/tsdown.config.ts",
+      "sha256": "e8829c58f77cd10ffa6ed50a7531956c9aa4e744084a3a30b1c1fc335b8b2200",
+      "bytes": 1591,
+      "gitBlob": "47eafef8ab8359857e59252555e24df32b7ee6dd"
+    },
+    "sourceEntrypoint": {
+      "path": "packages/core/src/canvas/image-editor/index.ts",
+      "sha256": "d0a073570d82fbcd20f9be54efd02764497c38bb5e369d783662a64a0d4e3bcb",
+      "bytes": 2271,
+      "gitBlob": "a384a8972a56a42a7d006a1a20d450f03805fd3e"
+    },
+    "implementation": {
+      "path": "packages/core/src/canvas/image-editor/raster.ts",
+      "sha256": "629338df0c509f35fd25c608093e18205ec870333c70cd22ee0f5514ee785a4b",
+      "bytes": 28608,
+      "gitBlob": "1ae3d4e4eba78b9ccfc73999e0044d41f334bd9f"
+    }
+  },
+  "manifestBindings": {
+    "command": "bun tools/image-editor-proof/src/g135-production-effect.ts",
+    "packageExport": {
+      "types": "./dist/canvas/image-editor/index.d.ts",
+      "import": "./dist/canvas/image-editor/index.js",
+      "default": "./dist/canvas/image-editor/index.js"
+    }
+  },
+  "oracle": {
+    "kind": "frozen-independent-golden",
+    "provenanceCommit": "849d81542140791e91b20fe9e486ea59fe7603ff",
+    "reference": "IEC 61966-2-1 transfer plus Porter-Duff source-over",
+    "independentlyCalculatedRgba8": [
+      137,
+      137,
+      137,
+      255
+    ],
+    "expectedRgba8": [
+      137,
+      137,
+      137,
+      255
+    ],
+    "actualRgba8": [
+      137,
+      137,
+      137,
+      255
+    ],
+    "nonzeroOutput": true,
+    "deterministicRuns": 2
+  },
+  "implementationMutation": {
+    "status": "PASS",
+    "mutation": "installed compositor ignores inherited group opacity",
+    "target": "node_modules/@open-pencil/core/dist/canvas/image-editor/raster.js",
+    "actualMutatedRgba8": [
+      188,
+      188,
+      188,
+      255
+    ],
+    "rejected": true,
+    "sameOracleFailure": "G135 pixel mismatch: expected 137,137,137,255, got 188,188,188,255"
+  },
+  "zeroNegative": {
+    "status": "PASS",
+    "actualRgba8": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "rejected": true,
+    "sameOracleFailure": "G135 production effect produced a zero pixel"
+  },
+  "proofBoundary": {
+    "browser": "UNKNOWN",
+    "physicalDevice": "UNKNOWN",
+    "externalRenderer": "UNKNOWN"
+  }
+}

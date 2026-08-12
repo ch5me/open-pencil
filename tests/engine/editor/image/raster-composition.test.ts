@@ -13,6 +13,12 @@ import {
 import type { AssetRevision } from '#core/editor/assets'
 import type { SceneNode } from '#core/scene-graph'
 
+import {
+  assertG135Output,
+  G135_FIXTURE,
+  G135_GOLDEN
+} from '#tests/helpers/image-editor/g135-production-effect'
+
 function assertPixelParity(
   actual: ArrayLike<number>,
   expected: ArrayLike<number>,
@@ -1494,7 +1500,6 @@ test('nested group composition blends RGBA8 colors in document-linear space', ()
     id: 'background',
     type: 'IMAGE',
     parentId: outer.id,
-    childIds: [],
     fills: [
       {
         type: 'IMAGE',
@@ -1509,7 +1514,7 @@ test('nested group composition blends RGBA8 colors in document-linear space', ()
     id: 'inner',
     type: 'GROUP',
     parentId: outer.id,
-    opacity: 0.5,
+    opacity: G135_FIXTURE.groupOpacity,
     childIds: ['foreground']
   })
   const foreground = node({
@@ -1531,23 +1536,18 @@ test('nested group composition blends RGBA8 colors in document-linear space', ()
       revisionId: 'sha256:background',
       kind: 'image',
       metadata: { format: 'rgba8-srgb', width: 1, height: 1 },
-      bytes: new Uint8Array([0, 0, 0, 255])
+      bytes: new Uint8Array(G135_FIXTURE.backgroundRgba8)
     },
     'asset:foreground': {
       revisionId: 'sha256:foreground',
       kind: 'image',
       metadata: { format: 'rgba8-srgb', width: 1, height: 1 },
-      bytes: new Uint8Array([188, 188, 188, 255])
+      bytes: new Uint8Array(G135_FIXTURE.foregroundRgba8)
     }
   }
-  const graph = {
-    rootId: outer.id,
-    getNode: (id: string) =>
-      new Map([outer, background, inner, foreground].map((entry) => [entry.id, entry])).get(id)
-  }
-  const plan = createCompositionPlan(graph, outer.id)
+  const nodes = new Map([outer, background, inner, foreground].map((entry) => [entry.id, entry]))
   const result = composeRasterRGBA8(
-    plan,
+    createCompositionPlan({ rootId: outer.id, getNode: (id: string) => nodes.get(id) }, outer.id),
     {
       getAsset: (assetId) => {
         const revision = revisions[assetId]
@@ -1556,12 +1556,9 @@ test('nested group composition blends RGBA8 colors in document-linear space', ()
       getRevision: (revisionId) =>
         Object.values(revisions).find((revision) => revision.revisionId === revisionId)
     },
-    { width: 1, height: 1 }
+    { width: G135_FIXTURE.width, height: G135_FIXTURE.height, backend: 'canvas2d' }
   )
-
-  // A direct sRGB blend would produce 94; linear-light composition must not.
-  expect([...result.pixels]).not.toEqual([94, 94, 94, 255])
-  expect([...result.pixels]).toEqual([137, 137, 137, 255])
+  expect(assertG135Output([...result.pixels])).toEqual(G135_GOLDEN)
 })
 
 test('RGBA8 composition skips assets below hidden clipping bases', () => {
