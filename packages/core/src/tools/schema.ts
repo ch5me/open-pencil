@@ -26,8 +26,14 @@ export interface ToolDef {
   name: string
   description: string
   mutates?: boolean
+  remote?: ToolRemotePolicy
   params: Record<string, ParamDef>
   execute: (figma: FigmaAPI, args: Record<string, unknown>) => unknown
+}
+
+export interface ToolRemotePolicy {
+  enabled: boolean
+  requiresApproval?: boolean
 }
 
 type ResolvedType<T extends ParamType> = T extends 'string'
@@ -52,10 +58,11 @@ export function defineTool<P extends Record<string, ParamDef>>(def: {
   name: string
   description: string
   mutates?: boolean
+  remote?: ToolRemotePolicy
   params: P
   execute: (figma: FigmaAPI, args: ResolvedParams<P>) => unknown
 }): ToolDef {
-  return def as ToolDef
+  return { remote: { enabled: false }, ...def } as ToolDef
 }
 
 export class NodeNotFoundError extends Error {
