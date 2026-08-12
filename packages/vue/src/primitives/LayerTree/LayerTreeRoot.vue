@@ -97,7 +97,10 @@ function patchTreeNode(id: string, changes: Partial<SceneNode>) {
   }
   const target = nodesById.get(id)
   const source = editor.graph.getNode(id)
-  if (target && source) patchLayerNode(target, source)
+  if (target && source) {
+    patchLayerNode(target, source)
+    treeVersion.value++
+  }
 }
 
 const rowRefs = new Map<string, HTMLElement>()

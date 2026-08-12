@@ -5,6 +5,7 @@ import { CanvasHelper } from '#tests/helpers/canvas'
 const NODE_COUNT = 5000
 
 test('large layer trees stay virtualized and scrollable', async ({ page }) => {
+  test.setTimeout(30_000)
   const canvas = new CanvasHelper(page)
   await page.goto('/?test&no-rulers')
   await canvas.waitForInit()

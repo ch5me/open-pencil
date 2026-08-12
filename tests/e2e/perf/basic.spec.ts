@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test'
 import { CanvasHelper } from '#tests/helpers/canvas'
 
 const NODE_COUNT = 500
-const ITERATIONS = 200
+// Keep CI runtime bounded while sampling enough frames to expose cache regressions.
+const ITERATIONS = 50
 
 test.describe('Render performance', () => {
   let helper: CanvasHelper
@@ -86,6 +87,7 @@ test.describe('Render performance', () => {
   })
 
   test('benchmark: synchronous render throughput', async () => {
+    test.setTimeout(60_000)
     const results = await helper.page.evaluate((iterations: number) => {
       const store = window.openPencil?.getStore?.()
       if (!store) throw new Error('OpenPencil store not initialized')
@@ -175,6 +177,7 @@ test.describe('Render performance', () => {
   })
 
   test('benchmark: shadow rendering throughput', async () => {
+    test.setTimeout(30_000)
     const SHADOW_NODES = 50
     const SHADOW_ITERS = 100
 

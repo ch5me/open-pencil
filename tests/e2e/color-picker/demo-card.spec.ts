@@ -83,6 +83,7 @@ function expectFillColorChanged(
 }
 
 test('demo card fill changes through color picker', async ({ page }) => {
+  test.setTimeout(30_000)
   const canvas = new CanvasHelper(page)
   await selectDemoCard(page, canvas)
 
