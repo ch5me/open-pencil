@@ -16,7 +16,7 @@ export * from '#core/text/font-style'
 import { fontFallbackEntry } from '#core/text/fallbacks'
 import type { FontFallbackScript } from '#core/text/fallbacks'
 import type {
-  DownloadedFontCache,
+  DownloadedFontCache as BaseDownloadedFontCache,
   FontFamilyOption,
   FontInfo,
   HostFontLoader,
@@ -27,6 +27,16 @@ import { normalizedCoverageText, WebFontResolver } from '#core/text/web-fonts'
 import type { WebFontFetch, WebFontProviderId } from '#core/text/web-fonts'
 
 type FindLocalFontOptions = { allowVariable?: boolean }
+
+export type DownloadedFontCache = Omit<BaseDownloadedFontCache, 'write'> & {
+  write(
+    family: string,
+    style: string,
+    data: ArrayBuffer,
+    charactersOrSignal?: string | AbortSignal,
+    signal?: AbortSignal
+  ): Promise<void>
+}
 
 export interface LoadedFontData {
   family: string
@@ -316,7 +326,7 @@ export class FontManager {
       signal?.throwIfAborted()
       if (buffers.length === 0) return null
       const primary = buffers[0]
-      await this.writeDownloadedFont(family, style, primary, requestedCharacters)
+      await this.writeDownloadedFont(family, style, primary, requestedCharacters, signal)
       signal?.throwIfAborted()
       const registered = this.registerAndCache(family, style, primary, signal)
       const loadedCoverage = this.remoteCoverage.get(`${family}|${style}`) ?? new Set<string>()
@@ -623,12 +633,15 @@ export class FontManager {
     family: string,
     style: string,
     data: ArrayBuffer,
-    characters = ''
+    characters = '',
+    signal?: AbortSignal
   ): Promise<void> {
+    signal?.throwIfAborted()
     if (!this.downloadedFontCache) return
     try {
-      await this.downloadedFontCache.write(family, style, data, characters)
+      await this.downloadedFontCache.write(family, style, data, characters, signal)
     } catch (e) {
+      signal?.throwIfAborted()
       console.warn(`Downloaded font cache write failed for "${family}" ${style}:`, e)
     }
   }

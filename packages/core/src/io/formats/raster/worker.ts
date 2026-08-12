@@ -12,6 +12,7 @@ type WorkerScope = typeof self & {
 }
 
 self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
+  let phase = 'initialize'
   try {
     const {
       graph: serialized,
@@ -22,9 +23,11 @@ self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
       fontSnapshot
     } = event.data
     const ck = await CanvasKitInit({ locateFile: () => canvasKitWASMURL })
+    phase = 'create-surface'
     const surface = ck.MakeSurface(1, 1)
     if (!surface) throw new Error('Failed to create CanvasKit surface')
     const renderer = new SkiaRenderer(ck, surface)
+    phase = 'load-fonts'
     renderer.viewportWidth = 1
     renderer.viewportHeight = 1
     renderer.dpr = 1
@@ -33,6 +36,7 @@ self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
     await renderer.loadFonts(undefined, false, false)
     renderer.invalidateAllPictures()
     const restoreTextMeasurer = await renderer.prepareForExport(graph, pageId, nodeIds)
+    phase = 'render'
     let result
     try {
       result = renderNodesToRaster(ck, renderer, graph, pageId, nodeIds, {
@@ -76,7 +80,7 @@ self.onmessage = async (event: MessageEvent<RasterWorkerRequest>) => {
     ;(self as WorkerScope).postMessage({ bytes }, transfer)
   } catch (error) {
     ;(self as WorkerScope).postMessage(
-      { error: error instanceof Error ? error.message : String(error) },
+      { error: `${phase}: ${error instanceof Error ? error.message : String(error)}` },
       []
     )
   }

@@ -14,6 +14,7 @@ afterEach(() => {
   Object.assign(globalThis, { Worker: originalWorker, fetch: originalFetch })
   fontManager.createExportSnapshot = originalCreateExportSnapshot
   fontManager.setDownloadedFontCache(null)
+  fontManager.setWebFontFetch(null)
 })
 
 function graphWithImage() {
@@ -201,6 +202,84 @@ test('cancelled font acquisition cannot mutate loaded font state after settling'
   resolveCache?.(new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer)
   await waitForWorkerDispatch()
   expect(fontManager.isStyleLoaded(family, 'Regular')).toBe(false)
+})
+
+async function expectNoLateFontPublication(signal: AbortSignal, cancel?: () => void) {
+  let releaseCacheWrite: (() => void) | undefined
+  let cacheWriteStarted: (() => void) | undefined
+  const cacheWrite = new Promise<void>((resolve) => {
+    cacheWriteStarted = resolve
+  })
+  const cacheWriteRelease = new Promise<void>((resolve) => {
+    releaseCacheWrite = resolve
+  })
+  let cacheSignal: AbortSignal | undefined
+  let published = false
+  fontManager.setDownloadedFontCache({
+    read: () => Promise.resolve(null),
+    write: async (_family, _style, _data, _characters, signal) => {
+      cacheSignal = signal
+      cacheWriteStarted?.()
+      await cacheWriteRelease
+      signal?.throwIfAborted()
+      published = true
+    }
+  })
+  const family = `LateCacheWrite_${Date.now()}`
+  const data = new Uint8Array([0, 1, 0, 0, 7, 8, 9, 10]).buffer
+  fontManager.setWebFontFetch((input) => {
+    const url = String(input)
+    if (url.includes('fonts.google.com/metadata/fonts')) {
+      return Promise.resolve(
+        Response.json({
+          familyMetadataList: [
+            {
+              family,
+              fonts: {
+                '400': {
+                  thickness: 0,
+                  slant: 0,
+                  width: 100
+                }
+              },
+              axes: []
+            }
+          ]
+        })
+      )
+    }
+    if (url.includes('fonts.googleapis.com/css2')) {
+      return Promise.resolve(
+        new Response(
+          `@font-face { font-family: '${family}'; font-style: normal; font-weight: 400; src: url(https://fonts.example/font.ttf) format('truetype'); }`
+        )
+      )
+    }
+    return Promise.resolve(new Response(data, { status: 200 }))
+  })
+  const loading = fontManager.loadFont(family, 'Regular', '', signal)
+  await cacheWrite
+  cancel?.()
+  await new Promise<void>((resolve) => {
+    if (cacheSignal?.aborted) resolve()
+    else cacheSignal?.addEventListener('abort', () => resolve(), { once: true })
+  })
+  releaseCacheWrite?.()
+  await expect(loading).rejects.toBeInstanceOf(DOMException)
+  expect(published).toBe(false)
+  expect(fontManager.isStyleLoaded(family, 'Regular')).toBe(false)
+}
+
+test('cancelled font acquisition publishes no cache or loaded state after settling', () => {
+  const controller = new AbortController()
+  return expectNoLateFontPublication(controller.signal, () => controller.abort())
+})
+
+test('timed-out font acquisition publishes no cache or loaded state after settling', () => {
+  const controller = new AbortController()
+  return expectNoLateFontPublication(controller.signal, () =>
+    controller.abort(new DOMException('Font load timed out', 'TimeoutError'))
+  )
 })
 
 test('concurrent raster exports stay caller-owned without detaching editor bytes', async () => {

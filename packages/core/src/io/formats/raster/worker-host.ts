@@ -40,7 +40,7 @@ function canvasKitWASMURL(): string {
     const prefix = base === '/' ? '' : base.replace(/\/$/, '')
     return new URL(`${prefix}/canvaskit.wasm`, location.origin).href
   }
-  const ckPath = import.meta.resolve('canvaskit-wasm/full')
+  const ckPath = import.meta.resolve('canvaskit-wasm')
   return new URL('canvaskit.wasm', ckPath).href
 }
 
