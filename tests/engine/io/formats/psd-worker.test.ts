@@ -1,15 +1,23 @@
-import { expect, setDefaultTimeout, test } from 'bun:test'
+import { afterEach, expect, setDefaultTimeout, spyOn, test } from 'bun:test'
 
 import {
   layerMetadata,
   PsdCancelledError,
   PsdHostileFileError,
   rasterizePsdLayers,
+  rasterizePsdLayersAdaptive,
   rasterizePsdLayersInWorker,
+  type PsdRasterMetrics,
   type PsdRasterInput
 } from '#core/io/formats/psd'
 
 setDefaultTimeout(30_000)
+
+const originalWorker = globalThis.Worker
+
+afterEach(() => {
+  Object.assign(globalThis, { Worker: originalWorker })
+})
 
 function rasterInput(layerCount: 100 | 512): PsdRasterInput {
   const width = 16
@@ -72,4 +80,100 @@ test('PSD worker terminates work cancelled after dispatch', async () => {
   controller.abort()
 
   await expect(result).rejects.toBeInstanceOf(PsdCancelledError)
+})
+
+test('PSD adaptive gate stays on main thread before a >50ms miss then activates worker', async () => {
+  const input = rasterInput(100)
+  const metrics: PsdRasterMetrics[] = []
+  let workerDispatches = 0
+  class FakeWorker {
+    onmessage: ((event: MessageEvent) => void) | null = null
+    onerror = null
+
+    postMessage(workerInput: PsdRasterInput) {
+      workerDispatches += 1
+      queueMicrotask(() => {
+        this.onmessage?.({
+          data: { pixels: rasterizePsdLayers(workerInput), workerMs: 1 }
+        } as MessageEvent)
+      })
+    }
+
+    terminate() {
+      return undefined
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker })
+
+  const clock = spyOn(performance, 'now').mockReturnValueOnce(0).mockReturnValueOnce(51)
+  const mainThreadPixels = await rasterizePsdLayersAdaptive(input, {
+    workerAvailable: true,
+    onMetrics: (value) => metrics.push(value)
+  })
+  clock.mockRestore()
+
+  expect(workerDispatches).toBe(0)
+  expect(mainThreadPixels).toEqual(rasterizePsdLayers(input))
+  expect(metrics[0]).toMatchObject({ execution: 'main-thread', mainThreadMs: 51 })
+
+  const workerPixels = await rasterizePsdLayersAdaptive(input, {
+    workerAvailable: true,
+    onMetrics: (value) => metrics.push(value)
+  })
+
+  expect(workerDispatches).toBe(1)
+  expect(workerPixels).toEqual(mainThreadPixels)
+  expect(metrics[1]).toMatchObject({ execution: 'worker', workerMs: 1 })
+})
+
+test('PSD worker terminates and rejects malformed onmessage', async () => {
+  const workers: FakeWorker[] = []
+  class FakeWorker {
+    onmessage: ((event: MessageEvent) => void) | null = null
+    onerror = null
+    terminated = false
+
+    constructor() {
+      workers.push(this)
+    }
+
+    postMessage() {
+      queueMicrotask(() => this.onmessage?.({ data: null } as MessageEvent))
+    }
+
+    terminate() {
+      this.terminated = true
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker })
+
+  await expect(rasterizePsdLayersInWorker(rasterInput(100))).rejects.toThrow(
+    'PSD raster worker returned malformed response'
+  )
+  expect(workers[0]?.terminated).toBe(true)
+})
+
+test('PSD worker terminates and rejects onerror', async () => {
+  const workers: FakeWorker[] = []
+  class FakeWorker {
+    onmessage = null
+    onerror: ((event: ErrorEvent) => void) | null = null
+    terminated = false
+
+    constructor() {
+      workers.push(this)
+    }
+
+    postMessage() {
+      queueMicrotask(() => this.onerror?.({ message: 'worker exploded' } as ErrorEvent))
+    }
+
+    terminate() {
+      this.terminated = true
+    }
+  }
+  Object.assign(globalThis, { Worker: FakeWorker })
+
+  await expect(rasterizePsdLayersInWorker(rasterInput(100))).rejects.toThrow('worker exploded')
+  expect(workers[0]?.terminated).toBe(true)
 })

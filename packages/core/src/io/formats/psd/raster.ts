@@ -260,6 +260,10 @@ interface PsdRasterWorkerResponse {
   readonly code?: string
 }
 
+function isPsdRasterWorkerResponse(value: unknown): value is PsdRasterWorkerResponse {
+  return typeof value === 'object' && value !== null
+}
+
 function canUseRasterWorker(): boolean {
   return IS_BROWSER && typeof Worker !== 'undefined'
 }
@@ -306,12 +310,16 @@ export function rasterizePsdLayersInWorker(
       cancel()
       return
     }
-    worker.onmessage = (event: MessageEvent<PsdRasterWorkerResponse>) => {
+    worker.onmessage = (event: MessageEvent<unknown>) => {
       if (settled) return
       const elapsedMs = performance.now() - startedAt
       const response = event.data
-      const workerMs = response.workerMs
       finish()
+      if (!isPsdRasterWorkerResponse(response)) {
+        reject(new Error('PSD raster worker returned malformed response'))
+        return
+      }
+      const workerMs = response.workerMs
       if (
         response.error ||
         !(response.pixels instanceof Uint8Array) ||
@@ -358,10 +366,15 @@ export function rasterizePsdLayersInWorker(
  */
 export async function rasterizePsdLayersAdaptive(
   input: PsdRasterInput,
-  options: { signal?: AbortSignal; onMetrics?: (metrics: PsdRasterMetrics) => void } = {}
+  options: {
+    signal?: AbortSignal
+    onMetrics?: (metrics: PsdRasterMetrics) => void
+    workerAvailable?: boolean
+  } = {}
 ): Promise<Uint8Array> {
   throwIfCancelled(options.signal)
-  if (canUseRasterWorker() && rasterWorkerGate.policy(true).useWorker) {
+  const workerAvailable = options.workerAvailable ?? canUseRasterWorker()
+  if (workerAvailable && rasterWorkerGate.policy(workerAvailable).useWorker) {
     const result = await rasterizePsdLayersInWorker(input, options.signal)
     throwIfCancelled(options.signal)
     options.onMetrics?.(result.metrics)
