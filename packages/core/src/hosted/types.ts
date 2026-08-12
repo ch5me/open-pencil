@@ -15,6 +15,8 @@ export type HostedEnv = 'local' | 'preview' | 'staging' | 'production'
 export interface HostedFeatureFlags {
   /** ELF-hosted auth (cookie-first web session). */
   hostedAuth: boolean
+  /** Hosted agent chat runtime. Requires a hosted auth session. */
+  hostedAgent: boolean
   /** Hosted document storage (D1 + R2 via Worker API). */
   hostedDocs: boolean
   /** Hosted real-time collaboration (Durable Object rooms). */
@@ -61,7 +63,11 @@ export function validateHostedConfig(config: HostedEnvironmentConfig): string[] 
   const violations: string[] = []
 
   // apiOrigin must be set when any hosted feature is on
-  const anyHosted = config.flags.hostedAuth || config.flags.hostedDocs || config.flags.hostedCollab
+  const anyHosted =
+    config.flags.hostedAuth ||
+    config.flags.hostedAgent ||
+    config.flags.hostedDocs ||
+    config.flags.hostedCollab
   if (anyHosted && !config.apiOrigin) {
     violations.push('apiOrigin is required when any hosted feature is enabled')
   }
@@ -74,6 +80,10 @@ export function validateHostedConfig(config: HostedEnvironmentConfig): string[] 
   // unset until their paired API/app origins are known.
   if (config.flags.hostedAuth && config.env !== 'preview' && !config.authCallbackUrl) {
     violations.push('authCallbackUrl is required when hostedAuth is enabled')
+  }
+
+  if (config.flags.hostedAgent && !config.flags.hostedAuth) {
+    violations.push('hostedAgent requires hostedAuth to be enabled')
   }
 
   // hostedCollab requires both hostedAuth and hostedDocs

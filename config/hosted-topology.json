@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
   "title": "OpenPencil Hosted Environment Topology",
-  "description": "Canonical environment topology for hosted auth, docs, and collaboration rollout. Aligned with .ch5/environments.yaml. Feature flags are independently switchable per environment.",
+  "description": "Canonical environment topology for hosted auth, agent chat, docs, and collaboration rollout. Aligned with .ch5/environments.yaml. Feature flags are independently switchable per environment.",
   "version": 1,
   "environments": {
     "local": {
@@ -13,6 +13,7 @@
       "authCallbackUrl": "",
       "flags": {
         "hostedAuth": false,
+        "hostedAgent": false,
         "hostedDocs": false,
         "hostedCollab": false
       }
@@ -26,6 +27,7 @@
       "authCallbackUrl": "",
       "flags": {
         "hostedAuth": true,
+        "hostedAgent": false,
         "hostedDocs": false,
         "hostedCollab": false
       }
@@ -39,6 +41,7 @@
       "authCallbackUrl": "https://staging-openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fstaging.design.elf.dance%2F",
       "flags": {
         "hostedAuth": true,
+        "hostedAgent": false,
         "hostedDocs": true,
         "hostedCollab": false
       }
@@ -52,6 +55,7 @@
       "authCallbackUrl": "https://openpencil-api.elf.dance/api/auth/firefly/callback?returnTo=https%3A%2F%2Fdesign.elf.dance%2F",
       "flags": {
         "hostedAuth": true,
+        "hostedAgent": false,
         "hostedDocs": true,
         "hostedCollab": false
       }
@@ -65,6 +69,11 @@
     },
     "VITE_HOSTED_AUTH_ENABLED": {
       "description": "Override for hosted auth flag. 'true' | 'false'.",
+      "default": "per-environment default",
+      "required": false
+    },
+    "VITE_HOSTED_AGENT_ENABLED": {
+      "description": "Override for hosted agent chat. Requires hosted auth. 'true' | 'false'.",
       "default": "per-environment default",
       "required": false
     },
@@ -99,7 +108,7 @@
       "required": false
     }
   },
-  "rolloutOrder": ["hostedAuth", "hostedDocs", "hostedCollab"],
+  "rolloutOrder": ["hostedAuth", "hostedAgent", "hostedDocs", "hostedCollab"],
   "notes": [
     "Collaboration is OFF in all environments until task 12 (DO room transport) lands.",
     "Preview enables hostedAuth for session verification smoke tests but keeps hostedDocs off to isolate auth from storage risk.",

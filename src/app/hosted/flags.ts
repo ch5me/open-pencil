@@ -1,5 +1,6 @@
 /**
- * Hosted feature flags — independently toggleable gates for auth, docs, and collaboration.
+ * Hosted feature flags — independently toggleable gates for auth, agent chat, docs, and
+ * collaboration.
  *
  * Flags resolve from Vite env vars with explicit per-environment defaults.
  * No implicit environment guessing: every mode is explicitly declared.
@@ -31,21 +32,21 @@ export type {
 
 const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
   local: {
-    flags: { hostedAuth: false, hostedDocs: false, hostedCollab: false },
+    flags: { hostedAuth: false, hostedAgent: false, hostedDocs: false, hostedCollab: false },
     apiOrigin: '',
     authOrigin: '',
     authCallbackUrl: '',
     appUrl: 'http://localhost:1420'
   },
   preview: {
-    flags: { hostedAuth: true, hostedDocs: false, hostedCollab: false },
+    flags: { hostedAuth: true, hostedAgent: false, hostedDocs: false, hostedCollab: false },
     apiOrigin: 'https://staging-openpencil-api.elf.dance',
     authOrigin: 'https://staging.app.elf.dance',
     authCallbackUrl: '',
     appUrl: '' // resolved at deploy time by Pages
   },
   staging: {
-    flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
+    flags: { hostedAuth: true, hostedAgent: false, hostedDocs: true, hostedCollab: false },
     apiOrigin: 'https://staging-openpencil-api.elf.dance',
     authOrigin: 'https://staging.app.elf.dance',
     authCallbackUrl:
@@ -53,7 +54,7 @@ const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
     appUrl: 'https://staging.design.elf.dance'
   },
   production: {
-    flags: { hostedAuth: true, hostedDocs: true, hostedCollab: false },
+    flags: { hostedAuth: true, hostedAgent: false, hostedDocs: true, hostedCollab: false },
     apiOrigin: 'https://openpencil-api.elf.dance',
     authOrigin: 'https://app.elf.dance',
     authCallbackUrl:
@@ -69,6 +70,7 @@ const ENV_DEFAULTS: Record<HostedEnv, Omit<HostedEnvironmentConfig, 'env'>> = {
 const ENV_VAR_NAMES = {
   ENV: 'OPENPENCIL_HOSTED_ENV' as const,
   AUTH_ENABLED: 'VITE_HOSTED_AUTH_ENABLED' as const,
+  AGENT_ENABLED: 'VITE_HOSTED_AGENT_ENABLED' as const,
   DOCS_ENABLED: 'VITE_HOSTED_DOCS_ENABLED' as const,
   COLLAB_ENABLED: 'VITE_HOSTED_COLLAB_ENABLED' as const,
   API_ORIGIN: 'VITE_API_ORIGIN' as const,
@@ -96,7 +98,7 @@ function resolveEnv(): HostedEnv {
 /** Resolve a single boolean flag: env var override > environment default. */
 function resolveFlag(env: HostedEnv, flagKey: keyof HostedFeatureFlags, envVar: string): boolean {
   const forced = window.openPencil?.test?.forceHostedCollab
-  if (forced) {
+  if (forced && flagKey !== 'hostedAgent') {
     return true
   }
   const raw = import.meta.env[envVar] as string | undefined
@@ -142,6 +144,7 @@ export function resolveHostedConfig(): HostedEnvironmentConfig {
     env,
     flags: {
       hostedAuth: resolveFlag(env, 'hostedAuth', ENV_VAR_NAMES.AUTH_ENABLED),
+      hostedAgent: resolveFlag(env, 'hostedAgent', ENV_VAR_NAMES.AGENT_ENABLED),
       hostedDocs: resolveFlag(env, 'hostedDocs', ENV_VAR_NAMES.DOCS_ENABLED),
       hostedCollab: resolveFlag(env, 'hostedCollab', ENV_VAR_NAMES.COLLAB_ENABLED)
     },
@@ -174,6 +177,11 @@ export function isHostedAuthEnabled(): boolean {
   return getHostedConfig().flags.hostedAuth
 }
 
+/** True when hosted agent chat is enabled for this runtime. */
+export function isHostedAgentEnabled(): boolean {
+  return getHostedConfig().flags.hostedAgent
+}
+
 /** True when hosted document storage is enabled for this runtime. */
 export function isHostedDocsEnabled(): boolean {
   return getHostedConfig().flags.hostedDocs
@@ -187,7 +195,7 @@ export function isHostedCollabEnabled(): boolean {
 /** True when any hosted feature is enabled. */
 export function isHostedMode(): boolean {
   const f = getHostedConfig().flags
-  return f.hostedAuth || f.hostedDocs || f.hostedCollab
+  return f.hostedAuth || f.hostedAgent || f.hostedDocs || f.hostedCollab
 }
 
 /** Operating mode label derived from flag combinations. */
