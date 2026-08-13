@@ -17,13 +17,13 @@ ready_port = { port = 5173, timeout = "30s" }
 run = "bun tools/local-bootstrap/src/index.ts && exec bun tools/agent-gateway/src/index.ts"
 dir = "."
 port = { expect = [1435], bump = 20 }
-ready_port = { port = 1435, timeout = "10s" }
+ready_port = { port = 1435, timeout = "30s" }
 
 [daemons.api]
 run = "bun tools/local-bootstrap/src/index.ts && exec bun tools/agent-gateway/src/api.ts"
 dir = "."
 port = { expect = [8787], bump = 20 }
-ready_port = { port = 8787, timeout = "10s" }
+ready_port = { port = 8787, timeout = "30s" }
 
 # Serves the generated `openwiki/` wiki as an interactive graph + reader at
 # http://openwiki.<tree>.localhost:7300/. Read-only: it never calls a model.
