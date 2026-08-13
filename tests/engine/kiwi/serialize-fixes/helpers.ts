@@ -1,6 +1,8 @@
 import { beforeAll } from 'bun:test'
 
-import { initCodec, sceneNodeToKiwi, type SceneGraph } from '@open-pencil/core'
+import { initCodec } from '@open-pencil/core/kiwi'
+import type { SceneGraph } from '@open-pencil/scene-graph'
+import { sceneNodeToKiwi } from '@open-pencil/core'
 
 beforeAll(async () => {
   await initCodec()

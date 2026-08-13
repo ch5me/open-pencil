@@ -2,7 +2,8 @@ import { describe, test, expect } from 'bun:test'
 
 import type { CanvasKit } from 'canvaskit-wasm'
 
-import { TextEditor, type SceneNode } from '@open-pencil/core'
+import { TextEditor } from '@open-pencil/core/text'
+import type { SceneNode } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

@@ -2,8 +2,10 @@ import { describe, test, expect } from 'bun:test'
 
 import type { CanvasKit } from 'canvaskit-wasm'
 
-import { SceneGraph, TextEditor, UndoManager } from '@open-pencil/core'
-import type { StyleRun } from '@open-pencil/core'
+import { SceneGraph } from '@open-pencil/scene-graph'
+import { TextEditor } from '@open-pencil/core/text'
+import { UndoManager } from '@open-pencil/scene-graph/undo'
+import type { StyleRun } from '@open-pencil/scene-graph'
 import { createTextActions } from '@open-pencil/core/editor'
 import type { EditorContext, EditorState } from '@open-pencil/core/editor'
 

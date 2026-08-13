@@ -1,4 +1,4 @@
-import type { SceneGraph, SceneNode } from '@open-pencil/core'
+import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
 import type { JSONObject } from '@open-pencil/scene-graph/primitives'
 
 import { verifyComponentPropDefs, verifyDerivedTextData } from './raw-verifiers/helpers'

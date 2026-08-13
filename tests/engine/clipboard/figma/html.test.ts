@@ -1,12 +1,8 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 
-import {
-  buildFigmaClipboardHTML,
-  importClipboardNodes,
-  initCodec,
-  parseFigmaClipboard,
-  SceneGraph
-} from '@open-pencil/core'
+import { buildFigmaClipboardHTML, importClipboardNodes, parseFigmaClipboard } from '@open-pencil/core/clipboard'
+import { initCodec } from '@open-pencil/core/kiwi'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

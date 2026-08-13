@@ -1,18 +1,6 @@
 import { describe, test, expect } from 'bun:test'
 
-import {
-  parseColor,
-  normalizeColor,
-  colorToHex,
-  colorToHex8,
-  colorToHexRaw,
-  colorToRgba255,
-  colorToCSS,
-  colorToCSSCompact,
-  rgba255ToColor,
-  colorToFill,
-  colorDistance
-} from '@open-pencil/core'
+import { parseColor, normalizeColor, colorToHex, colorToHex8, colorToHexRaw, colorToRgba255, colorToCSS, colorToCSSCompact, rgba255ToColor, colorToFill, colorDistance } from '@open-pencil/core/color'
 
 describe('parseColor', () => {
   test('hex 6-digit', () => {

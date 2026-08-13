@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { SceneGraph, createLinter } from '@open-pencil/core'
+import { SceneGraph } from '@open-pencil/scene-graph'
+import { createLinter } from '@open-pencil/core/lint'
 
 describe('createLinter', () => {
   test('reports default names and empty frames', () => {

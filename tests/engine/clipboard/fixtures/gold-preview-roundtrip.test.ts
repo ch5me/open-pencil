@@ -1,17 +1,9 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
-import {
-  buildFigmaClipboardHTML,
-  buildOpenPencilClipboardHTML,
-  importClipboardNodes,
-  parseFigmaClipboard,
-  parseOpenPencilClipboard,
-  readFigFile,
-  initCodec,
-  type SceneNode,
-  SceneGraph
-} from '@open-pencil/core'
+import { buildFigmaClipboardHTML, buildOpenPencilClipboardHTML, importClipboardNodes, parseFigmaClipboard, parseOpenPencilClipboard } from '@open-pencil/core/clipboard'
+import { readFigFile, initCodec } from '@open-pencil/core/kiwi'
+import { type SceneNode, SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 import { HEAVY_TEST_TIMEOUT_MS } from '#tests/helpers/test-utils'

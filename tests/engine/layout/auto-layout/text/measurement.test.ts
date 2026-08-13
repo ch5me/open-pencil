@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { computeAllLayouts, SceneGraph, setTextMeasurer } from '@open-pencil/core'
+import { computeAllLayouts, setTextMeasurer } from '@open-pencil/core/layout'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { createEditorStore } from '@/app/editor/session'
 

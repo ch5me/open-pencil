@@ -2,18 +2,8 @@ import { describe, test, expect } from 'bun:test'
 
 import type { CanvasKit, TypefaceFontProvider } from 'canvaskit-wasm'
 
-import {
-  chooseLocalFontMatch,
-  fontManager,
-  isVariableFont,
-  normalizeFontFamily,
-  styleToVariant,
-  styleToWeight,
-  weightToFigmaStyle,
-  weightToStyle,
-  FontManager,
-  SceneGraph
-} from '@open-pencil/core'
+import { chooseLocalFontMatch, fontManager, isVariableFont, normalizeFontFamily, styleToVariant, styleToWeight, weightToFigmaStyle, weightToStyle, FontManager } from '@open-pencil/core/text'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

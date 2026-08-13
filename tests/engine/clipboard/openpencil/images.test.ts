@@ -1,12 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
-import {
-  buildOpenPencilClipboardHTML,
-  FigmaAPI,
-  parseOpenPencilClipboard,
-  SceneGraph
-} from '@open-pencil/core'
-import type { SceneNode } from '@open-pencil/core'
+import { buildOpenPencilClipboardHTML, parseOpenPencilClipboard } from '@open-pencil/core/clipboard'
+import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { SceneGraph } from '@open-pencil/scene-graph'
+import type { SceneNode } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

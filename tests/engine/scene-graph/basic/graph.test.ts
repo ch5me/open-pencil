@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { generateId, SceneGraph } from '@open-pencil/core'
+import { generateId, SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

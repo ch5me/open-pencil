@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import { exportFigFile, parseFigFile, SceneGraph } from '@open-pencil/core'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import { parseFigFile } from '@open-pencil/core/kiwi'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

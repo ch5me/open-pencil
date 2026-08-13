@@ -4,13 +4,9 @@ import { resolve } from 'node:path'
 
 import { unzipSync } from 'fflate'
 
-import {
-  parseFigFile,
-  exportFigFile,
-  compressFigDataSync,
-  initCodec,
-  SceneGraph
-} from '@open-pencil/core'
+import { parseFigFile, initCodec } from '@open-pencil/core/kiwi'
+import { exportFigFile, compressFigDataSync } from '@open-pencil/core/io/formats/fig'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { heavy } from '#tests/helpers/test-utils'
 

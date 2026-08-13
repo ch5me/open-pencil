@@ -1,4 +1,4 @@
-import { UndoManager } from '@open-pencil/core'
+import { UndoManager } from '@open-pencil/scene-graph/undo'
 
 export function noop() {
   return undefined

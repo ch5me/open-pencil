@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 
-import { importClipboardNodes } from '@open-pencil/core'
-import type { NodeChange } from '@open-pencil/core'
+import { importClipboardNodes } from '@open-pencil/core/clipboard'
+import type { NodeChange } from '@open-pencil/core/kiwi'
 
 import { getNodeOrThrow } from '#tests/helpers/assert'
 import { createClipboardGraph } from '#tests/helpers/clipboard'

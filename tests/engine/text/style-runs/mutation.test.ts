@@ -1,13 +1,7 @@
 import { describe, test, expect } from 'bun:test'
 
-import {
-  applyStyleToRange,
-  getStyleAt,
-  removeStyleFromRange,
-  toggleBoldInRange,
-  toggleItalicInRange,
-  type StyleRun
-} from '@open-pencil/core'
+import { applyStyleToRange, getStyleAt, removeStyleFromRange, toggleBoldInRange, toggleItalicInRange } from '@open-pencil/core/text'
+import type { StyleRun } from '@open-pencil/scene-graph'
 
 // ---------------------------------------------------------------------------
 // toggleBoldInRange — mutation coverage

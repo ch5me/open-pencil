@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { SceneGraph } from '@open-pencil/core'
+import { SceneGraph } from '@open-pencil/scene-graph'
 import { syncChildrenDeep } from '@open-pencil/fig/instance-overrides'
 
 describe('instance override clone sync', () => {

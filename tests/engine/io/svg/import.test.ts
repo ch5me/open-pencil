@@ -2,7 +2,9 @@ import { describe, test, expect, beforeEach } from 'bun:test'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { FigmaAPI, renderNodesToSVG, SceneGraph } from '@open-pencil/core'
+import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { renderNodesToSVG } from '@open-pencil/core/io/formats/svg'
+import { SceneGraph } from '@open-pencil/scene-graph'
 import { importSVG } from '@open-pencil/core/tools'
 
 import { expectDefined, getNodeOrThrow } from '#tests/helpers/assert'

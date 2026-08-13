@@ -1,10 +1,7 @@
 import { describe, test, expect } from 'bun:test'
 
-import {
-  encodeVectorNetworkBlob,
-  decodeVectorNetworkBlob,
-  type VectorNetwork
-} from '@open-pencil/core'
+import { encodeVectorNetworkBlob, decodeVectorNetworkBlob } from '@open-pencil/core/vector'
+import type { VectorNetwork } from '@open-pencil/scene-graph'
 
 import {
   lineNetwork,

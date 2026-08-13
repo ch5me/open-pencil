@@ -1,4 +1,4 @@
-import type { NodeChange } from '@open-pencil/core'
+import type { NodeChange } from '@open-pencil/core/kiwi'
 
 export function doc(): NodeChange {
   return {

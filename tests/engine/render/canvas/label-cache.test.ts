@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'bun:test'
 
-import { SceneGraph, LabelCache } from '@open-pencil/core'
+import { SceneGraph } from '@open-pencil/scene-graph'
+import { LabelCache } from '@open-pencil/core'
 
 function buildGraph() {
   const g = new SceneGraph()

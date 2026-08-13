@@ -1,16 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { SceneGraph } from '@open-pencil/scene-graph'
+
 import {
-  exportFigFile,
-  FigmaAPI,
+  deduplicateNodeChangePluginData,
   importNodeChanges,
   initCodec,
   parseFigFile,
-  SceneGraph,
   type NodeChange
-} from '@open-pencil/core'
-
-import { deduplicateNodeChangePluginData } from '#core/kiwi'
+} from '#core/kiwi'
 
 import { expectDefined } from '#tests/helpers/assert'
 

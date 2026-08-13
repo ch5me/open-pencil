@@ -1,9 +1,7 @@
 import { describe, test, expect } from 'bun:test'
 
-import type { Vector } from '@open-pencil/core'
+import type { Vector, VectorNetwork } from '@open-pencil/scene-graph'
 import { fitCircleArc, isClosedThinCrescent } from '@open-pencil/core/vector'
-import type { VectorNetwork } from '@open-pencil/scene-graph'
-
 import { expectDefined } from '#tests/helpers/assert'
 
 function makeAnnularWedge(

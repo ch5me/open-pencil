@@ -1,12 +1,8 @@
 import { beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 
-import {
-  exportFigFile,
-  initCodec,
-  parseFigFile,
-  SceneGraph,
-  type SceneNode
-} from '@open-pencil/core'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
+import { SceneGraph, type SceneNode } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 import { collectAllNodes, countByType } from '#tests/helpers/fig-traversal'

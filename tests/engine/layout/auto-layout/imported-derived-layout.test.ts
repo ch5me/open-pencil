@@ -1,8 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { computeAllLayouts, SceneGraph } from '@open-pencil/core'
-import { getAbsolutePositionFull } from '@open-pencil/scene-graph'
-
+import { computeAllLayouts } from '@open-pencil/core/layout'
+import { SceneGraph, getAbsolutePositionFull } from '@open-pencil/scene-graph'
 describe('imported auto-layout bounds', () => {
   test('preserves visible hug container bounds when hidden children would collapse layout', () => {
     const graph = new SceneGraph()

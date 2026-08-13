@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { DEFAULT_FRAME_FILL } from '@open-pencil/core'
+import { DEFAULT_FRAME_FILL } from '@open-pencil/core/constants'
 import { createEditor } from '@open-pencil/core/editor'
 
 describe('frameSelection', () => {

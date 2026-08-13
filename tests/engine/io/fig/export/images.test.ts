@@ -2,7 +2,10 @@ import { beforeAll, describe, expect, test } from 'bun:test'
 
 import { unzipSync } from 'fflate'
 
-import { exportFigFile, FigmaAPI, initCodec, parseFigFile, SceneGraph } from '@open-pencil/core'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

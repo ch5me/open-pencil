@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test'
 
-import type { Vector } from '@open-pencil/core'
+import type { Vector } from '@open-pencil/scene-graph'
 import {
   computeDescendantVisualBounds,
   computeVisualBounds

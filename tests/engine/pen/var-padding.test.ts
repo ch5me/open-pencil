@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { SceneNode } from '@open-pencil/core'
+import type { SceneNode } from '@open-pencil/scene-graph'
 import { applyPadding, isVarRef, type VarContext } from '@open-pencil/pen'
 
 /**

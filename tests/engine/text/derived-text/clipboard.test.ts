@@ -1,12 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 
-import {
-  fontManager,
-  SceneGraph,
-  buildFontDigestMap,
-  buildDerivedTextDataV4,
-  initCodec
-} from '@open-pencil/core'
+import { fontManager } from '@open-pencil/core/text'
+import { SceneGraph } from '@open-pencil/scene-graph'
+import { initCodec } from '@open-pencil/core/kiwi'
+import { buildFontDigestMap, buildDerivedTextDataV4 } from '@open-pencil/core'
 
 import { expectDefined } from '#tests/helpers/assert'
 

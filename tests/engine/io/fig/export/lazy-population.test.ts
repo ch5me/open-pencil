@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { exportFigFile, initCodec, parseFigFile } from '@open-pencil/core'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
 import { setLazyFigImportContext } from '@open-pencil/core/kiwi/fig/lazy-import'
 import { SceneGraph } from '@open-pencil/scene-graph'
 

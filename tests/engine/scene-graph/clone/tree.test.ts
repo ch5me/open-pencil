@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { SceneGraph } from '@open-pencil/core'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 describe('SceneGraph.cloneTree', () => {
   test('clone clears source.id from the clone', () => {

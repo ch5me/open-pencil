@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import type { Vector } from '@open-pencil/core'
+import type { Vector } from '@open-pencil/scene-graph'
 import { importNodeChanges } from '@open-pencil/core/kiwi'
 import type { NodeChange } from '@open-pencil/kiwi/fig/codec'
 
