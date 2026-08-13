@@ -5,11 +5,12 @@ export const CODEGEN_PROMPT: string = codegenPrompt
 export { exportImage } from './vector'
 export { defineTool, nodeToResult, nodeSummary, requireNode, NodeNotFoundError } from './schema'
 export type { ToolDef, ParamDef, ParamType } from './schema'
-export type { ToolRemotePolicy } from './schema'
+export type { ToolRemotePolicy, ToolRemoteTargetOperand } from './schema'
 export {
   createGatewayManifest,
   GATEWAY_MANIFEST_VERSION,
   GATEWAY_REMOTE_POLICIES,
+  remotePolicyForTool,
   toolToGatewayAction
 } from './gateway-manifest'
 export type { GatewayActionManifest, GatewayActionSchema } from './gateway-manifest'

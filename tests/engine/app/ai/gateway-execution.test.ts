@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
+import { defineTool } from '@open-pencil/core/tools'
+
 import {
   createGatewayToolExecutor,
   type GatewayToolCall,
@@ -206,5 +208,105 @@ describe('gateway tool execution', () => {
 
     expect(result).toMatchObject({ ok: false, error: { code: 'target_mismatch' } })
     expect(executions).toBe(0)
+  })
+
+  test('accepts same-page scalar operands and rejects cross-page scalar operands', async () => {
+    const store = createEditorStore()
+    const targetPageId = store.state.currentPageId
+    const localNode = store.graph.createNode('RECTANGLE', targetPageId, { name: 'Local' })
+    const otherPage = store.graph.addPage('Other')
+    const foreignNode = store.graph.createNode('RECTANGLE', otherPage.id, { name: 'Foreign' })
+    let executions = 0
+    const execute = createGatewayToolExecutor({
+      store,
+      runId: baseCall.runId,
+      target: () => ({ documentId: 'document-1', pageId: targetPageId }),
+      manifest: {
+        id: 'manifest-1',
+        actions: [{ name: 'node_resize', mutates: true, requiresApproval: true }]
+      },
+      approve: () => true,
+      createTools: () => ({
+        node_resize: { execute: async () => ({ execution: ++executions }) }
+      })
+    })
+
+    const local = await execute({
+      ...baseCall,
+      target: { documentId: 'document-1', pageId: targetPageId },
+      toolName: 'node_resize',
+      input: { id: localNode.id, width: 20, height: 20 }
+    })
+    const foreign = await execute({
+      ...baseCall,
+      callId: 'foreign',
+      continuationId: 'foreign',
+      target: { documentId: 'document-1', pageId: targetPageId },
+      toolName: 'node_resize',
+      input: { id: foreignNode.id, width: 20, height: 20 }
+    })
+
+    expect(local).toMatchObject({ ok: true })
+    expect(foreign).toMatchObject({ ok: false, error: { code: 'target_mismatch' } })
+    expect(executions).toBe(1)
+  })
+
+  test('validates string-array operands and their aliases', async () => {
+    const definition = defineTool({
+      name: 'batch_nodes',
+      description: 'Batch nodes',
+      remote: {
+        enabled: true,
+        targetOperands: [{ param: 'ids', aliases: ['node_ids'], type: 'string[]' }]
+      },
+      params: {
+        ids: { type: 'string[]', description: 'Node IDs' },
+        node_ids: { type: 'string[]', description: 'Alias node IDs' }
+      },
+      execute: () => null
+    })
+    const store = createEditorStore()
+    const pageId = store.state.currentPageId
+    const local = store.graph.createNode('RECTANGLE', pageId, { name: 'Local' })
+    const otherPage = store.graph.addPage('Other')
+    const foreign = store.graph.createNode('RECTANGLE', otherPage.id, { name: 'Foreign' })
+    let executions = 0
+    const execute = createGatewayToolExecutor({
+      store,
+      definitions: [definition],
+      runId: baseCall.runId,
+      target: () => ({ documentId: 'document-1', pageId }),
+      manifest: {
+        id: 'manifest-1',
+        actions: [{ name: definition.name, mutates: false, requiresApproval: false }]
+      },
+      createTools: () => ({
+        [definition.name]: { execute: async () => ({ execution: ++executions }) }
+      })
+    })
+    const call = (input: Record<string, unknown>, suffix: string): GatewayToolCall => ({
+      ...baseCall,
+      callId: suffix,
+      continuationId: suffix,
+      target: { documentId: 'document-1', pageId },
+      toolName: definition.name,
+      input
+    })
+
+    expect(await execute(call({ ids: [local.id] }, 'local'))).toMatchObject({ ok: true })
+    expect(await execute(call({ ids: [local.id, foreign.id] }, 'foreign'))).toMatchObject({
+      ok: false,
+      error: { code: 'target_mismatch' }
+    })
+    expect(await execute(call({ node_ids: [local.id] }, 'alias-local'))).toMatchObject({ ok: true })
+    expect(await execute(call({ node_ids: [foreign.id] }, 'alias-foreign'))).toMatchObject({
+      ok: false,
+      error: { code: 'target_mismatch' }
+    })
+    expect(await execute(call({ ids: [local.id, 42] }, 'malformed'))).toMatchObject({
+      ok: false,
+      error: { code: 'invalid_schema' }
+    })
+    expect(executions).toBe(2)
   })
 })

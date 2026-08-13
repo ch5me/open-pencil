@@ -114,7 +114,7 @@ describe('hosted agent service transport', () => {
       documentId: 'document-1',
       clientId: 'chat',
       requestId: 'request-1',
-      idempotencyKey: 'idempotency-1',
+      idempotencyKey: `idem-${'1'.repeat(8)}`,
       sessionId: 'session-1',
       runId: 'run-1',
       lastEventId: 'event-1',

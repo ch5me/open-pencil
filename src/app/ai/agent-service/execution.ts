@@ -1,7 +1,7 @@
 import type { ToolSet } from 'ai'
 
-import { ALL_TOOLS } from '@open-pencil/core/tools'
-import type { ParamDef, ToolDef } from '@open-pencil/core/tools'
+import { ALL_TOOLS, remotePolicyForTool } from '@open-pencil/core/tools'
+import type { ParamDef, ToolDef, ToolRemoteTargetOperand } from '@open-pencil/core/tools'
 
 import { createAITools } from '@/app/ai/tools'
 import type { EditorStore } from '@/app/editor/active-store'
@@ -62,6 +62,7 @@ export interface GatewayToolExecutorOptions {
   approve?: ToolApprovalHandler
   approvalTimeoutMs?: number
   createTools?: (store: EditorStore) => GatewayToolSet
+  definitions?: readonly ToolDef[]
   isCancelled?: () => boolean
 }
 
@@ -129,14 +130,21 @@ function executable(tools: GatewayToolSet, name: string) {
 function invalidNodeOperand(
   input: Record<string, unknown>,
   store: EditorStore,
-  pageId: string
+  pageId: string,
+  operands: readonly ToolRemoteTargetOperand[]
 ): boolean {
-  return ['id', 'node_id', 'parent_id'].some((key) => {
-    const nodeId = input[key]
-    return (
-      typeof nodeId === 'string' && nodeId !== pageId && !store.graph.isDescendant(nodeId, pageId)
-    )
-  })
+  const outsideTargetPage = (nodeId: string) =>
+    nodeId !== pageId && !store.graph.isDescendant(nodeId, pageId)
+  return operands.some((operand) =>
+    [operand.param, ...(operand.aliases ?? [])].some((paramName) => {
+      const value = input[paramName]
+      if (value === undefined) return false
+      return operand.type === 'string'
+        ? typeof value !== 'string' || outsideTargetPage(value)
+        : !Array.isArray(value) ||
+            value.some((nodeId) => typeof nodeId !== 'string' || outsideTargetPage(nodeId))
+    })
+  )
 }
 
 async function approveToolCall(
@@ -187,9 +195,14 @@ async function executeToolCall(
 }
 
 export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
-  const definitions = new Map(ALL_TOOLS.map((definition) => [definition.name, definition]))
+  const availableDefinitions = options.definitions ?? ALL_TOOLS
+  const definitions = new Map(
+    availableDefinitions.map((definition) => [definition.name, definition])
+  )
   const manifest = new Map(options.manifest.actions.map((action) => [action.name, action]))
-  const exposedDefinitions = ALL_TOOLS.filter((definition) => manifest.has(definition.name))
+  const exposedDefinitions = availableDefinitions.filter((definition) =>
+    manifest.has(definition.name)
+  )
   const tools = options.createTools
     ? options.createTools(options.store)
     : createAITools(options.store, exposedDefinitions)
@@ -220,7 +233,11 @@ export function createGatewayToolExecutor(options: GatewayToolExecutorOptions) {
     if (!inputIsValid(call.input, definition)) {
       return failure(call, 'invalid_schema', 'Tool input does not match the action schema.')
     }
-    if (invalidNodeOperand(call.input, options.store, target.pageId)) {
+    const remotePolicy = remotePolicyForTool(definition)
+    if (!remotePolicy.enabled || !remotePolicy.targetOperands) {
+      return failure(call, 'tool_unavailable', 'Tool is unavailable for remote execution.')
+    }
+    if (invalidNodeOperand(call.input, options.store, target.pageId, remotePolicy.targetOperands)) {
       return failure(
         call,
         'target_mismatch',

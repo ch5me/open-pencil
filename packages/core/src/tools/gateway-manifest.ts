@@ -22,20 +22,60 @@ export interface GatewayActionManifest {
 
 /** Deliberately narrow initial exposure; all unlisted ToolDefs remain remote-disabled. */
 export const GATEWAY_REMOTE_POLICIES: Readonly<Partial<Record<string, ToolRemotePolicy>>> = {
-  create_shape: { enabled: true, requiresApproval: true },
-  get_node: { enabled: true },
-  get_selection: { enabled: true },
-  node_resize: { enabled: true, requiresApproval: true }
+  create_shape: {
+    enabled: true,
+    requiresApproval: true,
+    targetOperands: [{ param: 'parent_id', type: 'string' }]
+  },
+  get_node: { enabled: true, targetOperands: [{ param: 'id', type: 'string' }] },
+  get_selection: { enabled: true, targetOperands: [] },
+  node_resize: {
+    enabled: true,
+    requiresApproval: true,
+    targetOperands: [{ param: 'id', type: 'string' }]
+  }
+}
+
+export function remotePolicyForTool(tool: ToolDef): ToolRemotePolicy {
+  return tool.remote?.enabled === true
+    ? tool.remote
+    : (GATEWAY_REMOTE_POLICIES[tool.name] ?? { enabled: false })
+}
+
+function validateTargetOperands(tool: ToolDef, policy: ToolRemotePolicy): void {
+  if (!policy.enabled) return
+  if (!policy.targetOperands) {
+    throw new Error(`Remote tool "${tool.name}" must declare targetOperands`)
+  }
+  const claimedParams = new Set<string>()
+  for (const operand of policy.targetOperands) {
+    for (const paramName of [operand.param, ...(operand.aliases ?? [])]) {
+      if (claimedParams.has(paramName)) {
+        throw new Error(
+          `Remote tool "${tool.name}" declares duplicate target operand "${paramName}"`
+        )
+      }
+      claimedParams.add(paramName)
+      const param = Object.entries(tool.params).find(([name]) => name === paramName)?.[1]
+      if (!param || param.type !== operand.type) {
+        throw new Error(
+          `Remote tool "${tool.name}" target operand "${paramName}" must be a ${operand.type} parameter`
+        )
+      }
+    }
+  }
+}
+
+function gatewayParamType(param: ParamDef): AgentGatewayPropertySchema['type'] {
+  if (param.type === 'color') return 'string'
+  if (param.type === 'string[]') return 'array'
+  return param.type
 }
 
 function paramSchema(param: ParamDef): AgentGatewayPropertySchema {
-  let type: AgentGatewayPropertySchema['type'] = 'string'
-  if (param.type === 'color') type = 'string'
-  else if (param.type === 'string[]') type = 'array'
-  else type = param.type
   const schema: AgentGatewayPropertySchema = {
     description: param.description,
-    type
+    type: gatewayParamType(param)
   }
   if (param.type === 'string[]') schema.items = { type: 'string' }
   if (param.enum) schema.enum = [...param.enum]
@@ -46,10 +86,9 @@ function paramSchema(param: ParamDef): AgentGatewayPropertySchema {
 }
 
 export function toolToGatewayAction(tool: ToolDef): GatewayActionSchema | undefined {
-  const declaredPolicy = tool.remote
-  const policy =
-    declaredPolicy?.enabled === true ? declaredPolicy : GATEWAY_REMOTE_POLICIES[tool.name]
-  if (!policy?.enabled) return undefined
+  const policy = remotePolicyForTool(tool)
+  if (!policy.enabled) return undefined
+  validateTargetOperands(tool, policy)
   const entries = Object.entries(tool.params).sort(([left], [right]) => left.localeCompare(right))
   return {
     name: tool.name,

@@ -34,6 +34,14 @@ export interface ToolDef {
 export interface ToolRemotePolicy {
   enabled: boolean
   requiresApproval?: boolean
+  /** Parameters whose node IDs must resolve within the negotiated target page. */
+  targetOperands?: readonly ToolRemoteTargetOperand[]
+}
+
+export interface ToolRemoteTargetOperand {
+  param: string
+  aliases?: readonly string[]
+  type: 'string' | 'string[]'
 }
 
 type ResolvedType<T extends ParamType> = T extends 'string'

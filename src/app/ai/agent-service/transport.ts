@@ -38,6 +38,7 @@ type RunState = {
   sessionId?: string
   runId?: string
   lastEventId?: string
+  lastEventFingerprint?: string
   sequence?: number
   receipt?: AgentRunReceipt
   receiptId?: string
@@ -47,6 +48,8 @@ type RunState = {
   interrupted: boolean
   textParts: Set<string>
   toolCalls: Set<string>
+  recoveredToolCalls: Set<string>
+  pendingApprovals: Set<string>
   pendingContinuations: Map<string, AgentToolResultContinuation>
   cancelling: boolean
   cancelPromise?: Promise<void>
@@ -126,8 +129,28 @@ function metadata(state: RunState) {
   }
 }
 
-function validateOrder(event: AgentEvent, state: RunState) {
-  if (state.sequence !== undefined && event.seq !== state.sequence + 1) {
+function eventFingerprint(event: AgentEvent): string {
+  return JSON.stringify(event)
+}
+
+function validateOrder(event: AgentEvent, state: RunState): 'new' | 'replay' {
+  const fingerprint = eventFingerprint(event)
+  if (state.sequence !== undefined && event.seq === state.sequence) {
+    if (event.eventId === state.lastEventId && fingerprint === state.lastEventFingerprint) {
+      return 'replay'
+    }
+    throw new AgentServiceTransportError(
+      'event-conflict',
+      `Agent event sequence ${event.seq} was replayed with conflicting content.`
+    )
+  }
+  if (state.sequence !== undefined && event.seq < state.sequence) {
+    throw new AgentServiceTransportError(
+      'event-reordered',
+      `Agent event sequence ${event.seq} arrived after sequence ${state.sequence}.`
+    )
+  }
+  if (state.sequence !== undefined && event.seq > state.sequence + 1) {
     throw new AgentServiceTransportError(
       'stream-interrupted',
       `Expected agent event sequence ${state.sequence + 1}, received ${event.seq}.`
@@ -146,7 +169,9 @@ function validateOrder(event: AgentEvent, state: RunState) {
   state.runId = event.runId
   state.sequence = event.seq
   state.lastEventId = event.eventId
+  state.lastEventFingerprint = fingerprint
   state.resolveIdentity('ready')
+  return 'new'
 }
 
 function bindReceiptIdentity(event: AgentEvent, state: RunState): void {
@@ -164,6 +189,24 @@ function bindReceiptIdentity(event: AgentEvent, state: RunState): void {
     )
   }
   if (receipt) state.receiptId = receipt.receiptId
+}
+
+function acknowledgeToolResult(callId: string, state: RunState): void {
+  if (state.toolCalls.has(callId)) return
+  throw new AgentServiceTransportError(
+    'tool-result-conflict',
+    `Tool result acknowledgement does not match call ${callId}.`
+  )
+}
+
+function acknowledgeApprovalRequirement(callId: string, state: RunState): void {
+  if (state.toolCalls.has(callId) || state.pendingApprovals.has(callId)) {
+    throw new AgentServiceTransportError(
+      'approval-conflict',
+      `Approval lifecycle for tool call ${callId} is duplicated or late.`
+    )
+  }
+  state.pendingApprovals.add(callId)
 }
 
 function mapEvent(event: AgentEvent, state: RunState): UIMessageChunk[] {
@@ -192,6 +235,7 @@ function mapEvent(event: AgentEvent, state: RunState): UIMessageChunk[] {
     case 'tool.call':
       if (state.toolCalls.has(event.data.callId)) return []
       state.toolCalls.add(event.data.callId)
+      state.pendingApprovals.delete(event.data.callId)
       return [
         {
           type: 'tool-input-available',
@@ -202,13 +246,21 @@ function mapEvent(event: AgentEvent, state: RunState): UIMessageChunk[] {
         }
       ]
     case 'tool.result':
+      acknowledgeToolResult(event.data.callId, state)
       return []
     case 'approval.required':
+      acknowledgeApprovalRequirement(event.data.callId, state)
       return []
     case 'receipt':
       state.receipt = event.data.receipt
       return []
     case 'run.completed':
+      if (state.pendingApprovals.size > 0) {
+        throw new AgentServiceTransportError(
+          'approval-unresolved',
+          'Agent run completed with an uncorrelated approval requirement.'
+        )
+      }
       state.receipt = event.data.receipt
       state.finished = true
       return [{ type: 'finish', finishReason: 'stop', messageMetadata: metadata(state) }]
@@ -310,13 +362,16 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
         sessionId: persisted.sessionId,
         runId: persisted.runId,
         lastEventId: persisted.lastEventId,
+        lastEventFingerprint: persisted.lastEventFingerprint,
         sequence: persisted.sequence,
         receiptId: persisted.receiptId,
         manifestId: persisted.manifestId,
         finished: false,
         interrupted: true,
         textParts: new Set(),
-        toolCalls: new Set(),
+        toolCalls: new Set(persisted.executedToolCallIds),
+        recoveredToolCalls: new Set(persisted.executedToolCallIds),
+        pendingApprovals: new Set(persisted.pendingApprovalCallIds),
         pendingContinuations: new Map(
           persisted.pendingContinuation
             ? [[persisted.pendingContinuation.callId, persisted.pendingContinuation]]
@@ -347,9 +402,12 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       sessionId: state.sessionId,
       runId: state.runId,
       lastEventId: state.lastEventId,
+      lastEventFingerprint: state.lastEventFingerprint,
       sequence: state.sequence,
       receiptId: state.receiptId,
       manifestId: state.manifestId ?? '',
+      pendingApprovalCallIds: [...state.pendingApprovals],
+      executedToolCallIds: [...state.toolCalls],
       pendingContinuation
     })
   }
@@ -426,6 +484,113 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     }
   }
 
+  private ensureApprovalMatches(
+    event: Extract<AgentEvent, { type: 'tool.call' }>,
+    state: RunState,
+    action: GatewayActionManifest['actions'][number] | undefined
+  ): void {
+    if (!state.pendingApprovals.has(event.data.callId)) return
+    if (action?.requiresApproval === true) return
+    throw new AgentServiceTransportError(
+      'approval-conflict',
+      `Approval requirement does not map to an approval-gated action for call ${event.data.callId}.`
+    )
+  }
+
+  private executor(state: RunState, event: Extract<AgentEvent, { type: 'tool.call' }>) {
+    const manifest = this.manifest
+    if (!manifest)
+      throw new AgentServiceTransportError('capability-mismatch', 'Tool manifest is missing.')
+    state.executeTool ??= createGatewayToolExecutor({
+      store: this.options.store,
+      runId: event.runId,
+      target: () =>
+        this.options.isTargetActive?.() === false
+          ? { documentId: '', pageId: '' }
+          : {
+              documentId: this.options.documentId,
+              pageId: this.options.store.state.currentPageId
+            },
+      manifest: {
+        id: manifest.manifestId,
+        actions: manifest.actions.map(({ name, mutates, requiresApproval }) => ({
+          name,
+          mutates,
+          requiresApproval
+        }))
+      },
+      approve: this.options.approve ?? requestToolApprovalFromUser,
+      isCancelled: () => state.cancelling
+    })
+    return { executeTool: state.executeTool, manifest }
+  }
+
+  private async consumeToolCall(
+    event: Extract<AgentEvent, { type: 'tool.call' }>,
+    state: RunState,
+    controller: ReadableStreamDefaultController<UIMessageChunk>
+  ): Promise<void> {
+    const duplicateToolCall = state.toolCalls.has(event.data.callId)
+    if (state.recoveredToolCalls.has(event.data.callId)) {
+      throw new AgentServiceTransportError(
+        'event-conflict',
+        `Recovered tool call ${event.data.callId} cannot be executed again.`
+      )
+    }
+    const { executeTool, manifest } = this.executor(state, event)
+    const manifestAction = manifest.actions.find((action) => action.name === event.data.name)
+    this.ensureApprovalMatches(event, state, manifestAction)
+    for (const chunk of mapEvent(event, state)) controller.enqueue(chunk)
+
+    const eventPageId =
+      event.data.target.pageId ??
+      (manifestAction?.mutates ? '' : this.options.store.state.currentPageId)
+    const result = await executeTool({
+      runId: event.runId,
+      callId: event.data.callId,
+      continuationId: event.data.continuationId,
+      manifestId: event.data.manifestId,
+      target: {
+        documentId: event.data.target.documentId,
+        pageId: eventPageId
+      },
+      toolName: event.data.name,
+      input: agentArguments(event.data.arguments)
+    })
+    if (!duplicateToolCall) {
+      controller.enqueue(
+        result.ok
+          ? {
+              type: 'tool-output-available',
+              toolCallId: result.callId,
+              output: result.output,
+              providerExecuted: false
+            }
+          : {
+              type: 'tool-output-error',
+              toolCallId: result.callId,
+              errorText: result.error.message,
+              providerExecuted: false
+            }
+      )
+    }
+
+    const continuation = this.continuation(event, result)
+    state.pendingContinuations.set(event.data.callId, continuation)
+    this.persist(state)
+    const continuationResponse = await this.response(
+      `/api/agent/sessions/${encodeURIComponent(event.sessionId)}/runs/${encodeURIComponent(event.runId)}/tool-results`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(continuation)
+      }
+    )
+    state.pendingContinuations.delete(event.data.callId)
+    this.persist(state)
+    await this.consumeInto(continuationResponse, state, controller)
+  }
+
   private async consumeInto(
     response: Response,
     state: RunState,
@@ -434,84 +599,10 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     if (!response.body)
       throw new AgentServiceTransportError('stream-interrupted', 'Missing stream body.')
     for await (const event of sseEvents(response.body)) {
-      validateOrder(event, state)
+      if (validateOrder(event, state) === 'replay') continue
       if (event.type !== 'tool.call') this.persist(state)
-      const duplicateToolCall = event.type === 'tool.call' && state.toolCalls.has(event.data.callId)
-      for (const chunk of mapEvent(event, state)) controller.enqueue(chunk)
-      if (event.type !== 'tool.call') continue
-
-      const manifest = this.manifest
-      if (!manifest)
-        throw new AgentServiceTransportError('capability-mismatch', 'Tool manifest is missing.')
-      state.executeTool ??= createGatewayToolExecutor({
-        store: this.options.store,
-        runId: event.runId,
-        target: () =>
-          this.options.isTargetActive?.() === false
-            ? { documentId: '', pageId: '' }
-            : {
-                documentId: this.options.documentId,
-                pageId: this.options.store.state.currentPageId
-              },
-        manifest: {
-          id: manifest.manifestId,
-          actions: manifest.actions.map(({ name, mutates, requiresApproval }) => ({
-            name,
-            mutates,
-            requiresApproval
-          }))
-        },
-        approve: this.options.approve ?? requestToolApprovalFromUser,
-        isCancelled: () => state.cancelling
-      })
-      const input = agentArguments(event.data.arguments)
-      const manifestAction = manifest.actions.find((action) => action.name === event.data.name)
-      const eventPageId =
-        event.data.target.pageId ??
-        (manifestAction?.mutates ? '' : this.options.store.state.currentPageId)
-      const result = await state.executeTool({
-        runId: event.runId,
-        callId: event.data.callId,
-        continuationId: event.data.continuationId,
-        manifestId: event.data.manifestId,
-        target: {
-          documentId: event.data.target.documentId,
-          pageId: eventPageId
-        },
-        toolName: event.data.name,
-        input
-      })
-      if (!duplicateToolCall) {
-        controller.enqueue(
-          result.ok
-            ? {
-                type: 'tool-output-available',
-                toolCallId: result.callId,
-                output: result.output,
-                providerExecuted: false
-              }
-            : {
-                type: 'tool-output-error',
-                toolCallId: result.callId,
-                errorText: result.error.message,
-                providerExecuted: false
-              }
-        )
-      }
-      const continuation = this.continuation(event, result)
-      state.pendingContinuations.set(event.data.callId, continuation)
-      this.persist(state)
-      const continuationResponse = await this.response(
-        `/api/agent/sessions/${encodeURIComponent(event.sessionId)}/runs/${encodeURIComponent(event.runId)}/tool-results`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(continuation)
-        }
-      )
-      state.pendingContinuations.delete(event.data.callId)
-      this.persist(state)
-      await this.consumeInto(continuationResponse, state, controller)
+      if (event.type === 'tool.call') await this.consumeToolCall(event, state, controller)
+      else for (const chunk of mapEvent(event, state)) controller.enqueue(chunk)
     }
   }
 
@@ -575,6 +666,8 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       interrupted: false,
       textParts: new Set(),
       toolCalls: new Set(),
+      recoveredToolCalls: new Set(),
+      pendingApprovals: new Set(),
       pendingContinuations: new Map(),
       cancelling: false,
       identityReady: identity.promise,
@@ -693,7 +786,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
           )
         let confirmed = false
         for await (const event of sseEvents(response.body)) {
-          validateOrder(event, state)
+          if (validateOrder(event, state) === 'replay') continue
           if (event.type !== 'run.cancelled' || confirmed) {
             throw new AgentServiceTransportError(
               'cancellation-failed',

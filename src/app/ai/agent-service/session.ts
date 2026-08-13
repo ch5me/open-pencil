@@ -21,9 +21,12 @@ export type PersistedAgentSession = {
   sessionId: string
   runId: string
   lastEventId: string
+  lastEventFingerprint?: string
   sequence: number
   receiptId?: string
   manifestId: string
+  pendingApprovalCallIds?: string[]
+  executedToolCallIds?: string[]
   pendingContinuation?: AgentToolResultContinuation
 }
 
@@ -70,7 +73,38 @@ function isStoredIdentity(value: unknown): value is PersistedAgentSession {
     validId(value.manifestId) &&
     'sequence' in value &&
     Number.isSafeInteger(value.sequence) &&
+    validLastEventFingerprint(value) &&
+    validPendingApprovalCallIds(value) &&
+    validExecutedToolCallIds(value) &&
     validReceiptId(value)
+  )
+}
+
+function validExecutedToolCallIds(value: object): boolean {
+  if (!('executedToolCallIds' in value) || value.executedToolCallIds === undefined) return true
+  return (
+    Array.isArray(value.executedToolCallIds) &&
+    value.executedToolCallIds.length <= 256 &&
+    value.executedToolCallIds.every(validId)
+  )
+}
+
+function validPendingApprovalCallIds(value: object): boolean {
+  if (!('pendingApprovalCallIds' in value) || value.pendingApprovalCallIds === undefined)
+    return true
+  return (
+    Array.isArray(value.pendingApprovalCallIds) &&
+    value.pendingApprovalCallIds.length <= 16 &&
+    value.pendingApprovalCallIds.every(validId)
+  )
+}
+
+function validLastEventFingerprint(value: object): boolean {
+  if (!('lastEventFingerprint' in value) || value.lastEventFingerprint === undefined) return true
+  return (
+    typeof value.lastEventFingerprint === 'string' &&
+    value.lastEventFingerprint.length > 0 &&
+    value.lastEventFingerprint.length <= MAX_SESSION_BYTES
   )
 }
 
