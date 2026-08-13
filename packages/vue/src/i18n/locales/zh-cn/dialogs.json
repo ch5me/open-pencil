@@ -79,6 +79,8 @@
   "settings": "设置",
   "settingsDescription": "管理集成和应用偏好设置。",
   "settingsAIAndAgents": "AI 和代理",
+  "hostedAgentManagedTitle": "由 Agent Native 管理",
+  "hostedAgentManagedDescription": "此工作区的提供商、模型、凭据和路由均由中心统一配置。",
   "models": "模型",
   "modelsDescription": "配置可复用模型及其提供商连接。",
   "addModel": "添加模型",

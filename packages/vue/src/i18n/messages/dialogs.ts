@@ -144,6 +144,9 @@ export const dialogMessageDefaults = {
   settings: 'Settings',
   settingsDescription: 'Manage integrations and app preferences.',
   settingsAIAndAgents: 'AI & agents',
+  hostedAgentManagedTitle: 'Managed by Agent Native',
+  hostedAgentManagedDescription:
+    'Provider, model, credentials, and routing are configured centrally for this workspace.',
   models: 'Models',
   modelsDescription: 'Configure reusable models and their provider connections.',
   addModel: 'Add model',

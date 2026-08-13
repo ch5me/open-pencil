@@ -79,6 +79,8 @@
   "settings": "Impostazioni",
   "settingsDescription": "Gestisci integrazioni e preferenze dell’app.",
   "settingsAIAndAgents": "IA e agenti",
+  "hostedAgentManagedTitle": "Gestito da Agent Native",
+  "hostedAgentManagedDescription": "Provider, modello, credenziali e routing sono configurati centralmente per questo spazio di lavoro.",
   "models": "Modelli",
   "modelsDescription": "Configura modelli riutilizzabili e le connessioni ai provider.",
   "addModel": "Aggiungi modello",

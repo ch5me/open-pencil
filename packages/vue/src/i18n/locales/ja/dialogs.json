@@ -79,6 +79,8 @@
   "settings": "設定",
   "settingsDescription": "連携サービスとアプリの設定を管理します。",
   "settingsAIAndAgents": "AIとエージェント",
+  "hostedAgentManagedTitle": "Agent Native による管理",
+  "hostedAgentManagedDescription": "このワークスペースのプロバイダー、モデル、認証情報、ルーティングは一元管理されています。",
   "models": "モデル",
   "modelsDescription": "再利用可能なモデルとプロバイダー接続を設定します。",
   "addModel": "モデルを追加",

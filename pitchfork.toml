@@ -2,7 +2,7 @@
 enable = true
 
 [daemons.app]
-run = "./node_modules/.bin/vite --host 127.0.0.1 --port $PORT --strictPort"
+run = "bun tools/local-bootstrap/src/index.ts && exec ./node_modules/.bin/vite --host 127.0.0.1 --port $PORT --strictPort"
 dir = "."
 port = { expect = [1420], bump = 20 }
 ready_port = { port = 1420, timeout = "30s" }
@@ -14,13 +14,13 @@ port = { expect = [5173], bump = 20 }
 ready_port = { port = 5173, timeout = "30s" }
 
 [daemons.agent-gateway]
-run = "bun tools/agent-gateway/src/index.ts"
+run = "bun tools/local-bootstrap/src/index.ts && exec bun tools/agent-gateway/src/index.ts"
 dir = "."
 port = { expect = [1435], bump = 20 }
 ready_port = { port = 1435, timeout = "10s" }
 
 [daemons.api]
-run = "bun tools/agent-gateway/src/api.ts"
+run = "bun tools/local-bootstrap/src/index.ts && exec bun tools/agent-gateway/src/api.ts"
 dir = "."
 port = { expect = [8787], bump = 20 }
 ready_port = { port = 8787, timeout = "10s" }

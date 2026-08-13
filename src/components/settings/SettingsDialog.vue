@@ -6,6 +6,7 @@ import { IS_TAURI } from '@open-pencil/core/constants'
 import { useI18n } from '@open-pencil/vue'
 
 import { useAIChat } from '@/app/ai/chat/use'
+import { isHostedAgentEnabled } from '@/app/hosted/flags'
 import { appCredentialServices } from '@/app/settings/credentials/app'
 import { settingsDialogOpen, settingsDialogSection } from '@/app/settings/dialog'
 import ModelsPanel from '@/components/settings/models/ModelsPanel.vue'
@@ -16,6 +17,7 @@ import AppSwitch from '@/components/ui/AppSwitch.vue'
 import { AppDialogFooter, AppDialogHeader, AppDialogRoot } from '@/components/ui/dialog'
 
 const { dialogs } = useI18n()
+const isHostedAgent = isHostedAgentEnabled()
 const { browserCredentialsRemembered, setRememberCredentials } = useAIChat()
 function onOpenChange(open: boolean): void {
   settingsDialogOpen.value = open
@@ -96,7 +98,26 @@ const navigationClass =
           class="flex h-full flex-col"
           data-test-id="settings-ai-panel"
         >
-          <ModelsPanel />
+          <div
+            v-if="isHostedAgent"
+            class="flex items-start gap-3 rounded border border-border bg-panel-field p-4"
+            data-test-id="settings-hosted-agent-managed"
+          >
+            <div
+              class="flex size-9 shrink-0 items-center justify-center rounded bg-panel text-accent"
+            >
+              <icon-lucide-shield-check class="size-4" />
+            </div>
+            <div class="min-w-0">
+              <h3 class="text-xs font-semibold text-surface">
+                {{ dialogs.hostedAgentManagedTitle }}
+              </h3>
+              <p class="mt-1 text-[11px] leading-relaxed text-muted">
+                {{ dialogs.hostedAgentManagedDescription }}
+              </p>
+            </div>
+          </div>
+          <ModelsPanel v-else />
         </section>
 
         <section
@@ -114,7 +135,10 @@ const navigationClass =
     </div>
 
     <AppDialogFooter :ui="{ footer: 'justify-between' }">
-      <div class="mr-auto flex items-center gap-2">
+      <div
+        v-if="!isHostedAgent || settingsDialogSection !== 'ai'"
+        class="mr-auto flex items-center gap-2"
+      >
         <AppSwitch
           v-if="!IS_TAURI"
           v-model="rememberCredentials"

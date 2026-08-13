@@ -79,6 +79,8 @@
   "settings": "Einstellungen",
   "settingsDescription": "Integrationen und App-Einstellungen verwalten.",
   "settingsAIAndAgents": "KI und Agenten",
+  "hostedAgentManagedTitle": "Von Agent Native verwaltet",
+  "hostedAgentManagedDescription": "Anbieter, Modell, Zugangsdaten und Routing werden zentral für diesen Arbeitsbereich konfiguriert.",
   "models": "Modelle",
   "modelsDescription": "Wiederverwendbare Modelle und ihre Anbieter-Verbindungen konfigurieren.",
   "addModel": "Modell hinzufügen",

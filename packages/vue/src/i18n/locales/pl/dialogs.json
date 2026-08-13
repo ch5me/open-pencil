@@ -79,6 +79,8 @@
   "settings": "Ustawienia",
   "settingsDescription": "Zarządzaj integracjami i preferencjami aplikacji.",
   "settingsAIAndAgents": "AI i agenci",
+  "hostedAgentManagedTitle": "Zarządzane przez Agent Native",
+  "hostedAgentManagedDescription": "Dostawca, model, dane uwierzytelniające i routing są konfigurowane centralnie dla tego obszaru roboczego.",
   "models": "Modele",
   "modelsDescription": "Skonfiguruj modele wielokrotnego użytku i połączenia z dostawcami.",
   "addModel": "Dodaj model",

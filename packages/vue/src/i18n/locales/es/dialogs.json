@@ -79,6 +79,8 @@
   "settings": "Ajustes",
   "settingsDescription": "Gestiona integraciones y preferencias de la aplicación.",
   "settingsAIAndAgents": "IA y agentes",
+  "hostedAgentManagedTitle": "Gestionado por Agent Native",
+  "hostedAgentManagedDescription": "El proveedor, el modelo, las credenciales y el enrutamiento se configuran de forma centralizada para este espacio de trabajo.",
   "models": "Modelos",
   "modelsDescription": "Configura modelos reutilizables y sus conexiones de proveedor.",
   "addModel": "Añadir modelo",

@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- Hide local provider, model, and credential controls when hosted Agent Native chat owns configuration, and self-heal local service prerequisites before app, API, or gateway startup.
 - Complete translated app, accessibility, font, color, collaboration, import, connection-test, and browser fallback text across all supported locales, and keep the document language synchronized with the selected locale.
 
 ## 0.14.1 - 2026-08-12

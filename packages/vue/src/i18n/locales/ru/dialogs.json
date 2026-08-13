@@ -79,6 +79,8 @@
   "settings": "Настройки",
   "settingsDescription": "Управление интеграциями и настройками приложения.",
   "settingsAIAndAgents": "ИИ и агенты",
+  "hostedAgentManagedTitle": "Управляется Agent Native",
+  "hostedAgentManagedDescription": "Провайдер, модель, учетные данные и маршрутизация настраиваются централизованно для этого рабочего пространства.",
   "models": "Модели",
   "modelsDescription": "Настройте переиспользуемые модели и подключения к провайдерам.",
   "addModel": "Добавить модель",
