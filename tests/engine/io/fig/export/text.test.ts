@@ -7,7 +7,7 @@ import type { JSONObject } from '@open-pencil/scene-graph/primitives'
 
 import { expectDefined } from '#tests/helpers/assert'
 import { parseFixture } from '#tests/helpers/fig-fixtures'
-import { runsHeavyTests } from '#tests/helpers/test-utils'
+import { HEAVY_FIG_FIXTURE_TIMEOUT_MS, runsHeavyTests } from '#tests/helpers/test-utils'
 
 setDefaultTimeout(60_000)
 
@@ -334,6 +334,7 @@ describe('text node export', () => {
       for (const node of reimportedText.slice(0, 10)) {
         expect(node.text.length).toBeGreaterThan(0)
       }
-    }
+    },
+    HEAVY_FIG_FIXTURE_TIMEOUT_MS
   )
 })

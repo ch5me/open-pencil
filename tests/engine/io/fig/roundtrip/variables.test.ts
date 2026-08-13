@@ -7,7 +7,7 @@ import { SceneGraph, type Color } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 import { parseFixture } from '#tests/helpers/fig-fixtures'
-import { runsHeavyTests } from '#tests/helpers/test-utils'
+import { HEAVY_FIG_FIXTURE_TIMEOUT_MS, runsHeavyTests } from '#tests/helpers/test-utils'
 
 setDefaultTimeout(60_000)
 
@@ -198,7 +198,7 @@ describe('variable roundtrip', () => {
         [...original.variableCollections.values()].filter((c) => c.variableIds.length > 0).length
       )
     },
-    120_000
+    HEAVY_FIG_FIXTURE_TIMEOUT_MS
   )
 
   test('pluginID casing is consistent across full codec pipeline', async () => {
