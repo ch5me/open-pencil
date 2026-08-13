@@ -227,9 +227,9 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@open-pencil/agent-contracts": "workspace:*",
     "@chenglou/pretext": "^0.0.7",
     "@iconify/utils": "^3.1.0",
+    "@open-pencil/agent-contracts": "workspace:*",
     "@open-pencil/fig": "workspace:*",
     "@open-pencil/kiwi": "workspace:*",
     "@open-pencil/pen": "workspace:*",

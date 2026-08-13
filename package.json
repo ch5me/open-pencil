@@ -14,7 +14,8 @@
     "packages/vue",
     "packages/cli",
     "packages/mcp",
-    "packages/docs"
+    "packages/docs",
+    "tools/agent-gateway"
   ],
   "type": "module",
   "imports": {

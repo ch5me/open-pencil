@@ -6,6 +6,6 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@open-pencil/agent-contracts": "file:../../packages/agent-contracts"
+    "@open-pencil/agent-contracts": "workspace:*"
   }
 }
