@@ -40,6 +40,16 @@
       "import": "./dist/text/web-font/assets.js",
       "default": "./dist/text/web-font/assets.js"
     },
+    "./text/derived-text": {
+      "types": "./dist/text/derived-text/index.d.ts",
+      "import": "./dist/text/derived-text/index.js",
+      "default": "./dist/text/derived-text/index.js"
+    },
+    "./text/opentype": {
+      "types": "./dist/text/opentype.d.ts",
+      "import": "./dist/text/opentype.js",
+      "default": "./dist/text/opentype.js"
+    },
     "./vector": {
       "types": "./dist/vector/index.d.ts",
       "import": "./dist/vector/index.js",
@@ -69,6 +79,11 @@
       "types": "./dist/canvas/image-editor/index.d.ts",
       "import": "./dist/canvas/image-editor/index.js",
       "default": "./dist/canvas/image-editor/index.js"
+    },
+    "./canvas/labels": {
+      "types": "./dist/canvas/labels/index.d.ts",
+      "import": "./dist/canvas/labels/index.js",
+      "default": "./dist/canvas/labels/index.js"
     },
     "./scene-graph": {
       "types": "./dist/scene-graph.d.ts",
