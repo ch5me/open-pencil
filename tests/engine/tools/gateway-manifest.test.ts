@@ -28,7 +28,11 @@ describe('gateway ToolDef manifest', () => {
   test('is default-disabled and exposes a small mutation allowlist', () => {
     expect(privateTool.remote).toEqual({ enabled: false })
     expect(toolToGatewayAction(privateTool)).toBeUndefined()
-    expect(GATEWAY_REMOTE_POLICIES.node_resize).toEqual({ enabled: true, requiresApproval: true })
+    expect(GATEWAY_REMOTE_POLICIES.node_resize).toEqual({
+      enabled: true,
+      requiresApproval: true,
+      targetOperands: [{ param: 'id', type: 'string' }]
+    })
     expect(toolToGatewayAction(resize)?.mutates).toBe(true)
   })
 
@@ -53,5 +57,25 @@ describe('gateway ToolDef manifest', () => {
     expect((await createGatewayManifest([resize])).manifestId).not.toBe(
       (await createGatewayManifest([changed])).manifestId
     )
+  })
+
+  test('requires remotely exposed tools to declare valid target operand metadata', () => {
+    const missing = defineTool({
+      name: 'future_remote_action',
+      description: 'Future action',
+      remote: { enabled: true },
+      params: { node_ids: { type: 'string[]', description: 'Node IDs' } },
+      execute: () => null
+    })
+    const malformed = defineTool({
+      ...missing,
+      remote: {
+        enabled: true,
+        targetOperands: [{ param: 'node_ids', type: 'string' as const }]
+      }
+    })
+
+    expect(() => toolToGatewayAction(missing)).toThrow('must declare targetOperands')
+    expect(() => toolToGatewayAction(malformed)).toThrow('must be a string parameter')
   })
 })
