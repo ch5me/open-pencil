@@ -29,8 +29,10 @@ export const GATEWAY_REMOTE_POLICIES: Readonly<Partial<Record<string, ToolRemote
 }
 
 function paramSchema(param: ParamDef): AgentGatewayPropertySchema {
-  const type: AgentGatewayPropertySchema['type'] =
-    param.type === 'color' ? 'string' : param.type === 'string[]' ? 'array' : param.type
+  let type: AgentGatewayPropertySchema['type'] = 'string'
+  if (param.type === 'color') type = 'string'
+  else if (param.type === 'string[]') type = 'array'
+  else type = param.type
   const schema: AgentGatewayPropertySchema = {
     description: param.description,
     type

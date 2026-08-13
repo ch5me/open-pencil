@@ -50,7 +50,8 @@ of the validated tool registry used by local chat and MCP. The hosted flow
 supports streamed replies, correlated approval and tool-result continuation,
 run cancellation, and reconnect after a transient disconnect or browser reload.
 Reload recovery keeps only bounded, expiring, document-scoped run identity and
-one pending provider-neutral continuation in session storage.
+one pending provider-neutral continuation in session storage. It resumes
+execution and future output; earlier transcript text remains process-local.
 
 Hosted chat fails explicitly if its service is unavailable or a run cannot
 reconnect. Hosted mode never sends the prompt to a configured BYOK provider or

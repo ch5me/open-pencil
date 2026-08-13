@@ -41,6 +41,7 @@ type RunState = {
   sequence?: number
   receipt?: AgentRunReceipt
   receiptId?: string
+  manifestId?: string
   executeTool?: ReturnType<typeof createGatewayToolExecutor>
   finished: boolean
   interrupted: boolean
@@ -49,6 +50,8 @@ type RunState = {
   pendingContinuations: Map<string, AgentToolResultContinuation>
   cancelling: boolean
   cancelPromise?: Promise<void>
+  identityReady: Promise<'ready'>
+  resolveIdentity: (value: 'ready') => void
   restored?: boolean
 }
 
@@ -143,24 +146,28 @@ function validateOrder(event: AgentEvent, state: RunState) {
   state.runId = event.runId
   state.sequence = event.seq
   state.lastEventId = event.eventId
+  state.resolveIdentity('ready')
 }
 
-function mapEvent(event: AgentEvent, state: RunState): UIMessageChunk[] {
-  const eventReceipt =
+function bindReceiptIdentity(event: AgentEvent, state: RunState): void {
+  const receipt =
     event.type === 'receipt' ||
     event.type === 'run.completed' ||
     event.type === 'run.cancelled' ||
     event.type === 'run.failed'
       ? event.data.receipt
       : undefined
-  if (eventReceipt && state.receiptId && eventReceipt.receiptId !== state.receiptId) {
+  if (receipt && state.receiptId && receipt.receiptId !== state.receiptId) {
     throw new AgentServiceTransportError(
       'session-conflict',
       'Agent receipt identity changed mid-run.'
     )
   }
-  if (eventReceipt) state.receiptId = eventReceipt.receiptId
+  if (receipt) state.receiptId = receipt.receiptId
+}
 
+function mapEvent(event: AgentEvent, state: RunState): UIMessageChunk[] {
+  bindReceiptIdentity(event, state)
   switch (event.type) {
     case 'session.created':
     case 'run.started':
@@ -296,6 +303,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     this.clientId = options.clientId ?? options.documentId
     const persisted = loadAgentSession(this.resumeStore, options.documentId, this.clientId)
     if (persisted) {
+      const identity = Promise.withResolvers<'ready'>()
       this.active = {
         requestId: persisted.requestId,
         idempotencyKey: persisted.idempotencyKey,
@@ -304,6 +312,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
         lastEventId: persisted.lastEventId,
         sequence: persisted.sequence,
         receiptId: persisted.receiptId,
+        manifestId: persisted.manifestId,
         finished: false,
         interrupted: true,
         textParts: new Set(),
@@ -314,9 +323,16 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
             : []
         ),
         cancelling: false,
+        identityReady: identity.promise,
+        resolveIdentity: identity.resolve,
         restored: true
       }
+      identity.resolve('ready')
     }
+  }
+
+  hasRestoredRun(): boolean {
+    return this.active?.restored === true
   }
 
   private persist(state: RunState): void {
@@ -333,6 +349,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       lastEventId: state.lastEventId,
       sequence: state.sequence,
       receiptId: state.receiptId,
+      manifestId: state.manifestId ?? '',
       pendingContinuation
     })
   }
@@ -418,7 +435,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       throw new AgentServiceTransportError('stream-interrupted', 'Missing stream body.')
     for await (const event of sseEvents(response.body)) {
       validateOrder(event, state)
-      this.persist(state)
+      if (event.type !== 'tool.call') this.persist(state)
       const duplicateToolCall = event.type === 'tool.call' && state.toolCalls.has(event.data.callId)
       for (const chunk of mapEvent(event, state)) controller.enqueue(chunk)
       if (event.type !== 'tool.call') continue
@@ -548,7 +565,9 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     }
     const message = latestUserMessage(messages)
     this.manifest ??= await createGatewayManifest(ALL_TOOLS)
+    const previousSessionId = this.active?.finished ? this.active.sessionId : undefined
     const requestId = crypto.randomUUID()
+    const identity = Promise.withResolvers<'ready'>()
     const state: RunState = {
       requestId,
       idempotencyKey: crypto.randomUUID(),
@@ -557,25 +576,28 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       textParts: new Set(),
       toolCalls: new Set(),
       pendingContinuations: new Map(),
-      cancelling: false
+      cancelling: false,
+      identityReady: identity.promise,
+      resolveIdentity: identity.resolve
     }
     this.active = state
-    abortSignal?.addEventListener(
-      'abort',
-      () => {
-        state.cancelPromise = this.cancel(state)
-      },
-      { once: true }
-    )
+    const requestCancellation = () => {
+      state.cancelPromise = this.cancel(state)
+    }
+    if (abortSignal?.aborted) requestCancellation()
+    else abortSignal?.addEventListener('abort', requestCancellation, { once: true })
+    state.manifestId = this.manifest.manifestId
     const response = await this.response('/api/agent/runs', {
       method: 'POST',
-      signal: abortSignal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         schema: AGENT_RUN_SCHEMA,
         requestId,
         idempotencyKey: state.idempotencyKey,
-        conversation: { clientId: this.options.clientId ?? chatId },
+        conversation: {
+          clientId: this.options.clientId ?? chatId,
+          ...(previousSessionId ? { sessionId: previousSessionId } : {})
+        },
         input: { messageId: message.id, text: messageText(message) },
         context: {
           documentId: this.options.documentId,
@@ -608,6 +630,14 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       !state.lastEventId
     )
       return null
+    this.manifest ??= await createGatewayManifest(ALL_TOOLS)
+    if (state.manifestId && this.manifest.manifestId !== state.manifestId) {
+      throw new AgentServiceTransportError(
+        'capability-mismatch',
+        'The hosted agent action manifest changed before recovery.'
+      )
+    }
+    state.manifestId = this.manifest.manifestId
     // The AI SDK discards an interrupted response's open text parts. Let resumed
     // deltas establish fresh parts while retaining tool-call replay guards.
     state.textParts.clear()
@@ -641,16 +671,16 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       state.cancelling = true
       state.interrupted = false
       if (!state.runId) {
-        state.finished = true
-        this.clearPersisted()
-        return
+        await state.identityReady
+      }
+      if (!state.runId || !state.sessionId) {
+        throw new AgentServiceTransportError(
+          'cancellation-failed',
+          'Gateway did not provide cancellable run identity.'
+        )
       }
       const { rejectPermissionsForSession } = await import('@/app/ai/acp/permission')
       rejectPermissionsForSession(state.runId)
-      if (!state.sessionId) {
-        state.finished = true
-        return
-      }
       try {
         const response = await this.response(
           `/api/agent/sessions/${encodeURIComponent(state.sessionId)}/runs/${encodeURIComponent(state.runId)}/cancel`,

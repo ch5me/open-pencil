@@ -118,7 +118,8 @@ describe('hosted agent service transport', () => {
       sessionId: 'session-1',
       runId: 'run-1',
       lastEventId: 'event-1',
-      sequence: 1
+      sequence: 1,
+      manifestId: `sha256:${'1'.repeat(64)}`
     }
     expect(saveAgentSession(resumeStore, state, 100)).toBeTrue()
     expect(loadAgentSession(resumeStore, 'document-1', 'chat', 101)).toMatchObject(state)

@@ -3,7 +3,7 @@ import type { AgentToolResultContinuation } from '@open-pencil/core/agent'
 
 import { IS_BROWSER } from '@/constants'
 
-const SESSION_VERSION = 1
+const SESSION_VERSION = 2
 const SESSION_PREFIX = 'openpencil:hosted-agent:'
 const MAX_SESSION_BYTES = 16_384
 const MAX_ID_LENGTH = 256
@@ -23,6 +23,7 @@ export type PersistedAgentSession = {
   lastEventId: string
   sequence: number
   receiptId?: string
+  manifestId: string
   pendingContinuation?: AgentToolResultContinuation
 }
 
@@ -37,8 +38,9 @@ function sessionKey(documentId: string, clientId: string): string {
 function removeSession(storage: AgentResumeStore, key: string): void {
   try {
     storage.removeItem(key)
-  } catch {
-    // Unavailable browser storage must not break chat startup or recovery.
+  } catch (error) {
+    // Storage cleanup is best-effort and must not break chat recovery.
+    void error
   }
 }
 
@@ -64,6 +66,8 @@ function isStoredIdentity(value: unknown): value is PersistedAgentSession {
     'clientId' in value &&
     validId(value.clientId) &&
     hasRunIds(value) &&
+    'manifestId' in value &&
+    validId(value.manifestId) &&
     'sequence' in value &&
     Number.isSafeInteger(value.sequence) &&
     validReceiptId(value)

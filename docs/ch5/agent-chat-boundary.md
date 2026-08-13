@@ -107,6 +107,8 @@ without external providers. The fixture is not a production fallback.
   provider-neutral run identity and one pending continuation in session
   storage. Unknown cursors, corrupt state, and identity conflicts fail
   explicitly.
+- Reload recovery resumes execution and future output only. The prior transcript
+  remains process-local and is not persisted with run identity.
 - Approval rejects by default when no handler answers. A rejection is returned
   as a continuation, not flattened into assistant text.
 - Duplicate identical continuations are idempotent; a conflicting result for

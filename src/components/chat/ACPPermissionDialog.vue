@@ -16,7 +16,7 @@ import {
 } from '@/app/ai/acp/permission'
 import { AppAlertDialogRoot } from '@/components/ui/dialog'
 
-defineProps<{ showCancelRun?: boolean }>()
+const { showCancelRun = false } = defineProps<{ showCancelRun?: boolean }>()
 const emit = defineEmits<{ cancelRun: [] }>()
 
 const open = computed(() => currentPermission.value !== null)
