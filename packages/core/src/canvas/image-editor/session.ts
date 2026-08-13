@@ -318,7 +318,7 @@ function emittedFrameScale(frame: ImageRenderFrame, source: ResolvedSource): num
     }
     return tilePlan.scale
   })
-  const scale = scales[0]
+  const scale = scales.shift()
   if (scale === undefined || scales.some((value) => value !== scale)) {
     throw new ImageResilienceSourceError('render emitted heterogeneous texture scales')
   }

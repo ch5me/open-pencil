@@ -159,6 +159,7 @@ async function approveToolCall(
   if (current.documentId !== target.documentId || current.pageId !== target.pageId) {
     return failure(call, 'target_mismatch', 'Document or page changed while approval was pending.')
   }
+  return undefined
 }
 
 async function executeToolCall(
