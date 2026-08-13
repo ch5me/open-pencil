@@ -94,6 +94,15 @@ class MemorySessionStorage implements AgentResumeStore {
   }
 }
 
+class DroppingSessionStorage extends MemorySessionStorage {
+  writes = 0
+
+  override setItem(key: string, value: string) {
+    this.writes++
+    if (this.writes <= 2) super.setItem(key, value)
+  }
+}
+
 function requestBody(init?: RequestInit): unknown {
   if (typeof init?.body !== 'string') throw new Error('Expected a JSON request body')
   return JSON.parse(init.body) as unknown
@@ -500,6 +509,75 @@ describe('hosted agent service transport', () => {
     expect(continuationAttempts).toBe(2)
     expect(store.graph.getChildren(pageId)).toHaveLength(before + 1)
     expect(resumeStore.values.size).toBe(0)
+  })
+
+  test('reload after mutation but before result persistence fails closed without replay', async () => {
+    const store = createEditorStore()
+    const resumeStore = new DroppingSessionStorage()
+    const pageId = store.state.currentPageId
+    const continuations: AgentToolResultContinuation[] = []
+    let started = false
+    const requestFetch: typeof globalThis.fetch = async (_input, init) => {
+      if (!started) {
+        started = true
+        const body = runRequest(init)
+        return sse([
+          event(0, 'run.started', { requestId: body.requestId }),
+          event(1, 'tool.call', {
+            callId: 'call-1',
+            continuationId: 'continue-1',
+            manifestId: body.tools.manifestId,
+            name: 'create_shape',
+            arguments: { type: 'RECTANGLE', x: 10, y: 20, width: 100, height: 80 },
+            target: { documentId: 'document-1', pageId }
+          })
+        ])
+      }
+      const continuation = continuationRequest(init)
+      continuations.push(continuation)
+      if (continuations.length === 1) throw new Error('connection lost')
+      return sse([
+        event(2, 'run.completed', {
+          receipt: { ...receipt(2), requestId: continuation.requestId }
+        })
+      ])
+    }
+    const options = {
+      apiOrigin: 'https://agent.test',
+      store,
+      documentId: 'document-1',
+      clientId: 'chat',
+      resumeStore,
+      approve: async () => true,
+      fetch: requestFetch
+    } as const
+
+    const before = store.graph.getChildren(pageId).length
+    const hosted = new AgentServiceChatTransport(options)
+    const stream = await hosted.sendMessages({
+      trigger: 'submit-message',
+      chatId: 'chat',
+      messageId: undefined,
+      messages: [userMessage('Create a rectangle')],
+      abortSignal: undefined
+    })
+    await expect(chunks(stream)).rejects.toBeInstanceOf(Error)
+    expect(store.graph.getChildren(pageId)).toHaveLength(before + 1)
+
+    const reloaded = new AgentServiceChatTransport(options)
+    const resumed = await reloaded.reconnectToStream()
+    expect(resumed).not.toBeNull()
+    if (resumed) await chunks(resumed)
+    expect(continuations).toHaveLength(2)
+    expect(continuations[0]?.status).toBe('ok')
+    expect(continuations[1]).toMatchObject({
+      status: 'error',
+      error: {
+        code: 'run-failed',
+        message: 'Tool execution was interrupted after its durable retry fence was written.'
+      }
+    })
+    expect(store.graph.getChildren(pageId)).toHaveLength(before + 1)
   })
 
   test('rejects mutation calls when the active document changed', async () => {

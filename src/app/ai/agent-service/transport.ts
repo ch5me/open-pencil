@@ -390,11 +390,11 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     return this.active?.restored === true
   }
 
-  private persist(state: RunState): void {
+  private persist(state: RunState): boolean {
     if (!state.sessionId || !state.runId || !state.lastEventId || state.sequence === undefined)
-      return
+      return false
     const pendingContinuation = state.pendingContinuations.values().next().value
-    saveAgentSession(this.resumeStore, {
+    return saveAgentSession(this.resumeStore, {
       documentId: this.options.documentId,
       clientId: this.clientId,
       requestId: state.requestId,
@@ -484,6 +484,20 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     }
   }
 
+  private interruptedExecutionContinuation(
+    event: Extract<AgentEvent, { type: 'tool.call' }>
+  ): AgentToolResultContinuation {
+    return this.continuation(event, {
+      ok: false,
+      callId: event.data.callId,
+      continuationId: event.data.continuationId,
+      error: {
+        code: 'execution_failed',
+        message: 'Tool execution was interrupted after its durable retry fence was written.'
+      }
+    })
+  }
+
   private ensureApprovalMatches(
     event: Extract<AgentEvent, { type: 'tool.call' }>,
     state: RunState,
@@ -545,7 +559,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
     const eventPageId =
       event.data.target.pageId ??
       (manifestAction?.mutates ? '' : this.options.store.state.currentPageId)
-    const result = await executeTool({
+    const call = {
       runId: event.runId,
       callId: event.data.callId,
       continuationId: event.data.continuationId,
@@ -556,7 +570,29 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       },
       toolName: event.data.name,
       input: agentArguments(event.data.arguments)
-    })
+    }
+    let result: GatewayToolResult
+    if (manifestAction?.mutates) {
+      // Persist an at-most-once fence before mutation. A crash can lose the
+      // result, but recovery must never replay an action with unknown outcome.
+      const interrupted = this.interruptedExecutionContinuation(event)
+      state.pendingContinuations.set(event.data.callId, interrupted)
+      const fenced = this.persist(state)
+      result =
+        fenced || (!IS_BROWSER && !this.resumeStore)
+          ? await executeTool(call)
+          : {
+              ok: false,
+              callId: event.data.callId,
+              continuationId: event.data.continuationId,
+              error: {
+                code: 'execution_failed',
+                message: 'Tool execution requires durable reload recovery state.'
+              }
+            }
+    } else {
+      result = await executeTool(call)
+    }
     if (!duplicateToolCall) {
       controller.enqueue(
         result.ok
