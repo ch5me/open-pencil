@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
 import { FigmaAPI } from '@open-pencil/core/figma-api'
-import { SceneGraph } from '@open-pencil/scene-graph'
 import { matchByXPath, nodeToXPath, queryByXPath } from '@open-pencil/core/xpath'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 

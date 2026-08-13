@@ -1,6 +1,7 @@
+import { useTimeoutFn as createTimeout } from '@vueuse/core'
+
 import type { Editor, EditorState } from '@open-pencil/core/editor'
 import type { ExportRequest, IORegistry } from '@open-pencil/core/io'
-import { useTimeoutFn as createTimeout } from '@vueuse/core'
 
 import {
   bundleExportFiles,

@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
 import { useHead } from '@unhead/vue'
 import { TooltipProvider } from 'reka-ui'
+import { onMounted } from 'vue'
 
 import { provideEditor, useI18n } from '@open-pencil/vue'
-import AppToast from '@/components/Shell/AppToast.vue'
-import SettingsDialog from '@/components/settings/SettingsDialog.vue'
+
 import { useEditorStore } from '@/app/editor/active-store'
-import { toast } from '@/app/shell/ui'
 import { useAppTheme } from '@/app/shell/theme'
+import { toast } from '@/app/shell/ui'
 import { scheduleStartupUpdateCheck } from '@/app/shell/updater'
 import { kickSyncEngine } from '@/app/storage/sync'
+import SettingsDialog from '@/components/settings/SettingsDialog.vue'
+import AppToast from '@/components/Shell/AppToast.vue'
 
 const store = useEditorStore()
 const { dialogs, locale } = useI18n()

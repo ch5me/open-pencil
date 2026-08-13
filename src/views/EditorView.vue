@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, provide, ref } from 'vue'
-import { useEventListener, useUrlSearchParams } from '@vueuse/core'
-import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
+import { useEventListener, useUrlSearchParams } from '@vueuse/core'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
+import { onMounted, onUnmounted, provide, ref } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { useViewportKind, formatShortcut, useI18n } from '@open-pencil/vue'
-import { useKeyboard } from '@/app/shell/keyboard/use'
-import { loadEditorLayout, saveEditorLayout } from '@/app/shell/layout-storage'
-import { openFileFromPath, useMenu } from '@/app/shell/menu/use'
-import { useCollab, COLLAB_KEY } from '@/app/collab/use'
+
 import { connectAutomation } from '@/app/automation/bridge/server'
 import { spawnMCPIfNeeded } from '@/app/automation/mcp/spawn'
-import { openHostedRouteDocument } from '@/app/hosted/navigation'
-import { isTauri } from '@/app/tauri/env'
-import { appMenuShortcut } from '@/app/shell/menu/shortcut'
+import { useCollab, COLLAB_KEY } from '@/app/collab/use'
 import { createDemoShapes } from '@/app/demo/document'
 import { useEditorStore } from '@/app/editor/active-store'
+import { openHostedRouteDocument } from '@/app/hosted/navigation'
+import { useKeyboard } from '@/app/shell/keyboard/use'
+import { loadEditorLayout, saveEditorLayout } from '@/app/shell/layout-storage'
+import { appMenuShortcut } from '@/app/shell/menu/shortcut'
+import { openFileFromPath, useMenu } from '@/app/shell/menu/use'
 import {
   createTab,
   activeTab,
@@ -24,18 +24,18 @@ import {
   openStorageDocumentByIdInNewTab,
   tabCount
 } from '@/app/tabs'
-
+import { isTauri } from '@/app/tauri/env'
 import CollabPanel from '@/components/CollabPanel/CollabPanel.vue'
 import EditorCanvas from '@/components/EditorCanvas.vue'
 import LayersPanel from '@/components/LayersPanel.vue'
 import MobileDrawer from '@/components/MobileDrawer.vue'
 import MobileHud from '@/components/MobileHud/MobileHud.vue'
 import PropertiesPanel from '@/components/PropertiesPanel.vue'
-import RenameSelectionDialog from '@/components/selection/RenameSelectionDialog.vue'
 import SafariBanner from '@/components/SafariBanner.vue'
+import RenameSelectionDialog from '@/components/selection/RenameSelectionDialog.vue'
 import TabBar from '@/components/TabBar.vue'
-import Tip from '@/components/ui/Tip.vue'
 import Toolbar from '@/components/Toolbar/Toolbar.vue'
+import Tip from '@/components/ui/Tip.vue'
 
 const route = useRoute()
 const params = useUrlSearchParams('history')

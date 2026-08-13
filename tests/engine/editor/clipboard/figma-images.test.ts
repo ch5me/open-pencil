@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, test } from 'bun:test'
 
-import { initCodec } from '@open-pencil/core/kiwi'
 import { buildFigmaClipboardHTML } from '@open-pencil/core/clipboard'
 import { createEditor } from '@open-pencil/core/editor'
 import type { ClipboardImageResolution } from '@open-pencil/core/editor'
+import { initCodec } from '@open-pencil/core/kiwi'
 
 import { expectDefined } from '#tests/helpers/assert'
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
 import { useClipboard } from '@vueuse/core'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+
 import { useI18n } from '@open-pencil/vue'
 
 import {
@@ -18,9 +19,9 @@ import {
   collectCloudCORSOrigins
 } from '@/app/integrations/storage/s3/cors'
 import { appCredentialServices } from '@/app/settings/credentials/app'
-import { settingsDialogOpen } from '@/app/settings/dialog'
 import { credentialRef } from '@/app/settings/credentials/reference'
 import type { CredentialStatus } from '@/app/settings/credentials/types'
+import { settingsDialogOpen } from '@/app/settings/dialog'
 import { resumeStorageSync } from '@/app/storage/sync'
 import AppInput from '@/components/ui/AppInput.vue'
 

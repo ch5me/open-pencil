@@ -164,10 +164,7 @@ let _cached: HostedEnvironmentConfig | undefined
 
 /** Cached hosted config. Safe to call repeatedly; resolves once per module load. */
 export function getHostedConfig(): HostedEnvironmentConfig {
-  if (
-    window.openPencil?.test?.forceHostedCollab ||
-    window.openPencil?.test?.forceHostedAgent
-  ) {
+  if (window.openPencil?.test?.forceHostedCollab || window.openPencil?.test?.forceHostedAgent) {
     return resolveHostedConfig()
   }
   if (!_cached) {

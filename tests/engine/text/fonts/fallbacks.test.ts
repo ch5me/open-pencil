@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
-import { cjkLocalFallbackFamilies, fontFallbackEntry, fontFallbackManifest } from '@open-pencil/core/text'
+import {
+  cjkLocalFallbackFamilies,
+  fontFallbackEntry,
+  fontFallbackManifest
+} from '@open-pencil/core/text'
 
 describe('font fallback manifest', () => {
   test('selects platform CJK local candidates', () => {

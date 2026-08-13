@@ -1,6 +1,10 @@
 import { beforeAll, describe, expect, it } from 'bun:test'
 
-import { buildFigmaClipboardHTML, importClipboardNodes, parseFigmaClipboard } from '@open-pencil/core/clipboard'
+import {
+  buildFigmaClipboardHTML,
+  importClipboardNodes,
+  parseFigmaClipboard
+} from '@open-pencil/core/clipboard'
 import { initCodec } from '@open-pencil/core/kiwi'
 import { SceneGraph } from '@open-pencil/scene-graph'
 

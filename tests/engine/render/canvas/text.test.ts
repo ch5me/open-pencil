@@ -1,8 +1,8 @@
 import { describe, test, expect, mock } from 'bun:test'
 
+import { SkiaRenderer as SkiaRendererClass } from '@open-pencil/core/canvas'
 import { detectTextDirection, resolveTextDirection } from '@open-pencil/core/text'
 import { SceneGraph } from '@open-pencil/scene-graph'
-import { SkiaRenderer as SkiaRendererClass } from '@open-pencil/core/canvas'
 import type { SceneNode } from '@open-pencil/scene-graph'
 
 import { initCanvasKit } from '#cli/headless'

@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
-import { clearNodeFillOkHCL, clearNodeStrokeOkHCL, getFillOkHCL, getStrokeOkHCL, setNodeFillOkHCL, setNodeStrokeOkHCL } from '@open-pencil/core/color'
+import {
+  clearNodeFillOkHCL,
+  clearNodeStrokeOkHCL,
+  getFillOkHCL,
+  getStrokeOkHCL,
+  setNodeFillOkHCL,
+  setNodeStrokeOkHCL
+} from '@open-pencil/core/color'
 import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { getNodeOrThrow } from '#tests/helpers/assert'

@@ -4,8 +4,8 @@ import { join } from 'node:path'
 
 import { FigmaAPI } from '@open-pencil/core/figma-api'
 import { renderNodesToSVG } from '@open-pencil/core/io/formats/svg'
-import { SceneGraph } from '@open-pencil/scene-graph'
 import { importSVG } from '@open-pencil/core/tools'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined, getNodeOrThrow } from '#tests/helpers/assert'
 

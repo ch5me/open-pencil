@@ -2,8 +2,8 @@ import { beforeAll, describe, expect, test } from 'bun:test'
 
 import { unzipSync } from 'fflate'
 
-import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
 import { SceneGraph } from '@open-pencil/scene-graph'
 

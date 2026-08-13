@@ -2,11 +2,11 @@ import { type RequestOptions, request as httpRequest } from 'node:http'
 
 import { WebSocket } from 'ws'
 
-import type { SceneGraph } from '@open-pencil/scene-graph'
-import { ALL_TOOLS } from '@open-pencil/core/tools'
 import { FigmaAPI } from '@open-pencil/core/figma-api'
 import { computeAllLayouts } from '@open-pencil/core/layout'
 import { executeRPCCommand } from '@open-pencil/core/rpc'
+import { ALL_TOOLS } from '@open-pencil/core/tools'
+import type { SceneGraph } from '@open-pencil/scene-graph'
 
 export interface HealthResponse {
   status: string

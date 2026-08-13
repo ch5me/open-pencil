@@ -2,10 +2,7 @@ import { describe, expect, test, vi } from 'bun:test'
 import { readFileSync } from 'node:fs'
 
 import { createMemoryLocalCanvasStore } from '@/app/storage/local-store'
-import {
-  persistStorageCanvasLocally,
-  StorageSaveConflictError
-} from '@/app/storage/sync/persist'
+import { persistStorageCanvasLocally, StorageSaveConflictError } from '@/app/storage/sync/persist'
 import { onStorageWorkspaceEvent } from '@/app/storage/workspace/events'
 
 function deferred<T = void>() {

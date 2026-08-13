@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
 import {
   AlertDialogAction,
   AlertDialogCancel,
@@ -9,16 +8,16 @@ import {
   CollapsibleRoot,
   CollapsibleTrigger
 } from 'reka-ui'
-import { useI18n } from '@open-pencil/vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 import { ACP_AGENTS, AI_PROVIDERS, type AIProviderID } from '@open-pencil/core/constants'
+import { useI18n } from '@open-pencil/vue'
 
-import { refreshAIProviderStatus } from '@/app/ai/chat/storage'
-import { resolveModelsDevModel } from '@/app/ai/models/catalog'
 import {
   testProviderConnection,
   type ProviderConnectionTestFailureReason
 } from '@/app/ai/chat/connection-test'
+import { refreshAIProviderStatus } from '@/app/ai/chat/storage'
 import {
   aiModelSettings,
   createModelProfileDraft,
@@ -32,6 +31,7 @@ import {
   setModelConnectionAPIKey,
   type AIModelCapability
 } from '@/app/ai/models'
+import { resolveModelsDevModel } from '@/app/ai/models/catalog'
 import ProviderConnectionTestButton from '@/components/chat/ProviderConnectionTestButton.vue'
 import ProviderSelect from '@/components/settings/provider-select/ProviderSelect.vue'
 import ProviderSettingsField from '@/components/settings/provider/ProviderSettingsField.vue'

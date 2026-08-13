@@ -3,6 +3,7 @@ import type { CanvasKit, Paint, Surface } from 'canvaskit-wasm'
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { getCanvasKit } from '@open-pencil/core/canvaskit'
+
 import type { PencilCanvasPoint, PencilRuntimeSnapshot } from '@/app/pencil/types'
 
 const { snapshot } = defineProps<{

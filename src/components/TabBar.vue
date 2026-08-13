@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import { tv } from 'tailwind-variants'
+import { computed } from 'vue'
 
+import { useI18n } from '@open-pencil/vue'
+
+import { useTabsStore, createTab } from '@/app/tabs'
 import Tip from '@/components/ui/Tip.vue'
 import tabBarTheme from '@/theme/tab-bar'
-import { useTabsStore, createTab } from '@/app/tabs'
-import { useI18n } from '@open-pencil/vue'
 
 const { dialogs } = useI18n()
 

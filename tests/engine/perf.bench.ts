@@ -3,8 +3,8 @@ import { resolve } from 'node:path'
 
 import { bench, group, run } from 'mitata'
 
-import { parseFigFile, initCodec } from '@open-pencil/core/kiwi'
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import { parseFigFile, initCodec } from '@open-pencil/core/kiwi'
 import { SceneGraph } from '@open-pencil/scene-graph'
 import { copyFills } from '@open-pencil/scene-graph/copy'
 

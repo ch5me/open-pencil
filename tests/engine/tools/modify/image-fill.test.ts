@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { ALL_TOOLS } from '@open-pencil/core/tools'
 import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { ALL_TOOLS } from '@open-pencil/core/tools'
 import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'

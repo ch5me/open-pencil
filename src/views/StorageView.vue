@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+
 import { useDocumentWorkspace, useI18n } from '@open-pencil/vue'
 
 import { activeStorageProviderID, type StorageDocument } from '@/app/integrations/storage'
 import { openSettingsDialog, settingsDialogOpen } from '@/app/settings/dialog'
 import { createCanvasId } from '@/app/storage/id'
 import { createStorageWorkspaceSource } from '@/app/storage/workspace/source'
+import { activeTab, createTab, openStorageDocumentInNewTab } from '@/app/tabs'
 import AppPlaceholder from '@/components/ui/AppPlaceholder.vue'
 import Tip from '@/components/ui/Tip.vue'
-import { activeTab, createTab, openStorageDocumentInNewTab } from '@/app/tabs'
 
 const { dialogs } = useI18n()
 const router = useRouter()

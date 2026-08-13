@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { parseSVGPath } from '@open-pencil/scene-graph/parse-path'
 import { vectorNetworkToSVGPaths } from '@open-pencil/core/io/formats/svg'
+import { parseSVGPath } from '@open-pencil/scene-graph/parse-path'
 
 describe('parseSVGPath', () => {
   test('simple rectangle M L L L Z', () => {

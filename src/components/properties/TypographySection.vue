@@ -3,6 +3,8 @@ import { computed } from 'vue'
 
 import { TypographyControlsRoot, useI18n } from '@open-pencil/vue'
 
+import { loadFont } from '@/app/editor/fonts'
+import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
 import FontPicker from '@/components/font-picker/FontPicker.vue'
 import FontSettingsPopover from '@/components/FontSettings/FontSettingsPopover.vue'
 import NumberField from '@/components/inputs/NumberField.vue'
@@ -16,8 +18,6 @@ import PanelGrid from '@/components/ui/panel/PanelGrid.vue'
 import PanelSection from '@/components/ui/panel/PanelSection.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
 import Tip from '@/components/ui/Tip.vue'
-import { loadFont } from '@/app/editor/fonts'
-import { appMenuShortcutLabel } from '@/app/shell/menu/shortcut'
 
 const { panels, menu } = useI18n()
 const fontLoader = { load: loadFont }

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import {
   ComboboxContent,
   ComboboxInput,
@@ -9,6 +8,7 @@ import {
   ComboboxViewport,
   type AcceptableValue
 } from 'reka-ui'
+import { computed, ref } from 'vue'
 
 import AppBadge from '@/components/ui/AppBadge.vue'
 import AppPlaceholder from '@/components/ui/AppPlaceholder.vue'

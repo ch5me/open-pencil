@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
 import { SplitterGroup, SplitterPanel, SplitterResizeHandle } from 'reka-ui'
+import { computed, ref } from 'vue'
 
 import { useI18n } from '@open-pencil/vue'
 
 import AppMenu from '@/components/Shell/AppMenu.vue'
 import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+
 import AssetsPanel from './assets-panel/AssetsPanel.vue'
 import LayerTree from './LayerTree/LayerTree.vue'
 import PagesPanel from './PagesPanel.vue'

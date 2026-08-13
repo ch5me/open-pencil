@@ -25,8 +25,7 @@ function openIdbAttempt(
       if (blockedTimer != null) clearTimeout(blockedTimer)
       action()
     }
-    req.onerror = () =>
-      finish(() => reject(req.error ?? new Error(`Failed to open ${name}`)))
+    req.onerror = () => finish(() => reject(req.error ?? new Error(`Failed to open ${name}`)))
     req.onblocked = () => {
       if (blockedTimer != null) return
       blockedTimer = setTimeout(

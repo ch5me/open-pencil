@@ -1,8 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
-import { colorDistance, getFillOkHCL, getStrokeOkHCL, okhclToRGBA, rgbaToOkHCL } from '@open-pencil/core/color'
-import { exportFigFile } from '@open-pencil/core/io/formats/fig'
+import {
+  colorDistance,
+  getFillOkHCL,
+  getStrokeOkHCL,
+  okhclToRGBA,
+  rgbaToOkHCL
+} from '@open-pencil/core/color'
 import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
 import { SceneGraph } from '@open-pencil/scene-graph'
 

@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, test } from 'bun:test'
 
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
-import { SceneGraph } from '@open-pencil/scene-graph'
 import { effectiveFigmaRawNodeFields, parseFigBuffer } from '@open-pencil/fig'
 import { guidToString } from '@open-pencil/fig/node-change'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 function decodeExport(bytes: Uint8Array) {
   return parseFigBuffer(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength))

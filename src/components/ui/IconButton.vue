@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, normalizeClass, useAttrs } from 'vue'
 import { tv } from 'tailwind-variants'
+import { computed, normalizeClass, useAttrs } from 'vue'
 
-import theme from '@/theme/icon-button'
 import Tip from '@/components/ui/Tip.vue'
+import theme from '@/theme/icon-button'
 
 const {
   active = false,

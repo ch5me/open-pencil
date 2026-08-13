@@ -1,6 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 
-import { adjustRunsForDelete, adjustRunsForInsert, applyStyleToRange, getStyleAt, removeStyleFromRange, selectionHasStyle, toggleBoldInRange, toggleDecorationInRange, toggleItalicInRange } from '@open-pencil/core/text'
+import {
+  adjustRunsForDelete,
+  adjustRunsForInsert,
+  applyStyleToRange,
+  getStyleAt,
+  removeStyleFromRange,
+  selectionHasStyle,
+  toggleBoldInRange,
+  toggleDecorationInRange,
+  toggleItalicInRange
+} from '@open-pencil/core/text'
 import type { StyleRun } from '@open-pencil/scene-graph'
 
 describe('getStyleAt', () => {

@@ -24,9 +24,7 @@ export default defineConfig(async ({ command }) => ({
   define: {
     __OPENPENCIL_APP_VERSION__: JSON.stringify(packageJson.version),
     __OPENPENCIL_LOCAL_AUTOMATION_TOKEN__: JSON.stringify(localAutomationToken(command)),
-    'import.meta.env.OPENPENCIL_HOSTED_ENV': JSON.stringify(
-      process.env.OPENPENCIL_HOSTED_ENV ?? ''
-    )
+    'import.meta.env.OPENPENCIL_HOSTED_ENV': JSON.stringify(process.env.OPENPENCIL_HOSTED_ENV ?? '')
   },
   plugins: [
     rawMarkdownPlugin(),

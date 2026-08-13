@@ -1,7 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from 'bun:test'
 
-import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
 import { SceneGraph, type Color } from '@open-pencil/scene-graph'
 

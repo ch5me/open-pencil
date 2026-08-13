@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { parseFigFile } from '@open-pencil/core/kiwi'
 import type { ParseFigFileOptions } from '@open-pencil/core/io/formats/fig'
+import { parseFigFile } from '@open-pencil/core/kiwi'
 import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
 
 import { collectAllNodes } from './fig-traversal'

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import type { PencilRuntimeSnapshot, PencilScenarioId } from '@/app/pencil/types'
 import { scenarioLabel } from '@/app/pencil/evidence'
+import type { PencilRuntimeSnapshot, PencilScenarioId } from '@/app/pencil/types'
 
 const { snapshot } = defineProps<{
   snapshot: PencilRuntimeSnapshot

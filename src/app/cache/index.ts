@@ -69,19 +69,19 @@ export async function removeCacheEntry(key: string): Promise<void> {
 
 export async function renameCacheEntry(from: string, to: string): Promise<void> {
   if (isTauriRuntime()) {
-    const { BaseDirectory, rename } = await import("@tauri-apps/plugin-fs");
+    const { BaseDirectory, rename } = await import('@tauri-apps/plugin-fs')
     await rename(cachePath(from), cachePath(to), {
       oldPathBaseDir: BaseDirectory.AppLocalData,
-      newPathBaseDir: BaseDirectory.AppLocalData,
-    });
-    return;
+      newPathBaseDir: BaseDirectory.AppLocalData
+    })
+    return
   }
 
-  if (!isStorageAvailable()) return;
-  const value = window.localStorage.getItem(storageKey(from));
-  if (value === null) return;
-  window.localStorage.setItem(storageKey(to), value);
-  window.localStorage.removeItem(storageKey(from));
+  if (!isStorageAvailable()) return
+  const value = window.localStorage.getItem(storageKey(from))
+  if (value === null) return
+  window.localStorage.setItem(storageKey(to), value)
+  window.localStorage.removeItem(storageKey(from))
 }
 
 export async function readCacheBytes(key: string): Promise<ArrayBuffer | null> {

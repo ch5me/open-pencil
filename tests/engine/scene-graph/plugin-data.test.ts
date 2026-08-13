@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { FigmaAPI } from '@open-pencil/core/figma-api'
+import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { SceneGraph } from '@open-pencil/scene-graph'
 
 import {

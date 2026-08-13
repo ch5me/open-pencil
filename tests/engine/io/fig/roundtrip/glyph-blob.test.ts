@@ -4,9 +4,9 @@ import { resolve } from 'node:path'
 
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
 import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
-import { SceneGraph } from '@open-pencil/scene-graph'
 import { fontManager } from '@open-pencil/core/text'
 import { parseFigBuffer } from '@open-pencil/fig'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { HEAVY_TEST_TIMEOUT_MS } from '#tests/helpers/test-utils'
 

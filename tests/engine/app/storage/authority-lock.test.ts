@@ -1,11 +1,11 @@
 import { afterEach, expect, test } from 'bun:test'
 
+import { createMemoryLocalCanvasStore } from '@/app/storage/local-store'
 import {
   StorageSyncAuthorityUnsupportedError,
   withCanvasMutationAuthority,
   withCanvasSyncAuthority
 } from '@/app/storage/sync/authority-lock'
-import { createMemoryLocalCanvasStore } from '@/app/storage/local-store'
 import { enqueueDeleteCanvas } from '@/app/storage/sync/engine'
 
 const originalNavigator = globalThis.navigator

@@ -1,8 +1,8 @@
 import { describe, test, expect } from 'bun:test'
 
 import { SceneGraph } from '@open-pencil/scene-graph'
-import { UndoManager } from '@open-pencil/scene-graph/undo'
 import type { JSONObject } from '@open-pencil/scene-graph/primitives'
+import { UndoManager } from '@open-pencil/scene-graph/undo'
 
 import { getNodeOrThrow } from '#tests/helpers/assert'
 

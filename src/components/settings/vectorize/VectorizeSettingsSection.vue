@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+
 import { useI18n } from '@open-pencil/vue'
 
 import {
