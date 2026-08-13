@@ -4,6 +4,10 @@ import type { PencilRuntimeSnapshot, PencilScenarioId } from '@/app/pencil/types
 
 import PencilDiagnosticsPanel from './PencilDiagnosticsPanel.vue'
 
+type PencilDiagnosticsStoryArgs = {
+  snapshot: PencilRuntimeSnapshot
+}
+
 const snapshot = {
   capabilities: {
     schemaVersion: 1,
@@ -79,17 +83,17 @@ const snapshot = {
 
 const meta = {
   title: 'Hosted/Pencil Diagnostics',
-  component: PencilDiagnosticsPanel,
+  args: { snapshot },
   parameters: {
     layout: 'fullscreen'
   },
-  render: () => ({
+  render: (args) => ({
     components: { PencilDiagnosticsPanel },
-    setup: () => ({ snapshot }),
+    setup: () => ({ args }),
     template:
-      '<div style="height: 800px; display: flex; justify-content: flex-end; background: #e8e4db"><PencilDiagnosticsPanel :snapshot="snapshot" /></div>'
+      '<div style="height: 800px; display: flex; justify-content: flex-end; background: #e8e4db"><PencilDiagnosticsPanel :snapshot="args.snapshot" /></div>'
   })
-} satisfies Meta<typeof PencilDiagnosticsPanel>
+} satisfies Meta<PencilDiagnosticsStoryArgs>
 
 export default meta
 type Story = StoryObj<typeof meta>
