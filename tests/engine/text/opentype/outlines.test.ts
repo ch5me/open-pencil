@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
-import { probeGlyphOutlineCommands } from '@open-pencil/core'
 import { fontManager } from '@open-pencil/core/text'
+import { probeGlyphOutlineCommands } from '@open-pencil/core/text/opentype'
 
 describe('clipboard text outline probe', () => {
   test('lazy-loads opentype.js and extracts glyph commands from a loaded font', async () => {

@@ -2,9 +2,13 @@ import { beforeAll, afterAll, describe, expect, test, spyOn, setDefaultTimeout }
 
 import { unzipSync } from 'fflate'
 
-import { parseFigKiwiChunks } from '@open-pencil/core'
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
-import { initCodec, isZstdCompressed, parseFigFile } from '@open-pencil/core/kiwi'
+import {
+  initCodec,
+  isZstdCompressed,
+  parseFigFile,
+  parseFigKiwiChunks
+} from '@open-pencil/core/kiwi'
 import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
 import type { JSONObject } from '@open-pencil/scene-graph/primitives'
 

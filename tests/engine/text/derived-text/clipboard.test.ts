@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import { buildFontDigestMap, buildDerivedTextDataV4 } from '@open-pencil/core'
-import { initCodec } from '@open-pencil/core/kiwi'
+import { buildFontDigestMap, initCodec } from '@open-pencil/core/kiwi'
 import { fontManager } from '@open-pencil/core/text'
+import { buildDerivedTextDataV4 } from '@open-pencil/core/text/derived-text'
 import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'

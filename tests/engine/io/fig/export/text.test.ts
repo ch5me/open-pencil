@@ -1,8 +1,7 @@
 import { describe, expect, setDefaultTimeout, test } from 'bun:test'
 
-import { decompressFigKiwiDataAsync } from '@open-pencil/core'
 import { exportFigFile } from '@open-pencil/core/io/formats/fig'
-import { initCodec, parseFigFile } from '@open-pencil/core/kiwi'
+import { decompressFigKiwiDataAsync, initCodec, parseFigFile } from '@open-pencil/core/kiwi'
 import { SceneGraph } from '@open-pencil/scene-graph'
 import type { JSONObject } from '@open-pencil/scene-graph/primitives'
 
@@ -117,7 +116,7 @@ describe('text node export', () => {
     const { unzipSync, inflateSync } = await import('fflate')
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
       await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+    const { parseFigKiwiChunks } = await import('@open-pencil/core/kiwi')
 
     const graph = new SceneGraph()
     const page = graph.getPages()[0]
@@ -179,7 +178,7 @@ describe('text node export', () => {
     const { unzipSync, inflateSync } = await import('fflate')
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
       await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+    const { parseFigKiwiChunks } = await import('@open-pencil/core/kiwi')
 
     const graph = new SceneGraph()
     const page = graph.getPages()[0]
@@ -225,7 +224,7 @@ describe('text node export', () => {
     const { unzipSync, inflateSync } = await import('fflate')
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
       await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+    const { parseFigKiwiChunks } = await import('@open-pencil/core/kiwi')
 
     const graph = new SceneGraph()
     const page = graph.getPages()[0]
@@ -274,7 +273,7 @@ describe('text node export', () => {
     const { unzipSync, inflateSync } = await import('fflate')
     const { decodeBinarySchema, compileSchema, ByteBuffer } =
       await import('@open-pencil/kiwi/schema-runtime')
-    const { parseFigKiwiChunks } = await import('@open-pencil/core')
+    const { parseFigKiwiChunks } = await import('@open-pencil/core/kiwi')
 
     const graph = new SceneGraph()
     const page = graph.getPages()[0]

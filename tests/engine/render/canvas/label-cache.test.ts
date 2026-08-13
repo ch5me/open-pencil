@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test'
 
-import { LabelCache } from '@open-pencil/core'
+import { LabelCache } from '@open-pencil/core/canvas/labels'
 import { SceneGraph } from '@open-pencil/scene-graph'
 
 function buildGraph() {
