@@ -6,7 +6,8 @@
   "ignoreBinaries": ["ch5-svc", "figma-use", "identify", "magick", "open", "osascript"],
   "workspaces": {
     "api": {
-      "ignoreDependencies": ["cloudflare"]
+      "ignoreDependencies": ["cloudflare"],
+      "ignoreBinaries": ["wrangler"]
     }
   }
 }
