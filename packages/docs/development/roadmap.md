@@ -41,8 +41,9 @@ OpenPencil is moving toward production-grade Figma compatibility while keeping d
   gateway owns agent loops and all model/provider/infrastructure decisions.
   Keep run cancellation, current-run reconnect, and tool-result continuation deterministic and
   fail closed without falling back to BYOK or ACP. Keep agent-native actions and
-  A2A behind gateway adapters rather than coupling editor code to them.
-- Add reload-persistent session recovery before documenting durable resume.
+  A2A behind gateway adapters rather than coupling editor code to them. Browser
+  reload recovery now persists bounded run identity and one pending continuation;
+  transcript history remains process-local rather than durably persisted.
 
 ### Tooling and API parity
 

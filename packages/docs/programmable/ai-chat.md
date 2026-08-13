@@ -36,7 +36,8 @@ No backend, no subscription — your key talks directly to the provider. Browser
 A hosted OpenPencil deployment can provide an authenticated agent service
 instead of asking users for model credentials. OpenPencil sends product-level
 chat messages and receives streamed text and design-action requests. The service
-chooses how the agent runs.
+chooses how the agent runs and is externally deployed and owned by its gateway
+operator; it is not an OpenPencil-deployed hosted service.
 
 ELF sign-in authenticates the hosted OpenPencil session; it is separate from the
 generic agent service. When the deployment enables hosted agent chat, the app
@@ -57,6 +58,17 @@ Hosted chat fails explicitly if its service is unavailable or a run cannot
 reconnect. Hosted mode never sends the prompt to a configured BYOK provider or
 local ACP agent as a fallback. Local and desktop installations can continue to
 select BYOK or ACP directly when hosted agent chat is not enabled.
+
+Deployment operators configure the OpenPencil API with the gateway's non-secret
+`OPENPENCIL_AGENT_GATEWAY_ORIGIN`. For a non-loopback gateway,
+`OPENPENCIL_AGENT_GATEWAY_TOKEN` is an API-only service credential projected by
+Hush into the API deployment. It must never be exposed to the browser or placed
+in a `VITE_*` variable. `.ch5/environments.yaml` describes and deploys the
+OpenPencil environments only; it does not provision or deploy the external
+gateway. The gateway operator owns agent loops, routing, providers, models,
+billing, workers, and gateway infrastructure. OpenPencil owns ELF admission,
+the chat UI, approval, cancellation and reconnect behavior, and guarded local
+execution of design actions.
 
 ## What It Can Do
 

@@ -106,6 +106,16 @@
       "description": "Override for the public app URL.",
       "default": "per-environment default",
       "required": false
+    },
+    "OPENPENCIL_AGENT_GATEWAY_ORIGIN": {
+      "description": "Non-secret external agent gateway origin consumed only by the OpenPencil API. The gateway operator owns and deploys the service.",
+      "default": "per-API-environment configuration",
+      "required": false
+    },
+    "OPENPENCIL_AGENT_GATEWAY_TOKEN": {
+      "description": "API-only gateway service credential. Project through Hush; never expose it through VITE_* variables or browser configuration.",
+      "default": "Hush projection for non-loopback gateways",
+      "required": false
     }
   },
   "rolloutOrder": ["hostedAuth", "hostedAgent", "hostedDocs", "hostedCollab"],
@@ -113,6 +123,7 @@
     "Collaboration is OFF in all environments until task 12 (DO room transport) lands.",
     "Preview enables hostedAuth for session verification smoke tests but keeps hostedDocs off to isolate auth from storage risk.",
     "Staging enables hostedDocs for single-user storage validation before production.",
-    "Production defaults mirror staging; flags can be toggled independently via env var overrides without rebuild."
+    "Production defaults mirror staging; flags can be toggled independently via env var overrides without rebuild.",
+    ".ch5/environments.yaml deploys OpenPencil services only. The agent gateway is external and deployed by its operator."
   ]
 }

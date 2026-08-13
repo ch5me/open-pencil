@@ -29,6 +29,27 @@ OpenPencil consumes observable agent behavior. It never claims, provisions, or
 health-checks a runtime and never selects a hosted model, provider, worker,
 container, image, registry, or billing authority.
 
+## Hosted operation
+
+The OpenPencil API connects to an externally operated gateway through
+`OPENPENCIL_AGENT_GATEWAY_ORIGIN`. The gateway operator owns and deploys that
+service; it is not an OpenPencil-deployed hosted service. In particular,
+`.ch5/environments.yaml` describes OpenPencil environments and does not deploy,
+provision, or manage the gateway.
+
+`OPENPENCIL_AGENT_GATEWAY_TOKEN` is the optional service credential used by the
+OpenPencil API when it calls a non-loopback gateway. Production and staging
+project it through Hush into the API deployment rather than storing it in Git.
+It is API-only: never expose it through a `VITE_*` variable, browser bundle,
+client configuration, response, log, or documentation example. The browser
+authenticates to OpenPencil with its ELF session; only the OpenPencil API adds
+gateway service authentication to the server-to-server request.
+
+The origin is non-secret configuration and may be set directly on the
+OpenPencil API deployment. A missing origin, or a missing token for a
+non-loopback origin, makes hosted chat fail closed. Local deterministic gateway
+fixtures may use a loopback origin without a service token.
+
 ## Stable contract
 
 The browser talks only to the configured OpenPencil API boundary and never calls
@@ -121,8 +142,9 @@ without external providers. The fixture is not a production fallback.
 ## Reconciliation surface
 
 Additive CH5 surfaces include the shared agent-contract package, hosted transport
-and execution modules, hosted flag resolver, API gateway modules, deployment
-configuration, and deterministic gateway tooling.
+and execution modules, hosted flag resolver, API gateway modules, OpenPencil API
+configuration, and deterministic gateway tooling. Gateway deployment remains
+external and owned by its operator.
 
 Edits to upstream-owned files are named by exact path and symbol in
 `docs/ch5/upstream-drift.md`, with an invalidation signal, replay rule, and
