@@ -277,6 +277,49 @@ describe('hosted agent service transport', () => {
     expect(paths[1]).toBe('/api/agent/sessions/session-1/runs/run-1/cancel')
   })
 
+  test('waits for accepted run identity before cancelling an early abort', async () => {
+    const paths: string[] = []
+    const abort = new AbortController()
+    const requestFetch: typeof globalThis.fetch = async (input) => {
+      const path = new URL(String(input)).pathname
+      paths.push(path)
+      if (path.endsWith('/cancel')) {
+        return sse([
+          event(1, 'run.cancelled', {
+            receipt: { ...receipt(1), status: 'cancelled' }
+          })
+        ])
+      }
+      const encoder = new TextEncoder()
+      return new Response(
+        new ReadableStream({
+          async start(controller) {
+            abort.abort()
+            await Bun.sleep(10)
+            controller.enqueue(
+              encoder.encode(
+                `id: event-0\ndata: ${JSON.stringify(event(0, 'run.started', { requestId: 'request-1' }))}\n\n`
+              )
+            )
+            controller.close()
+          }
+        }),
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } }
+      )
+    }
+    const hosted = transport(requestFetch)
+    const stream = await hosted.sendMessages({
+      trigger: 'submit-message',
+      chatId: 'chat',
+      messageId: undefined,
+      messages: [userMessage('Design')],
+      abortSignal: abort.signal
+    })
+
+    await expect(chunks(stream)).resolves.toBeDefined()
+    expect(paths).toEqual(['/api/agent/runs', '/api/agent/sessions/session-1/runs/run-1/cancel'])
+  })
+
   test('reports cancellation failure with the stable typed error', async () => {
     const abort = new AbortController()
     const requestFetch: typeof globalThis.fetch = async (input) => {
