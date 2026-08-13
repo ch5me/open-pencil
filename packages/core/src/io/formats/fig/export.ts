@@ -660,24 +660,24 @@ export class FigCompressionWorkerProtocolError extends Error {
   override name = 'FigCompressionWorkerProtocolError'
 }
 
+interface FigCompressionInput {
+  schemaDeflated: Uint8Array
+  kiwiData: Uint8Array
+  thumbnailPNG: Uint8Array
+  metaJSON: string
+  imageEntries: Array<{ name: string; data: Uint8Array }>
+  figKiwiVersion?: number
+}
+
 function canUseWorker(): boolean {
   return typeof Worker !== 'undefined' && IS_BROWSER
 }
 
 function compressViaWorker(
-  schemaDeflated: Uint8Array,
-  kiwiData: Uint8Array,
-  thumbnailPNG: Uint8Array,
-  metaJSON: string,
-  imageEntries: Array<{ name: string; data: Uint8Array }>,
-  figKiwiVersion?: number,
+  input: FigCompressionInput,
   signal?: AbortSignal,
   timeoutMs = FIG_COMPRESSION_TIMEOUT_MS
 ): Promise<Uint8Array> {
-  if (signal?.aborted) {
-    return Promise.reject(new IOCancelledError('IO export cancelled'))
-  }
-
   return new Promise((resolve, reject) => {
     let worker: Worker
     try {
@@ -730,12 +730,12 @@ function compressViaWorker(
     // subsequent saves. Structured clone (the default) copies the data safely.
     try {
       worker.postMessage({
-        schemaDeflated,
-        kiwiData,
-        thumbnailPNG,
-        metaJSON,
-        images: imageEntries,
-        figKiwiVersion
+        schemaDeflated: input.schemaDeflated,
+        kiwiData: input.kiwiData,
+        thumbnailPNG: input.thumbnailPNG,
+        metaJSON: input.metaJSON,
+        images: input.imageEntries,
+        figKiwiVersion: input.figKiwiVersion
       })
     } catch (error) {
       finish(() => reject(error instanceof Error ? error : new Error(String(error))))
@@ -758,12 +758,7 @@ export function compressFigData(
   }
   if (canUseWorker()) {
     return compressViaWorker(
-      schemaDeflated,
-      kiwiData,
-      thumbnailPNG,
-      metaJSON,
-      imageEntries,
-      figKiwiVersion,
+      { schemaDeflated, kiwiData, thumbnailPNG, metaJSON, imageEntries, figKiwiVersion },
       signal,
       timeoutMs
     )

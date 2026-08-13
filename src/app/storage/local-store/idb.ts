@@ -42,8 +42,44 @@ function bytesToBuffer(bytes: Uint8Array) {
   return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
 }
 
+function writeCanvasBlobs(
+  figStore: IDBObjectStore,
+  thumbStore: IDBObjectStore,
+  input: LocalCanvasWriteInput,
+  existing: LocalCanvasMeta | null
+): boolean {
+  figStore.put(bytesToBuffer(input.figBytes), input.id)
+  if (input.thumbBytes == null) return existing?.hasThumb ?? false
+  if (input.thumbBytes.byteLength > 0) {
+    thumbStore.put(bytesToBuffer(input.thumbBytes), input.id)
+    return true
+  }
+  thumbStore.delete(input.id)
+  return false
+}
+
+function writeCanvasRecord(
+  tx: IDBTransaction,
+  input: LocalCanvasWriteInput,
+  existing: LocalCanvasMeta | null
+): LocalCanvasMeta {
+  const hasThumb = writeCanvasBlobs(
+    tx.objectStore(STORE_FIG),
+    tx.objectStore(STORE_THUMB),
+    input,
+    existing
+  )
+  const metadata = buildWriteMeta(input, existing, hasThumb)
+  tx.objectStore(STORE_META).put(metadata)
+  return metadata
+}
+
 async function readJobs(store: IDBObjectStore): Promise<OutboxJob[]> {
   return (await reqToPromise(store.getAll())) as OutboxJob[]
+}
+
+async function readOutboxJob(store: IDBObjectStore, id: string): Promise<OutboxJob | undefined> {
+  return (await reqToPromise(store.get(id))) as OutboxJob | undefined
 }
 
 function writeQueuedJob(store: IDBObjectStore, existing: OutboxJob[], job: OutboxJob) {
@@ -105,26 +141,10 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
     async writeCanvas(input: LocalCanvasWriteInput) {
       const database = await db()
       const tx = database.transaction([STORE_META, STORE_FIG, STORE_THUMB], 'readwrite')
-      const figStore = tx.objectStore(STORE_FIG)
-      const thumbStore = tx.objectStore(STORE_THUMB)
       const metaStore = tx.objectStore(STORE_META)
       const existing = await readMetaRow(metaStore, input.id)
 
-      let hasThumb = existing?.hasThumb ?? false
-      figStore.put(bytesToBuffer(input.figBytes), input.id)
-
-      if (input.thumbBytes != null) {
-        if (input.thumbBytes.byteLength > 0) {
-          thumbStore.put(bytesToBuffer(input.thumbBytes), input.id)
-          hasThumb = true
-        } else {
-          thumbStore.delete(input.id)
-          hasThumb = false
-        }
-      }
-
-      const meta = buildWriteMeta(input, existing, hasThumb)
-      metaStore.put(meta)
+      const meta = writeCanvasRecord(tx, input, existing)
       await txDone(tx)
       return meta
     },
@@ -146,22 +166,7 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
         return null
       }
 
-      const figStore = tx.objectStore(STORE_FIG)
-      const thumbStore = tx.objectStore(STORE_THUMB)
-      let hasThumb = existing?.hasThumb ?? false
-      figStore.put(bytesToBuffer(input.figBytes), input.id)
-      if (input.thumbBytes != null) {
-        if (input.thumbBytes.byteLength > 0) {
-          thumbStore.put(bytesToBuffer(input.thumbBytes), input.id)
-          hasThumb = true
-        } else {
-          thumbStore.delete(input.id)
-          hasThumb = false
-        }
-      }
-
-      const metadata = buildWriteMeta(input, existing, hasThumb)
-      metaStore.put(metadata)
+      const metadata = writeCanvasRecord(tx, input, existing)
       const job = buildOutboxJob({
         canvasId: input.id,
         type: 'putCanvas',
@@ -201,21 +206,7 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
         await txDone(tx)
         return null
       }
-      const figStore = tx.objectStore(STORE_FIG)
-      const thumbStore = tx.objectStore(STORE_THUMB)
-      let hasThumb = existing?.hasThumb ?? false
-      figStore.put(bytesToBuffer(input.figBytes), input.id)
-      if (input.thumbBytes != null) {
-        if (input.thumbBytes.byteLength > 0) {
-          thumbStore.put(bytesToBuffer(input.thumbBytes), input.id)
-          hasThumb = true
-        } else {
-          thumbStore.delete(input.id)
-          hasThumb = false
-        }
-      }
-      const metadata = buildWriteMeta(input, existing, hasThumb)
-      metaStore.put(metadata)
+      const metadata = writeCanvasRecord(tx, input, existing)
       await txDone(tx)
       return metadata
     },
@@ -384,7 +375,7 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
       const database = await db()
       const tx = database.transaction(STORE_JOBS, 'readwrite')
       const store = tx.objectStore(STORE_JOBS)
-      const stored = (await reqToPromise(store.get(job.id))) as OutboxJob | undefined
+      const stored = await readOutboxJob(store, job.id)
       if (stored) store.put({ ...job, claimToken: stored.claimToken })
       await txDone(tx)
     },
@@ -393,7 +384,7 @@ export function createIdbLocalCanvasStore(): LocalCanvasStore {
       const database = await db()
       const tx = database.transaction(STORE_JOBS, 'readwrite')
       const store = tx.objectStore(STORE_JOBS)
-      const stored = (await reqToPromise(store.get(job.id))) as OutboxJob | undefined
+      const stored = await readOutboxJob(store, job.id)
       if (
         !stored ||
         stored.canvasId !== job.canvasId ||
