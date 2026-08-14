@@ -164,7 +164,9 @@ that a live external gateway or deployment has passed that proof.
 
 - Runtime provisioning, status, or health management.
 - Worker, container, image, or registry management.
-- Hosted provider, model, or account selection.
+- Provider credentials, endpoints, account configuration, or routing-policy editing.
+- Provider-native model configuration. OpenPencil may display gateway-issued product labels and
+  return opaque option and effort identifiers from the principal-scoped Agent Native catalog.
 - Billing calculation, receipt validation, or billing authority.
 - Reimplementing Agent Hub, Agent Fabric, ACP, A2A, or agent-native internals.
 - Sending ELF credentials directly to third-party model providers.

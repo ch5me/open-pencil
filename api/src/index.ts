@@ -2,6 +2,7 @@ import type { D1Database, R2Bucket, DurableObjectNamespace } from '@cloudflare/w
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
+import { agentRoutes } from './agent/routes'
 import {
   AuthConfigurationError,
   assertAuthConfigured,
@@ -10,7 +11,6 @@ import {
   serializeElfSessionCookie,
   verifyElfToken
 } from './auth'
-import { agentRoutes } from './agent/routes'
 import { hydrateHostedSnapshotAssets } from './documents/assets'
 import {
   createHostedDocument,
@@ -112,7 +112,10 @@ app.get('/', (c) => {
       health: '/health',
       session: '/api/session',
       authCallback: 'GET|POST /api/auth/firefly/callback',
-      agent: 'POST /api/agent/runs',
+      agent: {
+        options: 'GET /api/agent/options',
+        runs: 'POST /api/agent/runs'
+      },
       documents: {
         list: 'GET /api/documents',
         create: 'POST /api/documents',

@@ -24,6 +24,8 @@ import { IS_BROWSER } from '@/constants'
 import { requestToolApprovalFromUser } from './approval'
 import { createGatewayToolExecutor } from './execution'
 import type { GatewayToolResult, GatewayToolExecutorOptions } from './execution'
+import { hostedAgentOptions } from './options'
+import type { HostedAgentSelection } from './options'
 import {
   clearAgentSession,
   loadAgentSession,
@@ -65,6 +67,7 @@ export type AgentServiceTransportOptions = HostedRequestOptions & {
   resumeStore?: AgentResumeStore
   isTargetActive?: () => boolean
   approve?: GatewayToolExecutorOptions['approve']
+  selection?: () => HostedAgentSelection | undefined
 }
 
 export class AgentServiceTransportError extends Error {
@@ -691,6 +694,13 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       await this.cancel(this.active)
     }
     const message = latestUserMessage(messages)
+    const selection = this.options.selection?.()
+    if (this.options.selection && !selection) {
+      throw new AgentServiceTransportError(
+        'invalid-request',
+        'Select an available hosted agent option before sending a message.'
+      )
+    }
     this.manifest ??= await createGatewayManifest(ALL_TOOLS)
     const previousSessionId = this.active?.finished ? this.active.sessionId : undefined
     const requestId = crypto.randomUUID()
@@ -721,6 +731,7 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         schema: AGENT_RUN_SCHEMA,
+        ...(selection ? { selection } : {}),
         requestId,
         idempotencyKey: state.idempotencyKey,
         conversation: {
@@ -855,5 +866,8 @@ export class AgentServiceChatTransport implements ChatTransport<UIMessage> {
 export function createAgentServiceChatTransport(
   options: AgentServiceTransportOptions
 ): ChatTransport<UIMessage> {
-  return new AgentServiceChatTransport(options)
+  return new AgentServiceChatTransport({
+    selection: () => hostedAgentOptions.selection.value,
+    ...options
+  })
 }

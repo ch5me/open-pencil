@@ -9,6 +9,7 @@ import { useAIChat } from '@/app/ai/chat/use'
 import { isHostedAgentEnabled } from '@/app/hosted/flags'
 import { appCredentialServices } from '@/app/settings/credentials/app'
 import { settingsDialogOpen, settingsDialogSection } from '@/app/settings/dialog'
+import HostedAgentSelector from '@/components/chat/HostedAgentSelector.vue'
 import ModelsPanel from '@/components/settings/models/ModelsPanel.vue'
 import StockPhotoKeysSection from '@/components/settings/provider/StockPhotoKeysSection.vue'
 import StorageSettingsPanel from '@/components/settings/storage/StorageSettingsPanel.vue'
@@ -108,13 +109,14 @@ const navigationClass =
             >
               <icon-lucide-shield-check class="size-4" />
             </div>
-            <div class="min-w-0">
+            <div class="min-w-0 flex-1">
               <h3 class="text-xs font-semibold text-surface">
                 {{ dialogs.hostedAgentManagedTitle }}
               </h3>
               <p class="mt-1 text-[11px] leading-relaxed text-muted">
                 {{ dialogs.hostedAgentManagedDescription }}
               </p>
+              <HostedAgentSelector class="mt-3" />
             </div>
           </div>
           <ModelsPanel v-else />

@@ -1,15 +1,17 @@
 import {
+  parseAgentOptionCatalog as parseSharedAgentOptionCatalog,
   parseAgentEvent as parseSharedAgentEvent,
   parseAgentRunRequest as parseSharedAgentRunRequest,
   parseAgentToolResultContinuation as parseSharedAgentToolResultContinuation
 } from '@open-pencil/agent-contracts'
 import type {
+  AgentOptionCatalog,
   AgentEvent,
   AgentRunRequest,
   AgentToolResultContinuation
 } from '@open-pencil/agent-contracts'
 
-export type { AgentEvent, AgentRunRequest, AgentToolResultContinuation }
+export type { AgentEvent, AgentOptionCatalog, AgentRunRequest, AgentToolResultContinuation }
 
 export class AgentContractError extends Error {
   constructor(
@@ -31,6 +33,17 @@ function parse<T>(label: string, parser: (value: unknown) => T, value: unknown):
 
 export function parseAgentRunRequest(value: unknown): AgentRunRequest {
   return parse('agent run request', parseSharedAgentRunRequest, value)
+}
+
+export function parseAgentOptionCatalog(value: unknown): AgentOptionCatalog {
+  try {
+    return parseSharedAgentOptionCatalog(value)
+  } catch {
+    throw new AgentContractError(
+      'catalog-invalid',
+      'Agent gateway returned an invalid option catalog.'
+    )
+  }
 }
 
 export function parseAgentToolResultContinuation(value: unknown): AgentToolResultContinuation {

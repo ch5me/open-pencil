@@ -4,6 +4,7 @@ import {
   AGENT_CONTINUATION_SCHEMA,
   AGENT_ERROR_SCHEMA,
   AGENT_EVENT_SCHEMA,
+  AGENT_OPTIONS_SCHEMA,
   AGENT_RUN_SCHEMA
 } from '@open-pencil/agent-contracts'
 
@@ -104,6 +105,72 @@ function eventStream(events: Array<Record<string, unknown>>, init?: ResponseInit
 }
 
 describe('generic hosted agent API routes', () => {
+  test('proxies an authenticated principal to the provider-neutral option catalog', async () => {
+    let forwarded: Request | undefined
+    globalThis.fetch = (async (input, init) => {
+      forwarded = new Request(input, init)
+      return Response.json({
+        schema: AGENT_OPTIONS_SCHEMA,
+        options: [
+          {
+            optionId: 'option-balanced',
+            label: 'Balanced',
+            group: 'Recommended',
+            description: 'Balances speed and quality.',
+            capabilities: ['tools'],
+            efforts: ['low', 'high'],
+            default: true
+          }
+        ]
+      })
+    }) as typeof fetch
+
+    const response = await app.request(
+      '/api/agent/options',
+      { headers: authenticatedHeaders() },
+      env
+    )
+    expect(response.status).toBe(200)
+    expect(forwarded?.method).toBe('GET')
+    expect(forwarded?.url).toBe('https://gateway.example/v1/options')
+    expect(forwarded?.headers.get('x-openpencil-principal')).toBe(PRINCIPAL_ID)
+    expect(forwarded?.headers.get('authorization')).toBe(`Bearer ${SERVICE_CREDENTIAL}`)
+    expect(response.headers.get('cache-control')).toBe('private, no-store')
+  })
+
+  test('rejects malformed or infrastructure-bearing option catalogs', async () => {
+    for (const body of [
+      { schema: AGENT_OPTIONS_SCHEMA, options: 'invalid' },
+      {
+        schema: AGENT_OPTIONS_SCHEMA,
+        options: [
+          {
+            optionId: 'option-private',
+            label: 'Private',
+            group: 'Other',
+            description: 'Invalid.',
+            capabilities: [],
+            efforts: [],
+            runtimeId: 'leaked'
+          }
+        ]
+      }
+    ]) {
+      globalThis.fetch = (async () => Response.json(body)) as typeof fetch
+      const response = await app.request(
+        '/api/agent/options',
+        { headers: authenticatedHeaders() },
+        env
+      )
+      expect(response.status).toBe(502)
+      await expect(response.json()).resolves.toMatchObject({
+        schema: AGENT_ERROR_SCHEMA,
+        code: 'catalog-invalid',
+        phase: 'request'
+      })
+    }
+  })
+
   test('rejects missing and invalid ELF sessions', async () => {
     const missing = await app.request('/api/agent/runs', { method: 'POST' }, env)
     expect(missing.status).toBe(401)
@@ -164,6 +231,45 @@ describe('generic hosted agent API routes', () => {
     expect(browserBody).toContain('"type":"run.started"')
     expect(browserBody).not.toContain(SERVICE_CREDENTIAL)
     expect(browserBody).not.toContain(DEV_STUB_ELF_TOKEN)
+  })
+
+  test('validates and forwards hosted option selection', async () => {
+    let forwarded: Request | undefined
+    globalThis.fetch = (async (input, init) => {
+      forwarded = new Request(input, init)
+      return eventStream([
+        agentEvent({ seq: 0, eventId: 'event-0', type: 'session.created' }),
+        agentEvent()
+      ])
+    }) as typeof fetch
+    const selected = { ...runRequest(), selection: { optionId: 'option-balanced', effort: 'high' } }
+    const response = await app.request(
+      '/api/agent/runs',
+      {
+        method: 'POST',
+        headers: authenticatedHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(selected)
+      },
+      env
+    )
+    expect(response.status).toBe(200)
+    expect(await forwarded?.json()).toEqual(selected)
+    await response.text()
+
+    const invalid = await app.request(
+      '/api/agent/runs',
+      {
+        method: 'POST',
+        headers: authenticatedHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          ...selected,
+          selection: { ...selected.selection, providerId: 'private' }
+        })
+      },
+      env
+    )
+    expect(invalid.status).toBe(400)
+    await expect(invalid.json()).resolves.toMatchObject({ code: 'invalid-request' })
   })
 
   test('returns a typed conflict before forwarding mismatched continuation identity', async () => {

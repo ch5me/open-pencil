@@ -2,10 +2,10 @@
 enable = true
 
 [daemons.app]
-run = "bun tools/local-bootstrap/src/index.ts && exec ./node_modules/.bin/vite --host 127.0.0.1 --port $PORT --strictPort"
+run = "export OPENPENCIL_HOSTED_ENV=staging VITE_HOSTED_AUTH_ENABLED=true VITE_HOSTED_AGENT_ENABLED=true VITE_API_ORIGIN=\"http://api.${PITCHFORK_DAEMON_NAMESPACE}.localhost:7300\"; bun tools/local-bootstrap/src/index.ts && exec ./node_modules/.bin/vite --host 127.0.0.1 --port $PORT --strictPort"
 dir = "."
 port = { expect = [1420], bump = 20 }
-ready_port = { port = 1420, timeout = "30s" }
+ready_port = { port = 1420, timeout = "120s" }
 
 [daemons.docs]
 run = "./node_modules/.bin/vitepress dev . --host 127.0.0.1 --port $PORT --strictPort"

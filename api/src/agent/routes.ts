@@ -10,7 +10,7 @@ import {
   parseAgentToolResultContinuation
 } from './contracts'
 import type { AgentGatewayEnv } from './gateway'
-import { AgentGatewayError, requestAgentGateway } from './gateway'
+import { AgentGatewayError, requestAgentGateway, requestAgentOptions } from './gateway'
 
 type AgentRouteEnv = {
   Bindings: AgentGatewayEnv
@@ -20,6 +20,22 @@ type AgentRouteEnv = {
 export const agentRoutes = new Hono<AgentRouteEnv>()
 
 agentRoutes.use('*', requireSession())
+
+agentRoutes.get('/options', async (c) => {
+  try {
+    const catalog = await requestAgentOptions({
+      env: c.env,
+      principalId: principal(c),
+      signal: c.req.raw.signal
+    })
+    c.header('Cache-Control', 'private, no-store')
+    return c.json(catalog)
+  } catch (error) {
+    const response = gatewayResponseError(error)
+    if (response) return response
+    throw error
+  }
+})
 
 function principal(c: Context<AgentRouteEnv>): string {
   return c.get('userId')

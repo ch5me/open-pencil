@@ -5,6 +5,7 @@ export const AGENT_EVENT_SCHEMA = 'openpencil.agent.event.v1' as const
 export const AGENT_ERROR_SCHEMA = 'openpencil.agent.error.v1' as const
 export const AGENT_CONTINUATION_SCHEMA = 'openpencil.agent.continuation.v1' as const
 export const AGENT_RECEIPT_SCHEMA = 'openpencil.agent.receipt.v1' as const
+export const AGENT_OPTIONS_SCHEMA = 'openpencil.agent.options.v1' as const
 export const AGENT_PROTOCOL_VERSION = '1' as const
 export const AGENT_GATEWAY_MANIFEST_VERSION = '1' as const
 
@@ -15,8 +16,12 @@ const MAX_GATEWAY_ACTIONS = 128
 const MAX_GATEWAY_PROPERTIES = 128
 const FORBIDDEN_FIELDS = new Set([
   'account',
+  'apikey',
+  'apitype',
+  'baseurl',
   'billing',
   'container',
+  'credential',
   'deployment',
   'image',
   'machine',
@@ -73,6 +78,28 @@ export interface AgentRunRequest {
     cancellation: boolean
     approvals: boolean
   }
+  selection?: AgentOptionSelection
+}
+
+export interface AgentOptionSelection {
+  optionId: string
+  effort?: string
+}
+
+export interface AgentOptionCatalogEntry {
+  optionId: string
+  label: string
+  group: string
+  description: string
+  capabilities: string[]
+  efforts: string[]
+  selected?: boolean
+  default?: boolean
+}
+
+export interface AgentOptionCatalog {
+  schema: typeof AGENT_OPTIONS_SCHEMA
+  options: AgentOptionCatalogEntry[]
 }
 
 export type AgentErrorCode =
@@ -89,6 +116,8 @@ export type AgentErrorCode =
   | 'tool-rejected'
   | 'tool-timeout'
   | 'gateway-unavailable'
+  | 'options-unavailable'
+  | 'catalog-invalid'
   | 'stream-interrupted'
   | 'cancellation-failed'
   | 'run-failed'
@@ -368,6 +397,8 @@ const ERROR_CODES = new Set<AgentErrorCode>([
   'tool-rejected',
   'tool-timeout',
   'gateway-unavailable',
+  'options-unavailable',
+  'catalog-invalid',
   'stream-interrupted',
   'cancellation-failed',
   'run-failed'
@@ -461,16 +492,20 @@ function validReceipt(value: unknown): value is AgentRunReceipt {
 
 function validRequest(value: unknown): value is AgentRunRequest {
   if (
-    !exact(value, [
-      'schema',
-      'requestId',
-      'idempotencyKey',
-      'conversation',
-      'input',
-      'context',
-      'tools',
-      'capabilities'
-    ])
+    !exact(
+      value,
+      [
+        'schema',
+        'requestId',
+        'idempotencyKey',
+        'conversation',
+        'input',
+        'context',
+        'tools',
+        'capabilities'
+      ],
+      ['selection']
+    )
   ) {
     return false
   }
@@ -497,6 +532,62 @@ function validRequest(value: unknown): value is AgentRunRequest {
     !!capabilities &&
     exact(capabilities, ['toolResults', 'reconnect', 'cancellation', 'approvals']) &&
     Object.values(capabilities).every((capability) => typeof capability === 'boolean') &&
+    (!('selection' in request) || validOptionSelection(request.selection)) &&
+    safeJSON(value)
+  )
+}
+
+function validOptionSelection(value: unknown): value is AgentOptionSelection {
+  const selection = record(value)
+  return (
+    !!selection &&
+    exact(selection, ['optionId'], ['effort']) &&
+    identifier(selection.optionId) &&
+    (!('effort' in selection) || identifier(selection.effort))
+  )
+}
+
+function validOptionEntry(value: unknown): value is AgentOptionCatalogEntry {
+  const option = record(value)
+  if (
+    !option ||
+    !exact(
+      option,
+      ['optionId', 'label', 'group', 'description', 'capabilities', 'efforts'],
+      ['selected', 'default']
+    )
+  )
+    return false
+  return (
+    identifier(option.optionId) &&
+    shortText(option.label, 256) &&
+    shortText(option.group, 256) &&
+    shortText(option.description, 4_096) &&
+    Array.isArray(option.capabilities) &&
+    option.capabilities.length <= 128 &&
+    option.capabilities.every(identifier) &&
+    new Set(option.capabilities).size === option.capabilities.length &&
+    Array.isArray(option.efforts) &&
+    option.efforts.length <= 32 &&
+    option.efforts.every(identifier) &&
+    new Set(option.efforts).size === option.efforts.length &&
+    (!('selected' in option) || typeof option.selected === 'boolean') &&
+    (!('default' in option) || typeof option.default === 'boolean')
+  )
+}
+
+function validOptionCatalog(value: unknown): value is AgentOptionCatalog {
+  const catalog = record(value)
+  return (
+    !!catalog &&
+    exact(catalog, ['schema', 'options']) &&
+    catalog.schema === AGENT_OPTIONS_SCHEMA &&
+    Array.isArray(catalog.options) &&
+    catalog.options.length <= 256 &&
+    catalog.options.every(validOptionEntry) &&
+    new Set(catalog.options.map((option) => option.optionId)).size === catalog.options.length &&
+    catalog.options.filter((option) => option.selected).length <= 1 &&
+    catalog.options.filter((option) => option.default).length <= 1 &&
     safeJSON(value)
   )
 }
@@ -641,6 +732,7 @@ function parser<T>(label: string, guard: (value: unknown) => value is T) {
 }
 
 export const parseAgentRunRequest = parser('agent run request', validRequest)
+export const parseAgentOptionCatalog = parser('agent option catalog', validOptionCatalog)
 export const parseAgentEvent = parser('agent event', validEvent)
 export const parseAgentError = parser('agent error', validError)
 export const parseAgentRunReceipt = parser('agent run receipt', validReceipt)

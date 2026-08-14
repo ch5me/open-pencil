@@ -13,6 +13,8 @@ import type {
   AgentToolResultContinuation
 } from '@open-pencil/agent-contracts'
 
+import { AGENT_OPTION_CATALOG, findAgentOption, selectionError } from './options'
+
 interface RunState {
   principal: string
   request: AgentRunRequest
@@ -21,6 +23,7 @@ interface RunState {
   events: AgentEvent[]
   continuation?: AgentToolResultContinuation
   cancelled: boolean
+  selection?: AgentRunRequest['selection']
 }
 
 export interface FakeGateway {
@@ -166,6 +169,8 @@ async function startRun(
   } catch {
     return json({ code: 'invalid-request', message: 'Malformed run request.' }, 400)
   }
+  const invalidSelection = selectionError(body.selection)
+  if (invalidSelection) return json({ code: 'invalid-request', message: invalidSelection }, 400)
   if (!(await verifyAgentGatewayToolManifest(body.tools))) {
     return json({ code: 'invalid-request', message: 'Manifest identity mismatch.' }, 400)
   }
@@ -200,7 +205,8 @@ async function startRun(
     sessionId: body.conversation.sessionId ?? `session-${body.conversation.clientId}`,
     runId: `run-${body.requestId}`,
     events: [],
-    cancelled: false
+    cancelled: false,
+    selection: body.selection
   }
   runs.set(runKey(principal, state.sessionId, state.runId), state)
   idempotency.set(idempotencyKey, state)
@@ -214,7 +220,12 @@ async function startRun(
   })
   push(state, {
     type: 'message.delta',
-    data: { messageId: 'assistant-1', text: 'I can make ' }
+    data: {
+      messageId: 'assistant-1',
+      text: state.selection
+        ? `Using ${findAgentOption(state.selection)?.label} (${state.selection.effort ?? 'default'}), I can make `
+        : 'Using the Agent Native default, I can make '
+    }
   })
   push(state, {
     type: 'message.delta',
@@ -320,6 +331,10 @@ export function createFakeGateway(): FakeGateway {
     async fetch(request) {
       const url = new URL(request.url)
       if (url.pathname === '/health') return json({ ok: true })
+
+      if (request.method === 'GET' && url.pathname === '/v1/options') {
+        return json(AGENT_OPTION_CATALOG)
+      }
 
       if (request.method === 'POST' && url.pathname === '/v1/runs') {
         return startRun(request, runs, idempotency)

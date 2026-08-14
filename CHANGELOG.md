@@ -6,6 +6,7 @@
 
 - Add a hosted Apple Pencil pressure canvas, native-first diagnostics, hardware scenario tracking, and exact device-evidence JSON export.
 - Add provider-neutral hosted agent chat and an opt-in deterministic local proof lane, with streamed responses, guarded design actions, approvals, cancellation, typed failures, reload-persistent run recovery, and no fallback to local model or ACP transports. Hosted-agent mode remains disabled by default.
+- Add centrally managed Agent Native option and effort selection to hosted chat and Settings without exposing provider credentials, endpoints, API types, or routing configuration.
 
 ### Fixed
 

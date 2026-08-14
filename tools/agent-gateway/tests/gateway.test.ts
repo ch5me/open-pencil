@@ -39,7 +39,8 @@ const runRequest = {
   input: { messageId: 'message-1', text: 'Create a rectangle' },
   context: { documentId: 'document-1', pageId: 'page-1', selectedNodeIds: [] },
   tools: { manifestId: await createAgentGatewayManifestId(definitions), definitions },
-  capabilities: { toolResults: true, reconnect: true, cancellation: true, approvals: true }
+  capabilities: { toolResults: true, reconnect: true, cancellation: true, approvals: true },
+  selection: { optionId: 'agent-native-gpt-5-6-luna', effort: 'medium' }
 } as const
 
 afterEach(() => gateway.reset())
@@ -79,6 +80,50 @@ function events(text: string) {
       )
     )
 }
+
+test('returns an opaque centrally managed agent option catalog', async () => {
+  const response = await gateway.fetch(gatewayRequest('/v1/options'))
+  expect(response.status).toBe(200)
+  const catalog = (await response.json()) as {
+    schema: string
+    options: { optionId: string; group: string; efforts: string[] }[]
+  }
+  expect(catalog.schema).toBe('openpencil.agent.options.v1')
+  expect([...new Set(catalog.options.map((option) => option.group))]).toEqual([
+    'Agent Native',
+    'OpenAI',
+    'Claude',
+    'Gemini'
+  ])
+  expect(catalog.options.some((option) => option.efforts.length === 0)).toBe(true)
+  expect(catalog.options.some((option) => option.efforts.length > 0)).toBe(true)
+  expect(JSON.stringify(catalog)).not.toMatch(
+    /credential|api[_-]?key|base[_-]?url|api[_-]?type|container|image|registry|runtime|worker|billing/i
+  )
+})
+
+test('uses the selected option and effort in deterministic output', async () => {
+  const initial = events(await (await startRun()).text())
+  const text = initial
+    .filter((event) => event.type === 'message.delta')
+    .map((event) => (event.type === 'message.delta' ? event.data.text : ''))
+    .join('')
+  expect(text).toContain('Using GPT-5.6 Luna (medium)')
+})
+
+test('rejects unknown agent options and efforts loudly', async () => {
+  for (const selection of [
+    { optionId: 'option-unknown', effort: 'standard' },
+    { optionId: 'agent-native-gpt-5-6-luna', effort: 'impossible' }
+  ]) {
+    const response = await startRun({ ...runRequest, selection })
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({
+      code: 'invalid-request',
+      message: expect.stringContaining('Unknown')
+    })
+  }
+})
 
 test('streams a real action, accepts continuation, and returns an opaque receipt', async () => {
   const initial = events(await (await startRun()).text())

@@ -17,6 +17,32 @@ test('hosted Agent Native settings are centrally managed and read-only', async (
       json: { user: { id: 'hosted-agent-settings-user' } }
     })
   })
+  await page.route('http://openpencil-hosted.test/api/agent/options', async (route) => {
+    await route.fulfill({
+      json: {
+        schema: 'openpencil.agent.options.v1',
+        options: [
+          {
+            optionId: 'agent-native-gpt-5-6-luna',
+            label: 'GPT-5.6 Luna',
+            group: 'OpenAI',
+            description: 'Fast Agent Native model for everyday work.',
+            capabilities: ['tools', 'vision'],
+            efforts: ['low', 'medium', 'high', 'xhigh'],
+            default: true
+          },
+          {
+            optionId: 'agent-native-claude-opus-4-8',
+            label: 'Claude Opus 4.8',
+            group: 'Claude',
+            description: 'Highest-capability Claude model available in Agent Native.',
+            capabilities: ['tools', 'vision'],
+            efforts: ['low', 'medium', 'high', 'xhigh', 'max']
+          }
+        ]
+      }
+    })
+  })
 
   await page.goto('/')
   await new CanvasHelper(page).waitForInit()
@@ -27,6 +53,10 @@ test('hosted Agent Native settings are centrally managed and read-only', async (
   await expect(managedState).toContainText(
     'Provider, model, credentials, and routing are configured centrally for this workspace.'
   )
+  await expect(
+    managedState.getByRole('combobox', { name: 'Managed by Agent Native' })
+  ).toContainText('OpenAI · GPT-5.6 Luna')
+  await expect(managedState.getByRole('combobox', { name: 'Capabilities' })).toContainText('Medium')
 
   await expect(page.getByTestId('settings-add-model')).toHaveCount(0)
   await expect(page.getByTestId('settings-model-list')).toHaveCount(0)

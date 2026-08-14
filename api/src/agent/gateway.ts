@@ -1,7 +1,8 @@
 import { AGENT_ERROR_SCHEMA, parseAgentError } from '@open-pencil/agent-contracts'
 import type { AgentError } from '@open-pencil/agent-contracts'
 
-import { AgentContractError, parseAgentEvent } from './contracts'
+import { AgentContractError, parseAgentEvent, parseAgentOptionCatalog } from './contracts'
+import type { AgentOptionCatalog } from './contracts'
 
 export type AgentGatewayEnv = {
   OPENPENCIL_AGENT_GATEWAY_ORIGIN?: string
@@ -80,6 +81,16 @@ function gatewayUnavailable(status: number, message: string): AgentGatewayError 
   })
 }
 
+function optionsUnavailable(status: number, message: string): AgentGatewayError {
+  return new AgentGatewayError(status, {
+    schema: AGENT_ERROR_SCHEMA,
+    code: 'options-unavailable',
+    message,
+    retryable: true,
+    phase: 'request'
+  })
+}
+
 export async function requestAgentGateway(input: AgentGatewayRequest): Promise<Response> {
   const origin = gatewayOrigin(input.env)
   const headers = new Headers({
@@ -121,6 +132,55 @@ export async function requestAgentGateway(input: AgentGatewayRequest): Promise<R
     throw gatewayUnavailable(502, 'Agent gateway did not return a valid SSE response.')
   }
   return validateAgentEventStream(response, response.body, input.expectedIdentity)
+}
+
+export async function requestAgentOptions(
+  input: Omit<AgentGatewayRequest, 'path' | 'method' | 'body'>
+): Promise<AgentOptionCatalog> {
+  const origin = gatewayOrigin(input.env)
+  const headers = new Headers({
+    Accept: 'application/json',
+    'X-OpenPencil-Principal': input.principalId
+  })
+  const token = input.env.OPENPENCIL_AGENT_GATEWAY_TOKEN?.trim()
+  if (!token && !loopbackOrigin(origin)) {
+    throw gatewayUnavailable(503, 'Agent gateway service authentication is not configured.')
+  }
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  let response: Response
+  try {
+    response = await (input.fetch ?? fetch)(`${origin}/v1/options`, {
+      method: 'GET',
+      headers,
+      signal: input.signal
+    })
+  } catch {
+    throw optionsUnavailable(502, 'Agent gateway options are unavailable.')
+  }
+  if (!response.ok) throw await gatewayError(response)
+  let value: unknown
+  try {
+    value = await response.json()
+  } catch {
+    throw new AgentGatewayError(502, {
+      schema: AGENT_ERROR_SCHEMA,
+      code: 'catalog-invalid',
+      message: 'Agent gateway returned an invalid option catalog.',
+      retryable: false,
+      phase: 'request'
+    })
+  }
+  try {
+    return parseAgentOptionCatalog(value)
+  } catch {
+    throw new AgentGatewayError(502, {
+      schema: AGENT_ERROR_SCHEMA,
+      code: 'catalog-invalid',
+      message: 'Agent gateway returned an invalid option catalog.',
+      retryable: false,
+      phase: 'request'
+    })
+  }
 }
 
 function validateAgentEventStream(
