@@ -2,6 +2,7 @@ import { afterEach, expect, test } from 'bun:test'
 
 import {
   AGENT_CONTINUATION_SCHEMA,
+  AGENT_OPTIONS_SCHEMA,
   AGENT_RUN_SCHEMA,
   createAgentGatewayManifestId,
   parseAgentEvent
@@ -9,7 +10,27 @@ import {
 
 import { createFakeGateway } from '../src/gateway'
 
-const gateway = createFakeGateway()
+const fixtureCatalog = {
+  schema: AGENT_OPTIONS_SCHEMA,
+  options: [
+    {
+      optionId: 'option-balanced',
+      label: 'Balanced',
+      group: 'Recommended',
+      description: 'Balances speed and quality.',
+      capabilities: ['tools', 'vision'],
+      efforts: ['low', 'medium', 'high'],
+      default: true
+    }
+  ]
+} as const
+let catalogUnavailable = false
+const catalogPrincipals: string[] = []
+const gateway = createFakeGateway(async (principal) => {
+  catalogPrincipals.push(principal)
+  if (catalogUnavailable) throw new Error('catalog unavailable')
+  return fixtureCatalog
+})
 const definitions = [
   {
     name: 'create_shape',
@@ -40,10 +61,14 @@ const runRequest = {
   context: { documentId: 'document-1', pageId: 'page-1', selectedNodeIds: [] },
   tools: { manifestId: await createAgentGatewayManifestId(definitions), definitions },
   capabilities: { toolResults: true, reconnect: true, cancellation: true, approvals: true },
-  selection: { optionId: 'agent-native-gpt-5-6-luna', effort: 'medium' }
+  selection: { optionId: 'option-balanced', effort: 'medium' }
 } as const
 
-afterEach(() => gateway.reset())
+afterEach(() => {
+  gateway.reset()
+  catalogUnavailable = false
+  catalogPrincipals.length = 0
+})
 
 function startRun(body: unknown = runRequest): Promise<Response> {
   return gateway.fetch(
@@ -60,7 +85,9 @@ function startRun(body: unknown = runRequest): Promise<Response> {
 
 function gatewayRequest(path: string, init?: RequestInit): Request {
   const headers = new Headers(init?.headers)
-  headers.set('x-openpencil-principal', 'stub-user-001')
+  if (!headers.has('x-openpencil-principal')) {
+    headers.set('x-openpencil-principal', 'stub-user-001')
+  }
   return new Request(`http://gateway.test${path}`, { ...init, headers })
 }
 
@@ -89,17 +116,31 @@ test('returns an opaque centrally managed agent option catalog', async () => {
     options: { optionId: string; group: string; efforts: string[] }[]
   }
   expect(catalog.schema).toBe('openpencil.agent.options.v1')
-  expect([...new Set(catalog.options.map((option) => option.group))]).toEqual([
-    'Agent Native',
-    'OpenAI',
-    'Claude',
-    'Gemini'
-  ])
-  expect(catalog.options.some((option) => option.efforts.length === 0)).toBe(true)
+  expect([...new Set(catalog.options.map((option) => option.group))]).toEqual(['Recommended'])
   expect(catalog.options.some((option) => option.efforts.length > 0)).toBe(true)
   expect(JSON.stringify(catalog)).not.toMatch(
     /credential|api[_-]?key|base[_-]?url|api[_-]?type|container|image|registry|runtime|worker|billing/i
   )
+  expect(catalogPrincipals).toEqual(['stub-user-001'])
+})
+
+test('requires a principal before retrieving the catalog and keeps catalogs principal-scoped', async () => {
+  const unauthorized = await gateway.fetch(new Request('http://gateway.test/v1/options'))
+  expect(unauthorized.status).toBe(401)
+  expect(catalogPrincipals).toEqual([])
+
+  await gateway.fetch(gatewayRequest('/v1/options'))
+  await gateway.fetch(
+    gatewayRequest('/v1/options', { headers: { 'x-openpencil-principal': 'stub-user-002' } })
+  )
+  expect(catalogPrincipals).toEqual(['stub-user-001', 'stub-user-002'])
+})
+
+test('reports catalog readiness failures without exposing source details', async () => {
+  catalogUnavailable = true
+  const response = await gateway.fetch(new Request('http://gateway.test/health'))
+  expect(response.status).toBe(503)
+  expect(await response.json()).toEqual({ ok: true, ready: false })
 })
 
 test('uses the selected option and effort in deterministic output', async () => {
@@ -108,13 +149,13 @@ test('uses the selected option and effort in deterministic output', async () => 
     .filter((event) => event.type === 'message.delta')
     .map((event) => (event.type === 'message.delta' ? event.data.text : ''))
     .join('')
-  expect(text).toContain('Using GPT-5.6 Luna (medium)')
+  expect(text).toContain('Using Balanced (medium)')
 })
 
 test('rejects unknown agent options and efforts loudly', async () => {
   for (const selection of [
     { optionId: 'option-unknown', effort: 'standard' },
-    { optionId: 'agent-native-gpt-5-6-luna', effort: 'impossible' }
+    { optionId: 'option-balanced', effort: 'impossible' }
   ]) {
     const response = await startRun({ ...runRequest, selection })
     expect(response.status).toBe(400)
@@ -123,6 +164,17 @@ test('rejects unknown agent options and efforts loudly', async () => {
       message: expect.stringContaining('Unknown')
     })
   }
+})
+
+test('replays an accepted idempotent run when the catalog later becomes unavailable', async () => {
+  const accepted = await startRun()
+  expect(accepted.status).toBe(200)
+  const acceptedBody = await accepted.text()
+  catalogUnavailable = true
+  const replay = await startRun()
+  expect(replay.status).toBe(200)
+  expect(await replay.text()).toBe(acceptedBody)
+  expect(catalogPrincipals).toEqual(['stub-user-001'])
 })
 
 test('streams a real action, accepts continuation, and returns an opaque receipt', async () => {

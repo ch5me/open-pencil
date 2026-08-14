@@ -13,7 +13,8 @@ import type {
   AgentToolResultContinuation
 } from '@open-pencil/agent-contracts'
 
-import { AGENT_OPTION_CATALOG, findAgentOption, selectionError } from './options'
+import { AgentCatalogError, findAgentOption, selectionError } from './options'
+import type { AgentCatalogSource } from './options'
 
 interface RunState {
   principal: string
@@ -161,15 +162,33 @@ function resolveRunRoute(
 async function startRun(
   request: Request,
   runs: Map<string, RunState>,
-  idempotency: Map<string, RunState>
+  idempotency: Map<string, RunState>,
+  catalogSource: AgentCatalogSource
 ): Promise<Response> {
+  const principal = request.headers.get('x-openpencil-principal')
+  if (!principal)
+    return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
   let body: AgentRunRequest
   try {
     body = parseAgentRunRequest(await request.json())
   } catch {
     return json({ code: 'invalid-request', message: 'Malformed run request.' }, 400)
   }
-  const invalidSelection = selectionError(body.selection)
+  const idempotencyKey = `${principal}/${body.idempotencyKey}`
+  const existing = idempotency.get(idempotencyKey)
+  if (existing) return sse(existing.events)
+
+  let catalog
+  try {
+    catalog = await catalogSource(principal)
+  } catch (error) {
+    if (error instanceof AgentCatalogError) return error.response()
+    return new AgentCatalogError(
+      'options-unavailable',
+      'Agent Native catalog is unavailable.'
+    ).response()
+  }
+  const invalidSelection = selectionError(catalog, body.selection)
   if (invalidSelection) return json({ code: 'invalid-request', message: invalidSelection }, 400)
   if (!(await verifyAgentGatewayToolManifest(body.tools))) {
     return json({ code: 'invalid-request', message: 'Manifest identity mismatch.' }, 400)
@@ -192,12 +211,6 @@ async function startRun(
   if (!actionAcceptsArguments(action, actionArguments)) {
     return json({ code: 'invalid-request', message: 'Action schema diverges from runtime.' }, 400)
   }
-  const principal = request.headers.get('x-openpencil-principal')
-  if (!principal)
-    return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
-  const idempotencyKey = `${principal}/${body.idempotencyKey}`
-  const existing = idempotency.get(idempotencyKey)
-  if (existing) return sse(existing.events)
 
   const state: RunState = {
     principal,
@@ -223,7 +236,7 @@ async function startRun(
     data: {
       messageId: 'assistant-1',
       text: state.selection
-        ? `Using ${findAgentOption(state.selection)?.label} (${state.selection.effort ?? 'default'}), I can make `
+        ? `Using ${findAgentOption(catalog, state.selection)?.label} (${state.selection.effort ?? 'default'}), I can make `
         : 'Using the Agent Native default, I can make '
     }
   })
@@ -323,21 +336,39 @@ async function continueRun(request: Request, state: RunState): Promise<Response>
   return sse([...next, completed])
 }
 
-export function createFakeGateway(): FakeGateway {
+export function createFakeGateway(catalogSource: AgentCatalogSource): FakeGateway {
   const runs = new Map<string, RunState>()
   const idempotency = new Map<string, RunState>()
 
   return {
     async fetch(request) {
       const url = new URL(request.url)
-      if (url.pathname === '/health') return json({ ok: true })
+      if (url.pathname === '/health') {
+        try {
+          await catalogSource('health-check')
+          return json({ ok: true, ready: true })
+        } catch {
+          return json({ ok: true, ready: false }, 503)
+        }
+      }
 
       if (request.method === 'GET' && url.pathname === '/v1/options') {
-        return json(AGENT_OPTION_CATALOG)
+        const principal = request.headers.get('x-openpencil-principal')
+        if (!principal)
+          return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
+        try {
+          return json(await catalogSource(principal))
+        } catch (error) {
+          if (error instanceof AgentCatalogError) return error.response()
+          return new AgentCatalogError(
+            'options-unavailable',
+            'Agent Native catalog is unavailable.'
+          ).response()
+        }
       }
 
       if (request.method === 'POST' && url.pathname === '/v1/runs') {
-        return startRun(request, runs, idempotency)
+        return startRun(request, runs, idempotency, catalogSource)
       }
 
       const route = resolveRunRoute(request, url, runs)

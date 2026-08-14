@@ -50,6 +50,18 @@ OpenPencil API deployment. A missing origin, or a missing token for a
 non-loopback origin, makes hosted chat fail closed. Local deterministic gateway
 fixtures may use a loopback origin without a service token.
 
+The gateway obtains its principal-scoped options from the Agent Native-owned
+endpoint in `AGENT_NATIVE_CATALOG_URL`; `AGENT_NATIVE_CATALOG_TOKEN` is an
+required server-only source credential for HTTPS sources. Loopback development
+may omit it. The gateway forwards the verified OpenPencil principal to Agent
+Native and requires an exact `{ catalog, issuedAt, expiresAt }` envelope.
+`AGENT_NATIVE_CATALOG_MAX_AGE_SECONDS` sets the maximum age (300 seconds by
+default). Missing configuration,
+network or HTTP failure, invalid JSON/schema, expired or over-age metadata, and
+forbidden provider/infrastructure fields all fail closed. The gateway has no
+authored production catalog or fallback. Tests inject a provider-neutral source
+fixture instead of sharing production catalog data.
+
 ## Stable contract
 
 The browser talks only to the configured OpenPencil API boundary and never calls
@@ -112,9 +124,10 @@ transport never silently falls back to BYOK or ACP, including after a gateway
 error, malformed event, interrupted stream, failed resume, rejected approval,
 or cancellation.
 
-An opt-in local E2E lane uses a deterministic gateway fixture and requires the
-local API and gateway services. Unit and contract tests cover protocol behavior
-without external providers. The fixture is not a production fallback.
+An opt-in local E2E lane uses deterministic run behavior and an injected catalog
+fixture and requires the local API and gateway services. Unit and contract tests
+cover protocol behavior without external providers. Fixtures are not production
+fallbacks.
 
 ## Lifecycle and failure policy
 
@@ -152,7 +165,8 @@ focused proof. Do not infer that an additive module needs an upstream drift row.
 
 ## Verification boundary
 
-Contract coverage should use a deterministic conforming gateway to exercise
+Contract coverage should use a deterministic conforming run fixture with an
+injected HTTP/source catalog fixture to exercise
 ordered streaming, malformed events, typed failures, cancellation, resume,
 approval, action continuation, duplicate/conflicting results, and the
 no-fallback rule. A complete integration proof also needs a hosted prompt that

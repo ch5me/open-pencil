@@ -154,6 +154,19 @@ describe('generic hosted agent API routes', () => {
             runtimeId: 'leaked'
           }
         ]
+      },
+      {
+        schema: AGENT_OPTIONS_SCHEMA,
+        options: [
+          {
+            optionId: 'option-private',
+            label: 'Private',
+            group: 'Other',
+            description: 'Invalid.',
+            capabilities: [{ nested: { provider: 'leaked' } }],
+            efforts: []
+          }
+        ]
       }
     ]) {
       globalThis.fetch = (async () => Response.json(body)) as typeof fetch
