@@ -77,3 +77,7 @@ scratch/
 
 # OpenCode
 .opencode/
+
+# ch5 shadow state: local runtime, durable trust decisions
+.ch5/shadow/*
+!.ch5/shadow/trust.json
