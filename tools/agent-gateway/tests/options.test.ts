@@ -37,6 +37,26 @@ function source(body: unknown, responseInit?: ResponseInit) {
 }
 
 describe('Agent Native catalog source', () => {
+  test('allows HTTP only for loopback localhost aliases', async () => {
+    const localAlias = createAgentCatalogSource(
+      {
+        AGENT_NATIVE_CATALOG_URL: 'http://dispatch.agent-native.localhost/catalog',
+        AGENT_NATIVE_CATALOG_TOKEN: 'source-token'
+      },
+      (async (_input, init) => {
+        expect(new Headers(init?.headers).get('authorization')).toBe('Bearer source-token')
+        return Response.json({
+          catalog,
+          issuedAt: '2026-08-14T11:59:30.000Z',
+          expiresAt: '2026-08-14T12:00:30.000Z'
+        })
+      }) as typeof fetch,
+      () => Date.parse('2026-08-14T12:00:00.000Z')
+    )
+
+    await expect(localAlias('principal-1')).resolves.toEqual(catalog)
+  })
+
   test('loads and projects a fresh provider-neutral catalog', async () => {
     await expect(
       source({

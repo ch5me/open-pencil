@@ -157,7 +157,11 @@ function catalogURL(env: AgentCatalogEnv): URL {
   } catch {
     throw new AgentCatalogError('options-unavailable', 'Agent Native catalog URL is invalid.')
   }
-  if (url.protocol !== 'https:' && url.hostname !== '127.0.0.1' && url.hostname !== 'localhost') {
+  const localHostname =
+    url.hostname === '127.0.0.1' ||
+    url.hostname === 'localhost' ||
+    url.hostname.endsWith('.localhost')
+  if (url.protocol !== 'https:' && !localHostname) {
     throw new AgentCatalogError('options-unavailable', 'Agent Native catalog URL must use HTTPS.')
   }
   if (url.protocol === 'https:' && !env.AGENT_NATIVE_CATALOG_TOKEN?.trim()) {
