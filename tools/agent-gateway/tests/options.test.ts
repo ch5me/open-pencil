@@ -67,6 +67,16 @@ describe('Agent Native catalog source', () => {
     ).resolves.toEqual(catalog)
   })
 
+  test('accepts Agent Native numeric millisecond timestamps', async () => {
+    await expect(
+      source({
+        catalog,
+        issuedAt: Date.parse('2026-08-14T11:59:30.000Z'),
+        expiresAt: Date.parse('2026-08-14T12:00:30.000Z')
+      })('principal-1')
+    ).resolves.toEqual(catalog)
+  })
+
   test('fails closed for missing configuration and unavailable responses', async () => {
     expect(() => createAgentCatalogSource({})).toThrow(AgentCatalogError)
     expect(() =>

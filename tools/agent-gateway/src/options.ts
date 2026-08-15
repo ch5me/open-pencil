@@ -95,8 +95,15 @@ function validateSourceShape(value: unknown): void {
 }
 
 function parseTimestamp(value: unknown, name: string): number {
-  if (typeof value !== 'string')
+  if (typeof value === 'number') {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new AgentCatalogError('catalog-invalid', `${name} is invalid.`)
+    }
+    return value
+  }
+  if (typeof value !== 'string') {
     throw new AgentCatalogError('catalog-invalid', `${name} is invalid.`)
+  }
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) {
     throw new AgentCatalogError('catalog-invalid', `${name} is invalid.`)
   }
