@@ -11,17 +11,38 @@ const STATIC_ALLOWED_ORIGINS = new Set([
   'http://127.0.0.1:1422'
 ])
 
-const LOCAL_APP_HOST = /^app\.[a-z0-9]+(?:-[a-z0-9]+)*\.localhost$/
-const DEV_APP_HOST = /^app\.[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*\.dev\.ch5\.me$/
+const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*'
+const LOCAL_APP_HOST = new RegExp(`^app\\.(${SLUG})\\.localhost$`)
+const LOCAL_API_HOST = new RegExp(`^api\\.(${SLUG})\\.localhost$`)
+const DEV_APP_HOST = new RegExp(`^app\\.(${SLUG})\\.(${SLUG})\\.dev\\.ch5\\.me$`)
+const DEV_API_HOST = new RegExp(`^api\\.(${SLUG})\\.(${SLUG})\\.dev\\.ch5\\.me$`)
 
-export function resolveAllowedOrigin(origin: string): string | undefined {
+export function resolveAllowedOrigin(
+  origin: string,
+  requestHost: string | undefined
+): string | undefined {
   if (STATIC_ALLOWED_ORIGINS.has(origin)) return origin
 
   try {
-    const url = new URL(origin)
-    if (url.protocol !== 'http:' || url.port !== '7300') return undefined
-    if (!LOCAL_APP_HOST.test(url.hostname) && !DEV_APP_HOST.test(url.hostname)) return undefined
-    return origin
+    const originURL = new URL(origin)
+    if (originURL.protocol !== 'http:' || originURL.port !== '7300' || !requestHost) {
+      return undefined
+    }
+
+    const requestURL = new URL(`http://${requestHost}`)
+    if (requestURL.port !== '7300') return undefined
+
+    const localApp = originURL.hostname.match(LOCAL_APP_HOST)
+    const localAPI = requestURL.hostname.match(LOCAL_API_HOST)
+    if (localApp && localAPI && localApp[1] === localAPI[1]) return origin
+
+    const devApp = originURL.hostname.match(DEV_APP_HOST)
+    const devAPI = requestURL.hostname.match(DEV_API_HOST)
+    if (devApp && devAPI && devApp[1] === devAPI[1] && devApp[2] === devAPI[2]) {
+      return origin
+    }
+
+    return undefined
   } catch {
     return undefined
   }

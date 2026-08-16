@@ -74,7 +74,8 @@ function resolveRoomDocumentOwner(
 
 app.use(
   cors({
-    origin: (origin) => (origin ? resolveAllowedOrigin(origin) : undefined),
+    origin: (origin, c) =>
+      origin ? resolveAllowedOrigin(origin, c.req.header('host')) : undefined,
     allowHeaders: ['Authorization', 'Content-Type', 'Last-Event-ID'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
