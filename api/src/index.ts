@@ -11,6 +11,7 @@ import {
   serializeElfSessionCookie,
   verifyElfToken
 } from './auth'
+import { resolveAllowedOrigin } from './cors'
 import { hydrateHostedSnapshotAssets } from './documents/assets'
 import {
   createHostedDocument,
@@ -59,19 +60,6 @@ app.onError((err, c) => {
   return c.json({ error: 'internal-server-error' }, 500)
 })
 
-const allowedOrigins = new Set([
-  'https://design.elf.dance',
-  'https://staging.design.elf.dance',
-  'https://pencil.ch5.me', // legacy, keep during migration
-  'https://app.openpencil.dev',
-  'http://localhost:1420',
-  'http://127.0.0.1:1420',
-  'http://localhost:1421',
-  'http://127.0.0.1:1421',
-  'http://localhost:1422',
-  'http://127.0.0.1:1422'
-])
-
 function resolveRoomDocumentOwner(
   documentId: string,
   userId: string,
@@ -86,7 +74,7 @@ function resolveRoomDocumentOwner(
 
 app.use(
   cors({
-    origin: (origin) => (origin && allowedOrigins.has(origin) ? origin : undefined),
+    origin: (origin) => (origin ? resolveAllowedOrigin(origin) : undefined),
     allowHeaders: ['Authorization', 'Content-Type', 'Last-Event-ID'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     credentials: true,
