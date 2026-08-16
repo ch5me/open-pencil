@@ -20,6 +20,8 @@ import { AppDialogFooter, AppDialogHeader, AppDialogRoot } from '@/components/ui
 const { dialogs } = useI18n()
 const isHostedAgent = isHostedAgentEnabled()
 const { browserCredentialsRemembered, setRememberCredentials } = useAIChat()
+const activeSettingsSection = computed(() => (isHostedAgent ? 'ai' : settingsDialogSection.value))
+
 function onOpenChange(open: boolean): void {
   settingsDialogOpen.value = open
 }
@@ -64,7 +66,7 @@ const navigationClass =
         <button
           type="button"
           :class="navigationClass"
-          :data-state="settingsDialogSection === 'ai' ? 'active' : 'inactive'"
+          :data-state="activeSettingsSection === 'ai' ? 'active' : 'inactive'"
           data-test-id="settings-section-ai"
           @click="settingsDialogSection = 'ai'"
         >
@@ -72,9 +74,10 @@ const navigationClass =
           {{ dialogs.settingsAIAndAgents }}
         </button>
         <button
+          v-if="!isHostedAgent"
           type="button"
           :class="navigationClass"
-          :data-state="settingsDialogSection === 'media' ? 'active' : 'inactive'"
+          :data-state="activeSettingsSection === 'media' ? 'active' : 'inactive'"
           data-test-id="settings-section-media"
           @click="settingsDialogSection = 'media'"
         >
@@ -82,9 +85,10 @@ const navigationClass =
           {{ dialogs.settingsMedia }}
         </button>
         <button
+          v-if="!isHostedAgent"
           type="button"
           :class="navigationClass"
-          :data-state="settingsDialogSection === 'storage' ? 'active' : 'inactive'"
+          :data-state="activeSettingsSection === 'storage' ? 'active' : 'inactive'"
           data-test-id="settings-section-storage"
           @click="settingsDialogSection = 'storage'"
         >
@@ -95,7 +99,7 @@ const navigationClass =
 
       <div class="min-h-0 flex-1 overflow-y-auto p-4">
         <section
-          v-if="settingsDialogSection === 'ai'"
+          v-if="activeSettingsSection === 'ai'"
           class="flex h-full flex-col"
           data-test-id="settings-ai-panel"
         >
@@ -123,7 +127,7 @@ const navigationClass =
         </section>
 
         <section
-          v-else-if="settingsDialogSection === 'media'"
+          v-else-if="activeSettingsSection === 'media'"
           class="flex flex-col gap-2.5"
           data-test-id="settings-media-panel"
         >
@@ -137,10 +141,7 @@ const navigationClass =
     </div>
 
     <AppDialogFooter :ui="{ footer: 'justify-between' }">
-      <div
-        v-if="!isHostedAgent || settingsDialogSection !== 'ai'"
-        class="mr-auto flex items-center gap-2"
-      >
+      <div v-if="!isHostedAgent" class="mr-auto flex items-center gap-2">
         <AppSwitch
           v-if="!IS_TAURI"
           v-model="rememberCredentials"
