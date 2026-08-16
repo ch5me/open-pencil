@@ -14,7 +14,7 @@ port = { expect = [5173], bump = 20 }
 ready_port = { port = 5173, timeout = "30s" }
 
 [daemons.agent-gateway]
-run = "export AGENT_NATIVE_CATALOG_URL=\"${AGENT_NATIVE_CATALOG_URL:-http://dispatch.agent-native.localhost:7300/_agent-native/agent-options}\"; bun tools/local-bootstrap/src/index.ts && exec hush run --target runtime -- bun tools/agent-gateway/src/index.ts"
+run = "export AGENT_NATIVE_CATALOG_URL=\"${AGENT_NATIVE_CATALOG_URL:-http://dispatch.tools.localhost:7300/_agent-native/actions/get-openpencil-agent-options}\"; bun tools/local-bootstrap/src/index.ts && exec hush run --target runtime -- bun tools/agent-gateway/src/index.ts"
 dir = "."
 port = { expect = [1435], bump = 20 }
 ready_port = { port = 1435, timeout = "30s" }

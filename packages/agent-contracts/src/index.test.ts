@@ -63,6 +63,21 @@ describe('agent option contracts', () => {
     expect(parseAgentOptionCatalog(catalog())).toEqual(catalog())
   })
 
+  test('accepts a full live catalog without relaxing nested detail bounds', () => {
+    const value = {
+      schema: AGENT_OPTIONS_SCHEMA,
+      options: Array.from({ length: 256 }, (_, index) => ({
+        optionId: `option-${index}`,
+        label: `Option ${index}`,
+        group: 'Recommended',
+        description: 'Available through the managed gateway.',
+        capabilities: ['tools'],
+        efforts: []
+      }))
+    }
+    expect(parseAgentOptionCatalog(value)).toEqual(value)
+  })
+
   test('rejects malformed catalogs and infrastructure leakage', () => {
     expect(() => parseAgentOptionCatalog({ ...catalog(), schema: 'unknown' })).toThrow()
     for (const field of [

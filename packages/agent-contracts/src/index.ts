@@ -12,6 +12,7 @@ export const AGENT_GATEWAY_MANIFEST_VERSION = '1' as const
 const MAX_DETAIL_BYTES = 64 * 1024
 const MAX_DETAIL_DEPTH = 12
 const MAX_DETAIL_ENTRIES = 1_000
+const MAX_OPTION_CATALOG_ENTRIES = 4_096
 const MAX_GATEWAY_ACTIONS = 128
 const MAX_GATEWAY_PROPERTIES = 128
 const FORBIDDEN_FIELDS = new Set([
@@ -234,10 +235,13 @@ function forbiddenField(key: string): boolean {
   return [...FORBIDDEN_FIELDS].some((field) => normalized.includes(field))
 }
 
-function safeJSON(value: unknown): value is AgentJSONValue {
+function safeJSON(
+  value: unknown,
+  maxEntries = MAX_DETAIL_ENTRIES
+): value is AgentJSONValue {
   let entries = 0
   const visit = (current: unknown, depth: number): boolean => {
-    if (++entries > MAX_DETAIL_ENTRIES || depth > MAX_DETAIL_DEPTH) return false
+    if (++entries > maxEntries || depth > MAX_DETAIL_DEPTH) return false
     if (current === null || typeof current === 'boolean' || typeof current === 'string') return true
     if (typeof current === 'number') return Number.isFinite(current)
     if (Array.isArray(current)) return current.every((item) => visit(item, depth + 1))
@@ -588,7 +592,7 @@ function validOptionCatalog(value: unknown): value is AgentOptionCatalog {
     new Set(catalog.options.map((option) => option.optionId)).size === catalog.options.length &&
     catalog.options.filter((option) => option.selected).length <= 1 &&
     catalog.options.filter((option) => option.default).length <= 1 &&
-    safeJSON(value)
+    safeJSON(value, MAX_OPTION_CATALOG_ENTRIES)
   )
 }
 
