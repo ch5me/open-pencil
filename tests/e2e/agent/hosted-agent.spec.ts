@@ -24,6 +24,15 @@ test.describe('hosted agent gateway', () => {
     await selectHostedAgent(page)
   })
 
+  test('loads the live Agent Native catalog without provider controls', async ({ page }) => {
+    await expect(page.getByRole('combobox', { name: 'Managed by Agent Native' })).toContainText(
+      'Recommended · agent-atlas'
+    )
+    await expect(page.getByTestId('provider-setup')).toBeHidden()
+    await expect(page.getByTestId('provider-settings-trigger')).toBeHidden()
+    await expect(page.locator('[data-model-id]')).toHaveCount(0)
+  })
+
   test('streams, approves a real action, continues, and remains undoable', async ({ page }) => {
     await agentInput(page).fill('Create a rectangle through the hosted agent')
     await page.getByTestId('chat-send-button').click()
