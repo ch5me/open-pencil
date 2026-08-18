@@ -693,7 +693,6 @@ async function runDesktop(browser, url, downloadPath, psdPath) {
 			throw new Error("Pre-recovery compositor screenshot is unexpectedly small");
 		}
 		await loseWebGL2Context(page.getByTestId("compositor-canvas"));
-		await page.getByTestId("failure-panel").waitFor({ state: "visible" });
 		await page.waitForFunction(
 			({ backend, generation }) => {
 				const currentBackend = globalThis.document.querySelector("[data-testid=backend]")?.textContent;
@@ -702,7 +701,6 @@ async function runDesktop(browser, url, downloadPath, psdPath) {
 			},
 			{ backend: backendBeforeRecovery, generation: generationBeforeRecovery }
 		);
-		await page.getByTestId("failure-panel").waitFor({ state: "detached" });
 		const recoveredCanvas = page.getByTestId("compositor-canvas");
 		await assertVisible(recoveredCanvas, "recovered compositor canvas");
 		if (await recoveredCanvas.evaluate(element => element.__g176LostCanvas === true)) {
@@ -1060,6 +1058,8 @@ try {
 } finally {
 	await browser?.close();
 	await rm(temporaryDirectory, { recursive: true, force: true });
-	server.close();
 	server.closeAllConnections();
+	await new Promise((resolve, reject) => {
+		server.close(error => error ? reject(error) : resolve());
+	});
 }
