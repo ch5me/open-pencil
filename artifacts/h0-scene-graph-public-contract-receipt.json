@@ -2,10 +2,10 @@
   "schema": "ch5.image-editor.h0-receipt.v1",
   "nodeId": "H0",
   "status": "pass",
-  "recordedAt": "2026-08-18T23:29:10Z",
+  "recordedAt": "2026-08-18T23:47:13Z",
   "sourceBaseline": "c3e734294302a0a08171a3f3c5e5afc128c1fd3e",
   "integratedBase": "a808950dc4e1e68d802ef996f5f53f26e8ca4faa",
-  "privatePackageTip": "2ed377cbfdaa7c2b1fbcf9a0318bb932890b3c2f",
+  "privatePackageTip": "709805c3004fa552fba58f99f2fe1a7f14bc8f23",
   "ancestry": {
     "sourceBaselineIsAncestor": true,
     "integratedBaseIsAncestor": true,
@@ -23,7 +23,7 @@
     },
     {
       "path": "packages/scene-graph/src/history.ts",
-      "sha256": "31c7e6676cf12ba5d7e0ed2b5cd5da1cb78d651abe591adba59221a348b3bb35"
+      "sha256": "562b7ef62b8bcdbdb58bd6c72316e931364b0cea8268abb981c35b633fdc49e7"
     },
     {
       "path": "packages/scene-graph/src/id-allocation.ts",
@@ -39,7 +39,7 @@
     },
     {
       "path": "tests/engine/scene-graph/history/immutable-state.test.ts",
-      "sha256": "5662845e037f666f5a8ed6fb728baf15472975401ca8768f2240ba3ecfb6c593"
+      "sha256": "350905ff5d7db2f50ca311f56510dd209b0b934ee75438fa1e4794a4a76f0ba2"
     },
     {
       "path": "tests/engine/scene-graph/history/undo-manager-compat.test.ts",
@@ -228,7 +228,7 @@
     {
       "command": "ch5 test tests/engine/scene-graph/history/immutable-state.test.ts --json",
       "status": "pass",
-      "count": 6
+      "count": 7
     },
     {
       "command": "ch5 test tests/engine/scene-graph/history/undo-manager-compat.test.ts --json",
@@ -254,31 +254,31 @@
       "status": "pass"
     },
     {
-      "command": "bunx tsc --noEmit -p /tmp/h0-final2-consumer.zPnICy/tsconfig.json",
+      "command": "bunx tsc --noEmit -p /tmp/h0-final3-consumer.hcJShh/tsconfig.json",
       "status": "pass"
     }
   ],
   "packedConsumer": {
-    "tarballPath": "/tmp/h0-final2-pack.XgeBWG/open-pencil-scene-graph-0.14.1.tgz",
-    "tarballSha256": "1baf037704358dfaff464281821c2fbfea4c80c50d85a2c6ebcbbcb7301ad050",
-    "consumerPath": "/tmp/h0-final2-consumer.zPnICy",
-    "lockfilePath": "/tmp/h0-final2-consumer.zPnICy/bun.lock",
-    "lockfileSha256": "fd25cb18a3f7bac1a18594977da365ec8ee68210d3de7136b3cef724f9e2f108",
+    "tarballPath": "/tmp/h0-final3-pack.z35Y2I/open-pencil-scene-graph-0.14.1.tgz",
+    "tarballSha256": "1aa92be520da589df36bfdfd95eff1e78547919123e1ff3e99502a918c6e39a2",
+    "consumerPath": "/tmp/h0-final3-consumer.hcJShh",
+    "lockfilePath": "/tmp/h0-final3-consumer.hcJShh/bun.lock",
+    "lockfileSha256": "e1d54695d18be06912f0a8e6b984498eee091ca07f5c2caa542eb4caf01867e1",
     "fixtureHashes": {
-      "packageJsonSha256": "826a6eb9e058895755f22b390fcc7b663b237f46c04b2e0f928a5539573d8e5b",
+      "packageJsonSha256": "eee32f72ad973c1d40a0bee2270871aa4caca98b7cdcb282c5914d1527b6c6ef",
       "tsconfigSha256": "523dc90923539c11eb8c743484cce53f3b81b2fa94774ce38444554f2511db58",
-      "sourceSha256": "9ce3e4f2d2f6f9c5eb6c264c42e81cff62cf27b42801ae30c59781773e78144c"
+      "sourceSha256": "3b59cb27053864ad4a7f7566431f856a00c7643de91ce7bfc9234f2f3643e121"
     },
     "fixture": {
-      "packageJson": "{\"name\":\"h0-final2-consumer\",\"private\":true,\"type\":\"module\",\"dependencies\":{\"@open-pencil/scene-graph\":\"file:/tmp/h0-final2-pack.XgeBWG/open-pencil-scene-graph-0.14.1.tgz\"},\"devDependencies\":{\"typescript\":\"~5.8.3\"}}\n",
+      "packageJson": "{\"name\":\"h0-final3-consumer\",\"private\":true,\"type\":\"module\",\"dependencies\":{\"@open-pencil/scene-graph\":\"file:/tmp/h0-final3-pack.z35Y2I/open-pencil-scene-graph-0.14.1.tgz\"},\"devDependencies\":{\"typescript\":\"~5.8.3\"}}\n",
       "tsconfig": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"ESNext\",\"moduleResolution\":\"Bundler\",\"strict\":true,\"noEmit\":true,\"skipLibCheck\":false},\"include\":[\"index.ts\"]}\n",
-      "source": "import { SceneGraph, createHistoryState, deriveSceneGraphIdAllocatorState } from '@open-pencil/scene-graph'\nimport { planHistoryRecord, type ImmutableHistoryState } from '@open-pencil/scene-graph/history'\nimport { SceneGraphIdAllocator, type SceneGraphIdAllocatorStateV1 } from '@open-pencil/scene-graph/id-allocation'\nimport { createCollection } from '@open-pencil/scene-graph/variables'\nconst graph = new SceneGraph()\nconst state: SceneGraphIdAllocatorStateV1 = deriveSceneGraphIdAllocatorState(graph)\nconst history: ImmutableHistoryState<Map<string, Uint8Array>> = planHistoryRecord(createHistoryState<Map<string, Uint8Array>>(), {id:'history:1',label:'x',before:new Map([['x',new Uint8Array([1])]]),after:new Map()}).next\nconst allocator = new SceneGraphIdAllocator([], state)\nconst ids = ['external:collection','external:mode']\ncreateCollection(graph, () => ids.shift() ?? 'missing', 'Tokens')\nconst snapshot = history.entries.get('history:1')?.before\nif (!snapshot) throw new Error('missing snapshot')\nlet blocked = 0\ntry { snapshot.set('y', new Uint8Array([2])) } catch { blocked++ }\ntry { snapshot.get('x')?.fill(9) } catch { blocked++ }\nif (blocked !== 2) throw new Error('snapshot mutation was not blocked')\nconsole.log(history.undoEntryIds.length, allocator.allocate(), snapshot.get('x')?.[0])\n"
+      "source": "import { createHistoryState, planHistoryRecord } from '@open-pencil/scene-graph/history'\nconst value = { map: new Map([['x', new Uint8Array([1])]]) }\nlet state = planHistoryRecord(createHistoryState<typeof value>(), { id:'history:1', label:'one', coalesceKey:'x', before:value, after:value }).next\nstate = planHistoryRecord(state, { id:'history:2', label:'two', coalesceKey:'x', before:value, after:value }).next\nconst snapshot = state.entries.get('history:2')?.before\nif (!snapshot) throw new Error('missing snapshot')\nlet blocked = 0\ntry { snapshot.map.set('y', new Uint8Array([2])) } catch { blocked++ }\ntry { snapshot.map.get('x')?.fill(9) } catch { blocked++ }\nif (blocked !== 2 || snapshot.map.get('x')?.[0] !== 1) throw new Error('immutable snapshot failed')\nconsole.log(state.undoEntryIds.length, snapshot.map.get('x')?.[0])\n"
     },
     "workspacePackageLinks": false,
     "typescriptConsumer": "pass",
     "bunRuntime": "pass",
     "nodeRuntime": "pass",
-    "runtimeOutput": "1 0:3 1",
+    "runtimeOutput": "1 1",
     "temporaryWorkspace": true,
     "reproducibleFromEmbeddedFixture": true
   },
