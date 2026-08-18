@@ -47,13 +47,13 @@
       "default": "./dist/undo.js"
     },
     "./history": {
-      "types": "./src/history.ts",
+      "types": "./dist/history.d.ts",
       "bun": "./src/history.ts",
       "import": "./dist/chunks/history.js",
       "default": "./dist/chunks/history.js"
     },
     "./id-allocation": {
-      "types": "./src/id-allocation.ts",
+      "types": "./dist/id-allocation.d.ts",
       "bun": "./src/id-allocation.ts",
       "import": "./dist/chunks/id-allocation.js",
       "default": "./dist/chunks/id-allocation.js"
