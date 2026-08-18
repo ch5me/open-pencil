@@ -2,10 +2,10 @@
   "schema": "ch5.image-editor.h0-receipt.v1",
   "nodeId": "H0",
   "status": "pass",
-  "recordedAt": "2026-08-18T23:47:13Z",
+  "recordedAt": "2026-08-18T23:57:59Z",
   "sourceBaseline": "c3e734294302a0a08171a3f3c5e5afc128c1fd3e",
   "integratedBase": "a808950dc4e1e68d802ef996f5f53f26e8ca4faa",
-  "privatePackageTip": "709805c3004fa552fba58f99f2fe1a7f14bc8f23",
+  "privatePackageTip": "5c0e44bc41b4e4f10cb2580145ad38b17cb3b4e1",
   "ancestry": {
     "sourceBaselineIsAncestor": true,
     "integratedBaseIsAncestor": true,
@@ -23,7 +23,7 @@
     },
     {
       "path": "packages/scene-graph/src/history.ts",
-      "sha256": "562b7ef62b8bcdbdb58bd6c72316e931364b0cea8268abb981c35b633fdc49e7"
+      "sha256": "074c210dc6fa9163081c4f5285ff6a4734e390acfd666b1f9941a84d63a0d1f2"
     },
     {
       "path": "packages/scene-graph/src/id-allocation.ts",
@@ -39,7 +39,7 @@
     },
     {
       "path": "tests/engine/scene-graph/history/immutable-state.test.ts",
-      "sha256": "350905ff5d7db2f50ca311f56510dd209b0b934ee75438fa1e4794a4a76f0ba2"
+      "sha256": "e77915341749b993a6d972fa691de2e42618db8c743c4763d30b558a44970b3c"
     },
     {
       "path": "tests/engine/scene-graph/history/undo-manager-compat.test.ts",
@@ -254,25 +254,25 @@
       "status": "pass"
     },
     {
-      "command": "bunx tsc --noEmit -p /tmp/h0-final3-consumer.hcJShh/tsconfig.json",
+      "command": "bunx tsc --noEmit -p /tmp/h0-final4-consumer.lD3yHC/tsconfig.json",
       "status": "pass"
     }
   ],
   "packedConsumer": {
-    "tarballPath": "/tmp/h0-final3-pack.z35Y2I/open-pencil-scene-graph-0.14.1.tgz",
-    "tarballSha256": "1aa92be520da589df36bfdfd95eff1e78547919123e1ff3e99502a918c6e39a2",
-    "consumerPath": "/tmp/h0-final3-consumer.hcJShh",
-    "lockfilePath": "/tmp/h0-final3-consumer.hcJShh/bun.lock",
-    "lockfileSha256": "e1d54695d18be06912f0a8e6b984498eee091ca07f5c2caa542eb4caf01867e1",
+    "tarballPath": "/tmp/h0-final4-pack.c6NWdV/open-pencil-scene-graph-0.14.1.tgz",
+    "tarballSha256": "2d421eda99e9a2ceb21557f8309c828e90100d68546becc6db88ea19888c2071",
+    "consumerPath": "/tmp/h0-final4-consumer.lD3yHC",
+    "lockfilePath": "/tmp/h0-final4-consumer.lD3yHC/bun.lock",
+    "lockfileSha256": "6e3cb09ddad90d0095501651975d950e3549582ed090bf9ccd02b784b6a646e3",
     "fixtureHashes": {
-      "packageJsonSha256": "eee32f72ad973c1d40a0bee2270871aa4caca98b7cdcb282c5914d1527b6c6ef",
+      "packageJsonSha256": "4e708a4fdd22bd1b3671b1dd59e0356fca1c7d0da28d207e10cd5aa6e3520bd2",
       "tsconfigSha256": "523dc90923539c11eb8c743484cce53f3b81b2fa94774ce38444554f2511db58",
-      "sourceSha256": "3b59cb27053864ad4a7f7566431f856a00c7643de91ce7bfc9234f2f3643e121"
+      "sourceSha256": "5b12f2687c22a8b8a936aaf7b26c7e8c9875e78f7779e6cbb4913996c06d1f31"
     },
     "fixture": {
-      "packageJson": "{\"name\":\"h0-final3-consumer\",\"private\":true,\"type\":\"module\",\"dependencies\":{\"@open-pencil/scene-graph\":\"file:/tmp/h0-final3-pack.z35Y2I/open-pencil-scene-graph-0.14.1.tgz\"},\"devDependencies\":{\"typescript\":\"~5.8.3\"}}\n",
+      "packageJson": "{\"name\":\"h0-final4-consumer\",\"private\":true,\"type\":\"module\",\"dependencies\":{\"@open-pencil/scene-graph\":\"file:/tmp/h0-final4-pack.c6NWdV/open-pencil-scene-graph-0.14.1.tgz\"},\"devDependencies\":{\"typescript\":\"~5.8.3\"}}\n",
       "tsconfig": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"ESNext\",\"moduleResolution\":\"Bundler\",\"strict\":true,\"noEmit\":true,\"skipLibCheck\":false},\"include\":[\"index.ts\"]}\n",
-      "source": "import { createHistoryState, planHistoryRecord } from '@open-pencil/scene-graph/history'\nconst value = { map: new Map([['x', new Uint8Array([1])]]) }\nlet state = planHistoryRecord(createHistoryState<typeof value>(), { id:'history:1', label:'one', coalesceKey:'x', before:value, after:value }).next\nstate = planHistoryRecord(state, { id:'history:2', label:'two', coalesceKey:'x', before:value, after:value }).next\nconst snapshot = state.entries.get('history:2')?.before\nif (!snapshot) throw new Error('missing snapshot')\nlet blocked = 0\ntry { snapshot.map.set('y', new Uint8Array([2])) } catch { blocked++ }\ntry { snapshot.map.get('x')?.fill(9) } catch { blocked++ }\nif (blocked !== 2 || snapshot.map.get('x')?.[0] !== 1) throw new Error('immutable snapshot failed')\nconsole.log(state.undoEntryIds.length, snapshot.map.get('x')?.[0])\n"
+      "source": "import { createHistoryState, planHistoryRecord } from '@open-pencil/scene-graph/history'\nconst value = { map: new Map([['x', new Uint8Array([1])]]) }\nconst record = planHistoryRecord(createHistoryState<typeof value>(), { id:'history:1', label:'one', before:value, after:value })\nif (record.selectedSnapshot !== record.next.entries.get('history:1')?.after) throw new Error('selected snapshot identity failed')\nlet blocked = 0\ntry { record.selectedSnapshot.map.set('y', new Uint8Array([2])) } catch { blocked++ }\ntry { record.selectedSnapshot.map.get('x')?.fill(9) } catch { blocked++ }\nif (blocked !== 2 || record.selectedSnapshot.map.get('x')?.[0] !== 1) throw new Error('immutable snapshot failed')\nconst zero = planHistoryRecord(createHistoryState<typeof value>(0), { id:'history:2', label:'zero', before:value, after:value })\ntry { zero.selectedSnapshot.map.clear() } catch { blocked++ }\nif (blocked !== 3) throw new Error('zero selected snapshot mutation was not blocked')\nconsole.log(record.next.undoEntryIds.length, record.selectedSnapshot.map.get('x')?.[0])\n"
     },
     "workspacePackageLinks": false,
     "typescriptConsumer": "pass",
