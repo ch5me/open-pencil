@@ -158,7 +158,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "bunx tsdown --config tsdown.config.ts",
+    "build": "bunx tsdown --config tsdown.config.ts && bunx tsdown src/history.ts src/id-allocation.ts --no-config --format esm --platform neutral --dts --sourcemap --out-dir dist --no-clean --logLevel warn",
     "check": "bun run typecheck && bun run build && bun run smoke:dist",
     "prepack": "bun run build",
     "smoke:dist": "bun scripts/smoke-dist.ts",

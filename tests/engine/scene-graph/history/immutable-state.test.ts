@@ -111,4 +111,37 @@ describe('immutable SceneGraph history', () => {
       { entryId: id('two'), reason: 'cleared' }
     ])
   })
+
+  test('owns immutable snapshots and exposes no mutable Map API', () => {
+    const before = { value: 1, nested: { value: 2 } }
+    const after = { value: 3 }
+    const recorded = planHistoryRecord(createHistoryState(), {
+      id: id('immutable'),
+      label: 'immutable',
+      before,
+      after
+    })
+    before.nested.value = 99
+    after.value = 99
+
+    const entry = recorded.next.entries.get(id('immutable'))!
+    expect(entry.before).toEqual({ value: 1, nested: { value: 2 } })
+    expect(entry.after).toEqual({ value: 3 })
+    expect(Object.isFrozen(entry.before)).toBe(true)
+    expect('set' in recorded.next.entries).toBe(false)
+  })
+
+  test('limit zero immediately disposes recorded entries', () => {
+    const recorded = planHistoryRecord(createHistoryState<number>(0), {
+      id: id('zero'),
+      label: 'zero',
+      before: 0,
+      after: 1
+    })
+    expect(recorded.next.entries.size).toBe(0)
+    expect(recorded.next.undoEntryIds).toEqual([])
+    expect(recorded.disposition.disposed).toEqual([
+      { entryId: id('zero'), reason: 'trimmed' }
+    ])
+  })
 })

@@ -63,4 +63,46 @@ describe('SceneGraph ID allocation and hydration', () => {
     ).toThrow(SceneGraphIdAllocationError)
     expect(graph.nodes.size).toBe(before)
   })
+
+  test('rejects disconnected, bidirectionally inconsistent, duplicate, and cyclic trees', () => {
+    const source = new SceneGraph()
+    const state = deriveSceneGraphIdAllocatorState(source)
+    const page = source.getPages()[0]
+
+    const disconnectedNodes = new Map(source.nodes)
+    disconnectedNodes.set('external:node', {
+      ...structuredClone(page),
+      id: 'external:node',
+      parentId: source.rootId,
+      childIds: []
+    })
+    expect(() =>
+      SceneGraph.hydrate({ ...snapshot(source), nodes: disconnectedNodes }, {
+        ...state,
+        nextIdFloor: state.nextIdFloor
+      })
+    ).toThrow(/disconnected|does not reference/)
+
+    const duplicateNodes = new Map(source.nodes)
+    duplicateNodes.set(source.rootId, {
+      ...structuredClone(source.nodes.get(source.rootId)!),
+      childIds: [page.id, page.id]
+    })
+    expect(() =>
+      SceneGraph.hydrate({ ...snapshot(source), nodes: duplicateNodes }, state)
+    ).toThrow(/duplicate/)
+
+    const cyclicNodes = new Map(source.nodes)
+    cyclicNodes.set(page.id, {
+      ...structuredClone(page),
+      childIds: [source.rootId]
+    })
+    cyclicNodes.set(source.rootId, {
+      ...structuredClone(source.nodes.get(source.rootId)!),
+      parentId: page.id
+    })
+    expect(() =>
+      SceneGraph.hydrate({ ...snapshot(source), nodes: cyclicNodes }, state)
+    ).toThrow()
+  })
 })

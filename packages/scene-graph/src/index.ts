@@ -90,17 +90,49 @@ function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): voi
   }
   collectSceneGraphEntityIds(snapshot)
 
+  const referencedChildren = new Set<string>()
   for (const [id, node] of snapshot.nodes) {
     if (node.id !== id) throw new Error(`SceneGraph node key mismatch for "${id}"`)
     if (node.parentId !== null && !snapshot.nodes.has(node.parentId)) {
       throw new Error(`SceneGraph node "${id}" has missing parent "${node.parentId}"`)
     }
-    for (const childId of node.childIds) {
+    const uniqueChildren = new Set(node.childIds)
+    if (uniqueChildren.size !== node.childIds.length) {
+      throw new Error(`SceneGraph node "${id}" has duplicate children`)
+    }
+    for (const childId of uniqueChildren) {
       const child = snapshot.nodes.get(childId)
       if (!child || child.parentId !== id) {
         throw new Error(`SceneGraph node "${id}" has invalid child "${childId}"`)
       }
+      if (referencedChildren.has(childId)) {
+        throw new Error(`SceneGraph child "${childId}" has multiple parents`)
+      }
+      referencedChildren.add(childId)
     }
+  }
+  for (const [id, node] of snapshot.nodes) {
+    if (id !== snapshot.rootId && !referencedChildren.has(id)) {
+      throw new Error(`SceneGraph node "${id}" is disconnected from its parent`)
+    }
+    if (node.parentId !== null && !snapshot.nodes.get(node.parentId)?.childIds.includes(id)) {
+      throw new Error(`SceneGraph parent "${node.parentId}" does not reference child "${id}"`)
+    }
+  }
+
+  const visited = new Set<string>()
+  const visiting = new Set<string>()
+  const visit = (id: string): void => {
+    if (visiting.has(id)) throw new Error(`SceneGraph contains a cycle at "${id}"`)
+    if (visited.has(id)) return
+    visiting.add(id)
+    for (const childId of snapshot.nodes.get(id)?.childIds ?? []) visit(childId)
+    visiting.delete(id)
+    visited.add(id)
+  }
+  visit(snapshot.rootId)
+  if (visited.size !== snapshot.nodes.size) {
+    throw new Error('SceneGraph contains nodes unreachable from the root')
   }
 
   for (const [id, variable] of snapshot.variables) {

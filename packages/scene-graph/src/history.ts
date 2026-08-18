@@ -39,6 +39,77 @@ export interface HistoryPlan<TSnapshot> {
 
 const DEFAULT_HISTORY_LIMIT = 200
 
+class ImmutableMapView<K, V> implements ReadonlyMap<K, V> {
+  readonly #map: Map<K, V>
+
+  constructor(entries: ReadonlyMap<K, V>) {
+    this.#map = new Map(entries)
+  }
+
+  get size(): number {
+    return this.#map.size
+  }
+
+  get(key: K): V | undefined {
+    return this.#map.get(key)
+  }
+
+  has(key: K): boolean {
+    return this.#map.has(key)
+  }
+
+  entries(): MapIterator<[K, V]> {
+    return this.#map.entries()
+  }
+
+  keys(): MapIterator<K> {
+    return this.#map.keys()
+  }
+
+  values(): MapIterator<V> {
+    return this.#map.values()
+  }
+
+  forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: unknown): void {
+    this.#map.forEach((value, key) => callbackfn.call(thisArg, value, key, this))
+  }
+
+  [Symbol.iterator](): MapIterator<[K, V]> {
+    return this.#map[Symbol.iterator]()
+  }
+}
+
+function immutableClone<T>(value: T): T {
+  const clone = structuredClone(value)
+  const freeze = (candidate: unknown): void => {
+    if (candidate === null || typeof candidate !== 'object' || Object.isFrozen(candidate)) return
+    if (candidate instanceof Map) {
+      for (const [key, mapValue] of candidate) {
+        freeze(key)
+        freeze(mapValue)
+      }
+    } else if (candidate instanceof Set) {
+      for (const item of candidate) freeze(item)
+    } else if (!ArrayBuffer.isView(candidate)) {
+      for (const child of Object.values(candidate)) freeze(child)
+    }
+    if (!ArrayBuffer.isView(candidate)) Object.freeze(candidate)
+  }
+  freeze(clone)
+  return clone
+}
+
+function immutableEntry<TSnapshot>(
+  entry: ImmutableHistoryEntry<TSnapshot>,
+  before = entry.before
+): ImmutableHistoryEntry<TSnapshot> {
+  return Object.freeze({
+    ...entry,
+    before: immutableClone(before),
+    after: immutableClone(entry.after)
+  })
+}
+
 function freezeState<TSnapshot>(
   limit: number,
   entries: ReadonlyMap<HistoryEntryId, ImmutableHistoryEntry<TSnapshot>>,
@@ -48,7 +119,7 @@ function freezeState<TSnapshot>(
   return Object.freeze({
     version: 'open-pencil-history:1' as const,
     limit,
-    entries: new Map(entries),
+    entries: new ImmutableMapView(entries),
     undoEntryIds: Object.freeze([...undoEntryIds]),
     redoEntryIds: Object.freeze([...redoEntryIds])
   })
@@ -97,13 +168,13 @@ export function planHistoryRecord<TSnapshot>(
     undo.pop()
     entries.delete(previousId)
     disposed.push({ entryId: previousId, reason: 'coalesced' })
-    entries.set(entry.id, Object.freeze({ ...entry, before: previous.before }))
+    entries.set(entry.id, immutableEntry(entry, previous.before))
   } else {
-    entries.set(entry.id, Object.freeze({ ...entry }))
+    entries.set(entry.id, immutableEntry(entry))
   }
   undo.push(entry.id)
 
-  if (Number.isFinite(state.limit) && state.limit > 0) {
+  if (Number.isFinite(state.limit)) {
     while (undo.length > state.limit) {
       const id = undo.shift()
       if (!id) break
