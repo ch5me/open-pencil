@@ -98,6 +98,7 @@ const VIEW_MUTATORS = new Set<PropertyKey>([
   'setUint16',
   'setUint32'
 ])
+const IMMUTABLE_SNAPSHOTS = new WeakSet<object>()
 
 function immutableMutation(): never {
   throw new TypeError('History snapshots are immutable')
@@ -137,6 +138,7 @@ function immutableView<T extends ArrayBufferView>(view: T): T {
 }
 
 function immutableClone<T>(value: T): T {
+  if (value !== null && typeof value === 'object' && IMMUTABLE_SNAPSHOTS.has(value)) return value
   const seen = new WeakMap<object, object>()
   const transform = (candidate: unknown): unknown => {
     if (candidate === null || typeof candidate !== 'object') return candidate
@@ -147,6 +149,7 @@ function immutableClone<T>(value: T): T {
       const target = new Map()
       const immutable = immutableCollection(target, MAP_MUTATORS)
       seen.set(candidate, immutable)
+      IMMUTABLE_SNAPSHOTS.add(immutable)
       for (const [key, mapValue] of candidate) target.set(transform(key), transform(mapValue))
       return immutable
     }
@@ -154,17 +157,20 @@ function immutableClone<T>(value: T): T {
       const target = new Set()
       const immutable = immutableCollection(target, SET_MUTATORS)
       seen.set(candidate, immutable)
+      IMMUTABLE_SNAPSHOTS.add(immutable)
       for (const item of candidate) target.add(transform(item))
       return immutable
     }
     if (ArrayBuffer.isView(candidate)) {
       const immutable = immutableView(candidate)
       seen.set(candidate, immutable)
+      IMMUTABLE_SNAPSHOTS.add(immutable)
       return immutable
     }
     if (candidate instanceof ArrayBuffer) {
       const immutable = immutableCollection(candidate, new Set())
       seen.set(candidate, immutable)
+      IMMUTABLE_SNAPSHOTS.add(immutable)
       return immutable
     }
     if (candidate instanceof Date) {
@@ -175,6 +181,7 @@ function immutableClone<T>(value: T): T {
         )
       )
       seen.set(candidate, immutable)
+      IMMUTABLE_SNAPSHOTS.add(immutable)
       return immutable
     }
 
@@ -185,7 +192,9 @@ function immutableClone<T>(value: T): T {
         Object.defineProperty(candidate, key, { ...descriptor, value: transform(descriptor.value) })
       }
     }
-    return Object.freeze(candidate)
+    const immutable = Object.freeze(candidate)
+    IMMUTABLE_SNAPSHOTS.add(immutable)
+    return immutable
   }
   return transform(structuredClone(value)) as T
 }

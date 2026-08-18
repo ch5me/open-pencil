@@ -158,6 +158,48 @@ describe('immutable SceneGraph history', () => {
     expect(new Uint8Array(entry.before.bytes.buffer)[0]).toBe(1)
   })
 
+  test('coalesces and records previously immutable complex snapshots', () => {
+    const buffer = new ArrayBuffer(2)
+    new Uint8Array(buffer).set([7, 8])
+    const before = {
+      map: new Map([['key', { value: 1 }]]),
+      set: new Set([{ value: 2 }]),
+      date: new Date('2026-08-18T00:00:00Z'),
+      bytes: new Uint8Array([3, 4]),
+      buffer,
+      view: new DataView(new Uint8Array([5, 6]).buffer)
+    }
+    let state = planHistoryRecord(createHistoryState<typeof before>(), {
+      id: id('complex-one'),
+      label: 'complex one',
+      coalesceKey: 'complex',
+      before,
+      after: before
+    }).next
+    state = planHistoryRecord(state, {
+      id: id('complex-two'),
+      label: 'complex two',
+      coalesceKey: 'complex',
+      before,
+      after: before
+    }).next
+
+    const coalesced = state.entries.get(id('complex-two'))
+    expect(coalesced).toBeDefined()
+    if (!coalesced) throw new Error('Expected coalesced history entry')
+    expect(coalesced.before.map.get('key')?.value).toBe(1)
+    expect(coalesced.before.bytes[0]).toBe(3)
+    expect(coalesced.before.view.getUint8(0)).toBe(5)
+
+    const rerecorded = planHistoryRecord(state, {
+      id: id('complex-three'),
+      label: 'complex three',
+      before: coalesced.before,
+      after: coalesced.after
+    })
+    expect(rerecorded.next.entries.get(id('complex-three'))?.before).toBe(coalesced.before)
+  })
+
   test('limit zero immediately disposes recorded entries', () => {
     const recorded = planHistoryRecord(createHistoryState<number>(0), {
       id: id('zero'),
