@@ -6,6 +6,7 @@ import type { Color } from './primitives'
 import type { Variable, VariableCollection, VariableType, VariableValue } from './types'
 
 export function addVariable(graph: SceneGraph, variable: Variable): void {
+  graph.reserveEntityIds([variable.id])
   graph.variables.set(variable.id, variable)
   const collection = graph.variableCollections.get(variable.collectionId)
   if (collection && !collection.variableIds.includes(variable.id)) {
@@ -34,6 +35,7 @@ export function removeVariable(graph: SceneGraph, id: string): void {
 }
 
 export function addCollection(graph: SceneGraph, collection: VariableCollection): void {
+  graph.reserveEntityIds([collection.id, ...collection.modes.map((mode) => mode.modeId)])
   graph.variableCollections.set(collection.id, collection)
   if (!graph.activeMode.has(collection.id)) {
     graph.activeMode.set(collection.id, collection.defaultModeId)
@@ -73,7 +75,9 @@ export function createVariable(
     description: '',
     hiddenFromPublishing: false
   }
-  addVariable(graph, variable)
+  graph.reserveEntityIds([id])
+  graph.variables.set(variable.id, variable)
+  collection.variableIds.push(variable.id)
   return variable
 }
 
@@ -91,7 +95,9 @@ export function createCollection(
     defaultModeId: modeId,
     variableIds: []
   }
-  addCollection(graph, collection)
+  graph.reserveEntityIds([id, modeId])
+  graph.variableCollections.set(collection.id, collection)
+  graph.activeMode.set(collection.id, collection.defaultModeId)
   return collection
 }
 
@@ -140,6 +146,7 @@ export function addMode(
 ): void {
   const collection = graph.variableCollections.get(collectionId)
   if (!collection) return
+  graph.reserveEntityIds([modeId])
   collection.modes.push({ modeId, name })
   const sourceModeId = sourceMode ?? collection.defaultModeId
   for (const varId of collection.variableIds) {

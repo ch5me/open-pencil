@@ -9,6 +9,8 @@ export * from './constants'
 export * from './geometry'
 export * from './font-style'
 export * from './shared-styles'
+export * from './history'
+export * from './id-allocation'
 export { default as TransformMatrix } from './matrix'
 export type { Mat3 } from './matrix'
 export { UndoManager, type UndoEntry, type UndoManagerOptions } from './undo'
@@ -19,6 +21,12 @@ import { removeStaleBindings } from './bindings'
 import { cloneNodeProps } from './copy'
 import { bindNodeEvents } from './events'
 import * as HitTest from './hit-test'
+import {
+  collectSceneGraphEntityIds,
+  SceneGraphIdAllocator,
+  validateSceneGraphIdAllocatorState,
+  type SceneGraphIdAllocatorStateV1
+} from './id-allocation'
 import * as Instances from './instances'
 import { CONTAINER_TYPES, createDefaultNode } from './node-defaults'
 import { updateNodePreview } from './preview'
@@ -63,6 +71,71 @@ export function generateId(): string {
   return `0:${nextLocalID++}`
 }
 
+export interface SceneGraphHydrationSnapshotV1 {
+  readonly rootId: string
+  readonly nodes: ReadonlyMap<string, SceneNode>
+  readonly images: ReadonlyMap<string, Uint8Array>
+  readonly variables: ReadonlyMap<string, Variable>
+  readonly variableCollections: ReadonlyMap<string, VariableCollection>
+  readonly activeMode: ReadonlyMap<string, string>
+  readonly figKiwiVersion: number | null
+  readonly figSchemaDeflated: Uint8Array | null
+  readonly documentColorSpace: DocumentColorSpace
+}
+
+function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): void {
+  const root = snapshot.nodes.get(snapshot.rootId)
+  if (!root || root.type !== 'FRAME' || root.parentId !== null) {
+    throw new Error('SceneGraph hydration root is missing or has a parent')
+  }
+  collectSceneGraphEntityIds(snapshot)
+
+  for (const [id, node] of snapshot.nodes) {
+    if (node.id !== id) throw new Error(`SceneGraph node key mismatch for "${id}"`)
+    if (node.parentId !== null && !snapshot.nodes.has(node.parentId)) {
+      throw new Error(`SceneGraph node "${id}" has missing parent "${node.parentId}"`)
+    }
+    for (const childId of node.childIds) {
+      const child = snapshot.nodes.get(childId)
+      if (!child || child.parentId !== id) {
+        throw new Error(`SceneGraph node "${id}" has invalid child "${childId}"`)
+      }
+    }
+  }
+
+  for (const [id, variable] of snapshot.variables) {
+    if (variable.id !== id) throw new Error(`SceneGraph variable key mismatch for "${id}"`)
+    const collection = snapshot.variableCollections.get(variable.collectionId)
+    if (!collection || !collection.variableIds.includes(id)) {
+      throw new Error(`SceneGraph variable "${id}" has invalid collection`)
+    }
+    for (const modeId of Object.keys(variable.valuesByMode)) {
+      if (!collection.modes.some((mode) => mode.modeId === modeId)) {
+        throw new Error(`SceneGraph variable "${id}" has invalid mode "${modeId}"`)
+      }
+    }
+  }
+
+  for (const [id, collection] of snapshot.variableCollections) {
+    if (collection.id !== id) throw new Error(`SceneGraph collection key mismatch for "${id}"`)
+    if (!collection.modes.some((mode) => mode.modeId === collection.defaultModeId)) {
+      throw new Error(`SceneGraph collection "${id}" has invalid default mode`)
+    }
+    for (const variableId of collection.variableIds) {
+      if (snapshot.variables.get(variableId)?.collectionId !== id) {
+        throw new Error(`SceneGraph collection "${id}" has invalid variable "${variableId}"`)
+      }
+    }
+  }
+
+  for (const [collectionId, modeId] of snapshot.activeMode) {
+    const collection = snapshot.variableCollections.get(collectionId)
+    if (!collection?.modes.some((mode) => mode.modeId === modeId)) {
+      throw new Error(`SceneGraph active mode "${collectionId}:${modeId}" is invalid`)
+    }
+  }
+}
+
 export class SceneGraph {
   nodes = new Map<string, SceneNode>()
   images = new Map<string, Uint8Array>()
@@ -81,9 +154,11 @@ export class SceneGraph {
   private layoutMutationDepth = 0
   positionPreviewVersion = 0
   instanceIndex = new Map<string, Set<string>>()
+  private idAllocator: SceneGraphIdAllocator
 
   constructor() {
-    const root = createDefaultNode(generateId, 'FRAME', {
+    this.idAllocator = new SceneGraphIdAllocator()
+    const root = createDefaultNode(() => this.idAllocator.allocate(), 'FRAME', {
       name: 'Document',
       width: 0,
       height: 0
@@ -145,11 +220,18 @@ export class SceneGraph {
     collectionId: string,
     value?: VariableValue
   ): Variable {
-    return Variables.createVariable(this, generateId, name, type, collectionId, value)
+    return Variables.createVariable(
+      this,
+      this.idAllocator.candidateGenerator(),
+      name,
+      type,
+      collectionId,
+      value
+    )
   }
 
   createCollection(name: string): VariableCollection {
-    return Variables.createCollection(this, generateId, name)
+    return Variables.createCollection(this, this.idAllocator.candidateGenerator(), name)
   }
 
   removeCollection(id: string): void {
@@ -273,9 +355,10 @@ export class SceneGraph {
     }
   }
   private generateNodeId(): string {
-    let id = generateId()
-    while (this.nodes.has(id)) id = generateId()
-    return id
+    return this.idAllocator.allocate()
+  }
+  reserveEntityIds(ids: readonly string[]): void {
+    this.idAllocator.reserve(ids)
   }
   private registerNode(node: SceneNode, parentId: string | null): SceneNode {
     node.parentId = parentId
@@ -302,11 +385,64 @@ export class SceneGraph {
     parentId: string | null,
     overrides: Partial<SceneNode> = {}
   ): SceneNode {
+    this.reserveEntityIds([id])
     const node = createDefaultNode(() => id, type, overrides)
     node.id = id
     const parent = parentId ? this.nodes.get(parentId) : undefined
     if (parent && !parent.childIds.includes(id)) parent.childIds.push(id)
     return this.registerNode(node, parentId)
+  }
+
+  static hydrate(
+    snapshot: SceneGraphHydrationSnapshotV1,
+    allocatorState: SceneGraphIdAllocatorStateV1
+  ): SceneGraph {
+    validateHydrationSnapshot(snapshot)
+    validateSceneGraphIdAllocatorState(snapshot, allocatorState)
+
+    const graph = Object.create(SceneGraph.prototype) as SceneGraph
+    graph.nodes = new Map(
+      Array.from(snapshot.nodes, ([id, node]) => [id, structuredClone(node)] as const)
+    )
+    graph.images = new Map(
+      Array.from(snapshot.images, ([id, bytes]) => [id, new Uint8Array(bytes)] as const)
+    )
+    graph.variables = new Map(
+      Array.from(snapshot.variables, ([id, variable]) => [id, structuredClone(variable)] as const)
+    )
+    graph.variableCollections = new Map(
+      Array.from(snapshot.variableCollections, ([id, collection]) => [
+        id,
+        structuredClone(collection)
+      ] as const)
+    )
+    graph.activeMode = new Map(snapshot.activeMode)
+    graph.rootId = snapshot.rootId
+    graph.figKiwiVersion = snapshot.figKiwiVersion
+    graph.figSchemaDeflated = snapshot.figSchemaDeflated
+      ? new Uint8Array(snapshot.figSchemaDeflated)
+      : null
+    graph.documentColorSpace = snapshot.documentColorSpace
+    Object.assign(graph, {
+      emitter: createNanoEvents<SceneGraphEvents>(),
+      absPosCache: new Map<string, Vector>(),
+      previewMutationDepth: 0,
+      sourceMetadataPreservationDepth: 0,
+      layoutMutationDepth: 0,
+      positionPreviewVersion: 0,
+      instanceIndex: new Map<string, Set<string>>(),
+      idAllocator: new SceneGraphIdAllocator(
+        collectSceneGraphEntityIds(snapshot),
+        allocatorState
+      )
+    })
+    for (const node of graph.nodes.values()) {
+      if (node.type !== 'INSTANCE' || !node.componentId) continue
+      const instances = graph.instanceIndex.get(node.componentId) ?? new Set<string>()
+      instances.add(node.id)
+      graph.instanceIndex.set(node.componentId, instances)
+    }
+    return graph
   }
 
   static TEXT_PICTURE_KEYS: ReadonlySet<string> = TEXT_PICTURE_KEYS

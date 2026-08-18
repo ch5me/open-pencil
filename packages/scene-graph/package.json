@@ -46,6 +46,18 @@
       "import": "./dist/undo.js",
       "default": "./dist/undo.js"
     },
+    "./history": {
+      "types": "./src/history.ts",
+      "bun": "./src/history.ts",
+      "import": "./dist/chunks/history.js",
+      "default": "./dist/chunks/history.js"
+    },
+    "./id-allocation": {
+      "types": "./src/id-allocation.ts",
+      "bun": "./src/id-allocation.ts",
+      "import": "./dist/chunks/id-allocation.js",
+      "default": "./dist/chunks/id-allocation.js"
+    },
     "./variant-name": {
       "types": "./dist/variant-name.d.ts",
       "bun": "./src/variant-name.ts",
@@ -142,6 +154,7 @@
   "sideEffects": false,
   "files": [
     "dist",
+    "src",
     "README.md"
   ],
   "scripts": {
