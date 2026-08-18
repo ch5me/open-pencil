@@ -11,12 +11,13 @@ import { connectAutomation } from '@/app/automation/bridge/server'
 import { spawnMCPIfNeeded } from '@/app/automation/mcp/spawn'
 import { useCollab, COLLAB_KEY } from '@/app/collab/use'
 import { createDemoShapes } from '@/app/demo/document'
+import { openFileURLFromQuery } from '@/app/document/io/browser'
 import { useEditorStore } from '@/app/editor/active-store'
 import { openHostedRouteDocument } from '@/app/hosted/navigation'
 import { useKeyboard } from '@/app/shell/keyboard/use'
 import { loadEditorLayout, saveEditorLayout } from '@/app/shell/layout-storage'
 import { appMenuShortcut } from '@/app/shell/menu/shortcut'
-import { openFileFromPath, useMenu } from '@/app/shell/menu/use'
+import { openBrowserFile, openFileFromPath, useMenu } from '@/app/shell/menu/use'
 import {
   createTab,
   activeTab,
@@ -95,6 +96,8 @@ async function bindAssociatedFileOpen() {
 
 onMounted(async () => {
   await openHostedRouteDocument(route, openStorageDocumentByIdInNewTab)
+  const openURL = openFileURLFromQuery(window.location.search)
+  if (openURL) await openBrowserFile(openURL.href)
 
   const mcp = await spawnMCPIfNeeded()
   mcpCleanup.value = mcp?.disconnect ?? null

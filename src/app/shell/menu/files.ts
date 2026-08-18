@@ -18,14 +18,7 @@ fileDialog.onChange((files) => {
 })
 
 if (IS_BROWSER && 'window' in globalThis) {
-  setOpenPencilOpenFileHandler(async (path: string) => {
-    const resourceURL = resolveBrowserFileURL(path)
-    const response = await fetch(resourceURL)
-    const blob = await response.blob()
-    const name = resourceURL.pathname.split('/').pop() ?? 'file.fig'
-    const file = new File([blob], name, { type: 'application/octet-stream' })
-    await openFileInNewTab(file, undefined, resourceURL.href)
-  })
+  setOpenPencilOpenFileHandler(openBrowserFile)
 }
 
 export async function readTauriDesignFile(path: string): Promise<File> {
@@ -47,6 +40,15 @@ export async function openFileFromPath(path: string) {
   if (!isTauri()) return
   const file = await readTauriDesignFile(path)
   await openFileInNewTab(file, undefined, path)
+}
+
+export async function openBrowserFile(path: string) {
+  const resourceURL = resolveBrowserFileURL(path)
+  const response = await fetch(resourceURL)
+  if (!response.ok) throw new Error(`Failed to fetch file: ${response.statusText}`)
+  const name = resourceURL.pathname.split('/').pop() ?? 'file.fig'
+  const file = new File([await response.blob()], name, { type: 'application/octet-stream' })
+  await openFileInNewTab(file, undefined, resourceURL.href)
 }
 
 export async function openFileDialog() {

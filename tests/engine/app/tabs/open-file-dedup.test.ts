@@ -4,7 +4,7 @@ import * as figModule from '@open-pencil/core/io/formats/fig'
 import * as layoutModule from '@open-pencil/core/layout'
 import { SceneGraph } from '@open-pencil/scene-graph'
 
-import { resolveBrowserFileURL } from '@/app/document/io/browser'
+import { openFileURLFromQuery, resolveBrowserFileURL } from '@/app/document/io/browser'
 import type { DocumentSourceIdentity } from '@/app/document/io/types'
 import { createTab, getActiveStore, openFileInNewTab, tabCount } from '@/app/tabs'
 import { fileIdentitiesMatch, findTabByFileIdentity } from '@/app/tabs/open/identity'
@@ -113,6 +113,13 @@ describe('openFileInNewTab deduplication', () => {
 
   test('canonicalizes browser URLs before using them as file identity', () => {
     expect(resolveBrowserFileURL('/design.fig#selection').href).toBe('http://localhost/design.fig')
+  })
+
+  test('resolves an encoded open query into a browser file URL', () => {
+    expect(openFileURLFromQuery('?open=http%3A%2F%2F127.0.0.1%3A8767%2Fboard.fig')?.href).toBe(
+      'http://127.0.0.1:8767/board.fig'
+    )
+    expect(openFileURLFromQuery('?no-chrome')).toBeNull()
   })
 
   test('activates the existing tab when the same path is opened again', async () => {

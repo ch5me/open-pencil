@@ -6,6 +6,11 @@ export function resolveBrowserFileURL(path: string): URL {
   return url
 }
 
+export function openFileURLFromQuery(search: string): URL | null {
+  const path = new URLSearchParams(search).get('open')
+  return path ? resolveBrowserFileURL(path) : null
+}
+
 export function yieldToUI(): Promise<void> {
   return new Promise((resolve) => {
     requestAnimationFrame(() => resolve())

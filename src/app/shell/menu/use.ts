@@ -6,7 +6,7 @@ import type { EditorCommandId } from '@open-pencil/vue'
 import { useEditorStore } from '@/app/editor/active-store'
 import { openSettingsDialog } from '@/app/settings/dialog'
 import { createSharedEditorMenuActions } from '@/app/shell/menu/editor-actions'
-import { importFileDialog, openFileDialog } from '@/app/shell/menu/files'
+import { importFileDialog, openBrowserFile, openFileDialog } from '@/app/shell/menu/files'
 import { openStorageWorkspace } from '@/app/shell/menu/navigation'
 import { APP_MENU_SCHEMA, type AppMenuEntry } from '@/app/shell/menu/schema'
 import { createSelectionMenuActions } from '@/app/shell/menu/selection-actions'
@@ -27,7 +27,7 @@ const COMMAND_MENU_IDS = new Set<EditorCommandId>(
   APP_MENU_SCHEMA.flatMap((group) => commandMenuIds(group.items))
 )
 
-export { importFileDialog, openFileDialog }
+export { importFileDialog, openBrowserFile, openFileDialog }
 export { openFileFromPath } from '@/app/shell/menu/files'
 
 export function useMenu() {
