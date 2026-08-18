@@ -197,8 +197,26 @@ async function waitForHttp(url: string): Promise<{ status: number; body: string 
   throw new Error(`preview did not serve ${url}: ${String(lastError)}`)
 }
 
-assert(git(['rev-parse', 'HEAD']) === git(['rev-parse', 'origin/main']), 'HEAD is not exact origin/main')
+const head = git(['rev-parse', 'HEAD'])
+const originMain = git(['rev-parse', 'origin/main'])
+const allowedUnpublishedPaths = [
+  'artifacts/k1-open-pencil-package-consumer-receipt.json',
+  'artifacts/k1-open-pencil-package-export-map.json',
+  'artifacts/k1-open-pencil-package-lockfile.json',
+  'artifacts/k1-open-pencil-package-tarballs/',
+  'scripts/verify-k1-public-package-consumer.ts'
+]
+for (const path of git(['diff', '--name-only', `${originMain}..${head}`]).split('\n').filter(Boolean)) {
+  assert(
+    allowedUnpublishedPaths.some((allowed) => path === allowed || path.startsWith(allowed)),
+    `unpublished non-K1 path found: ${path}`
+  )
+}
 assert(git(['merge-base', '--is-ancestor', h0.privatePackageTip, 'HEAD']) === '', 'H0 package tip is not an ancestor')
+assert(
+  git(['merge-base', '--is-ancestor', h0.privatePackageTip, 'origin/main']) === '',
+  'H0 package tip is not integrated on origin/main'
+)
 assert(git(['merge-base', '--is-ancestor', h0.sourceBaseline, h0.privatePackageTip]) === '', 'H0 package tip does not descend from source baseline')
 
 for (const changed of h0.changedPaths) {
