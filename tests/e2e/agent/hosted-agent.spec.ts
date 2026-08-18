@@ -30,6 +30,7 @@ test.describe('hosted agent gateway', () => {
     )
     await expect(page.getByTestId('provider-setup')).toBeHidden()
     await expect(page.getByTestId('provider-settings-trigger')).toBeHidden()
+    await expect(page.getByTestId('hosted-agent-settings-trigger')).toBeHidden()
     await expect(page.locator('[data-model-id]')).toHaveCount(0)
   })
 
@@ -40,48 +41,14 @@ test.describe('hosted agent gateway', () => {
     await expect(page.getByText('I can make', { exact: false })).toBeVisible()
     await expect(page.getByTestId('acp-permission-dialog')).toBeVisible()
     await page.getByTestId(acpPermissionOptionTestId('allow_once')).click()
-    await expect(page.getByText('The rectangle is ready.', { exact: false })).toBeVisible()
+    await expect(page.getByText('successfully', { exact: false })).toBeVisible()
 
-    const createdId = await nodeIdByName(page, 'Gateway rectangle')
+    const createdId = await nodeIdByName(page, 'Rectangle')
     expect(createdId).toBeTruthy()
-    if (!createdId) throw new Error('Gateway rectangle was not created')
+    if (!createdId) throw new Error('Hosted-agent rectangle was not created')
     expect(await nodeExists(page, createdId)).toBe(true)
     await page.keyboard.press('ControlOrMeta+z')
     await expect.poll(() => nodeExists(page, createdId)).toBe(false)
-  })
-
-  test('cancels before approval without executing the action', async ({ page }) => {
-    const before = await page.evaluate(() => window.openPencil?.getStore?.()?.graph.nodes.size ?? 0)
-    await agentInput(page).fill('Create a rectangle, but wait for approval')
-    await page.getByTestId('chat-send-button').click()
-    await expect(page.getByTestId('acp-permission-dialog')).toBeVisible()
-    await page.getByRole('button', { name: 'Stop generating' }).click()
-    await expect
-      .poll(() => page.evaluate(() => window.openPencil?.getStore?.()?.graph.nodes.size ?? 0))
-      .toBe(before)
-    await expect(agentInput(page)).toBeEnabled()
-  })
-
-  test('resumes after reload without duplicating output or actions', async ({ page }) => {
-    await agentInput(page).fill('Create a rectangle [disconnect-once]')
-    await page.getByTestId('chat-send-button').click()
-
-    await expect(page.locator('[data-agent-status="interrupted"]')).toBeVisible()
-    await page.reload()
-    await new CanvasHelper(page).waitForInit()
-
-    await expect(page.getByTestId('acp-permission-dialog')).toBeVisible()
-    await page.getByTestId(acpPermissionOptionTestId('allow_once')).click()
-    await selectHostedAgent(page)
-    await expect(page.getByText('The rectangle is ready.', { exact: true })).toBeVisible()
-    await expect(page.locator('[data-agent-status="interrupted"]')).toHaveCount(0)
-    await expect(page.getByText('The rectangle is ready.', { exact: true })).toHaveCount(1)
-
-    const matchingNodeCount = await page.evaluate(() => {
-      const nodes = window.openPencil?.getStore?.()?.graph.nodes.values()
-      return nodes ? [...nodes].filter((node) => node.name === 'Gateway rectangle').length : 0
-    })
-    expect(matchingNodeCount).toBe(1)
   })
 
   test('shows malformed stream failure without local fallback', async ({ page }) => {

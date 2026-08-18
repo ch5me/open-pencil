@@ -184,3 +184,27 @@ that a live external gateway or deployment has passed that proof.
 - Billing calculation, receipt validation, or billing authority.
 - Reimplementing Agent Hub, Agent Fabric, ACP, A2A, or agent-native internals.
 - Sending ELF credentials directly to third-party model providers.
+
+## Canonical local workflow
+
+Use the repository service stack; do not start a second OpenPencil checkout or configure a
+browser-side provider:
+
+```bash
+ch5-svc up agent-gateway api app
+ch5-svc status
+```
+
+The app URL reported by `ch5-svc status` is the canonical local design surface. The stack enables
+hosted agent chat without hosted sign-in, loads the principal-scoped Agent Native option catalog,
+and runs design requests through the Hush-backed CH5 LiteLLM route. Provider settings stay absent
+from hosted chat.
+
+Open a saved browser-accessible `.fig` or `.pen` file with the `open` query parameter:
+
+```text
+http://app.<tree>.localhost:7300/?open=<percent-encoded-file-url>
+```
+
+The file server must permit CORS. Use an absolute file URL when the document references external
+image assets so every sprite remains available after OpenPencil loads the document.

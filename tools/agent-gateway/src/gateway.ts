@@ -8,11 +8,14 @@ import {
 } from '@open-pencil/agent-contracts'
 import type {
   AgentEvent,
+  AgentJSONValue,
   AgentRunReceipt,
   AgentRunRequest,
   AgentToolResultContinuation
 } from '@open-pencil/agent-contracts'
 
+import { AgentExecutorError, createDeterministicExecutor } from './executor'
+import type { AgentExecutor, AgentToolCall } from './executor'
 import { AgentCatalogError, findAgentOption, selectionError } from './options'
 import type { AgentCatalogSource } from './options'
 
@@ -23,11 +26,16 @@ interface RunState {
   runId: string
   events: AgentEvent[]
   continuation?: AgentToolResultContinuation
+  continuationResponseStart?: number
   cancelled: boolean
   selection?: AgentRunRequest['selection']
+  optionId: string
+  executor: AgentExecutor
+  abortController: AbortController
+  call?: AgentToolCall
 }
 
-export interface FakeGateway {
+export interface AgentGateway {
   fetch(request: Request): Promise<Response>
   reset(): void
 }
@@ -43,8 +51,11 @@ function json(data: unknown, status = 200): Response {
 
 function actionAcceptsArguments(
   action: AgentRunRequest['tools']['definitions'][number],
-  argumentsValue: Record<string, unknown>
+  argumentsValue: AgentJSONValue
 ): boolean {
+  if (argumentsValue === null || typeof argumentsValue !== 'object' || Array.isArray(argumentsValue)) {
+    return false
+  }
   const { properties, required } = action.inputSchema
   return (
     Object.keys(argumentsValue).every((name) => Object.hasOwn(properties, name)) &&
@@ -163,7 +174,8 @@ async function startRun(
   request: Request,
   runs: Map<string, RunState>,
   idempotency: Map<string, RunState>,
-  catalogSource: AgentCatalogSource
+  catalogSource: AgentCatalogSource,
+  executor: AgentExecutor
 ): Promise<Response> {
   const principal = request.headers.get('x-openpencil-principal')
   if (!principal)
@@ -193,23 +205,11 @@ async function startRun(
   if (!(await verifyAgentGatewayToolManifest(body.tools))) {
     return json({ code: 'invalid-request', message: 'Manifest identity mismatch.' }, 400)
   }
-  const action = body.tools.definitions.find((definition) => definition.name === 'create_shape')
-  if (!action) {
-    return json({ code: 'tool-not-allowed', message: 'Requested tool is not defined.' }, 403)
-  }
-  if (!action.mutates || !action.requiresApproval) {
-    return json({ code: 'invalid-request', message: 'Action policy diverges from runtime.' }, 400)
-  }
-  const actionArguments = {
-    type: 'RECTANGLE',
-    x: 120,
-    y: 120,
-    width: 240,
-    height: 160,
-    name: 'Gateway rectangle'
-  }
-  if (!actionAcceptsArguments(action, actionArguments)) {
-    return json({ code: 'invalid-request', message: 'Action schema diverges from runtime.' }, 400)
+  const option = body.selection
+    ? findAgentOption(catalog, body.selection)
+    : (catalog.options.find((candidate) => candidate.default) ?? catalog.options[0])
+  if (!option) {
+    return json({ code: 'options-unavailable', message: 'No agent option is available.' }, 503)
   }
 
   const state: RunState = {
@@ -219,7 +219,10 @@ async function startRun(
     runId: `run-${body.requestId}`,
     events: [],
     cancelled: false,
-    selection: body.selection
+    selection: body.selection,
+    optionId: option.optionId,
+    executor,
+    abortController: new AbortController()
   }
   runs.set(runKey(principal, state.sessionId, state.runId), state)
   idempotency.set(idempotencyKey, state)
@@ -231,30 +234,80 @@ async function startRun(
     type: 'message.start',
     data: { messageId: 'assistant-1', role: 'assistant' }
   })
-  push(state, {
-    type: 'message.delta',
-    data: {
-      messageId: 'assistant-1',
-      text: state.selection
-        ? `Using ${findAgentOption(catalog, state.selection)?.label} (${state.selection.effort ?? 'default'}), I can make `
-        : 'Using the Agent Native default, I can make '
+  try {
+    const execution = await executor.start({
+      request: body,
+      optionId: option.optionId,
+      optionLabel: option.label,
+      effort: body.selection?.effort,
+      signal: state.abortController.signal
+    })
+    if (state.cancelled) return sse(state.events)
+    for (const text of execution.text) {
+      push(state, {
+        type: 'message.delta',
+        data: { messageId: 'assistant-1', text }
+      })
     }
-  })
-  push(state, {
-    type: 'message.delta',
-    data: { messageId: 'assistant-1', text: 'that change. ' }
-  })
-  push(state, {
-    type: 'tool.call',
-    data: {
-      callId: 'call-1',
-      continuationId: 'continuation-1',
-      manifestId: body.tools.manifestId,
-      name: 'create_shape',
-      arguments: actionArguments,
-      target: { documentId: body.context.documentId, pageId: body.context.pageId }
+    if (execution.kind === 'completed') {
+      push(state, { type: 'message.end', data: { messageId: 'assistant-1' } })
+      push(state, {
+        type: 'run.completed',
+        data: { receipt: receipt(state, 'completed') }
+      })
+      return sse(state.events)
     }
-  })
+    const action = body.tools.definitions.find(
+      (definition) => definition.name === execution.call.name
+    )
+    if (!action) {
+      runs.delete(runKey(principal, state.sessionId, state.runId))
+      idempotency.delete(idempotencyKey)
+      return json({ code: 'tool-not-allowed', message: 'Requested tool is not defined.' }, 403)
+    }
+    if (!action.mutates || !action.requiresApproval) {
+      runs.delete(runKey(principal, state.sessionId, state.runId))
+      idempotency.delete(idempotencyKey)
+      return json({ code: 'invalid-request', message: 'Action policy diverges from runtime.' }, 400)
+    }
+    if (!actionAcceptsArguments(action, execution.call.arguments)) {
+      runs.delete(runKey(principal, state.sessionId, state.runId))
+      idempotency.delete(idempotencyKey)
+      return json({ code: 'invalid-request', message: 'Action schema diverges from runtime.' }, 400)
+    }
+    state.call = execution.call
+    push(state, {
+      type: 'tool.call',
+      data: {
+        callId: execution.call.callId,
+        continuationId: `continuation-${execution.call.callId}`,
+        manifestId: body.tools.manifestId,
+        name: execution.call.name,
+        arguments: execution.call.arguments,
+        target: { documentId: body.context.documentId, pageId: body.context.pageId }
+      }
+    })
+  } catch (error) {
+    if (state.cancelled) return sse(state.events)
+    const message =
+      error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
+    push(state, {
+      type: 'run.failed',
+      data: {
+        error: {
+          schema: AGENT_ERROR_SCHEMA,
+          code: 'run-failed',
+          message,
+          retryable: true,
+          phase: 'request',
+          requestId: body.requestId,
+          sessionId: state.sessionId,
+          runId: state.runId
+        },
+        receipt: receipt(state, 'failed')
+      }
+    })
+  }
   if (body.input.text.includes('[disconnect-once]')) return interruptedSse(state.events.slice(0, 5))
   return sse(state.events)
 }
@@ -274,6 +327,7 @@ function cancelRun(state: RunState): Response {
   const existing = state.events.find((event) => event.type === 'run.cancelled')
   if (existing) return sse([existing])
   state.cancelled = true
+  state.abortController.abort()
   const event = push(state, {
     type: 'run.cancelled',
     data: { receipt: receipt(state, 'cancelled') }
@@ -296,10 +350,22 @@ async function continueRun(request: Request, state: RunState): Promise<Response>
   }
   if (state.continuation) {
     return JSON.stringify(state.continuation) === JSON.stringify(continuation)
-      ? sse(state.events.filter((event) => event.seq > 5))
+      ? sse(state.events.slice(state.continuationResponseStart))
       : json({ code: 'session-conflict', message: 'Conflicting tool result.' }, 409)
   }
+  const call = state.call
+  if (
+    !call ||
+    continuation.callId !== call.callId ||
+    continuation.continuationId !== `continuation-${call.callId}` ||
+    continuation.manifestId !== state.request.tools.manifestId ||
+    continuation.target.documentId !== state.request.context.documentId ||
+    continuation.target.pageId !== state.request.context.pageId
+  ) {
+    return json({ code: 'session-conflict', message: 'Tool result identity conflicts.' }, 409)
+  }
   state.continuation = continuation
+  state.continuationResponseStart = state.events.length
   if (continuation.status !== 'ok') {
     const failed = push(state, {
       type: 'run.failed',
@@ -321,14 +387,45 @@ async function continueRun(request: Request, state: RunState): Promise<Response>
     })
     return sse([failed])
   }
-  const next = [
-    push(state, { type: 'tool.result', data: { callId: continuation.callId } }),
-    push(state, {
-      type: 'message.delta',
-      data: { messageId: 'assistant-1', text: 'The rectangle is ready.' }
-    }),
-    push(state, { type: 'message.end', data: { messageId: 'assistant-1' } })
-  ]
+  const next = [push(state, { type: 'tool.result', data: { callId: continuation.callId } })]
+  try {
+    const text = await state.executor.continue({
+      request: state.request,
+      optionId: state.optionId,
+      call,
+      continuation,
+      signal: state.abortController.signal
+    })
+    if (text) {
+      next.push(
+        push(state, {
+          type: 'message.delta',
+          data: { messageId: 'assistant-1', text }
+        })
+      )
+    }
+  } catch (error) {
+    const message =
+      error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
+    const failed = push(state, {
+      type: 'run.failed',
+      data: {
+        error: {
+          schema: AGENT_ERROR_SCHEMA,
+          code: 'run-failed',
+          message,
+          retryable: true,
+          phase: 'tool',
+          requestId: state.request.requestId,
+          sessionId: state.sessionId,
+          runId: state.runId
+        },
+        receipt: receipt(state, 'failed')
+      }
+    })
+    return sse([...next, failed])
+  }
+  next.push(push(state, { type: 'message.end', data: { messageId: 'assistant-1' } }))
   const completed = push(state, {
     type: 'run.completed',
     data: { receipt: receipt(state, 'completed') }
@@ -336,7 +433,10 @@ async function continueRun(request: Request, state: RunState): Promise<Response>
   return sse([...next, completed])
 }
 
-export function createFakeGateway(catalogSource: AgentCatalogSource): FakeGateway {
+export function createAgentGateway(
+  catalogSource: AgentCatalogSource,
+  executor: AgentExecutor
+): AgentGateway {
   const runs = new Map<string, RunState>()
   const idempotency = new Map<string, RunState>()
 
@@ -368,7 +468,7 @@ export function createFakeGateway(catalogSource: AgentCatalogSource): FakeGatewa
       }
 
       if (request.method === 'POST' && url.pathname === '/v1/runs') {
-        return startRun(request, runs, idempotency, catalogSource)
+        return startRun(request, runs, idempotency, catalogSource, executor)
       }
 
       const route = resolveRunRoute(request, url, runs)
@@ -386,4 +486,8 @@ export function createFakeGateway(catalogSource: AgentCatalogSource): FakeGatewa
       idempotency.clear()
     }
   }
+}
+
+export function createFakeGateway(catalogSource: AgentCatalogSource): AgentGateway {
+  return createAgentGateway(catalogSource, createDeterministicExecutor())
 }

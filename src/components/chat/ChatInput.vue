@@ -85,19 +85,6 @@ function handleSubmit(e: Event) {
       <!-- Model selector & settings -->
       <div v-if="hostedAgent" class="mb-1.5 flex items-center gap-1">
         <HostedAgentSelector compact />
-        <div class="ml-auto">
-          <Tip :label="dialogs.providerSettings">
-            <button
-              type="button"
-              data-test-id="hosted-agent-settings-trigger"
-              :aria-label="dialogs.providerSettings"
-              class="rounded p-0.5 text-muted hover:bg-hover hover:text-surface"
-              @click="openSettingsDialog('ai')"
-            >
-              <icon-lucide-settings class="size-3" />
-            </button>
-          </Tip>
-        </div>
       </div>
       <div v-else class="mb-1.5 flex items-center gap-1">
         <template v-if="isACPProvider">

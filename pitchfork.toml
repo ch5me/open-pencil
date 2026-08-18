@@ -2,7 +2,7 @@
 enable = true
 
 [daemons.app]
-run = "export OPENPENCIL_HOSTED_ENV=staging VITE_HOSTED_AUTH_ENABLED=true VITE_HOSTED_AGENT_ENABLED=true VITE_API_ORIGIN=\"http://api.${PITCHFORK_DAEMON_NAMESPACE}.localhost:7300\"; bun tools/local-bootstrap/src/index.ts && exec ./node_modules/.bin/vite --host 127.0.0.1 --port $PORT --strictPort"
+run = "export OPENPENCIL_HOSTED_ENV=staging VITE_HOSTED_AUTH_ENABLED=false VITE_HOSTED_AGENT_ENABLED=true VITE_API_ORIGIN=\"http://api.${PITCHFORK_DAEMON_NAMESPACE}.localhost:7300\"; bun tools/local-bootstrap/src/index.ts && exec ./node_modules/.bin/vite --host 127.0.0.1 --port $PORT --strictPort"
 dir = "."
 port = { expect = [1420], bump = 20 }
 ready_port = { port = 1420, timeout = "120s" }
@@ -14,7 +14,7 @@ port = { expect = [5173], bump = 20 }
 ready_port = { port = 5173, timeout = "30s" }
 
 [daemons.agent-gateway]
-run = "export AGENT_NATIVE_CATALOG_URL=\"${AGENT_NATIVE_CATALOG_URL:-http://dispatch.tools.localhost:7300/dispatch/_agent-native/actions/get-openpencil-agent-options}\"; bun tools/local-bootstrap/src/index.ts && exec hush run --target runtime -- bun tools/agent-gateway/src/index.ts"
+run = "export AGENT_NATIVE_CATALOG_URL=\"${AGENT_NATIVE_CATALOG_URL:-http://dispatch.tools.localhost:7300/dispatch/_agent-native/actions/get-openpencil-agent-options}\"; bun tools/local-bootstrap/src/index.ts && exec hush --global run --target root -- bun tools/agent-gateway/src/index.ts"
 dir = "."
 port = { expect = [1435], bump = 20 }
 ready_port = { port = 1435, timeout = "30s" }
