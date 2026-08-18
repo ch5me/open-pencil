@@ -83,13 +83,7 @@ export interface SceneGraphHydrationSnapshotV1 {
   readonly documentColorSpace: DocumentColorSpace
 }
 
-function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): void {
-  const root = snapshot.nodes.get(snapshot.rootId)
-  if (!root || root.type !== 'FRAME' || root.parentId !== null) {
-    throw new Error('SceneGraph hydration root is missing or has a parent')
-  }
-  collectSceneGraphEntityIds(snapshot)
-
+function validateHydrationNodeReferences(snapshot: SceneGraphHydrationSnapshotV1): void {
   const referencedChildren = new Set<string>()
   for (const [id, node] of snapshot.nodes) {
     if (node.id !== id) throw new Error(`SceneGraph node key mismatch for "${id}"`)
@@ -119,7 +113,9 @@ function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): voi
       throw new Error(`SceneGraph parent "${node.parentId}" does not reference child "${id}"`)
     }
   }
+}
 
+function validateHydrationReachability(snapshot: SceneGraphHydrationSnapshotV1): void {
   const visited = new Set<string>()
   const visiting = new Set<string>()
   const visit = (id: string): void => {
@@ -134,7 +130,9 @@ function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): voi
   if (visited.size !== snapshot.nodes.size) {
     throw new Error('SceneGraph contains nodes unreachable from the root')
   }
+}
 
+function validateHydrationVariables(snapshot: SceneGraphHydrationSnapshotV1): void {
   for (const [id, variable] of snapshot.variables) {
     if (variable.id !== id) throw new Error(`SceneGraph variable key mismatch for "${id}"`)
     const collection = snapshot.variableCollections.get(variable.collectionId)
@@ -147,7 +145,9 @@ function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): voi
       }
     }
   }
+}
 
+function validateHydrationCollections(snapshot: SceneGraphHydrationSnapshotV1): void {
   for (const [id, collection] of snapshot.variableCollections) {
     if (collection.id !== id) throw new Error(`SceneGraph collection key mismatch for "${id}"`)
     if (!collection.modes.some((mode) => mode.modeId === collection.defaultModeId)) {
@@ -159,13 +159,28 @@ function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): voi
       }
     }
   }
+}
 
+function validateHydrationActiveModes(snapshot: SceneGraphHydrationSnapshotV1): void {
   for (const [collectionId, modeId] of snapshot.activeMode) {
     const collection = snapshot.variableCollections.get(collectionId)
     if (!collection?.modes.some((mode) => mode.modeId === modeId)) {
       throw new Error(`SceneGraph active mode "${collectionId}:${modeId}" is invalid`)
     }
   }
+}
+
+function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): void {
+  const root = snapshot.nodes.get(snapshot.rootId)
+  if (!root || root.type !== 'FRAME' || root.parentId !== null) {
+    throw new Error('SceneGraph hydration root is missing or has a parent')
+  }
+  collectSceneGraphEntityIds(snapshot)
+  validateHydrationNodeReferences(snapshot)
+  validateHydrationReachability(snapshot)
+  validateHydrationVariables(snapshot)
+  validateHydrationCollections(snapshot)
+  validateHydrationActiveModes(snapshot)
 }
 
 export class SceneGraph {

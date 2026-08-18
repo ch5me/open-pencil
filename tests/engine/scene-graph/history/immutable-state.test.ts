@@ -131,6 +131,33 @@ describe('immutable SceneGraph history', () => {
     expect('set' in recorded.next.entries).toBe(false)
   })
 
+  test('blocks mutation through collection, date, and byte snapshot APIs', () => {
+    const recorded = planHistoryRecord(createHistoryState(), {
+      id: id('runtime-immutable'),
+      label: 'runtime immutable',
+      before: {
+        map: new Map([['key', { value: 1 }]]),
+        set: new Set([{ value: 2 }]),
+        date: new Date('2026-08-18T00:00:00Z'),
+        bytes: new Uint8Array([1, 2, 3])
+      },
+      after: null
+    })
+    const entry = recorded.next.entries.get(id('runtime-immutable'))
+    expect(entry).toBeDefined()
+    if (!entry) throw new Error('Expected immutable history entry')
+
+    expect(() => entry.before.map.set('other', { value: 3 })).toThrow(TypeError)
+    expect(() => entry.before.set.add({ value: 3 })).toThrow(TypeError)
+    expect(() => entry.before.date.setUTCFullYear(2030)).toThrow(TypeError)
+    expect(() => {
+      entry.before.bytes[0] = 9
+    }).toThrow(TypeError)
+    expect(() => entry.before.bytes.fill(9)).toThrow(TypeError)
+    expect(entry.before.bytes[0]).toBe(1)
+    expect(new Uint8Array(entry.before.bytes.buffer)[0]).toBe(1)
+  })
+
   test('limit zero immediately disposes recorded entries', () => {
     const recorded = planHistoryRecord(createHistoryState<number>(0), {
       id: id('zero'),

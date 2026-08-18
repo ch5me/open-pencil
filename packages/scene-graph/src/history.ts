@@ -79,24 +79,115 @@ class ImmutableMapView<K, V> implements ReadonlyMap<K, V> {
   }
 }
 
-function immutableClone<T>(value: T): T {
-  const clone = structuredClone(value)
-  const freeze = (candidate: unknown): void => {
-    if (candidate === null || typeof candidate !== 'object' || Object.isFrozen(candidate)) return
-    if (candidate instanceof Map) {
-      for (const [key, mapValue] of candidate) {
-        freeze(key)
-        freeze(mapValue)
+const MAP_MUTATORS = new Set<PropertyKey>(['set', 'delete', 'clear'])
+const SET_MUTATORS = new Set<PropertyKey>(['add', 'delete', 'clear'])
+const VIEW_MUTATORS = new Set<PropertyKey>([
+  'copyWithin',
+  'fill',
+  'reverse',
+  'set',
+  'sort',
+  'setBigInt64',
+  'setBigUint64',
+  'setFloat32',
+  'setFloat64',
+  'setInt8',
+  'setInt16',
+  'setInt32',
+  'setUint8',
+  'setUint16',
+  'setUint32'
+])
+
+function immutableMutation(): never {
+  throw new TypeError('History snapshots are immutable')
+}
+
+function immutableCollection<T extends object>(target: T, mutators: ReadonlySet<PropertyKey>): T {
+  return new Proxy(target, {
+    get(collection, property) {
+      if (mutators.has(property)) return immutableMutation
+      const value = Reflect.get(collection, property, collection)
+      return typeof value === 'function' ? value.bind(collection) : value
+    },
+    set: immutableMutation,
+    defineProperty: immutableMutation,
+    deleteProperty: immutableMutation,
+    setPrototypeOf: immutableMutation
+  })
+}
+
+function immutableView<T extends ArrayBufferView>(view: T): T {
+  return new Proxy(view, {
+    get(target, property) {
+      if (VIEW_MUTATORS.has(property)) return immutableMutation
+      if (property === 'buffer') return target.buffer.slice(0)
+      if (property === 'subarray' && 'slice' in target) {
+        const sliceable = target as T & { slice(start?: number, end?: number): T }
+        return (start?: number, end?: number) => immutableView(sliceable.slice(start, end))
       }
-    } else if (candidate instanceof Set) {
-      for (const item of candidate) freeze(item)
-    } else if (!ArrayBuffer.isView(candidate)) {
-      for (const child of Object.values(candidate)) freeze(child)
+      const value = Reflect.get(target, property, target)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+    set: immutableMutation,
+    defineProperty: immutableMutation,
+    deleteProperty: immutableMutation,
+    setPrototypeOf: immutableMutation
+  })
+}
+
+function immutableClone<T>(value: T): T {
+  const seen = new WeakMap<object, object>()
+  const transform = (candidate: unknown): unknown => {
+    if (candidate === null || typeof candidate !== 'object') return candidate
+    const existing = seen.get(candidate)
+    if (existing) return existing
+
+    if (candidate instanceof Map) {
+      const target = new Map()
+      const immutable = immutableCollection(target, MAP_MUTATORS)
+      seen.set(candidate, immutable)
+      for (const [key, mapValue] of candidate) target.set(transform(key), transform(mapValue))
+      return immutable
     }
-    if (!ArrayBuffer.isView(candidate)) Object.freeze(candidate)
+    if (candidate instanceof Set) {
+      const target = new Set()
+      const immutable = immutableCollection(target, SET_MUTATORS)
+      seen.set(candidate, immutable)
+      for (const item of candidate) target.add(transform(item))
+      return immutable
+    }
+    if (ArrayBuffer.isView(candidate)) {
+      const immutable = immutableView(candidate)
+      seen.set(candidate, immutable)
+      return immutable
+    }
+    if (candidate instanceof ArrayBuffer) {
+      const immutable = immutableCollection(candidate, new Set())
+      seen.set(candidate, immutable)
+      return immutable
+    }
+    if (candidate instanceof Date) {
+      const immutable = immutableCollection(
+        candidate,
+        new Set(
+          Object.getOwnPropertyNames(Date.prototype).filter((property) => property.startsWith('set'))
+        )
+      )
+      seen.set(candidate, immutable)
+      return immutable
+    }
+
+    seen.set(candidate, candidate)
+    for (const key of Reflect.ownKeys(candidate)) {
+      const descriptor = Object.getOwnPropertyDescriptor(candidate, key)
+      if (descriptor && 'value' in descriptor) {
+        Object.defineProperty(candidate, key, { ...descriptor, value: transform(descriptor.value) })
+      }
+    }
+    return Object.freeze(candidate)
   }
-  freeze(clone)
-  return clone
+  return transform(structuredClone(value)) as T
 }
 
 function immutableEntry<TSnapshot>(
