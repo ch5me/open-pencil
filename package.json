@@ -15,7 +15,8 @@
     "packages/cli",
     "packages/mcp",
     "packages/docs",
-    "tools/agent-gateway"
+    "tools/agent-gateway",
+    "apps/image-editor"
   ],
   "type": "module",
   "imports": {

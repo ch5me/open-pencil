@@ -1,0 +1,99 @@
+{
+  "schema": "ch5.image-editor.g170-three-repo-scoped-join.v1",
+  "goalId": "G170-resolve-g135-served-nested-group-fin",
+  "supersedes": "G135-ug-gap-134",
+  "capturedAt": "2026-08-11T23:18:41Z",
+  "status": "PARTIAL",
+  "identities": {
+    "mahjongCommit": "a51be98ffdc8322d200cb046b7e3d824f90a0077",
+    "openPencilCommit": "237fa465eef2c6f6df7a3753fae2f8089843765d",
+    "ch5PackagesCommit": "ed1df4460720f949432f0561d6444b45d0feab65",
+    "browser": "Chromium 145.0.7632.6",
+    "backend": "webgpu"
+  },
+  "servedNestedGroupOracle": {
+    "status": "PASS",
+    "scenarioCount": 1,
+    "outputCount": 1,
+    "expectedRgba8": [
+      188,
+      0,
+      188,
+      72
+    ],
+    "actualRgba8": [
+      188,
+      0,
+      188,
+      72
+    ],
+    "nonzeroOutput": true,
+    "consumingEffectObserved": true
+  },
+  "seededDefect": {
+    "status": "PASS",
+    "injection": "served query seed=nested-group-red-plus-one mutates emitted red channel before the fixed browser oracle",
+    "actualSeededRgba8": [
+      189,
+      0,
+      188,
+      72
+    ],
+    "rejected": true,
+    "sameHarnessFailure": "Nested-group pixel mismatch: expected 188,0,188,72, got 189,0,188,72"
+  },
+  "vxCConsumer": {
+    "status": "PASS",
+    "package": "@ch5me/ch5-ui-web",
+    "installedVersion": "0.9.3",
+    "latestPublishedVersion": "0.9.3",
+    "tarballSha256": "c7fef519e917f359ae0ae21bbfab319d358c6277e62f6d26592bc8ea1a4b9795",
+    "lockfile": {
+      "path": "package-lock.json",
+      "sha256": "6bfa35ae8619d007067f873353e7a72c0c87a29b1fd9383d82ad15505858b5aa",
+      "resolution": "https://npm.ch5.me/@ch5me/ch5-ui-web/-/ch5-ui-web-0.9.3.tgz",
+      "integrity": "sha512-QIiaPJ368x7UqRxiGtuizDunTS93XKq6l5OobfItq2/hYXtjfUqZ8Mf1Nd0JRYaePkkmZ7+8E5lUa8ubFR3k9g=="
+    },
+    "sourceObservationCommit": "ed1df4460720f949432f0561d6444b45d0feab65",
+    "contractSha256": "225adb30f50bcefe1fa25b3f19578f04d18a43d8cf0e39b82dbea55f9f3c6517",
+    "consumerImport": "spikes/three-compositor-react/src/demo.tsx"
+  },
+  "producerProof": {
+    "status": "PASS",
+    "openPencilFocusedTest": "tests/engine/editor/image-composition-gap134.test.ts",
+    "sourceSha256": "d74372f35971f5131e41685f51fbb0c1b08fd785b8c365e5b3172d9383135e99",
+    "result": "2 passed, 0 failed, 5 assertions"
+  },
+  "verification": {
+    "modelSourceSha256": "17ef119fbe7c2baa67b40f9b79e97981ecc22f654ced2f580032133f27f4188a",
+    "servedConsumerSha256": "96abe090efaf47ffcc948d346e4cf4f44635ae2ade8b73b787d0a1fac87ccf43",
+    "browserVerifierSha256": "5874068b2a84a55aabfc7d450952bfa62c66142f941b07c76e64e3ea47db7c51",
+    "modelTest": "5 passed, 0 failed",
+    "browserProof": "PASS",
+    "packageTests": "36 files, 228 tests passed",
+    "packageBuild": "PASS",
+    "spikeTypecheck": "BASELINE_BLOCKED"
+  },
+  "scopedJoin": {
+    "status": "PASS",
+    "sha256": "8129bdf1d645bf61bf9a7a5b755f3eaa9f3a09ee7c563679d0851bd3a05078a4",
+    "recipe": "SHA-256 over UTF-8 preimage exactly as stored in preimage, with LF separators and no trailing LF",
+    "preimage": "mahjongCommit=a51be98ffdc8322d200cb046b7e3d824f90a0077\nopenPencilCommit=237fa465eef2c6f6df7a3753fae2f8089843765d\nch5PackagesCommit=ed1df4460720f949432f0561d6444b45d0feab65\nbrowser={\"browser\":\"Chromium 145.0.7632.6\",\"backend\":\"webgpu\",\"pixel\":[188,0,188,72],\"nonzeroOutput\":true,\"seededDefectRejected\":[189,0,188,72],\"seededDefectFailure\":\"Nested-group pixel mismatch: expected 188,0,188,72, got 189,0,188,72\"}\npackage=@ch5me/ch5-ui-web@0.9.3\ntarballSha256=c7fef519e917f359ae0ae21bbfab319d358c6277e62f6d26592bc8ea1a4b9795\nlockfileSha256=6bfa35ae8619d007067f873353e7a72c0c87a29b1fd9383d82ad15505858b5aa\nlockIntegrity=sha512-QIiaPJ368x7UqRxiGtuizDunTS93XKq6l5OobfItq2/hYXtjfUqZ8Mf1Nd0JRYaePkkmZ7+8E5lUa8ubFR3k9g==\ncontractSha256=225adb30f50bcefe1fa25b3f19578f04d18a43d8cf0e39b82dbea55f9f3c6517\nmodelSha256=17ef119fbe7c2baa67b40f9b79e97981ecc22f654ced2f580032133f27f4188a\nconsumerSha256=96abe090efaf47ffcc948d346e4cf4f44635ae2ade8b73b787d0a1fac87ccf43\nverifierSha256=5874068b2a84a55aabfc7d450952bfa62c66142f941b07c76e64e3ea47db7c51"
+  },
+  "vfMJoin": {
+    "status": "UNKNOWN",
+    "missing": [
+      "three repository local proof manifest hashes",
+      "exact authority fixture corpus and frozen profile hash set",
+      "OpenPencil production consuming effect",
+      "SortableTree physical consuming effect",
+      "real Safari device and app identities",
+      "external PSD reopened hashes"
+    ]
+  },
+  "proofBoundary": {
+    "gpuNestedGroupParity": "UNKNOWN",
+    "physicalDevice": "UNKNOWN",
+    "externalEditors": "UNKNOWN"
+  }
+}

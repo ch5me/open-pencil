@@ -1,0 +1,41 @@
+{
+  "schema": "ch5.image-editor.g133-ug-gap-132-proof.v1",
+  "gapId": "GAP-132",
+  "goalId": "G133-ug-gap-132",
+  "capturedAt": "2026-08-11T06:50:00Z",
+  "status": "UNKNOWN",
+  "scope": "Mahjong compatibility consumer archive",
+  "identity": {
+    "commit": "a166628fce1abaf7b14bc0bdec1d47ae6a1f2e71",
+    "originMain": "a166628fce1abaf7b14bc0bdec1d47ae6a1f2e71",
+    "runtime": "node-v26.5.0"
+  },
+  "archiveMissingReference": {
+    "status": "UNKNOWN",
+    "imageReferenceValidationObserved": false,
+    "maskReferenceValidationObserved": false,
+    "typedErrorCode": null,
+    "expectedTypedErrorCode": "E_ARCHIVE_MISSING_REFERENCE",
+    "reason": "The archive parser validates the document and asset map independently; no archive admission check joins layer assetId or maskAssetId references to serialized asset keys."
+  },
+  "seededDefect": {
+    "status": "UNKNOWN",
+    "scenarioCount": 0,
+    "outputCount": 0,
+    "preFixFailureObserved": false,
+    "consumingEffectObserved": false
+  },
+  "receipt": {
+    "path": ".omx/ultragoal/launch-20260811T064146Z-g133/launch-receipt.json",
+    "status": "MISSING_FROM_WORKER_CHECKOUT"
+  },
+  "proofBoundary": {
+    "focusedTests": "UNKNOWN",
+    "typecheck": "UNKNOWN",
+    "lint": "UNKNOWN",
+    "browser": "UNKNOWN",
+    "physicalDevice": "UNKNOWN",
+    "externalEditors": "UNKNOWN"
+  },
+  "nextMeasurement": "Add archive admission validation for every non-null image and mask reference, preserve the prior valid document on rejection, then run a seeded malformed archive through the consuming editor and record nonzero scenarios, outputs, typed code, commit, and runtime identity."
+}

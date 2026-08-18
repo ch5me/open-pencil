@@ -1,0 +1,163 @@
+{
+  "schema": "ch5.image-editor.g142-ug-gap-141-proof.v1",
+  "goalId": "G142-ug-gap-141",
+  "gapId": "GAP-141",
+  "capturedAt": "2026-08-11T16:59:15Z",
+  "status": "UNKNOWN",
+  "scope": "Mahjong Firefox, low-end GPU, orientation, thermal, memory-pressure, and long-session consuming matrix",
+  "identity": {
+    "workerSource": "d1d35899e782990cc9b37743122984e46a8611a9",
+    "originMain": "d1d35899e782990cc9b37743122984e46a8611a9",
+    "runtime": "node-v26.5.0",
+    "packageManager": "npm-11.17.0",
+    "playwrightCli": "1.58.2",
+    "platform": "darwin-arm64",
+    "openPencilCoreVersion": "0.13.2",
+    "openPencilCoreIntegrity": "sha512-/EIOMDUlpWtTneuwMj7DQfz39i6pOnPlQB5UIOIiEZZ2TLZIiRkKQQVeAsMjs3aFbyA/oYmc1pRhC8PEAl6Kow=="
+  },
+  "receipt": {
+    "status": "STALE_TIPSET_IDENTITY_ONLY",
+    "path": ".omx/ultragoal/launch-20260811T092336Z-r181/launch-receipt.json",
+    "sha256": "4f0cef5d8dd9d37a5eac74467d9a29140c50aa07852f3422884fa88b364ead53",
+    "createdAt": "20260811T092336Z",
+    "launchAttemptId": "codex-019fa388-f893-7871-9c77-abe34a2d8fc6-attempt-181",
+    "mahjongOriginMain": "224590ad29b85625e433d7790a29cab9afa66691",
+    "search": "G142 launch receipt matched by path and SHA-256; all recorded tips are stale against current origin/main and receipt identity does not prove consuming effects"
+  },
+  "currentTips": {
+    "openPencil": "bb84b948af4986c61cb61ab46233755f8a414da7",
+    "ch5Packages": "f66ede4fbb38102f0d053bbb6b8c5c781c5d3fbe",
+    "mahjong": "d1d35899e782990cc9b37743122984e46a8611a9"
+  },
+  "currentTipSetHash": "ab7417290f399292eb160a93fe1e6d4ff21a3130828c82784b8bd20bd78e755b",
+  "receiptFreshness": {
+    "status": "STALE",
+    "recordedAt": "2026-08-11T09:23:36Z",
+    "staleRepositories": [
+      "openPencil",
+      "ch5Packages",
+      "mahjong"
+    ]
+  },
+  "observedContracts": {
+    "firefoxDeclaredByBrowserslist": true,
+    "playwrightConfiguredProjects": [
+      "chromium"
+    ],
+    "installedPlaywrightBrowsers": [
+      "chromium"
+    ],
+    "systemFirefoxPresent": true,
+    "resilienceCycleEvaluator": "PASS_SOURCE",
+    "resilienceSoakEvaluator": "PASS_SOURCE",
+    "resilienceInputs": "SYNTHETIC_ONLY"
+  },
+  "firefoxAttempt": {
+    "status": "INCOMPATIBLE",
+    "application": "/Applications/Firefox.app/Contents/MacOS/firefox",
+    "version": "139.0b4",
+    "playwright": "1.58.2",
+    "downloadedDependencies": false,
+    "command": "timeout 12s node --input-type=module -e 'import(\"playwright\").then(async ({firefox})=>{const b=await firefox.launch({headless:true, executablePath:\"/Applications/Firefox.app/Contents/MacOS/firefox\", timeout:5000})})'",
+    "error": "TimeoutError: browserType.launch: Timeout 5000ms exceeded",
+    "observed": "Firefox process launched, but Playwright Juggler did not become ready; no editor run or consuming artifact"
+  },
+  "matrix": {
+    "firefox": {
+      "status": "UNKNOWN",
+      "reason": "No Firefox Playwright browser, configured project, served editor run, or artifact"
+    },
+    "lowEndGpu": {
+      "status": "UNKNOWN",
+      "reason": "No named device or GPU profile, backend identity, frame trace, or nonblank output artifact"
+    },
+    "orientation": {
+      "status": "UNKNOWN",
+      "reason": "No physical or browser orientation transition; static viewport emulation is not substituted"
+    },
+    "thermal": {
+      "status": "UNKNOWN",
+      "reason": "No named-device thermal-state capture"
+    },
+    "memoryPressure": {
+      "status": "UNKNOWN",
+      "reason": "No pressure injection, process-memory series, recovery result, or leak count"
+    },
+    "longSession": {
+      "status": "UNKNOWN",
+      "reason": "No 10-minute warmup plus 60-minute consuming-surface record"
+    }
+  },
+  "tried": [
+    "Searched Mahjong source, scripts, tests, and docs for every requested matrix signal",
+    "Inspected Playwright, Vitest, compositor browser proof, and resilience contract files",
+    "Listed Playwright browser installations; Chromium present, Firefox absent",
+    "Confirmed system Firefox application presence without promoting it to effect proof",
+    "Matched G142 launch receipt by path and SHA-256",
+    "Fetched all three origin/main refs and compared them with receipt tips",
+    "Checked local dependency executables; Vitest, ESLint, TypeScript, and Playwright bins absent",
+    "Ran app typecheck, consumer tests, full ch5 test fallback, full lint, JSON parse, and diff checks",
+    "Attempted installed Firefox.app 139.0b4 through Playwright 1.58.2 without downloading; launch timed out after 5000ms"
+  ],
+  "seededDefect": {
+    "status": "NOT_RUN",
+    "scenarioCount": 0,
+    "outputCount": 0,
+    "preFixFailureObserved": false,
+    "consumingEffectObserved": false,
+    "timeout": "UNKNOWN",
+    "leak": "UNKNOWN",
+    "cleanup": "UNKNOWN",
+    "reason": "No seeded-defect harness was run; zero counts are explicit and do not close the gap"
+  },
+  "verification": {
+    "appTypecheck": "PASS",
+    "consumerSuite": {
+      "status": "FAIL",
+      "files": 12,
+      "passedTests": 56,
+      "failedTests": 3,
+      "failure": "G140 touch-reorder-consumer.proof.spec.ts: Missing consumer tree rows for touch before"
+    },
+    "mainUnitSuite": {
+      "status": "PASS",
+      "files": 76,
+      "tests": 1723
+    },
+    "jsonParse": "PASS",
+    "diffCheck": "PASS",
+    "fullCh5Test": {
+      "status": "FAIL",
+      "reasons": [
+        "Turbo caller npm 11.11.0 differs from required npm 11.17.0",
+        "Consumer fallback resolves duplicated spike path and finds no tests",
+        "Seven unrelated Chromium P0 and tutorial journeys fail",
+        "Repository lint baseline fails"
+      ]
+    },
+    "fullLint": {
+      "status": "FAIL",
+      "errors": 99,
+      "reason": "Existing source errors outside docs-only write set"
+    },
+    "stage0Schema": {
+      "status": "FAIL",
+      "reason": "Missing node_modules/ajv/dist/2020.js"
+    }
+  },
+  "proofBoundary": {
+    "sourceContracts": "PASS",
+    "syntheticResilienceEvaluator": "PASS",
+    "firefoxConsumingEffect": "UNKNOWN",
+    "lowEndGpuEffect": "UNKNOWN",
+    "orientationEffect": "UNKNOWN",
+    "thermalEffect": "UNKNOWN",
+    "memoryPressureEffect": "UNKNOWN",
+    "longSessionEffect": "UNKNOWN",
+    "physicalDeviceEffect": "UNKNOWN",
+    "externalRendererEffect": "UNKNOWN",
+    "receiptIdentity": "STALE_TIPSET_IDENTITY_ONLY",
+    "seededDefect": "NOT_RUN"
+  },
+  "nextMeasurement": "Create a fresh G142 receipt at the current three-repository tip set, then capture named Firefox plus low-end device/GPU identity, real orientation changes, thermal and process-memory samples, nonblank progress, and a 10-minute warmup plus 60-minute session."
+}

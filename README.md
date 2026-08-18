@@ -20,6 +20,10 @@ Or download from the [releases page](https://github.com/open-pencil/open-pencil/
 
 ## What it does
 
+- **Includes a standalone raster image-editor app** — the React app under
+  `apps/image-editor` owns the Photoshop-like layer workflow, PSD adapter,
+  persistence, and Three.js WebGPU/WebGL2 compositor previously prototyped in
+  Mahjong
 - **Opens `.fig` and `.pen` files** — read and write native Figma files, open supported Pencil documents from the app or OS file browser, copy & paste nodes between apps
 - **AI builds designs** — describe what you want in chat, 90+ tools create and modify nodes. Connect OpenRouter, Anthropic, OpenAI, Google AI, Z.ai, MiniMax, or compatible endpoints
 - **Fully programmable** — headless CLI, XPath queries, Figma Plugin API via `eval`, MCP server for AI agents, and desktop agent integrations for Claude Code, Codex, and Gemini CLI

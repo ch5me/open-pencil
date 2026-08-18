@@ -1,0 +1,39 @@
+{
+  "schema": "ch5.image-editor.g130-ug-gap-129-proof.v1",
+  "gapId": "GAP-129",
+  "goalId": "G130-ug-gap-129",
+  "capturedAt": "2026-08-11T05:40:00Z",
+  "status": "UNKNOWN",
+  "scope": "Mahjong compatibility consumer",
+  "offlineCache": {
+    "status": "UNKNOWN",
+    "serviceWorker": "ngsw-worker.js",
+    "registrationStrategy": "registerWhenStable:5000",
+    "reason": "Source configuration is present, but no production browser receipt observed cache population or offline startup."
+  },
+  "runtimeVersionGuard": {
+    "status": "UNKNOWN",
+    "expectedMismatchCode": "E_RUNTIME_VERSION_MISMATCH",
+    "sourceGuard": true,
+    "observedMismatch": false,
+    "knownSourceRisks": [
+      "A missing THREE_COMPOSITOR_RUNTIME_VERSION field is accepted.",
+      "The shared loader promise retains a rejected load."
+    ],
+    "reason": "runtime-loader.ts contains a source-level package/runtime version guard, but node_modules and the requested consuming-surface receipt are absent."
+  },
+  "receipt": {
+    "path": ".omx/ultragoal/launch-20260811T053300Z-g130/launch-receipt.json",
+    "status": "MISSING"
+  },
+  "proofBoundary": {
+    "browser": "UNKNOWN",
+    "physicalDevice": "UNKNOWN",
+    "externalEditors": "UNKNOWN"
+  },
+  "launchReceipt": {
+    "path": ".omx/ultragoal/launch-20260811T053300Z-g130/launch-receipt.json",
+    "status": "MISSING"
+  },
+  "nextMeasurement": "Run the production build, visit once online, reload offline with a named browser receipt, then exercise a stale compositor chunk and record the observed mismatch code."
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "ch5.image-editor.vf-m-current-tip-commit/2",
+  "goalId": "G195-refresh-current-tip-local-vf-m-packa",
+  "ultragoalAttempt": 1,
+  "receiptSequence": 8,
+  "servedCommit": "f6de41c4606c6b71d361df0500ed28d67764ea8b",
+  "capturedSourceTip": "2eaba25fcb8b793c23235adc5524d1db678b3cb8",
+  "proofCommit": "664c39b4fa6dd1f64b17e1b6d410862a0dd42ad4",
+  "artifactCommit": "19cecf11e250f97414720c289afdc7e4557953fa",
+  "proofArtifact": {
+    "path": "docs/image-editor/compatibility/vf-m-current-tip-partial.json",
+    "gitBlob": "aefcb52b14a53d7a060c9aa06c40709c5dcb1cf8",
+    "sha256": "255dcb548953a281c25722cd2bba3d0456c60308a40a77125c7ea4e2053dad9b"
+  },
+  "commitRelationship": {
+    "proofParent": "2eaba25fcb8b793c23235adc5524d1db678b3cb8",
+    "servedParent": "664c39b4fa6dd1f64b17e1b6d410862a0dd42ad4",
+    "artifactParent": "0ac5b876ade35a2157c1e8172c2e1ae6dec05bba",
+    "receiptParent": "19cecf11e250f97414720c289afdc7e4557953fa",
+    "validation": "Checker reads exact artifact bytes from the previous artifact commit, then validates this receipt-only commit."
+  },
+  "launchReceipt": {
+    "path": "/Users/hassoncs/worktrees/ch5/mahjong-ch5/cx-image-editor-production-swarm/.omx/ultragoal/launch-20260812T235202Z-g195-r8/launch-receipt.json",
+    "sha256": "b6161f6505a7bc04e07a25caa8dea2329059b29abcd91dbee2b6aabf4c4b07ec"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "schema": "ch5.image-editor.gap-proof.v1",
+  "proofId": "R18-GAP-147",
+  "goalId": "UG-GAP-147",
+  "repo": "mahjong-ch5",
+  "capturedAt": "2026-08-11T17:54:51Z",
+  "status": "blocked",
+  "scope": "rgba16f-hdr-trigger-audit",
+  "sourceIdentity": {
+    "workerSourceTip": "ac094248b29a11566019a991268227e1204f81c0",
+    "mahjongOriginMain": "fdfbf5973eb7d54e1e7e29a45b054b54c0accff3",
+    "openPencilOriginMain": "bb84b948af4986c61cb61ab46233755f8a414da7",
+    "ch5PackagesOriginMain": "e8f5ce30b46027f390addda90e153e4e0daee10d"
+  },
+  "trigger": {
+    "required": [
+      "RGBA16F consumer contract and parity",
+      "color and profile contract",
+      "archive and worker boundary",
+      "named-device support and memory contract",
+      "three precision/profile HDR fixtures",
+      "clipping and NaN/Inf escape proof",
+      "frozen-profile peak-memory proof",
+      "exact current-tip identity"
+    ],
+    "met": false,
+    "implementationAuthorized": false
+  },
+  "gates": {
+    "rgba16fContract": "PARTIAL",
+    "colorProfileContract": "PARTIAL",
+    "archiveWorkerBoundary": "PARTIAL",
+    "deviceSupport": "UNKNOWN",
+    "precisionProfileFixtures": "FAIL",
+    "clippingEscape": "PARTIAL",
+    "nanInfEscape": "FAIL",
+    "frozenProfilePeakMemory": "UNKNOWN",
+    "currentTipIdentity": "PASS"
+  },
+  "crossRepositoryEvidence": {
+    "openPencil": {
+      "tip": "bb84b948af4986c61cb61ab46233755f8a414da7",
+      "rgba16f": "DECLARED_BUT_UNAVAILABLE",
+      "colorManagement": "PRESENT",
+      "archiveWorkerMemory": "PRESENT",
+      "deviceGpuProfile": "UNKNOWN",
+      "hdrFixtures": "ABSENT_OR_UNOBSERVED",
+      "nanInfEscape": "ABSENT_OR_UNOBSERVED"
+    },
+    "mahjong": {
+      "tip": "fdfbf5973eb7d54e1e7e29a45b054b54c0accff3",
+      "rgba16f": "TYPED_UNSUPPORTED",
+      "colorManagement": "SRGB_ONLY",
+      "archiveWorkerMemory": "LEGACY_PNG_ARCHIVE_ONLY",
+      "deviceSupport": "UNKNOWN",
+      "hdrFixtures": "ABSENT",
+      "consumingEffect": "RGBA8_ONLY"
+    },
+    "ch5Packages": {
+      "tip": "e8f5ce30b46027f390addda90e153e4e0daee10d",
+      "imageEditorHdrAuthority": "ABSENT_OR_UNOBSERVED"
+    }
+  },
+  "observedContracts": {
+    "openPencil": [
+      "RasterPixelFormat declares rgba8-srgb and rgba16f-linear-premultiplied.",
+      "RGBA16F raster composition emits typed rgba16f-unavailable and the composing capability remains RGBA8.",
+      "Composition color contract declares document-linear premultiplied semantics and a 1/1024 RGBA16F oracle tolerance.",
+      "D1/M1 worker memory limits and peak accounting exist, but evidence permits peakBytes UNKNOWN and gpuProfile UNKNOWN.",
+      "Clipping and RGBA8 composition have deterministic tests; no HDR fixture binds clipping to HDR output."
+    ],
+    "mahjong": [
+      "EditorDocument carries version, dimensions, layers, and selection only; no pixel format, profile identity, or HDR metadata.",
+      "composeRgba16f throws E_RGBA16F_UNSUPPORTED; composeWithSkia throws E_SKIA_UNSUPPORTED.",
+      "Three compositor output is UnsignedByteType/sRGB; render targets are RGBA8 with NoColorSpace.",
+      "Editor assets serialize as PNG data URLs; persistence carries legacy document/assets/viewport only.",
+      "Existing composition-full-v1 has an rgba16fSkia tolerance declaration but no HDR implementation or three HDR/profile fixtures."
+    ]
+  },
+  "unknownBoundaries": [
+    "physical iOS Safari HDR output",
+    "physical Android Chrome HDR output",
+    "named GPU/device support",
+    "frozen-profile peak resident memory on a consuming device",
+    "HDR clipping escape count",
+    "HDR NaN/Inf escape count",
+    "profile-preserving editable save/reopen",
+    "external renderer interoperability"
+  ],
+  "acceptance": {
+    "triggerMet": false,
+    "implementationAuthorized": false,
+    "reason": "Current tips prove typed RGBA16F boundaries and partial upstream contracts, but no three precision/profile HDR fixtures, HDR clipping and NaN/Inf escape receipt, frozen-profile named-device peak-memory result, profile-preserving Mahjong archive round trip, or consuming HDR device effect was observed. Do not implement HDR."
+  },
+  "verification": {
+    "sourceAudit": "PASS",
+    "currentTipIdentity": "PASS",
+    "typedUnsupportedBoundary": "PASS",
+    "hdrTrigger": "BLOCKED",
+    "browserDeviceEffect": "UNKNOWN"
+  },
+  "subagentEvidence": "1 bounded read-only review probe required by task delegation; integrated findings on partial upstream RGBA16F/color contracts, typed Mahjong unsupported boundaries, absent HDR fixture/escape proof, and unknown consuming device memory."
+}

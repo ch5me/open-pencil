@@ -1,0 +1,431 @@
+{
+	"schema": "ch5.image-editor.vf-m-current-tip-partial/4",
+	"status": "PARTIAL",
+	"scope": "Current package adoption and producer identity join with installed core image-editor and UI surfaces; physical-device and external-editor proof remain unavailable",
+	"sourceIdentity": {
+		"capturedSourceTip": "2eaba25fcb8b793c23235adc5524d1db678b3cb8",
+		"servedCommit": {
+			"receipt": "f6de41c4606c6b71d361df0500ed28d67764ea8b",
+			"commitReceipt": "f6de41c4606c6b71d361df0500ed28d67764ea8b",
+			"relation": "EQUAL"
+		},
+		"boundSourceObjects": {
+			".ch5/proof.yaml": {
+				"path": ".ch5/proof.yaml",
+				"gitBlob": "61965169d329c38b709951927e89a97847543ae6",
+				"sha256": "53a10ec1b839178bdf5f8ac62a8905cf8e9795519a7c83aab54d9bd1370e6967",
+				"bytes": 3391
+			},
+			"package.json": {
+				"path": "package.json",
+				"gitBlob": "00af8ba7ffba68fd714687294b93ec29eaab7238",
+				"sha256": "f5a161a71db6c3413824effccd66e806f4351db245196a7775c952d6943bc3ed",
+				"bytes": 7597
+			},
+			"package-lock.json": {
+				"path": "package-lock.json",
+				"gitBlob": "792150c5aea1bc63788bb940d8d97fe92c2f4587",
+				"sha256": "cf78b57c2ae2408178cfc7e7a6a73f395c74121c4219a690c94e8b1e178114e9",
+				"bytes": 736578
+			}
+		},
+		"worktreeObjects": {
+			"package.json": {
+				"path": "package.json",
+				"sha256": "f5a161a71db6c3413824effccd66e806f4351db245196a7775c952d6943bc3ed",
+				"bytes": 7597
+			},
+			"package-lock.json": {
+				"path": "package-lock.json",
+				"sha256": "cf78b57c2ae2408178cfc7e7a6a73f395c74121c4219a690c94e8b1e178114e9",
+				"bytes": 736578
+			},
+			"spikes/three-compositor-react/src/demo.tsx": {
+				"path": "spikes/three-compositor-react/src/demo.tsx",
+				"sha256": "03b8ff28439522ba8af766199100d150335d1887fef7b575a07752443409d3a9",
+				"bytes": 76950
+			},
+			"scripts/verify-three-compositor-demo.mjs": {
+				"path": "scripts/verify-three-compositor-demo.mjs",
+				"sha256": "d29ed6d3bd4b6962369dad8e72810c09a8d7a8a7cba82b3bb66d328a2bdc9eea",
+				"bytes": 49607
+			},
+			"scripts/verify-vf-m-current-tip-partial.mjs": {
+				"path": "scripts/verify-vf-m-current-tip-partial.mjs",
+				"sha256": "53141a50151e23a1e982bf11d3a5714657cd9336c764757ca35f36f4b523dc81",
+				"bytes": 45531
+			}
+		},
+		"ownedSourcePatchSha256": "3878b32773df81062343f065d4038ad4a0d2c18cfac1629a8e267f0422bad1f5"
+	},
+	"authority": {
+		"path": "/Users/hassoncs/worktrees/ch5/mahjong-ch5/cx-image-editor-production-swarm/.omx/ultragoal/launch-20260812T235202Z-g195-r8/launch-receipt.json",
+		"sha256": "b6161f6505a7bc04e07a25caa8dea2329059b29abcd91dbee2b6aabf4c4b07ec",
+		"bytes": 1581,
+		"schema": "image-editor-ultragoal-launch-v1",
+		"goalId": "G195-refresh-current-tip-local-vf-m-packa",
+		"ultragoalAttempt": 1,
+		"receiptSequence": 8,
+		"producerTips": {
+			"mahjong-ch5": "0ac5b876ade35a2157c1e8172c2e1ae6dec05bba",
+			"open-pencil": "e3a2d351510e391512fb24a498ae15bde12164df",
+			"ch5-packages": "d270343a52b93d630d4275049bd803e7d7da8401"
+		},
+		"grove": {
+			"id": "g195-vf-m-current-tip-r6",
+			"mahjongPath": "/Users/hassoncs/worktrees/ch5/mahjong-ch5/g195-vf-m-current-tip-r6",
+			"branch": "grove/g195-vf-m-current-tip-r6/mahjong-ch5"
+		},
+		"writeScope": [
+			"mahjong-ch5/scripts/verify-vf-m-current-tip-partial.mjs",
+			"mahjong-ch5/docs/image-editor/compatibility/vf-m-current-tip-partial.json",
+			"mahjong-ch5/docs/image-editor/compatibility/vf-m-current-tip-commit.json"
+		],
+		"authority": {
+			"goals": {
+				"path": "/Users/hassoncs/worktrees/ch5/mahjong-ch5/cx-image-editor-production-swarm/.omx/ultragoal/goals.json",
+				"sha256": "f01600b83f7f4214583c232e2d8f4db6cc74a822e5f281b78ec94a1a8e30bb33",
+				"bytes": 339359
+			},
+			"ledger": {
+				"path": "/Users/hassoncs/worktrees/ch5/mahjong-ch5/cx-image-editor-production-swarm/.omx/ultragoal/ledger.jsonl",
+				"sha256": "a7132778487c197ddf81c81cd6e381c0432d0a9a68297ca82feaf463b0ae5675",
+				"bytes": 22487263
+			},
+			"plan": {
+				"path": "/Users/hassoncs/worktrees/ch5/mahjong-ch5/cx-image-editor-production-swarm/.omx/plans/image-editor-production-swarm-final.md",
+				"sha256": "5370f27489c456f2ae3dc6fdf1d28e98252b26c1bd2616c662f54c9c1b9592d9",
+				"bytes": 114168
+			}
+		},
+		"liveGoal": {
+			"id": "G195-refresh-current-tip-local-vf-m-packa",
+			"status": "in_progress",
+			"attempt": 1
+		},
+		"goalStarted": {
+			"ts": "2026-08-12T21:54:00.328Z",
+			"event": "goal_started",
+			"goalId": "G195-refresh-current-tip-local-vf-m-packa",
+			"status": "in_progress",
+			"message": "Attempt 1"
+		}
+	},
+	"repositories": {
+		"openPencil": {
+			"originMain": "e3a2d351510e391512fb24a498ae15bde12164df",
+			"remoteMain": "e3a2d351510e391512fb24a498ae15bde12164df",
+			"relation": "EQUAL",
+			"objects": {
+				".ch5/proof.yaml": {
+					"path": ".ch5/proof.yaml",
+					"gitBlob": "c9396b44d005a5a9001d4757d0975ae45a73528a",
+					"sha256": "d1dd336ba89b843b0fa361f10be2f94c80537912dfb42e378e998be1f8016871",
+					"bytes": 3230
+				},
+				"bun.lock": {
+					"path": "bun.lock",
+					"gitBlob": "f00801bca031b794a0f8ae70d2b5e28978f62d16",
+					"sha256": "a0c267f04cbb6eb3d2a0d9fcb278b722e8c752674b20387bff099859d92b4e6b",
+					"bytes": 471035
+				},
+				"packages/core/package.json": {
+					"path": "packages/core/package.json",
+					"gitBlob": "8764f325e8fb94dc64a88a7b40409203f2a38c6d",
+					"sha256": "de5a4d6f0d3f19c63267f51e40f29127818fb7d66d9510f072e3d05e579accd7",
+					"bytes": 7431
+				},
+				"packages/core/tsdown.config.ts": {
+					"path": "packages/core/tsdown.config.ts",
+					"gitBlob": "198215bd2e5310f0d89ab52f9c1966f07975fc4e",
+					"sha256": "64885af5f8de09b06a4577233de1861b12ddd493faa26ef951e2a871c2d2f2b6",
+					"bytes": 1738
+				},
+				"artifacts/proof/image-editor-g135-production-effect/receipt.json": {
+					"path": "artifacts/proof/image-editor-g135-production-effect/receipt.json",
+					"gitBlob": "8afea0592711ad96c9364f352c12b31a2e0b13ac",
+					"sha256": "ee32cbf61e344343e8e7b8697e18a209bcab042b9f4f023640444c10abedb983",
+					"bytes": 5798
+				},
+				"artifacts/proof/image-editor-g135-production-effect/core-dist-tree.json": {
+					"path": "artifacts/proof/image-editor-g135-production-effect/core-dist-tree.json",
+					"gitBlob": "1573d9ead223990774fcc614a5dd898e25af0e90",
+					"sha256": "c62b1b136efa6c5265b892ba71abd49bdbf8470bb89b61bc659e480c80e370e5",
+					"bytes": 235946
+				}
+			}
+		},
+		"ch5Packages": {
+			"originMain": "d270343a52b93d630d4275049bd803e7d7da8401",
+			"remoteMain": "d270343a52b93d630d4275049bd803e7d7da8401",
+			"relation": "EQUAL",
+			"objects": {
+				".ch5/proof.yaml": {
+					"path": ".ch5/proof.yaml",
+					"gitBlob": "58b0c8de9dbfd0cef05bfd85c5a86d49fa166972",
+					"sha256": "8ee8928d4c63ec7f0900a0684d67f9e91d0fb65d449e4ab4f1b2c21276b36889",
+					"bytes": 35039
+				},
+				"pnpm-lock.yaml": {
+					"path": "pnpm-lock.yaml",
+					"gitBlob": "5a886b9dcee11b867dcc296c615c21673eb381bb",
+					"sha256": "3443dbe57f2fb4ac82f5b4b3773939b2ba5d395b2b347704b22d616631784d41",
+					"bytes": 1151534
+				},
+				"packages/web/ch5-ui-web/package.json": {
+					"path": "packages/web/ch5-ui-web/package.json",
+					"gitBlob": "117cde31cecb3695a9ad8bc776715e7c15ccb3ae",
+					"sha256": "98f260bd481fb1363ab79af9fc435b34315fceef6b4be0c6708eb27187b38abe",
+					"bytes": 8242
+				},
+				"docs/image-editor/contracts/sortable-tree-v1.json": {
+					"path": "docs/image-editor/contracts/sortable-tree-v1.json",
+					"gitBlob": "e5614224f01ed92741c146cce9a30b21ce37fb04",
+					"sha256": "225adb30f50bcefe1fa25b3f19578f04d18a43d8cf0e39b82dbea55f9f3c6517",
+					"bytes": 2686
+				}
+			}
+		}
+	},
+	"mahjongLockedDependencies": {
+		"@open-pencil/core": {
+			"kind": "DIRECT",
+			"manifestRequest": "0.14.1",
+			"rootRequest": "0.14.1",
+			"installedPath": "node_modules/@open-pencil/core",
+			"version": "0.14.1",
+			"resolution": "https://npm.ch5.me/@open-pencil/core/-/core-0.14.1.tgz",
+			"integrity": "sha512-znPx45TblaRlzO2fuF6QhZ1pmYzR9OfgD7jDr4UQIlI8ZO1XFJigbtP1OK/7tA+8gOdEqGDePCfNPevIx5gW7w=="
+		},
+		"@ch5me/ch5-ui-web": {
+			"kind": "DIRECT",
+			"manifestRequest": "0.10.0",
+			"rootRequest": "0.10.0",
+			"installedPath": "node_modules/@ch5me/ch5-ui-web",
+			"version": "0.10.0",
+			"resolution": "https://npm.ch5.me/@ch5me/ch5-ui-web/-/ch5-ui-web-0.10.0.tgz",
+			"integrity": "sha512-zTUB8sYAnnrROOi6vv+t1RKVEQWMu4154xsQHVcmpMb3UEYgeZEC78VPWDA/WqXUtnh4LVeL3U75lDOA7xSFvA=="
+		}
+	},
+	"packageProof": {
+		"@open-pencil/core": {
+			"name": "@open-pencil/core",
+			"version": "0.14.1",
+			"resolution": "https://npm.ch5.me/@open-pencil/core/-/core-0.14.1.tgz",
+			"integrity": "sha512-znPx45TblaRlzO2fuF6QhZ1pmYzR9OfgD7jDr4UQIlI8ZO1XFJigbtP1OK/7tA+8gOdEqGDePCfNPevIx5gW7w==",
+			"tarballSha256": "9f475d0dc9be8e0ad03a7b5718630a8c9ff7ac4f499f6654e17c48cf9a6e2504",
+			"tarballBytes": 2235719,
+			"extractedTree": {
+				"path": "package",
+				"entries": 1643,
+				"files": 1528,
+				"sha256": "474281e5ee802a0572658c3b49cca3c5aefceea0f0b761af4e27c034b421e3b4"
+			},
+			"installedTree": {
+				"path": "node_modules/@open-pencil/core",
+				"entries": 1643,
+				"files": 1528,
+				"sha256": "474281e5ee802a0572658c3b49cca3c5aefceea0f0b761af4e27c034b421e3b4"
+			}
+		},
+		"@ch5me/ch5-ui-web": {
+			"name": "@ch5me/ch5-ui-web",
+			"version": "0.10.0",
+			"resolution": "https://npm.ch5.me/@ch5me/ch5-ui-web/-/ch5-ui-web-0.10.0.tgz",
+			"integrity": "sha512-zTUB8sYAnnrROOi6vv+t1RKVEQWMu4154xsQHVcmpMb3UEYgeZEC78VPWDA/WqXUtnh4LVeL3U75lDOA7xSFvA==",
+			"tarballSha256": "6b145947e8947ce9eb6c8913d5014eab6a257c1c0c4a5d34c8d9cc3f3b167319",
+			"tarballBytes": 829251,
+			"extractedTree": {
+				"path": "package",
+				"entries": 1229,
+				"files": 1134,
+				"sha256": "d4f4554c03b0ec7bc0e863d903380a5b296c95bbad483f7ee034161485ade1df"
+			},
+			"installedTree": {
+				"path": "node_modules/@ch5me/ch5-ui-web",
+				"entries": 1229,
+				"files": 1134,
+				"sha256": "d4f4554c03b0ec7bc0e863d903380a5b296c95bbad483f7ee034161485ade1df"
+			}
+		}
+	},
+	"producerPackages": {
+		"@open-pencil/core": {
+			"version": "0.14.1"
+		},
+		"@ch5me/ch5-ui-web": {
+			"version": "0.10.0"
+		}
+	},
+	"consumerProducerComparisons": {
+		"@open-pencil/core": {
+			"consumerVersion": "0.14.1",
+			"producerVersion": "0.14.1",
+			"classification": "CURRENT"
+		},
+		"@ch5me/ch5-ui-web": {
+			"consumerVersion": "0.10.0",
+			"producerVersion": "0.10.0",
+			"classification": "CURRENT"
+		}
+	},
+	"installedCoreSurface": {
+		"requiredSpecifier": "@open-pencil/core/canvas/image-editor",
+		"packageVersion": "0.14.1",
+		"exportEntry": {
+			"types": "./dist/canvas/image-editor/index.d.ts",
+			"import": "./dist/canvas/image-editor/index.js",
+			"default": "./dist/canvas/image-editor/index.js"
+		},
+		"classification": "AVAILABLE",
+		"runtimeErrorCode": null,
+		"producerCurrentTipDeclaresExport": true,
+		"runtimeOracle": {
+			"normal": "137,137,137,255",
+			"seeded": "138,138,138,255"
+		},
+		"seededDefectRejection": {
+			"rejected": true,
+			"failure": "Installed core pixel mismatch: expected 137,137,137,255, got 138,138,138,255"
+		}
+	},
+	"sortableTreeContract": {
+		"identity": {
+			"path": "docs/image-editor/contracts/sortable-tree-v1.json",
+			"gitBlob": "e5614224f01ed92741c146cce9a30b21ce37fb04",
+			"sha256": "225adb30f50bcefe1fa25b3f19578f04d18a43d8cf0e39b82dbea55f9f3c6517",
+			"bytes": 2686
+		},
+		"consumerIdentity": {
+			"packageVersion": "0.10.0",
+			"renderedNodes": 6,
+			"source": {
+				"path": "spikes/three-compositor-react/src/demo.tsx",
+				"gitBlob": "dda9339f66c9fada3eff2f2107cd484bfecea1c9",
+				"sha256": "03b8ff28439522ba8af766199100d150335d1887fef7b575a07752443409d3a9",
+				"bytes": 76950
+			}
+		}
+	},
+	"historicalEffects": {
+		"G170": {
+			"classification": "HISTORICAL",
+			"currentProof": false,
+			"capturedIdentity": "a51be98ffdc8322d200cb046b7e3d824f90a0077/237fa465eef2c6f6df7a3753fae2f8089843765d/ed1df4460720f949432f0561d6444b45d0feab65",
+			"currentIdentity": "f6de41c4606c6b71d361df0500ed28d67764ea8b/e3a2d351510e391512fb24a498ae15bde12164df/d270343a52b93d630d4275049bd803e7d7da8401",
+			"effectAtCapturedIdentity": "PASS"
+		},
+		"G135": {
+			"classification": "HISTORICAL",
+			"currentProof": false,
+			"capturedIdentity": "fda4c79f41cf1cd2c149a110962ac98dc8f562e9",
+			"currentIdentity": "f6de41c4606c6b71d361df0500ed28d67764ea8b",
+			"effectAtCapturedIdentity": "PASS"
+		},
+		"openPencilG135PackageReceipt": {
+			"classification": "HISTORICAL",
+			"currentProof": false,
+			"capturedIdentity": "a402d913f607ed9cef505e8c17109ffb1a21b137",
+			"currentIdentity": "e3a2d351510e391512fb24a498ae15bde12164df",
+			"effectAtCapturedIdentity": "PASS"
+		}
+	},
+	"currentProof": {
+		"status": "PARTIAL",
+		"observed": [
+			"exact 0.14.1 and 0.10.0 direct requests and single installed lock paths",
+			"lock records exact registry resolutions and SHA-512 integrities with independent authenticated HQ registry readback",
+			"current producer origin/main Git objects and package versions",
+			"installed HQ core 0.14.1 package exposes composition, image-editor, and scene-graph surfaces",
+			"installed core implementation rejects a seeded one-channel compositor defect",
+			"served Chromium nested-group fixture records build, backend, profile, SortableTree consumer, and nonzero consuming effect"
+		],
+		"missing": [
+			"physical Safari device identity and effect",
+			"physical Android Chrome device identity and effect",
+			"external PSD editor reopened-output proof",
+			"external renderer comparison"
+		],
+		"servedConsumer": {
+			"browser": "Chromium 145.0.7632.6",
+			"backend": "webgpu",
+			"uiPackageVersion": "0.10.0",
+			"sortableTreeNodes": 6,
+			"installedCorePixel": [
+				137,
+				137,
+				137,
+				255
+			],
+			"installedCoreSeededDefectRejected": [
+				138,
+				138,
+				138,
+				255
+			],
+			"pixel": [
+				188,
+				0,
+				188,
+				72
+			],
+			"nonzeroOutput": true,
+			"seededDefectRejected": [
+				189,
+				0,
+				188,
+				72
+			],
+			"seededDefectFailure": "Nested-group pixel mismatch: expected 188,0,188,72, got 189,0,188,72",
+			"build": {
+				"path": "dist/three-compositor-react",
+				"entries": 8,
+				"files": 7,
+				"sha256": "3d7a9a3af06ee44d2c3896e191ea7972025a02572ac4e5c89efdb16bfc6e7912"
+			},
+			"fixture": {
+				"name": "nested-group",
+				"seed": "nested-group-red-plus-one",
+				"expectedPixel": [
+					188,
+					0,
+					188,
+					72
+				]
+			},
+			"profile": {
+				"viewport": {
+					"width": 1440,
+					"height": 900
+				},
+				"deviceScaleFactor": 1,
+				"headless": true
+			}
+		},
+		"boundaries": {
+			"browser": "CURRENT",
+			"physicalDevice": "UNKNOWN",
+			"externalRenderer": "UNKNOWN",
+			"externalEditors": "UNKNOWN"
+		}
+	},
+	"selfCheck": {
+		"checker": {
+			"path": "scripts/verify-vf-m-current-tip-partial.mjs",
+			"sha256": "53141a50151e23a1e982bf11d3a5714657cd9336c764757ca35f36f4b523dc81",
+			"bytes": 45531
+		},
+		"negativeTests": {
+			"staleIdentityRejected": true,
+			"historicalClassificationForgeryRejected": true,
+			"currentClassificationForgeryRejected": true,
+			"missingCoreSurfaceForgeryRejected": true,
+			"directRequestMismatchRejected": true,
+			"duplicateInstalledPathRejected": true,
+			"registryMismatchRejected": true,
+			"renameSubstitutionRejected": true,
+			"servedIdentityForgeryRejected": true,
+			"releaseClaimRejected": true
+		}
+	}
+}

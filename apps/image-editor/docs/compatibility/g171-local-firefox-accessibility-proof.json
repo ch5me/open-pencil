@@ -1,0 +1,82 @@
+{
+  "schema": "ch5.image-editor.g171-local-firefox-accessibility.v1",
+  "goalId": "G171-prove-local-firefox-and-automated-a",
+  "capturedAt": "2026-08-11T23:43:05Z",
+  "status": "PASS",
+  "scope": "local headless automated browser accessibility proof",
+  "runner": {
+    "location": "local",
+    "playwrightVersion": "1.58.2",
+    "headless": true,
+    "platform": "darwin-arm64",
+    "assistiveTechnology": "none"
+  },
+  "identity": {
+    "mahjongCommit": "fb356d201d7232016a90fbd2dc698a5260726d78",
+    "browsers": [
+      {
+        "name": "Chromium",
+        "version": "145.0.7632.6"
+      },
+      {
+        "name": "Firefox",
+        "version": "146.0.1"
+      }
+    ]
+  },
+  "scenarios": {
+    "count": 2,
+    "outputs": 2,
+    "matrix": [
+      {
+        "name": "Chromium",
+        "browser": "145.0.7632.6",
+        "seriousCriticalViolations": 0,
+        "seededDefectRejected": "button-name",
+        "focusRestored": true,
+        "nonPointerMaskJourney": true
+      },
+      {
+        "name": "Firefox",
+        "browser": "146.0.1",
+        "seriousCriticalViolations": 0,
+        "seededDefectRejected": "button-name",
+        "focusRestored": true,
+        "nonPointerMaskJourney": true
+      }
+    ]
+  },
+  "automatedAccessibility": {
+    "standard": "axe-core 4.13.0",
+    "seriousCriticalFindings": 0,
+    "seededDefect": "button-name",
+    "seededDefectRejectedByEveryBrowser": true
+  },
+  "nonPointerJourney": {
+    "maskKeyboard": true,
+    "focusRestoration": true,
+    "chromium": true,
+    "firefox": true
+  },
+  "verification": {
+    "frozenInstall": "PASS",
+    "viteBuild": "PASS",
+    "consumerTests": "9 passed",
+    "modelTests": "5 passed",
+    "packageLockSha256": "dcebb28aa18fd55ef07ae0d5d23903e3f283b114f0d4bbfecd29d2cc64737840",
+    "verifierSha256": "2cf8dcec542420d7a7b6f5d7a2d6974e524f38a036d9040053eb28abfcaddde1",
+    "consumerSha256": "8985aa41bbe15ac62fc1b54016849831f6d3b53f1e1e6e4da8421b6ca83090a5",
+    "independentReview": "APPROVE"
+  },
+  "proofBoundary": {
+    "voiceOverSafari": "UNKNOWN",
+    "nvdaFirefox": "UNKNOWN",
+    "physicalIosSafari": "UNKNOWN",
+    "physicalAndroidChrome": "UNKNOWN",
+    "lowEndGpu": "UNKNOWN",
+    "orientation": "UNKNOWN",
+    "thermal": "UNKNOWN",
+    "memoryPressure": "UNKNOWN",
+    "externalEditors": "UNKNOWN"
+  }
+}

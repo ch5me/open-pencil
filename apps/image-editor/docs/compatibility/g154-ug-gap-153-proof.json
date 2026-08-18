@@ -1,0 +1,70 @@
+{
+  "schema": "ch5.image-editor.gap-proof.v1",
+  "proofId": "R19-GAP-153",
+  "goalId": "UG-GAP-153",
+  "repo": "mahjong-ch5",
+  "status": "blocked",
+  "scope": "collaboration-versioning-cloud-documents",
+  "requiredContract": [
+    "named-owner",
+    "trust-and-cost-envelope",
+    "deterministic-local-transactions",
+    "durable-autosave-reopen",
+    "deterministic-conflict-version-semantics",
+    "10000-operation-convergence",
+    "zero-unauthorized-disclosures",
+    "exact-runtime-and-consuming-effect"
+  ],
+  "gates": {
+    "ownership": "PARTIAL",
+    "trustAndCost": "UNKNOWN",
+    "localPersistence": "PARTIAL",
+    "autosaveReopen": "PARTIAL",
+    "hostedDocuments": "PARTIAL",
+    "collaborationTransport": "PARTIAL",
+    "conflictAndVersionSemantics": "PARTIAL",
+    "concurrentOperationConvergence": "FAIL",
+    "unauthorizedDisclosure": "UNKNOWN",
+    "consumingOutput": "UNKNOWN",
+    "rendererIdentity": "UNKNOWN",
+    "externalApplications": "UNKNOWN"
+  },
+  "crossRepositoryEvidence": {
+    "openPencil": {
+      "commit": "7e5410ac361b1bea00d2d79d5249ddc227142b94",
+      "collaboration": "Yjs local P2P and hosted Durable Object room source exists",
+      "autosave": "Opt-in 3-second sceneVersion debounce source and tests exist",
+      "hostedDocuments": "D1 metadata plus R2 snapshot/assets owner checks and tests exist",
+      "liveConsumer": "ABSENT"
+    },
+    "mahjong": {
+      "commit": "3921081e33bbe8051b848b71981008fcfa8d542f",
+      "localPersistence": "Version-preserving roots, asset deltas, save/reopen tests",
+      "collaboration": "ABSENT",
+      "hostedDocuments": "ABSENT",
+      "liveConsumer": "ABSENT"
+    },
+    "ch5Packages": {
+      "commit": "1b97a5c8b816a449a334160fa5f5a48470ca4ba0",
+      "imageEditorAuthority": "ABSENT",
+      "genericCollaborationContracts": "PRESENT_BUT_NOT_BOUND",
+      "liveConsumer": "ABSENT"
+    }
+  },
+  "unknownBoundaries": [
+    "10,000 concurrent-operation model",
+    "zero unauthorized disclosure run",
+    "browser",
+    "physical-device",
+    "real-safari",
+    "android-chrome",
+    "photoshop",
+    "affinity",
+    "krita",
+    "photopea"
+  ],
+  "acceptance": {
+    "triggerMet": false,
+    "reason": "No accepted image-editor ownership/trust/cost ADR, 10,000-operation convergence artifact, zero-disclosure result, or consuming runtime receipt."
+  }
+}
