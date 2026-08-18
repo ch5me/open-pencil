@@ -72,6 +72,14 @@ function git(args: string[]): string {
   return run('git', args)
 }
 
+function gitBytes(args: string[]): Buffer {
+  return execFileSync('git', args, { cwd: root })
+}
+
+function exportMapSha256(exports: Record<string, unknown>): string {
+  return sha256(`${JSON.stringify(exports)}\n`)
+}
+
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message)
 }
@@ -137,6 +145,29 @@ function writeRegistryConfig(path: string, token: string): void {
   chmodSync(path, 0o600)
 }
 
+function writeConsumerTsconfig(path: string): void {
+  writeFileSync(
+    path,
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          target: 'ES2022',
+          lib: ['ESNext', 'DOM', 'DOM.Iterable'],
+          module: 'ESNext',
+          moduleResolution: 'Bundler',
+          jsx: 'react-jsx',
+          strict: true,
+          noEmit: true,
+          skipLibCheck: true,
+          types: ['node', 'vite/client', 'vitest/globals']
+        }
+      },
+      null,
+      2
+    )}\n`
+  )
+}
+
 async function reservePort(): Promise<number> {
   const server = createServer()
   await new Promise<void>((resolve, reject) => {
@@ -174,7 +205,18 @@ for (const changed of h0.changedPaths) {
   const path = join(root, changed.path)
   assert(existsSync(path), `H0 path missing: ${changed.path}`)
   assert(sha256(readFileSync(path)) === changed.sha256, `H0 path hash drift: ${changed.path}`)
+  assert(
+    sha256(gitBytes(['show', `${h0.privatePackageTip}:${changed.path}`])) === changed.sha256,
+    `H0 path is not bound to package tip: ${changed.path}`
+  )
 }
+const packageAtTip = JSON.parse(
+  gitBytes(['show', `${h0.privatePackageTip}:packages/scene-graph/package.json`]).toString('utf8')
+) as PackageJson
+assert(
+  exportMapSha256(packageAtTip.exports ?? {}) === h0.package.exportMapSha256,
+  'H0 export-map hash is not bound to package tip'
+)
 
 for (const packageDir of packageDirs) {
   run('bun', ['--filter', `@open-pencil/${packageDir}`, 'build'])
@@ -303,7 +345,7 @@ const consumer = resolve(mkdtempSync(join(tmpdir(), 'open-pencil-k1-consumer-'))
 const consumerApp = join(consumer, 'apps/image-editor')
 mkdirSync(join(consumer, 'apps'), { recursive: true })
 cpSync(join(root, 'apps/image-editor'), consumerApp, { recursive: true })
-cpSync(join(root, 'tsconfig.json'), join(consumer, 'tsconfig.json'))
+writeConsumerTsconfig(join(consumer, 'tsconfig.json'))
 const appPackage = JSON.parse(readFileSync(join(consumerApp, 'package.json'), 'utf8')) as PackageJson
 const consumerDependencies = { ...(appPackage.dependencies ?? {}) }
 const consumerOverrides: Record<string, string> = {}
@@ -380,6 +422,7 @@ const runRuntime = (consumerRoot: string, runtime: 'bun' | 'node') => {
 runRuntime(consumer, 'bun')
 runRuntime(consumer, 'node')
 
+run('bunx', ['tsc', '--noEmit', '-p', 'apps/image-editor/tsconfig.json'], consumer)
 run('bun', ['node_modules/vite/bin/vite.js', 'build', '--config', 'apps/image-editor/vite.config.ts'], consumer)
 
 async function serveConsumer(consumerRoot: string): Promise<{ url: string; status: number; body: string }> {
@@ -415,7 +458,7 @@ const internalConsumer = resolve(mkdtempSync(join(tmpdir(), 'open-pencil-k1-inte
 const internalConsumerApp = join(internalConsumer, 'apps/image-editor')
 mkdirSync(join(internalConsumer, 'apps'), { recursive: true })
 cpSync(join(root, 'apps/image-editor'), internalConsumerApp, { recursive: true })
-cpSync(join(root, 'tsconfig.json'), join(internalConsumer, 'tsconfig.json'))
+writeConsumerTsconfig(join(internalConsumer, 'tsconfig.json'))
 const internalAppPackage = JSON.parse(readFileSync(join(internalConsumerApp, 'package.json'), 'utf8')) as PackageJson
 const internalDependencies = { ...(internalAppPackage.dependencies ?? {}) }
 const internalOverrides: Record<string, string> = {}
@@ -453,6 +496,7 @@ assert(!internalLockText.includes('file:'), 'internal consumer lockfile contains
 assertNoSymlinks(join(internalConsumer, 'node_modules'))
 runRuntime(internalConsumer, 'bun')
 runRuntime(internalConsumer, 'node')
+run('bunx', ['tsc', '--noEmit', '-p', 'apps/image-editor/tsconfig.json'], internalConsumer)
 run(
   'bun',
   ['node_modules/vite/bin/vite.js', 'build', '--config', 'apps/image-editor/vite.config.ts'],
