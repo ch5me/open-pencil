@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
 	maskCursorCenter,
@@ -7,8 +5,6 @@ import {
 	moveMaskCursor,
 	toggleMaskBrushMode
 } from './mask-keyboard';
-
-const demoSource = fs.readFileSync(path.join(__dirname, '../demo.tsx'), 'utf8');
 
 describe('mask keyboard cursor', () => {
 	it('moves by one step and clamps to the mask bounds', () => {
@@ -20,21 +16,6 @@ describe('mask keyboard cursor', () => {
 
 	it('starts the keyboard journey at the mask center', () => {
 		expect(maskCursorCenter({ width: 360, height: 240 })).toEqual({ x: 180, y: 120 });
-	});
-
-	it('exits mask mode with a guarded focus restore', () => {
-		expect(demoSource).toContain('maskReturnFocusRef');
-		expect(demoSource).toContain('event.key === \'Escape\'');
-		expect(demoSource).toContain('returnFocus?.isConnected');
-		expect(demoSource).toContain('!maskToolRef.current.disabled');
-		expect(demoSource).toContain('moveToolRef.current?.focus()');
-	});
-
-	it('records keyboard and pointer mask strokes as byte-backed history commands', () => {
-		expect(demoSource).toContain('new MaskStrokeHistory({');
-		expect(demoSource).toContain('historyRef.current.document');
-		expect(demoSource).toContain('maskStrokeRef.current?.finish(event.pointerId, historyRef.current)');
-		expect(demoSource).toContain('cancelMaskStroke(event.pointerId)');
 	});
 
 	it('toggles erase and reveal modes without pointer input', () => {

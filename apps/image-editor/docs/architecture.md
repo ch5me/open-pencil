@@ -55,9 +55,10 @@ export features return structured warnings. Never claim lossless PSD parity.
 - Pixel parity: `bun --filter @open-pencil/image-editor verify:parity`
 - Soak: `bun --filter @open-pencil/image-editor verify:soak`
 
-DOM-simulated component tests are intentionally absent. Model behavior stays in
-pure Node tests; integrated UI, persistence, input, renderer, and accessibility
-behavior belongs in the served browser proof.
+DOM-simulated component tests and source-text assertions are intentionally
+absent. Model behavior stays in pure Node tests; integrated UI, persistence,
+input, renderer, focus, and accessibility behavior belongs in the served
+browser proof.
 
 The GPU and PSD engines remain separate build chunks. Physical-device,
 external-editor, long-session, and low-end GPU claims remain `UNKNOWN` until
