@@ -1,0 +1,270 @@
+{
+  "schema": "ch5.image-editor.h0-receipt.v1",
+  "nodeId": "H0",
+  "status": "pass",
+  "recordedAt": "2026-08-18T22:52:00Z",
+  "sourceBaseline": "c3e734294302a0a08171a3f3c5e5afc128c1fd3e",
+  "integratedBase": "a808950dc4e1e68d802ef996f5f53f26e8ca4faa",
+  "privatePackageTip": "408ad70d53d98eab24e7278c8eecbcdd6bc1582b",
+  "ancestry": {
+    "sourceBaselineIsAncestor": true,
+    "integratedBaseIsParent": true
+  },
+  "changedPaths": [
+    {
+      "path": "packages/scene-graph/package.json",
+      "sha256": "a33424b2690de52e5265f0191fa09321b3bf90aaf5f7e78fdccf6fe7dc8456d4"
+    },
+    {
+      "path": "packages/scene-graph/scripts/smoke-dist.ts",
+      "sha256": "46058a2a67434d11c1dd3d87b114b672e81124e3448d95ceb422d12c474d1a7f"
+    },
+    {
+      "path": "packages/scene-graph/src/history.ts",
+      "sha256": "8e27809f5133b01ebacf9fd991ad2974d75fc0842b7baf176950fac6d1022b6c"
+    },
+    {
+      "path": "packages/scene-graph/src/id-allocation.ts",
+      "sha256": "5ce71920016e271ed74743faab8ef2d9eb615cffaf5f732a0cd675085989c49a"
+    },
+    {
+      "path": "packages/scene-graph/src/index.ts",
+      "sha256": "37eb7f9e21eee5995239cffc653c3e49fcf7164489c71b27b01d5ad5799a470b"
+    },
+    {
+      "path": "packages/scene-graph/src/variables.ts",
+      "sha256": "05d86dfe3501c603204796d56f2a17c3ddbac9bf367aeff29f7ef73798abd696"
+    },
+    {
+      "path": "tests/engine/scene-graph/history/immutable-state.test.ts",
+      "sha256": "86477c5136bf1c86d5984b7a453b76a8635802a2fe0e487b1129c2dc89b9b219"
+    },
+    {
+      "path": "tests/engine/scene-graph/history/undo-manager-compat.test.ts",
+      "sha256": "535c77ec673ed019be9a8face5fd78d83117ffbff9eb605c26bc4d3758ef607a"
+    },
+    {
+      "path": "tests/engine/scene-graph/id-allocation.test.ts",
+      "sha256": "e707f490dd629f2bee24c880b2d588b9ddb1693cfb07ce1797398e074596d25e"
+    },
+    {
+      "path": "tests/engine/scene-graph/variables-compat.test.ts",
+      "sha256": "bb1b3aace06ade469be2a350f78a4fa4d5163a3cb4cda79160b8ed8ea05c116c"
+    }
+  ],
+  "package": {
+    "name": "@open-pencil/scene-graph",
+    "version": "0.14.1",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "bun": "./src/index.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./copy": {
+        "types": "./dist/copy.d.ts",
+        "bun": "./src/copy.ts",
+        "import": "./dist/copy.js",
+        "default": "./dist/copy.js"
+      },
+      "./node-defaults": {
+        "types": "./dist/node-defaults.d.ts",
+        "bun": "./src/node-defaults.ts",
+        "import": "./dist/node-defaults.js",
+        "default": "./dist/node-defaults.js"
+      },
+      "./instances": {
+        "types": "./dist/instances.d.ts",
+        "bun": "./src/instances.ts",
+        "import": "./dist/instances.js",
+        "default": "./dist/instances.js"
+      },
+      "./snap": {
+        "types": "./dist/snap.d.ts",
+        "bun": "./src/snap.ts",
+        "import": "./dist/snap.js",
+        "default": "./dist/snap.js"
+      },
+      "./source-metadata": {
+        "types": "./dist/source-metadata.d.ts",
+        "bun": "./src/source-metadata.ts",
+        "import": "./dist/source-metadata.js",
+        "default": "./dist/source-metadata.js"
+      },
+      "./undo": {
+        "types": "./dist/undo.d.ts",
+        "bun": "./src/undo.ts",
+        "import": "./dist/undo.js",
+        "default": "./dist/undo.js"
+      },
+      "./history": {
+        "types": "./src/history.ts",
+        "bun": "./src/history.ts",
+        "import": "./dist/chunks/history.js",
+        "default": "./dist/chunks/history.js"
+      },
+      "./id-allocation": {
+        "types": "./src/id-allocation.ts",
+        "bun": "./src/id-allocation.ts",
+        "import": "./dist/chunks/id-allocation.js",
+        "default": "./dist/chunks/id-allocation.js"
+      },
+      "./variant-name": {
+        "types": "./dist/variant-name.d.ts",
+        "bun": "./src/variant-name.ts",
+        "import": "./dist/variant-name.js",
+        "default": "./dist/variant-name.js"
+      },
+      "./vector-network": {
+        "types": "./dist/vector-network.d.ts",
+        "bun": "./src/vector-network.ts",
+        "import": "./dist/vector-network.js",
+        "default": "./dist/vector-network.js"
+      },
+      "./types": {
+        "types": "./dist/types.d.ts",
+        "bun": "./src/types.ts",
+        "import": "./dist/types.js",
+        "default": "./dist/types.js"
+      },
+      "./primitives": {
+        "types": "./dist/primitives.d.ts",
+        "bun": "./src/primitives.ts",
+        "import": "./dist/primitives.js",
+        "default": "./dist/primitives.js"
+      },
+      "./constants": {
+        "types": "./dist/constants.d.ts",
+        "bun": "./src/constants.ts",
+        "import": "./dist/constants.js",
+        "default": "./dist/constants.js"
+      },
+      "./hit-test": {
+        "types": "./dist/hit-test.d.ts",
+        "bun": "./src/hit-test.ts",
+        "import": "./dist/hit-test.js",
+        "default": "./dist/hit-test.js"
+      },
+      "./preview": {
+        "types": "./dist/preview.d.ts",
+        "bun": "./src/preview.ts",
+        "import": "./dist/preview.js",
+        "default": "./dist/preview.js"
+      },
+      "./text-picture": {
+        "types": "./dist/text-picture.d.ts",
+        "bun": "./src/text-picture.ts",
+        "import": "./dist/text-picture.js",
+        "default": "./dist/text-picture.js"
+      },
+      "./variables": {
+        "types": "./dist/variables.d.ts",
+        "bun": "./src/variables.ts",
+        "import": "./dist/variables.js",
+        "default": "./dist/variables.js"
+      },
+      "./images": {
+        "types": "./dist/images.d.ts",
+        "bun": "./src/images.ts",
+        "import": "./dist/images.js",
+        "default": "./dist/images.js"
+      },
+      "./coordinate": {
+        "types": "./dist/coordinate.d.ts",
+        "bun": "./src/coordinate.ts",
+        "import": "./dist/coordinate.js",
+        "default": "./dist/coordinate.js"
+      },
+      "./matrix": {
+        "types": "./dist/matrix.d.ts",
+        "bun": "./src/matrix.ts",
+        "import": "./dist/matrix.js",
+        "default": "./dist/matrix.js"
+      },
+      "./geometry": {
+        "types": "./dist/geometry.d.ts",
+        "bun": "./src/geometry.ts",
+        "import": "./dist/geometry.js",
+        "default": "./dist/geometry.js"
+      },
+      "./resize": {
+        "types": "./dist/resize.d.ts",
+        "bun": "./src/resize.ts",
+        "import": "./dist/resize.js",
+        "default": "./dist/resize.js"
+      },
+      "./parse-path": {
+        "types": "./dist/parse-path.d.ts",
+        "bun": "./src/parse-path.ts",
+        "import": "./dist/parse-path.js",
+        "default": "./dist/parse-path.js"
+      }
+    },
+    "exportMapSha256": "9f59f5519b393a70da66465848e22ff592aeb9bd621ef917d92b1b1dd5d5ef4f"
+  },
+  "declarations": {
+    "root": {
+      "path": "packages/scene-graph/dist/index.d.ts",
+      "sha256": "c0cd02f6e17d18fb3da957f778c36e3fdce8880fbb998a6194b1de490ab05e3e"
+    },
+    "variables": {
+      "path": "packages/scene-graph/dist/variables.d.ts",
+      "sha256": "e0ba9c3706cb5e83310e43263246180a474d3cd293573d60cdcacbbb28bd3eb2"
+    },
+    "historyTypesSource": {
+      "path": "packages/scene-graph/src/history.ts",
+      "sha256": "8e27809f5133b01ebacf9fd991ad2974d75fc0842b7baf176950fac6d1022b6c"
+    },
+    "idAllocationTypesSource": {
+      "path": "packages/scene-graph/src/id-allocation.ts",
+      "sha256": "5ce71920016e271ed74743faab8ef2d9eb615cffaf5f732a0cd675085989c49a"
+    }
+  },
+  "tests": [
+    {
+      "command": "ch5 test tests/engine/scene-graph/history/immutable-state.test.ts --json",
+      "status": "pass",
+      "count": 3
+    },
+    {
+      "command": "ch5 test tests/engine/scene-graph/history/undo-manager-compat.test.ts --json",
+      "status": "pass",
+      "count": 1
+    },
+    {
+      "command": "ch5 test tests/engine/scene-graph/id-allocation.test.ts --json",
+      "status": "pass",
+      "count": 3
+    },
+    {
+      "command": "ch5 test tests/engine/scene-graph/variables-compat.test.ts --json",
+      "status": "pass",
+      "count": 2
+    },
+    {
+      "command": "bun --filter @open-pencil/scene-graph typecheck",
+      "status": "pass"
+    },
+    {
+      "command": "bun --filter @open-pencil/scene-graph build && bun --filter @open-pencil/scene-graph smoke:dist",
+      "status": "pass"
+    }
+  ],
+  "packedConsumer": {
+    "tarballSha256": "be38174d33db6d99a6d5f888504cd337109a9e41da58d08024687064536c4343",
+    "lockfileSha256": "d289713df39bc260d14bfcb45633cb302b3293b731c13b13d1d3a7f9c2b0ddbc",
+    "workspaceLinks": false,
+    "bunRuntime": "pass",
+    "nodeRuntime": "pass",
+    "temporaryEvidence": true
+  },
+  "unknown": [
+    "external-editor",
+    "physical-device",
+    "named-assistive-technology",
+    "signed-release",
+    "deployment",
+    "production-user"
+  ]
+}
