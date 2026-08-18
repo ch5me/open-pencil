@@ -1,0 +1,71 @@
+{
+  "schema": "ch5.proof-evidence/1",
+  "proofId": "standalone-image-editor",
+  "kind": "integration",
+  "stage": "dev",
+  "status": "pass",
+  "startedAt": "2026-08-18T06:38:18.005Z",
+  "finishedAt": "2026-08-18T06:38:46.843Z",
+  "durationMs": 28838,
+  "exitCode": 0,
+  "targets": [
+    "standalone-image-editor"
+  ],
+  "semantics": {
+    "schema": "ch5.proof-semantics/2",
+    "commit": "41e4142d68008362d2d0d9a0a4e02e249e48ade2",
+    "coveredSetSource": "proof-config",
+    "coveredSetItems": [
+      "proof:integration:standalone-image-editor",
+      "run:command:standaloneImageEditor",
+      "stage:dev",
+      "stage:production",
+      "stage:staging",
+      "trigger:path:apps/image-editor/**",
+      "trigger:path:bun.lock",
+      "trigger:path:package.json",
+      "trigger:path:pitchfork.toml"
+    ],
+    "coveredSetFingerprint": "sha256:e22c1d33ffcb0d33c035bdd35dae08545485303075b2715c004f20589efa7778",
+    "proofConfigFingerprint": "sha256:cb33b8c98a7651d800515e10c5afa64cefe53475cd3657e64685c8ceff080341",
+    "graphScannerFingerprint": "sha256:1eb6de8c26e1c0e731b5625dd006d4cedebf6da979edeeeb6da579420c1c6213",
+    "causalPolicyVersion": "sha256:b87f481f62c6a14c39829dcd040b2780edfb8ae4e4188442f6cb207d338a3ff2",
+    "selectorPolicyVersion": "ch5.proof-selector/2",
+    "oracleSemanticsVersion": "ch5.oracle.integration/1",
+    "tool": {
+      "name": "@ch5me/cli",
+      "version": "0.2.0",
+      "runtime": "node-24.3.0"
+    },
+    "dirtyWorktree": false,
+    "worktreeFingerprint": "sha256:e4eb1923cd3390d6e0f3c02f7a484a9c847fcbe24ac65963f274c9a57af15a26"
+  },
+  "meta": {
+    "commandKey": "standaloneImageEditor",
+    "commands": [
+      {
+        "command": "bun --filter @open-pencil/image-editor typecheck && bun --filter @open-pencil/image-editor test && bun --filter @open-pencil/image-editor test:e2e",
+        "status": "pass",
+        "exitCode": 0
+      }
+    ],
+    "proofLifecycle": {
+      "mode": "single-carrier-v1",
+      "sourceCommit": "41e4142d68008362d2d0d9a0a4e02e249e48ade2",
+      "sourceRef": "refs/heads/grove/cx-image-editor-production-swarm/open-pencil",
+      "filteredSourceFingerprint": "sha256:bcb4f29dd93395d75f12ce02a8e3ee2599af08739c045cf7401041e8c5abf0d2",
+      "evidenceScopes": [
+        {
+          "proofId": "standalone-image-editor",
+          "path": "artifacts/proof/standalone-image-editor",
+          "envelopePath": "artifacts/proof/standalone-image-editor/proof-evidence.json",
+          "kind": "directory"
+        }
+      ],
+      "carrierPaths": [
+        "artifacts/proof/standalone-image-editor/proof-evidence.json"
+      ],
+      "capturedEvidenceFingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}
