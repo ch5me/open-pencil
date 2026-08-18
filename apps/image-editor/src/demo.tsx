@@ -90,6 +90,7 @@ type EditorArchive = {
 
 const MIN_LAYER_SIZE = 24;
 const showNestedGroupProof = new URLSearchParams(window.location.search).get('proof') === 'nested-group';
+const showRecoveryFailureProof = new URLSearchParams(window.location.search).get('proof') === 'recovery-failure';
 function openPencilCorePixel(foregroundValue: number): string {
   const graph = new SceneGraph();
   const page = graph.getPages()[0];
@@ -555,6 +556,7 @@ export function ThreeCompositorDemo() {
           return canvasRef.current?.canvas ?? canvas;
         },
         replace: () => {
+          if (showRecoveryFailureProof) throw new Error('Seeded compositor recovery failure');
           if (!canvasRef.current) throw new Error('Compositor canvas unavailable during recovery');
           return canvasRef.current.replace();
         },

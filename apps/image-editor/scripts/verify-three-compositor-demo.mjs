@@ -818,6 +818,29 @@ async function runMaskKeyboardJourney(browser, url) {
 	}
 }
 
+async function runRecoveryFailureJourney(browser, url) {
+	const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+	const page = await context.newPage();
+	const errors = collectErrors(context, page);
+	try {
+		await page.goto(`${url}?backend=webgl&proof=recovery-failure`);
+		await page.getByTestId("canvas-workspace").click({ position: { x: 8, y: 8 } });
+		await waitForBackend(page, ["webgl2"]);
+		await loseWebGL2Context(page.getByTestId("compositor-canvas"));
+		await page.getByTestId("failure-panel")
+			.filter({ hasText: "Seeded compositor recovery failure" })
+			.waitFor({ state: "visible" });
+		if (await page.getByTestId("backend").textContent() !== "failed") {
+			throw new Error("Rejected compositor recovery did not enter failed state");
+		}
+		if (errors.length > 0) {
+			throw new Error(`Recovery failure page errors: ${[...new Set(errors)].join("; ")}`);
+		}
+	} finally {
+		await context.close();
+	}
+}
+
 async function runAccessibilityScan(browser, url) {
 	const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 	const page = await context.newPage();
@@ -1051,6 +1074,7 @@ try {
 		} else {
 			await runMaskKeyboardJourney(browser, url);
 			await runDesktop(browser, url, path.join(temporaryDirectory, "editor-document.json"), path.join(temporaryDirectory, "night-market.psd"));
+			await runRecoveryFailureJourney(browser, url);
 			await runMobile(browser, url);
 			console.log(`three compositor editor proof passed: viewport reopen, keyboard mask journey, desktop 1440x900, mobile 390x844; ${JSON.stringify(viewportReopen)}`);
 		}
