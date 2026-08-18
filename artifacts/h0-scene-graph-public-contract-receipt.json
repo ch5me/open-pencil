@@ -2,18 +2,20 @@
   "schema": "ch5.image-editor.h0-receipt.v1",
   "nodeId": "H0",
   "status": "pass",
-  "recordedAt": "2026-08-18T22:52:00Z",
+  "recordedAt": "2026-08-18T23:12:51Z",
   "sourceBaseline": "c3e734294302a0a08171a3f3c5e5afc128c1fd3e",
   "integratedBase": "a808950dc4e1e68d802ef996f5f53f26e8ca4faa",
-  "privatePackageTip": "408ad70d53d98eab24e7278c8eecbcdd6bc1582b",
+  "privatePackageTip": "ee4465f657418d87586105c5ceda5869bc0e7e97",
   "ancestry": {
     "sourceBaselineIsAncestor": true,
-    "integratedBaseIsParent": true
+    "integratedBaseIsAncestor": true,
+    "initialH0ImplementationIsAncestor": true,
+    "repairParentReceiptCommit": "0de285fa00a8f0d2f00a7e24bd936e7b145c9ee4"
   },
   "changedPaths": [
     {
       "path": "packages/scene-graph/package.json",
-      "sha256": "a33424b2690de52e5265f0191fa09321b3bf90aaf5f7e78fdccf6fe7dc8456d4"
+      "sha256": "6051de5f3b2ead8ea4cd3b24b6ae077b6e7feeee10d376be9b411968b1011105"
     },
     {
       "path": "packages/scene-graph/scripts/smoke-dist.ts",
@@ -21,7 +23,7 @@
     },
     {
       "path": "packages/scene-graph/src/history.ts",
-      "sha256": "8e27809f5133b01ebacf9fd991ad2974d75fc0842b7baf176950fac6d1022b6c"
+      "sha256": "ba898ea56b8ef0328fae6d01698632c6adbf5c6cc9d84cbc65a21c58bd0a0797"
     },
     {
       "path": "packages/scene-graph/src/id-allocation.ts",
@@ -29,7 +31,7 @@
     },
     {
       "path": "packages/scene-graph/src/index.ts",
-      "sha256": "37eb7f9e21eee5995239cffc653c3e49fcf7164489c71b27b01d5ad5799a470b"
+      "sha256": "e7911e11982f1821b639c8e857c5ac90c9721fd4c64f8ee962f300ba77c141ff"
     },
     {
       "path": "packages/scene-graph/src/variables.ts",
@@ -37,7 +39,7 @@
     },
     {
       "path": "tests/engine/scene-graph/history/immutable-state.test.ts",
-      "sha256": "86477c5136bf1c86d5984b7a453b76a8635802a2fe0e487b1129c2dc89b9b219"
+      "sha256": "0f78817fdc3e5682b5fecd4f60c715c2deff0d9ca77ff6d323081c45c07c648f"
     },
     {
       "path": "tests/engine/scene-graph/history/undo-manager-compat.test.ts",
@@ -45,7 +47,7 @@
     },
     {
       "path": "tests/engine/scene-graph/id-allocation.test.ts",
-      "sha256": "e707f490dd629f2bee24c880b2d588b9ddb1693cfb07ce1797398e074596d25e"
+      "sha256": "6b000e4632e9243196e6597fe82335d85741d577623b3ece3117b9315704f22e"
     },
     {
       "path": "tests/engine/scene-graph/variables-compat.test.ts",
@@ -99,13 +101,13 @@
         "default": "./dist/undo.js"
       },
       "./history": {
-        "types": "./src/history.ts",
+        "types": "./dist/history.d.ts",
         "bun": "./src/history.ts",
         "import": "./dist/chunks/history.js",
         "default": "./dist/chunks/history.js"
       },
       "./id-allocation": {
-        "types": "./src/id-allocation.ts",
+        "types": "./dist/id-allocation.d.ts",
         "bun": "./src/id-allocation.ts",
         "import": "./dist/chunks/id-allocation.js",
         "default": "./dist/chunks/id-allocation.js"
@@ -201,7 +203,7 @@
         "default": "./dist/parse-path.js"
       }
     },
-    "exportMapSha256": "9f59f5519b393a70da66465848e22ff592aeb9bd621ef917d92b1b1dd5d5ef4f"
+    "exportMapSha256": "de3b1a23d916b4c64fdbe35d68cffbe4fdf3bee666e72386f1d9bfec67ff9f14"
   },
   "declarations": {
     "root": {
@@ -212,20 +214,20 @@
       "path": "packages/scene-graph/dist/variables.d.ts",
       "sha256": "e0ba9c3706cb5e83310e43263246180a474d3cd293573d60cdcacbbb28bd3eb2"
     },
-    "historyTypesSource": {
-      "path": "packages/scene-graph/src/history.ts",
-      "sha256": "8e27809f5133b01ebacf9fd991ad2974d75fc0842b7baf176950fac6d1022b6c"
+    "history": {
+      "path": "packages/scene-graph/dist/history.d.ts",
+      "sha256": "4fb426790d5f61d32f22d0e27986351ad6fd4c40f62b245dd057c5ff8196ee76"
     },
-    "idAllocationTypesSource": {
-      "path": "packages/scene-graph/src/id-allocation.ts",
-      "sha256": "5ce71920016e271ed74743faab8ef2d9eb615cffaf5f732a0cd675085989c49a"
+    "idAllocation": {
+      "path": "packages/scene-graph/dist/id-allocation.d.ts",
+      "sha256": "c6ff91ff7175820136a5cbca7840b283f03c87375d2bbdc3bba5cc5cd9ccbf2b"
     }
   },
   "tests": [
     {
       "command": "ch5 test tests/engine/scene-graph/history/immutable-state.test.ts --json",
       "status": "pass",
-      "count": 3
+      "count": 5
     },
     {
       "command": "ch5 test tests/engine/scene-graph/history/undo-manager-compat.test.ts --json",
@@ -235,7 +237,7 @@
     {
       "command": "ch5 test tests/engine/scene-graph/id-allocation.test.ts --json",
       "status": "pass",
-      "count": 3
+      "count": 4
     },
     {
       "command": "ch5 test tests/engine/scene-graph/variables-compat.test.ts --json",
@@ -249,14 +251,23 @@
     {
       "command": "bun --filter @open-pencil/scene-graph build && bun --filter @open-pencil/scene-graph smoke:dist",
       "status": "pass"
+    },
+    {
+      "command": "bunx tsc --noEmit -p <fresh-packed-consumer>/tsconfig.json",
+      "status": "pass"
     }
   ],
   "packedConsumer": {
-    "tarballSha256": "be38174d33db6d99a6d5f888504cd337109a9e41da58d08024687064536c4343",
-    "lockfileSha256": "d289713df39bc260d14bfcb45633cb302b3293b731c13b13d1d3a7f9c2b0ddbc",
-    "workspaceLinks": false,
+    "tarballPath": "/tmp/h0-final-pack.L8MTNJ/open-pencil-scene-graph-0.14.1.tgz",
+    "tarballSha256": "6fa9c7b815e21848abc3b944afc5217e61a3ddfed1c720e5ce021a6bda767acd",
+    "consumerPath": "/tmp/h0-final-consumer.b1RDil",
+    "lockfilePath": "/tmp/h0-final-consumer.b1RDil/bun.lock",
+    "lockfileSha256": "6398b5766127a99d37e4646406a48e1f541685d6ee04c908cb2e39fb59600da9",
+    "workspacePackageLinks": false,
+    "typescriptConsumer": "pass",
     "bunRuntime": "pass",
     "nodeRuntime": "pass",
+    "runtimeOutput": "1 0:3",
     "temporaryEvidence": true
   },
   "unknown": [
