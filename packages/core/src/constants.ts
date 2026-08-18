@@ -341,7 +341,6 @@ export const DEFAULT_AI_MODEL =
 
 export const AUTOMATION_HTTP_PORT = 7600
 
-export const GOOGLE_FONTS_API_KEY = 'AIzaSyD1tYDR_dUEiV-Tw1vksEhZbUytgKW5pc8'
 
 export const CJK_FALLBACK_FAMILIES_MACOS = [
   'PingFang SC',
