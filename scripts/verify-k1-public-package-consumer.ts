@@ -168,6 +168,44 @@ function writeConsumerTsconfig(path: string): void {
   )
 }
 
+type ServedPackageIdentity = Record<
+  string,
+  { version: string; packageJsonSha256: string; sourceTarballSha256: string }
+>
+
+function installedPackageIdentity(
+  consumerRoot: string,
+  tarballHashes: Record<string, string>
+): ServedPackageIdentity {
+  return Object.fromEntries(
+    packageNames.map((name) => {
+      const packageJsonPath = join(consumerRoot, 'node_modules', ...name.split('/'), 'package.json')
+      const packageJsonBytes = readFileSync(packageJsonPath)
+      const packageJson = JSON.parse(packageJsonBytes.toString('utf8')) as PackageJson
+      return [
+        name,
+        {
+          version: packageJson.version,
+          packageJsonSha256: sha256(packageJsonBytes),
+          sourceTarballSha256: tarballHashes[name]
+        }
+      ]
+    })
+  )
+}
+
+function injectServedIdentity(appRoot: string, identity: ServedPackageIdentity): string {
+  const digest = sha256(JSON.stringify(identity))
+  const indexPath = join(appRoot, 'index.html')
+  const html = readFileSync(indexPath, 'utf8')
+  assert(html.includes('</head>'), 'consumer app index is missing </head>')
+  writeFileSync(
+    indexPath,
+    html.replace('</head>', `  <meta name="ch5-k1-package-identity" content="${digest}">\n</head>`)
+  )
+  return digest
+}
+
 async function reservePort(): Promise<number> {
   const server = createServer()
   await new Promise<void>((resolve, reject) => {
@@ -273,6 +311,9 @@ rmSync(internalTarballDir, { recursive: true, force: true })
 mkdirSync(internalTarballDir, { recursive: true })
 const npmrcPath = join(mkdtempSync(join(tmpdir(), 'open-pencil-k1-npmrc-')), 'npmrc')
 writeRegistryConfig(npmrcPath, npmToken)
+const npmrcDir = dirname(npmrcPath)
+const cleanupNpmrc = () => rmSync(npmrcDir, { recursive: true, force: true })
+process.once('exit', cleanupNpmrc)
 const registryEnv = { NPM_CONFIG_USERCONFIG: npmrcPath }
 
 for (const packageName of packageNames) {
@@ -298,14 +339,20 @@ for (const packageName of packageNames) {
   const integrity = sha512Integrity(readFileSync(internalTarball))
   const view = spawnSync(
     'npm',
-    ['view', `${packageName}@${internalVersion}`, 'dist.integrity', '--registry', internalRegistry],
+    ['view', `${packageName}@${internalVersion}`, 'dist.integrity', '--registry', internalRegistry, '--json'],
     { cwd: root, env: { ...process.env, ...registryEnv }, encoding: 'utf8' }
   )
   let publish: 'published' | 'already-present'
   if (view.status === 0 && view.stdout.trim()) {
-    assert(view.stdout.trim() === integrity, `internal package integrity drift: ${packageName}@${internalVersion}`)
+    const publishedIntegrity = JSON.parse(view.stdout) as string
+    assert(publishedIntegrity === integrity, `internal package integrity drift: ${packageName}@${internalVersion}`)
     publish = 'already-present'
   } else {
+    const viewFailure = `${view.stdout}\n${view.stderr}`
+    assert(
+      viewFailure.includes('E404'),
+      `internal registry lookup failed for ${packageName}@${internalVersion}: ${viewFailure.trim()}`
+    )
     run(
       'npm',
       ['publish', internalTarball, '--registry', internalRegistry, '--tag', 'image-editor-r13'],
@@ -412,6 +459,11 @@ const privateImportFindings = [
   ...scanText(join(consumer, 'node_modules'), privateImportPatterns)
 ]
 assert(privateImportFindings.length === 0, `private import(s) found:\n${privateImportFindings.join('\n')}`)
+const packedPackageIdentity = installedPackageIdentity(
+  consumer,
+  Object.fromEntries(packageNames.map((name) => [name, packageMetadata[name].tarballSha256]))
+)
+const packedIdentityDigest = injectServedIdentity(consumerApp, packedPackageIdentity)
 
 const runRuntime = (consumerRoot: string, runtime: 'bun' | 'node') => {
   const source = `
@@ -471,6 +523,10 @@ async function serveConsumer(consumerRoot: string): Promise<{ url: string; statu
   }
 }
 const packedServed = await serveConsumer(consumer)
+assert(
+  packedServed.body.includes(`content="${packedIdentityDigest}"`),
+  'packed package identity was not observed in served HTML'
+)
 
 const internalConsumer = resolve(mkdtempSync(join(tmpdir(), 'open-pencil-k1-internal-consumer-')))
 const internalConsumerApp = join(internalConsumer, 'apps/image-editor')
@@ -502,8 +558,11 @@ writeFileSync(
   )}\n`
 )
 cpSync(npmrcPath, join(internalConsumer, '.npmrc'))
-run('bun', ['install', '--no-progress'], internalConsumer, registryEnv)
-rmSync(join(internalConsumer, '.npmrc'), { force: true })
+try {
+  run('bun', ['install', '--no-progress'], internalConsumer, registryEnv)
+} finally {
+  rmSync(join(internalConsumer, '.npmrc'), { force: true })
+}
 const internalLockPath = join(internalConsumer, 'bun.lock')
 assert(existsSync(internalLockPath), 'internal consumer lockfile missing')
 const internalLockBytes = readFileSync(internalLockPath)
@@ -512,6 +571,11 @@ assert(!internalLockText.includes('workspace:'), 'internal consumer lockfile con
 assert(!internalLockText.includes('link:'), 'internal consumer lockfile contains link dependency')
 assert(!internalLockText.includes('file:'), 'internal consumer lockfile contains file dependency')
 assertNoSymlinks(join(internalConsumer, 'node_modules'))
+const internalPackageIdentity = installedPackageIdentity(
+  internalConsumer,
+  Object.fromEntries(packageNames.map((name) => [name, internalPackageMetadata[name].tarballSha256]))
+)
+const internalIdentityDigest = injectServedIdentity(internalConsumerApp, internalPackageIdentity)
 runRuntime(internalConsumer, 'bun')
 runRuntime(internalConsumer, 'node')
 run('bunx', ['tsc', '--noEmit', '-p', 'apps/image-editor/tsconfig.json'], internalConsumer)
@@ -521,6 +585,10 @@ run(
   internalConsumer
 )
 const internalServed = await serveConsumer(internalConsumer)
+assert(
+  internalServed.body.includes(`content="${internalIdentityDigest}"`),
+  'internal package identity was not observed in served HTML'
+)
 
 const exportMap = {
   schema: 'ch5.image-editor.k1-export-map.v1',
@@ -603,6 +671,9 @@ const receipt = {
         packageTarballs: Object.fromEntries(
           packageNames.map((name) => [name, packageMetadata[name].tarballSha256])
         ),
+        packageIdentity: packedPackageIdentity,
+        packageIdentityDigest: packedIdentityDigest,
+        observedFromServedHtml: true,
         result: 'pass'
       },
       temporaryPath: consumer
@@ -624,6 +695,9 @@ const receipt = {
         htmlSha256: sha256(internalServed.body),
         sourceTip: h0.privatePackageTip,
         packageVersion: internalVersion,
+        packageIdentity: internalPackageIdentity,
+        packageIdentityDigest: internalIdentityDigest,
+        observedFromServedHtml: true,
         result: 'pass'
       },
       temporaryPath: internalConsumer
@@ -632,7 +706,8 @@ const receipt = {
   unknown: ['external-editor', 'physical-device', 'named-assistive-technology', 'signed-release', 'deployment', 'production-user']
 }
 writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`)
-rmSync(dirname(npmrcPath), { recursive: true, force: true })
+process.removeListener('exit', cleanupNpmrc)
+cleanupNpmrc()
 console.log(
   JSON.stringify(
     { status: 'pass', receiptPath, exportMapPath, lockfilePath, tarballDir, packedConsumer: consumer, internalConsumer },
