@@ -1,10 +1,6 @@
 export type HistoryEntryId = `history:${string}`
 
-export type HistoryDispositionReason =
-  | 'coalesced'
-  | 'redo-invalidated'
-  | 'trimmed'
-  | 'cleared'
+export type HistoryDispositionReason = 'coalesced' | 'redo-invalidated' | 'trimmed' | 'cleared'
 
 export interface ImmutableHistoryEntry<TSnapshot> {
   readonly id: HistoryEntryId
@@ -177,7 +173,9 @@ function immutableClone<T>(value: T): T {
       const immutable = immutableCollection(
         candidate,
         new Set(
-          Object.getOwnPropertyNames(Date.prototype).filter((property) => property.startsWith('set'))
+          Object.getOwnPropertyNames(Date.prototype).filter((property) =>
+            property.startsWith('set')
+          )
         )
       )
       seen.set(candidate, immutable)
@@ -232,9 +230,7 @@ export function createHistoryState<TSnapshot>(
   return freezeState(Math.max(0, Math.floor(limit)), new Map(), [], [])
 }
 
-export function validateHistoryState<TSnapshot>(
-  state: ImmutableHistoryState<TSnapshot>
-): void {
+export function validateHistoryState<TSnapshot>(state: ImmutableHistoryState<TSnapshot>): void {
   if (state.version !== 'open-pencil-history:1') throw new Error('Invalid history version')
   if (Number.isNaN(state.limit) || state.limit < 0) throw new Error('Invalid history limit')
   const seen = new Set<HistoryEntryId>()
@@ -284,10 +280,11 @@ export function planHistoryRecord<TSnapshot>(
   }
 
   const next = freezeState(state.limit, entries, undo, [])
+  const selectedSnapshot = next.entries.get(entry.id)?.after ?? immutableClone(entry.after)
   return Object.freeze({
     previous: state,
     next,
-    selectedSnapshot: entry.after,
+    selectedSnapshot,
     disposition: Object.freeze({ disposed: Object.freeze(disposed) }),
     operation: 'record' as const
   })

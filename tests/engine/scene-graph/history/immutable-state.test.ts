@@ -54,9 +54,7 @@ describe('immutable SceneGraph history', () => {
       coalesceKey: 'drag'
     })
     expect(coalesced.next.entries.get(id('two'))?.before).toBe(0)
-    expect(coalesced.disposition.disposed).toEqual([
-      { entryId: id('one'), reason: 'coalesced' }
-    ])
+    expect(coalesced.disposition.disposed).toEqual([{ entryId: id('one'), reason: 'coalesced' }])
 
     state = planHistoryRecord(coalesced.next, {
       id: id('three'),
@@ -81,9 +79,7 @@ describe('immutable SceneGraph history', () => {
       before: 4,
       after: 5
     })
-    expect(trimmed.disposition.disposed).toEqual([
-      { entryId: id('two'), reason: 'trimmed' }
-    ])
+    expect(trimmed.disposition.disposed).toEqual([{ entryId: id('two'), reason: 'trimmed' }])
     validateHistoryState(trimmed.next)
   })
 
@@ -156,6 +152,10 @@ describe('immutable SceneGraph history', () => {
     expect(() => entry.before.bytes.fill(9)).toThrow(TypeError)
     expect(entry.before.bytes[0]).toBe(1)
     expect(new Uint8Array(entry.before.bytes.buffer)[0]).toBe(1)
+    expect(recorded.selectedSnapshot).toBe(entry.after)
+    expect(() => {
+      recorded.selectedSnapshot.value = 9
+    }).toThrow(TypeError)
   })
 
   test('coalesces and records previously immutable complex snapshots', () => {
@@ -201,6 +201,7 @@ describe('immutable SceneGraph history', () => {
   })
 
   test('limit zero immediately disposes recorded entries', () => {
+    const after = { value: 1 }
     const recorded = planHistoryRecord(createHistoryState<number>(0), {
       id: id('zero'),
       label: 'zero',
@@ -209,8 +210,17 @@ describe('immutable SceneGraph history', () => {
     })
     expect(recorded.next.entries.size).toBe(0)
     expect(recorded.next.undoEntryIds).toEqual([])
-    expect(recorded.disposition.disposed).toEqual([
-      { entryId: id('zero'), reason: 'trimmed' }
-    ])
+    expect(recorded.disposition.disposed).toEqual([{ entryId: id('zero'), reason: 'trimmed' }])
+
+    const objectRecord = planHistoryRecord(createHistoryState<typeof after>(0), {
+      id: id('zero-object'),
+      label: 'zero object',
+      before: { value: 0 },
+      after
+    })
+    expect(objectRecord.selectedSnapshot).not.toBe(after)
+    expect(() => {
+      objectRecord.selectedSnapshot.value = 2
+    }).toThrow(TypeError)
   })
 })
