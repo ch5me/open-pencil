@@ -16,7 +16,7 @@
     "test:e2e": "bun run build && node scripts/verify-three-compositor-demo.mjs"
   },
   "dependencies": {
-    "@ch5me/ch5-ui-web": "0.10.0",
+    "@ch5me/ch5-ui-web": "0.10.2",
     "@open-pencil/core": "workspace:*",
     "@open-pencil/scene-graph": "workspace:*",
     "ag-psd": "^31.0.2",

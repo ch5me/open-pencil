@@ -5,3 +5,6 @@
 # tests/helpers/mcp/discovery-isolation.ts for the rationale.
 [test]
 preload = ["./tests/helpers/mcp/discovery-isolation.ts"]
+
+[install.scopes]
+"@ch5me" = { token = "$NPM_TOKEN", url = "https://npm.ch5.me/" }
