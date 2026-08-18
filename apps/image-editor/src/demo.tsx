@@ -691,7 +691,15 @@ export function ThreeCompositorDemo() {
         compositor.render();
       } catch (cause) {
         const failure = { kind: 'renderer-error', message: cause instanceof Error ? cause.message : 'Compositor render failed', cause } satisfies CompositorFailure;
-        void controller.recover(failure).catch(() => undefined);
+        void controller.recover(failure).catch(recoveryCause => {
+          if (!mountedRef.current) return;
+          setFailure({
+            kind: 'renderer-error',
+            message: recoveryCause instanceof Error ? recoveryCause.message : 'Compositor recovery failed',
+            cause: recoveryCause
+          });
+          setBackend('failed');
+        });
       }
     }
   }, [assetVersion, documentValue]);
