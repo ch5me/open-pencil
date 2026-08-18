@@ -2,15 +2,15 @@
   "schema": "ch5.image-editor.h0-receipt.v1",
   "nodeId": "H0",
   "status": "pass",
-  "recordedAt": "2026-08-18T23:12:51Z",
+  "recordedAt": "2026-08-18T23:29:10Z",
   "sourceBaseline": "c3e734294302a0a08171a3f3c5e5afc128c1fd3e",
   "integratedBase": "a808950dc4e1e68d802ef996f5f53f26e8ca4faa",
-  "privatePackageTip": "ee4465f657418d87586105c5ceda5869bc0e7e97",
+  "privatePackageTip": "4b05b916e23d0552e49520beb59134c876df2119",
   "ancestry": {
     "sourceBaselineIsAncestor": true,
     "integratedBaseIsAncestor": true,
     "initialH0ImplementationIsAncestor": true,
-    "repairParentReceiptCommit": "0de285fa00a8f0d2f00a7e24bd936e7b145c9ee4"
+    "packageTipPathsVerifiedFromGitObjects": true
   },
   "changedPaths": [
     {
@@ -23,7 +23,7 @@
     },
     {
       "path": "packages/scene-graph/src/history.ts",
-      "sha256": "ba898ea56b8ef0328fae6d01698632c6adbf5c6cc9d84cbc65a21c58bd0a0797"
+      "sha256": "31c7e6676cf12ba5d7e0ed2b5cd5da1cb78d651abe591adba59221a348b3bb35"
     },
     {
       "path": "packages/scene-graph/src/id-allocation.ts",
@@ -31,7 +31,7 @@
     },
     {
       "path": "packages/scene-graph/src/index.ts",
-      "sha256": "e7911e11982f1821b639c8e857c5ac90c9721fd4c64f8ee962f300ba77c141ff"
+      "sha256": "23ed7ce65f7cf4342e358596dc7b163ddc78f8f5467a8ab7f9b8aaabc875b99b"
     },
     {
       "path": "packages/scene-graph/src/variables.ts",
@@ -39,7 +39,7 @@
     },
     {
       "path": "tests/engine/scene-graph/history/immutable-state.test.ts",
-      "sha256": "0f78817fdc3e5682b5fecd4f60c715c2deff0d9ca77ff6d323081c45c07c648f"
+      "sha256": "5662845e037f666f5a8ed6fb728baf15472975401ca8768f2240ba3ecfb6c593"
     },
     {
       "path": "tests/engine/scene-graph/history/undo-manager-compat.test.ts",
@@ -203,7 +203,8 @@
         "default": "./dist/parse-path.js"
       }
     },
-    "exportMapSha256": "de3b1a23d916b4c64fdbe35d68cffbe4fdf3bee666e72386f1d9bfec67ff9f14"
+    "exportMapSha256": "de3b1a23d916b4c64fdbe35d68cffbe4fdf3bee666e72386f1d9bfec67ff9f14",
+    "exportMapCanonicalization": "JSON.stringify(exports) plus LF, insertion order from package.json"
   },
   "declarations": {
     "root": {
@@ -227,7 +228,7 @@
     {
       "command": "ch5 test tests/engine/scene-graph/history/immutable-state.test.ts --json",
       "status": "pass",
-      "count": 5
+      "count": 6
     },
     {
       "command": "ch5 test tests/engine/scene-graph/history/undo-manager-compat.test.ts --json",
@@ -253,22 +254,33 @@
       "status": "pass"
     },
     {
-      "command": "bunx tsc --noEmit -p <fresh-packed-consumer>/tsconfig.json",
+      "command": "bunx tsc --noEmit -p /tmp/h0-final2-consumer.zPnICy/tsconfig.json",
       "status": "pass"
     }
   ],
   "packedConsumer": {
-    "tarballPath": "/tmp/h0-final-pack.L8MTNJ/open-pencil-scene-graph-0.14.1.tgz",
-    "tarballSha256": "6fa9c7b815e21848abc3b944afc5217e61a3ddfed1c720e5ce021a6bda767acd",
-    "consumerPath": "/tmp/h0-final-consumer.b1RDil",
-    "lockfilePath": "/tmp/h0-final-consumer.b1RDil/bun.lock",
-    "lockfileSha256": "6398b5766127a99d37e4646406a48e1f541685d6ee04c908cb2e39fb59600da9",
+    "tarballPath": "/tmp/h0-final2-pack.XgeBWG/open-pencil-scene-graph-0.14.1.tgz",
+    "tarballSha256": "1baf037704358dfaff464281821c2fbfea4c80c50d85a2c6ebcbbcb7301ad050",
+    "consumerPath": "/tmp/h0-final2-consumer.zPnICy",
+    "lockfilePath": "/tmp/h0-final2-consumer.zPnICy/bun.lock",
+    "lockfileSha256": "fd25cb18a3f7bac1a18594977da365ec8ee68210d3de7136b3cef724f9e2f108",
+    "fixtureHashes": {
+      "packageJsonSha256": "826a6eb9e058895755f22b390fcc7b663b237f46c04b2e0f928a5539573d8e5b",
+      "tsconfigSha256": "523dc90923539c11eb8c743484cce53f3b81b2fa94774ce38444554f2511db58",
+      "sourceSha256": "9ce3e4f2d2f6f9c5eb6c264c42e81cff62cf27b42801ae30c59781773e78144c"
+    },
+    "fixture": {
+      "packageJson": "{\"name\":\"h0-final2-consumer\",\"private\":true,\"type\":\"module\",\"dependencies\":{\"@open-pencil/scene-graph\":\"file:/tmp/h0-final2-pack.XgeBWG/open-pencil-scene-graph-0.14.1.tgz\"},\"devDependencies\":{\"typescript\":\"~5.8.3\"}}\n",
+      "tsconfig": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"ESNext\",\"moduleResolution\":\"Bundler\",\"strict\":true,\"noEmit\":true,\"skipLibCheck\":false},\"include\":[\"index.ts\"]}\n",
+      "source": "import { SceneGraph, createHistoryState, deriveSceneGraphIdAllocatorState } from '@open-pencil/scene-graph'\nimport { planHistoryRecord, type ImmutableHistoryState } from '@open-pencil/scene-graph/history'\nimport { SceneGraphIdAllocator, type SceneGraphIdAllocatorStateV1 } from '@open-pencil/scene-graph/id-allocation'\nimport { createCollection } from '@open-pencil/scene-graph/variables'\nconst graph = new SceneGraph()\nconst state: SceneGraphIdAllocatorStateV1 = deriveSceneGraphIdAllocatorState(graph)\nconst history: ImmutableHistoryState<Map<string, Uint8Array>> = planHistoryRecord(createHistoryState<Map<string, Uint8Array>>(), {id:'history:1',label:'x',before:new Map([['x',new Uint8Array([1])]]),after:new Map()}).next\nconst allocator = new SceneGraphIdAllocator([], state)\nconst ids = ['external:collection','external:mode']\ncreateCollection(graph, () => ids.shift() ?? 'missing', 'Tokens')\nconst snapshot = history.entries.get('history:1')?.before\nif (!snapshot) throw new Error('missing snapshot')\nlet blocked = 0\ntry { snapshot.set('y', new Uint8Array([2])) } catch { blocked++ }\ntry { snapshot.get('x')?.fill(9) } catch { blocked++ }\nif (blocked !== 2) throw new Error('snapshot mutation was not blocked')\nconsole.log(history.undoEntryIds.length, allocator.allocate(), snapshot.get('x')?.[0])\n"
+    },
     "workspacePackageLinks": false,
     "typescriptConsumer": "pass",
     "bunRuntime": "pass",
     "nodeRuntime": "pass",
-    "runtimeOutput": "1 0:3",
-    "temporaryEvidence": true
+    "runtimeOutput": "1 0:3 1",
+    "temporaryWorkspace": true,
+    "reproducibleFromEmbeddedFixture": true
   },
   "unknown": [
     "external-editor",
