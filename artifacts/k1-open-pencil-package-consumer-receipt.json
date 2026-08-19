@@ -2,7 +2,7 @@
   "schema": "ch5.image-editor.k1-package-consumer-receipt.v1",
   "nodeId": "K1",
   "status": "pass",
-  "recordedAt": "2026-08-19T00:08:39.288Z",
+  "recordedAt": "2026-08-19T00:16:58.851Z",
   "repository": {
     "repo": "https://git.ch5.me/ch5/open-pencil.git",
     "sourceWorktree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-standalone-engine-plan",
@@ -879,6 +879,35 @@
             "publish": "already-present"
           }
         }
+      },
+      {
+        "recordedAt": "2026-08-19T00:16:58.851Z",
+        "packages": {
+          "@open-pencil/agent-contracts": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/kiwi": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/pen": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/fig": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/scene-graph": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/core": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          }
+        }
       }
     ],
     "confirmed404Publish": true,
@@ -897,7 +926,7 @@
       },
       "appBuild": "pass",
       "servedIdentity": {
-        "url": "http://127.0.0.1:61608/",
+        "url": "http://127.0.0.1:49413/",
         "status": 200,
         "htmlSha256": "8a1e5faed6461d7927de41c32ce9c9ea4497f3c11590192b71a0b9b0441a2ee9",
         "sourceTip": "5c0e44bc41b4e4f10cb2580145ad38b17cb3b4e1",
@@ -945,7 +974,6 @@
         "observedFromServedHtml": true,
         "result": "pass"
       },
-      "temporaryPath": "/var/folders/cw/7r3c18156k3fq3pb22p0d6840000gn/T/open-pencil-k1-consumer-x90YlB",
       "cleaned": true
     },
     "internalRegistry": {
@@ -1012,7 +1040,7 @@
       },
       "appBuild": "pass",
       "servedIdentity": {
-        "url": "http://127.0.0.1:61637/",
+        "url": "http://127.0.0.1:49505/",
         "status": 200,
         "htmlSha256": "c1494b518eadf9d6a5ad334d8c0088caf26528cf66cc6be781332ae33bd641c4",
         "sourceTip": "5c0e44bc41b4e4f10cb2580145ad38b17cb3b4e1",
@@ -1053,7 +1081,6 @@
         "observedFromServedHtml": true,
         "result": "pass"
       },
-      "temporaryPath": "/var/folders/cw/7r3c18156k3fq3pb22p0d6840000gn/T/open-pencil-k1-internal-consumer-pmmsO5",
       "cleaned": true
     }
   },

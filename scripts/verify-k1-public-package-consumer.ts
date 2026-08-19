@@ -843,7 +843,6 @@ try {
           observedFromServedHtml: true,
           result: 'pass'
         },
-        temporaryPath: consumer,
         cleaned: true
       },
       internalRegistry: {
@@ -868,7 +867,6 @@ try {
           observedFromServedHtml: true,
           result: 'pass'
         },
-        temporaryPath: internalConsumer,
         cleaned: true
       }
     },
@@ -887,9 +885,7 @@ try {
     receiptPath,
     exportMapPath,
     lockfilePath,
-    tarballDir,
-    packedConsumer: consumer,
-    internalConsumer
+    tarballDir
   }
 } finally {
   for (const path of authenticatedTemporaryDirs) rmSync(path, { recursive: true, force: true })
