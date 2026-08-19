@@ -1,7 +1,7 @@
 {
   "schema": "ch5.image-editor.k1-export-map.v1",
-  "sourceTip": "709805c3004fa552fba58f99f2fe1a7f14bc8f23",
-  "originMain": "1171c5b6756d0ef20396fbfa2e4071f1aae938d9",
+  "sourceTip": "5c0e44bc41b4e4f10cb2580145ad38b17cb3b4e1",
+  "originMain": "5cb1afe066f33a16b66fb6a43d76270fbd782d2e",
   "packages": {
     "@open-pencil/agent-contracts": {
       "name": "@open-pencil/agent-contracts",
