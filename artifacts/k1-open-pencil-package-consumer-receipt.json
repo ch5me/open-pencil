@@ -2,7 +2,7 @@
   "schema": "ch5.image-editor.k1-package-consumer-receipt.v1",
   "nodeId": "K1",
   "status": "pass",
-  "recordedAt": "2026-08-19T00:00:16.009Z",
+  "recordedAt": "2026-08-19T00:08:39.288Z",
   "repository": {
     "repo": "https://git.ch5.me/ch5/open-pencil.git",
     "sourceWorktree": "/Users/hassoncs/worktrees/ch5/open-pencil/image-editor-standalone-engine-plan",
@@ -801,6 +801,89 @@
       "tarballSha256": "587c1c171e43b43ab03a7adffb678965983be247490b932c7ba72d8601cbb661"
     }
   },
+  "tarballSecretScan": {
+    "tool": "gitleaks",
+    "status": "pass",
+    "tarballs": {
+      "artifacts/k1-open-pencil-package-tarballs/open-pencil-agent-contracts-0.14.1.tgz": "f45018e600ebcbfda9eb48f57c7adff51cf515a8eadf6b2d9c2fdc4481d7c8f2",
+      "artifacts/k1-open-pencil-package-tarballs/open-pencil-kiwi-0.14.1.tgz": "3a689a16687b08c23461dfc28f0335c9e04677f360744290ba4c1d40030d7d62",
+      "artifacts/k1-open-pencil-package-tarballs/open-pencil-pen-0.14.1.tgz": "b0e296d0860c5a027a1c29a6db69911d7092cf199ac2569c82934a9bb7a44c82",
+      "artifacts/k1-open-pencil-package-tarballs/open-pencil-fig-0.14.1.tgz": "d7ef876e20b1c3ffb7135dc58ad8402f1304a7e1e9c1df5c4af0dad9a8531eea",
+      "artifacts/k1-open-pencil-package-tarballs/open-pencil-scene-graph-0.14.1.tgz": "2d421eda99e9a2ceb21557f8309c828e90100d68546becc6db88ea19888c2071",
+      "artifacts/k1-open-pencil-package-tarballs/open-pencil-core-0.14.1.tgz": "587c1c171e43b43ab03a7adffb678965983be247490b932c7ba72d8601cbb661",
+      "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-agent-contracts-0.14.1-r13.5c0e44bc4.k1.2.tgz": "959467787f565c2a6ccd18053a7dca4e4095824a1ec5bcd8beab7fd1ef551784",
+      "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-kiwi-0.14.1-r13.5c0e44bc4.k1.2.tgz": "5fda434da50715052451d8f6fcafbdf1afaa32f59788437bb20b1b0360a196cf",
+      "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-pen-0.14.1-r13.5c0e44bc4.k1.2.tgz": "e74657ed436d6a007e7bcb2e258644d9177d923307659703bf1290eff22b76de",
+      "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-fig-0.14.1-r13.5c0e44bc4.k1.2.tgz": "2cd09e7ced3d053d631990b5bf178c1d75838d6f8cdbbb93433e0a29da6076f3",
+      "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-scene-graph-0.14.1-r13.5c0e44bc4.k1.2.tgz": "f535ff2a3b2a5c9ed747adb432f1796888aa1d8052000c377b6811f2e2535837",
+      "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-core-0.14.1-r13.5c0e44bc4.k1.2.tgz": "746a511a89b9bec3ef51996de962f854b9bc5ca6f787a195aeec44ec3f7dddea"
+    }
+  },
+  "registryEvidence": {
+    "version": "0.14.1-r13.5c0e44bc4.k1.2",
+    "runs": [
+      {
+        "recordedAt": "2026-08-19T00:07:26.456Z",
+        "packages": {
+          "@open-pencil/agent-contracts": {
+            "lookup": "confirmed-404",
+            "publish": "published"
+          },
+          "@open-pencil/kiwi": {
+            "lookup": "confirmed-404",
+            "publish": "published"
+          },
+          "@open-pencil/pen": {
+            "lookup": "confirmed-404",
+            "publish": "published"
+          },
+          "@open-pencil/fig": {
+            "lookup": "confirmed-404",
+            "publish": "published"
+          },
+          "@open-pencil/scene-graph": {
+            "lookup": "confirmed-404",
+            "publish": "published"
+          },
+          "@open-pencil/core": {
+            "lookup": "confirmed-404",
+            "publish": "published"
+          }
+        }
+      },
+      {
+        "recordedAt": "2026-08-19T00:08:39.288Z",
+        "packages": {
+          "@open-pencil/agent-contracts": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/kiwi": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/pen": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/fig": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/scene-graph": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          },
+          "@open-pencil/core": {
+            "lookup": "integrity-match",
+            "publish": "already-present"
+          }
+        }
+      }
+    ],
+    "confirmed404Publish": true,
+    "subsequentAlreadyPresent": true
+  },
   "consumers": {
     "packed": {
       "workspaceLinks": false,
@@ -814,7 +897,7 @@
       },
       "appBuild": "pass",
       "servedIdentity": {
-        "url": "http://127.0.0.1:55504/",
+        "url": "http://127.0.0.1:61608/",
         "status": 200,
         "htmlSha256": "8a1e5faed6461d7927de41c32ce9c9ea4497f3c11590192b71a0b9b0441a2ee9",
         "sourceTip": "5c0e44bc41b4e4f10cb2580145ad38b17cb3b4e1",
@@ -862,52 +945,59 @@
         "observedFromServedHtml": true,
         "result": "pass"
       },
-      "temporaryPath": "/var/folders/cw/7r3c18156k3fq3pb22p0d6840000gn/T/open-pencil-k1-consumer-VHjMct"
+      "temporaryPath": "/var/folders/cw/7r3c18156k3fq3pb22p0d6840000gn/T/open-pencil-k1-consumer-x90YlB",
+      "cleaned": true
     },
     "internalRegistry": {
       "registry": "https://npm.ch5.me/",
-      "version": "0.14.1-r13.5c0e44bc4",
+      "version": "0.14.1-r13.5c0e44bc4.k1.2",
       "packages": {
         "@open-pencil/agent-contracts": {
-          "version": "0.14.1-r13.5c0e44bc4",
-          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-agent-contracts-0.14.1-r13.5c0e44bc4.tgz",
-          "tarballSha256": "67c5f7ad2cd2ddd2a8ab387fd0087f4ea77ca8e912448d060d9df04d1de5d14a",
-          "integrity": "sha512-4xxDzCluvYGVGGthqwU0faHPpMh7IiiHn0agxzkN+uJmthZZZ8AMNscl4s6whlI7KVwWfZv+g6tcB6Gr4HjtvA==",
+          "version": "0.14.1-r13.5c0e44bc4.k1.2",
+          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-agent-contracts-0.14.1-r13.5c0e44bc4.k1.2.tgz",
+          "tarballSha256": "959467787f565c2a6ccd18053a7dca4e4095824a1ec5bcd8beab7fd1ef551784",
+          "integrity": "sha512-Y5NdWEy2WN+EheiVkwF1GE237XTR/8yIR+8tDD6orlFDkNCzGrX6Mu7RmRgl5pKRC8ZdLUWioppoJksFoEgiFA==",
+          "lookup": "integrity-match",
           "publish": "already-present"
         },
         "@open-pencil/kiwi": {
-          "version": "0.14.1-r13.5c0e44bc4",
-          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-kiwi-0.14.1-r13.5c0e44bc4.tgz",
-          "tarballSha256": "f373c1b9d3662bd2515ee74ada18eb0a15490619182a083459702ce370922aa5",
-          "integrity": "sha512-LQJW/Gt3FFkiQR72JdMQJ/4q4jDe/nVyc5ESkKAuJgWsNP/KftNSuKiImCCtQuxdFXTGT9N+0pf4ejygHoH+1w==",
+          "version": "0.14.1-r13.5c0e44bc4.k1.2",
+          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-kiwi-0.14.1-r13.5c0e44bc4.k1.2.tgz",
+          "tarballSha256": "5fda434da50715052451d8f6fcafbdf1afaa32f59788437bb20b1b0360a196cf",
+          "integrity": "sha512-74lLWxoboWm9FTEG/AmgZdJXmUUWNCsbq1TETvJxHQ/oopc2CZjp/fbM5wUPjrsGaAzT+x2F6HRpWvIW3d+YyQ==",
+          "lookup": "integrity-match",
           "publish": "already-present"
         },
         "@open-pencil/pen": {
-          "version": "0.14.1-r13.5c0e44bc4",
-          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-pen-0.14.1-r13.5c0e44bc4.tgz",
-          "tarballSha256": "bd564c866a11426dd7f74a85e7f1db8ac940eafa6b7dd1f51ef219d8624c15c6",
-          "integrity": "sha512-fPN+a71pMCH0gFc4wzA10My3r+8kMJ8MEc5o3YlDwEVWgT/Z61l70IuG4+zaxUDN5yyMftwLWWj9JqPecykhQA==",
+          "version": "0.14.1-r13.5c0e44bc4.k1.2",
+          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-pen-0.14.1-r13.5c0e44bc4.k1.2.tgz",
+          "tarballSha256": "e74657ed436d6a007e7bcb2e258644d9177d923307659703bf1290eff22b76de",
+          "integrity": "sha512-IyDdU45yHjJN0twYi/l0HUkO+y4gfDY+s2Wh4NFbEYz1W7NcS9ond40JHWCtDyOjh4l2ImFfJw3Ld5tW1m0BUg==",
+          "lookup": "integrity-match",
           "publish": "already-present"
         },
         "@open-pencil/fig": {
-          "version": "0.14.1-r13.5c0e44bc4",
-          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-fig-0.14.1-r13.5c0e44bc4.tgz",
-          "tarballSha256": "c35ebacc1efcdf1e6f870c4138e58153d1e2b187c5e7ead189a54fde5c26dd93",
-          "integrity": "sha512-wG68fd02leqQyOBSg6J6XbxHmBERW+dEXVzjHUT91rnDEcq20RidhdDuaXjs2a4YgmAAL7IhGt6ilqrvrzk6sg==",
+          "version": "0.14.1-r13.5c0e44bc4.k1.2",
+          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-fig-0.14.1-r13.5c0e44bc4.k1.2.tgz",
+          "tarballSha256": "2cd09e7ced3d053d631990b5bf178c1d75838d6f8cdbbb93433e0a29da6076f3",
+          "integrity": "sha512-eyI18MHIfQBJLcRFp/HfZqnyHImuMr0p6LrOFBH4Y1V06sEdsYHPIA/lHz1D+Cqscwq6y4MkWjEyQphRRhUr8w==",
+          "lookup": "integrity-match",
           "publish": "already-present"
         },
         "@open-pencil/scene-graph": {
-          "version": "0.14.1-r13.5c0e44bc4",
-          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-scene-graph-0.14.1-r13.5c0e44bc4.tgz",
-          "tarballSha256": "1e2e0f7824debc2651d8770fa7dd1fcafceaf5f459a5e2909789ede6c9eedddf",
-          "integrity": "sha512-5cWA7bkvef3JgfFCCOXPo6FAKZ4z2bo9mdWTZgUYas9md8LQo4X0mc8vyZXz/xgc00gMJIP60h/lfjCIahM8ZA==",
+          "version": "0.14.1-r13.5c0e44bc4.k1.2",
+          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-scene-graph-0.14.1-r13.5c0e44bc4.k1.2.tgz",
+          "tarballSha256": "f535ff2a3b2a5c9ed747adb432f1796888aa1d8052000c377b6811f2e2535837",
+          "integrity": "sha512-Yh6LzZ6/9XtbYYgFXUWbv6SMmQG9DZzm7Uc7RYjp5pASsr2fgVZwSOBOqypJ800vGzPLBzkC/DT0FNvti2/fPw==",
+          "lookup": "integrity-match",
           "publish": "already-present"
         },
         "@open-pencil/core": {
-          "version": "0.14.1-r13.5c0e44bc4",
-          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-core-0.14.1-r13.5c0e44bc4.tgz",
-          "tarballSha256": "cbad24032fd73649fb579df411f08c64bf35e21b8f906cf7c35adf8aef77da88",
-          "integrity": "sha512-mIDdEl9CPsYNhZk05NIJjvKSyG0fTn3tp+RfRIpWaH3QNrmzRmxCZpHjTA4phHceBbtp90jLbq1V6BTLU/K+GA==",
+          "version": "0.14.1-r13.5c0e44bc4.k1.2",
+          "tarball": "artifacts/k1-open-pencil-package-tarballs/internal/open-pencil-core-0.14.1-r13.5c0e44bc4.k1.2.tgz",
+          "tarballSha256": "746a511a89b9bec3ef51996de962f854b9bc5ca6f787a195aeec44ec3f7dddea",
+          "integrity": "sha512-cBjV+MH6Ecml89zthwxJdQKse1KuQhBjrQAoxGLURDjin7CQIZrgKwM87+Dln596kHVHlatsWB5SodMydQo2bQ==",
+          "lookup": "integrity-match",
           "publish": "already-present"
         }
       },
@@ -915,55 +1005,56 @@
       "symlinks": false,
       "privateImports": false,
       "lockfile": "artifacts/k1-open-pencil-package-lockfile.json#internalRegistry",
-      "lockfileSha256": "1b88be406d52dc88248ff0b1989e792f3a4d00147f457412eab5708992bd6a33",
+      "lockfileSha256": "3e36e39c10624cd4cb89a6ea77b93509aeb47faee27c89d654054615deccaf11",
       "runtime": {
         "bun": "pass",
         "node": "pass"
       },
       "appBuild": "pass",
       "servedIdentity": {
-        "url": "http://127.0.0.1:55544/",
+        "url": "http://127.0.0.1:61637/",
         "status": 200,
-        "htmlSha256": "2cad9c5d078cb3b41bb003b2a46a541f6a9ca5a814623e9832abf9c18806e381",
+        "htmlSha256": "c1494b518eadf9d6a5ad334d8c0088caf26528cf66cc6be781332ae33bd641c4",
         "sourceTip": "5c0e44bc41b4e4f10cb2580145ad38b17cb3b4e1",
-        "packageVersion": "0.14.1-r13.5c0e44bc4",
+        "packageVersion": "0.14.1-r13.5c0e44bc4.k1.2",
         "packageIdentity": {
           "@open-pencil/agent-contracts": {
-            "version": "0.14.1-r13.5c0e44bc4",
-            "packageJsonSha256": "8df54b387ec61c391a9da2dcf66937919285698ef5475dde25d621d54404bf84",
-            "sourceTarballSha256": "67c5f7ad2cd2ddd2a8ab387fd0087f4ea77ca8e912448d060d9df04d1de5d14a"
+            "version": "0.14.1-r13.5c0e44bc4.k1.2",
+            "packageJsonSha256": "6d584ce5259b3fb2a29f741a12f47c15ecb066f31189bee98f002c576ef78639",
+            "sourceTarballSha256": "959467787f565c2a6ccd18053a7dca4e4095824a1ec5bcd8beab7fd1ef551784"
           },
           "@open-pencil/kiwi": {
-            "version": "0.14.1-r13.5c0e44bc4",
-            "packageJsonSha256": "f12fb2e5c690fbbd5ec08b71e036bc2cfef0ed608878612f90d7d2b730819d57",
-            "sourceTarballSha256": "f373c1b9d3662bd2515ee74ada18eb0a15490619182a083459702ce370922aa5"
+            "version": "0.14.1-r13.5c0e44bc4.k1.2",
+            "packageJsonSha256": "c53f4b087d9174889a7d1610f962220f2bc765f9115dcf62c871eb2fac7813a4",
+            "sourceTarballSha256": "5fda434da50715052451d8f6fcafbdf1afaa32f59788437bb20b1b0360a196cf"
           },
           "@open-pencil/pen": {
-            "version": "0.14.1-r13.5c0e44bc4",
-            "packageJsonSha256": "26069ad09bb28ed91012c492d87d7ce22f0256f7336c9d29a8070d1f34bf204b",
-            "sourceTarballSha256": "bd564c866a11426dd7f74a85e7f1db8ac940eafa6b7dd1f51ef219d8624c15c6"
+            "version": "0.14.1-r13.5c0e44bc4.k1.2",
+            "packageJsonSha256": "91c949b9a2be6758250ea9b909503a3c72b68ea7063a684560501b8298406c85",
+            "sourceTarballSha256": "e74657ed436d6a007e7bcb2e258644d9177d923307659703bf1290eff22b76de"
           },
           "@open-pencil/fig": {
-            "version": "0.14.1-r13.5c0e44bc4",
-            "packageJsonSha256": "2501c7e1dd566beadf79d3bada20951df6dc2d83a0be108c9a6f259ea362cf07",
-            "sourceTarballSha256": "c35ebacc1efcdf1e6f870c4138e58153d1e2b187c5e7ead189a54fde5c26dd93"
+            "version": "0.14.1-r13.5c0e44bc4.k1.2",
+            "packageJsonSha256": "fa94baa1c753d85b1e33ce50071612586b18ed8d0ccd2b0b42ac62259fa6ef56",
+            "sourceTarballSha256": "2cd09e7ced3d053d631990b5bf178c1d75838d6f8cdbbb93433e0a29da6076f3"
           },
           "@open-pencil/scene-graph": {
-            "version": "0.14.1-r13.5c0e44bc4",
-            "packageJsonSha256": "9c564b203cce65f35255a8341121b4d753e0ef5267b5dba1733b7b11444f61f4",
-            "sourceTarballSha256": "1e2e0f7824debc2651d8770fa7dd1fcafceaf5f459a5e2909789ede6c9eedddf"
+            "version": "0.14.1-r13.5c0e44bc4.k1.2",
+            "packageJsonSha256": "742bbabed006599acb8fa8e4f01e8e61e2db48ac856c32c6ce2a173abe871beb",
+            "sourceTarballSha256": "f535ff2a3b2a5c9ed747adb432f1796888aa1d8052000c377b6811f2e2535837"
           },
           "@open-pencil/core": {
-            "version": "0.14.1-r13.5c0e44bc4",
-            "packageJsonSha256": "3a7ee9fc51fe36bc43a79c72eea6ea46f765470ed8f65f8a4fb2de914c8ac183",
-            "sourceTarballSha256": "cbad24032fd73649fb579df411f08c64bf35e21b8f906cf7c35adf8aef77da88"
+            "version": "0.14.1-r13.5c0e44bc4.k1.2",
+            "packageJsonSha256": "4cd877931eb1215acc383cc64e41e831fc668f53a8996308dce298b32f0123f1",
+            "sourceTarballSha256": "746a511a89b9bec3ef51996de962f854b9bc5ca6f787a195aeec44ec3f7dddea"
           }
         },
-        "packageIdentityDigest": "6d93c7ff07789b37ce422b7b5e4f5ddbc8dafb93d9b3c9c3f69fe80ae62283e6",
+        "packageIdentityDigest": "a09689fd53b161daf3f2905f65727cd170aced1fac6dd63bcc3117ad39d02e96",
         "observedFromServedHtml": true,
         "result": "pass"
       },
-      "temporaryPath": "/var/folders/cw/7r3c18156k3fq3pb22p0d6840000gn/T/open-pencil-k1-internal-consumer-BnarWL"
+      "temporaryPath": "/var/folders/cw/7r3c18156k3fq3pb22p0d6840000gn/T/open-pencil-k1-internal-consumer-pmmsO5",
+      "cleaned": true
     }
   },
   "unknown": [

@@ -33,6 +33,7 @@ const exportMapPath = join(root, 'artifacts/k1-open-pencil-package-export-map.js
 const lockfilePath = join(root, 'artifacts/k1-open-pencil-package-lockfile.json')
 const internalTarballDir = join(tarballDir, 'internal')
 const internalRegistry = 'https://npm.ch5.me/'
+const internalProofRevision = 'k1.2'
 const h0 = JSON.parse(readFileSync(h0Path, 'utf8')) as {
   sourceBaseline: string
   integratedBase: string
@@ -332,7 +333,23 @@ for (const packageDir of packageDirs) {
 
 const npmToken = process.env.NPM_TOKEN
 assert(npmToken, 'NPM_TOKEN is required for the K1 internal-registry lane')
-const internalVersion = `${h0.package.version}-r13.${h0.privatePackageTip.slice(0, 9)}`
+const internalVersion = `${h0.package.version}-r13.${h0.privatePackageTip.slice(0, 9)}.${internalProofRevision}`
+type RegistryRun = {
+  recordedAt: string
+  packages: Record<
+    string,
+    { lookup: 'confirmed-404' | 'integrity-match'; publish: 'published' | 'already-present' }
+  >
+}
+const previousReceipt = existsSync(receiptPath)
+  ? (JSON.parse(readFileSync(receiptPath, 'utf8')) as {
+      registryEvidence?: { version?: string; runs?: RegistryRun[] }
+    })
+  : undefined
+const previousRegistryRuns =
+  previousReceipt?.registryEvidence?.version === internalVersion
+    ? (previousReceipt.registryEvidence.runs ?? [])
+    : []
 const internalPackageMetadata: Record<
   string,
   {
@@ -340,6 +357,7 @@ const internalPackageMetadata: Record<
     tarball: string
     tarballSha256: string
     integrity: string
+    lookup: 'confirmed-404' | 'integrity-match'
     publish: 'published' | 'already-present'
   }
 > = {}
@@ -349,6 +367,8 @@ const npmrcPath = join(mkdtempSync(join(tmpdir(), 'open-pencil-k1-npmrc-')), 'np
 const npmrcDir = dirname(npmrcPath)
 const registryEnv = { NPM_CONFIG_USERCONFIG: npmrcPath }
 const authenticatedTemporaryDirs = new Set([npmrcDir])
+let finalReceipt: object | undefined
+let finalOutput: object | undefined
 
 try {
   writeRegistryConfig(npmrcPath, npmToken)
@@ -392,12 +412,14 @@ try {
       { cwd: root, env: { ...process.env, ...registryEnv }, encoding: 'utf8' }
     )
     let publish: 'published' | 'already-present'
+    let lookup: 'confirmed-404' | 'integrity-match'
     if (view.status === 0 && view.stdout.trim()) {
       const publishedIntegrity = JSON.parse(view.stdout) as string
       assert(
         publishedIntegrity === integrity,
         `internal package integrity drift: ${packageName}@${internalVersion}`
       )
+      lookup = 'integrity-match'
       publish = 'already-present'
     } else {
       const viewFailure = `${view.stdout}\n${view.stderr}`
@@ -411,6 +433,7 @@ try {
         root,
         registryEnv
       )
+      lookup = 'confirmed-404'
       publish = 'published'
     }
     internalPackageMetadata[packageName] = {
@@ -418,10 +441,38 @@ try {
       tarball: relative(root, internalTarball),
       tarballSha256: sha256(readFileSync(internalTarball)),
       integrity,
+      lookup,
       publish
     }
     rmSync(staging, { recursive: true, force: true })
     authenticatedTemporaryDirs.delete(staging)
+  }
+
+  const tarballSecretScanDir = mkdtempSync(join(tmpdir(), 'open-pencil-k1-secret-scan-'))
+  authenticatedTemporaryDirs.add(tarballSecretScanDir)
+  const scannedTarballs = [
+    ...packageNames.map((name) => packageMetadata[name].tarball),
+    ...packageNames.map((name) => internalPackageMetadata[name].tarball)
+  ]
+  for (const [index, tarball] of scannedTarballs.entries()) {
+    const destination = join(tarballSecretScanDir, String(index))
+    mkdirSync(destination)
+    execFileSync('tar', ['-xzf', join(root, tarball), '-C', destination])
+  }
+  run('gitleaks', [
+    'dir',
+    '--config',
+    join(root, '.gitleaks.toml'),
+    '--redact',
+    '--no-banner',
+    tarballSecretScanDir
+  ])
+  const tarballSecretScan = {
+    tool: 'gitleaks',
+    status: 'pass',
+    tarballs: Object.fromEntries(
+      scannedTarballs.map((path) => [path, sha256(readFileSync(join(root, path)))])
+    )
   }
 
   const packedSceneGraph = packageMetadata['@open-pencil/scene-graph'].packageJson
@@ -465,6 +516,7 @@ try {
   }
 
   const consumer = resolve(mkdtempSync(join(tmpdir(), 'open-pencil-k1-consumer-')))
+  authenticatedTemporaryDirs.add(consumer)
   const consumerApp = join(consumer, 'apps/image-editor')
   mkdirSync(join(consumer, 'apps'), { recursive: true })
   cpSync(join(root, 'apps/image-editor'), consumerApp, { recursive: true })
@@ -602,6 +654,7 @@ try {
   )
 
   const internalConsumer = resolve(mkdtempSync(join(tmpdir(), 'open-pencil-k1-internal-consumer-')))
+  authenticatedTemporaryDirs.add(internalConsumer)
   const internalConsumerApp = join(internalConsumer, 'apps/image-editor')
   mkdirSync(join(internalConsumer, 'apps'), { recursive: true })
   cpSync(join(root, 'apps/image-editor'), internalConsumerApp, { recursive: true })
@@ -720,6 +773,19 @@ try {
       return [key, { path: declaration.path, sha256: declaration.sha256 }]
     })
   )
+  const registryRun: RegistryRun = {
+    recordedAt: new Date().toISOString(),
+    packages: Object.fromEntries(
+      packageNames.map((name) => [
+        name,
+        {
+          lookup: internalPackageMetadata[name].lookup,
+          publish: internalPackageMetadata[name].publish
+        }
+      ])
+    )
+  }
+  const registryRuns = [...previousRegistryRuns, registryRun]
   const receipt = {
     schema: 'ch5.image-editor.k1-package-consumer-receipt.v1',
     nodeId: 'K1',
@@ -740,6 +806,21 @@ try {
       declarations
     },
     packages: packageMetadata,
+    tarballSecretScan,
+    registryEvidence: {
+      version: internalVersion,
+      runs: registryRuns,
+      confirmed404Publish: registryRuns.some((run) =>
+        Object.values(run.packages).every(
+          (entry) => entry.lookup === 'confirmed-404' && entry.publish === 'published'
+        )
+      ),
+      subsequentAlreadyPresent: registryRuns.some((run) =>
+        Object.values(run.packages).every(
+          (entry) => entry.lookup === 'integrity-match' && entry.publish === 'already-present'
+        )
+      )
+    },
     consumers: {
       packed: {
         workspaceLinks: false,
@@ -762,7 +843,8 @@ try {
           observedFromServedHtml: true,
           result: 'pass'
         },
-        temporaryPath: consumer
+        temporaryPath: consumer,
+        cleaned: true
       },
       internalRegistry: {
         registry: internalRegistry,
@@ -786,7 +868,8 @@ try {
           observedFromServedHtml: true,
           result: 'pass'
         },
-        temporaryPath: internalConsumer
+        temporaryPath: internalConsumer,
+        cleaned: true
       }
     },
     unknown: [
@@ -798,22 +881,19 @@ try {
       'production-user'
     ]
   }
-  writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`)
-  console.log(
-    JSON.stringify(
-      {
-        status: 'pass',
-        receiptPath,
-        exportMapPath,
-        lockfilePath,
-        tarballDir,
-        packedConsumer: consumer,
-        internalConsumer
-      },
-      null,
-      2
-    )
-  )
+  finalReceipt = receipt
+  finalOutput = {
+    status: 'pass',
+    receiptPath,
+    exportMapPath,
+    lockfilePath,
+    tarballDir,
+    packedConsumer: consumer,
+    internalConsumer
+  }
 } finally {
   for (const path of authenticatedTemporaryDirs) rmSync(path, { recursive: true, force: true })
 }
+assert(finalReceipt && finalOutput, 'K1 verification did not produce a final receipt')
+writeFileSync(receiptPath, `${JSON.stringify(finalReceipt, null, 2)}\n`)
+console.log(JSON.stringify(finalOutput, null, 2))
