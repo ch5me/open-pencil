@@ -15,8 +15,7 @@
     "packages/cli",
     "packages/mcp",
     "packages/docs",
-    "tools/agent-gateway",
-    "apps/image-editor"
+    "tools/agent-gateway"
   ],
   "type": "module",
   "imports": {
@@ -69,8 +68,6 @@
     "proof:hosted": "bun scripts/hosted-proof.ts",
     "proof:preview": "bun scripts/preview-proof.ts",
     "proof:flags": "bun scripts/validate-hosted-flags.ts",
-    "proof:g135": "bun tools/image-editor-proof/src/g135-production-effect.ts",
-    "proof:g135:check": "bun tools/image-editor-proof/src/g135-production-effect.ts --check",
     "proof:all": "bun run proof:flags && bun run proof:hosted",
     "upstream:inspect": "bun scripts/upstream-sync.ts inspect",
     "upstream:merge": "bun scripts/upstream-sync.ts merge",

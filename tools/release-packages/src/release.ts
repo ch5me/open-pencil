@@ -140,18 +140,7 @@ export async function smokePackedPackages(tarballs: string[]) {
       [
         '--input-type=module',
         '--eval',
-        `import { createCompositionPlan } from '@open-pencil/core/canvas/composition';
-import { composeRasterRGBA8 } from '@open-pencil/core/canvas/image-editor';
-import { SceneGraph } from '@open-pencil/core/scene-graph';
-const node = (entry) => ({ id: entry.id, type: entry.type, name: entry.id, parentId: entry.parentId ?? null, childIds: entry.childIds ?? [], x: 0, y: 0, width: 1, height: 1, rotation: 0, visible: true, opacity: entry.opacity ?? 1, clipsContent: false, blendMode: 'NORMAL', isMask: false, maskType: 'ALPHA', maskIsOutline: false, fills: entry.fills ?? [] });
-const outer = node({ id: 'outer', type: 'GROUP', childIds: ['background', 'inner'] });
-const background = node({ id: 'background', type: 'IMAGE', parentId: 'outer', fills: [{ type: 'IMAGE', color: { r: 1, g: 1, b: 1, a: 1 }, opacity: 1, visible: true, imageHash: 'asset:background' }] });
-const inner = node({ id: 'inner', type: 'GROUP', parentId: 'outer', opacity: 0.5, childIds: ['foreground'] });
-const foreground = node({ id: 'foreground', type: 'IMAGE', parentId: 'inner', fills: [{ type: 'IMAGE', color: { r: 1, g: 1, b: 1, a: 1 }, opacity: 1, visible: true, imageHash: 'asset:foreground' }] });
-const revisions = { 'asset:background': { revisionId: 'sha256:background', kind: 'image', metadata: { format: 'rgba8-srgb', width: 1, height: 1 }, bytes: new Uint8Array([0, 0, 0, 255]) }, 'asset:foreground': { revisionId: 'sha256:foreground', kind: 'image', metadata: { format: 'rgba8-srgb', width: 1, height: 1 }, bytes: new Uint8Array([188, 188, 188, 255]) } };
-const nodes = new Map([outer, background, inner, foreground].map((entry) => [entry.id, entry]));
-const result = composeRasterRGBA8(createCompositionPlan({ rootId: outer.id, getNode: (id) => nodes.get(id) }, outer.id), { getAsset: (id) => revisions[id] ? { assetId: id, revisionId: revisions[id].revisionId } : undefined, getRevision: (id) => Object.values(revisions).find((revision) => revision.revisionId === id) }, { width: 1, height: 1, backend: 'canvas2d' });
-if (String([...result.pixels]) !== '137,137,137,255') throw new Error('Packed core pixel mismatch: ' + [...result.pixels]);
+        `import { SceneGraph } from '@open-pencil/core/scene-graph';
 if (new SceneGraph().getPages().length !== 1) throw new Error('Packed core scene-graph compatibility failed');`
       ],
       { cwd: directory, timeout: 30_000 }

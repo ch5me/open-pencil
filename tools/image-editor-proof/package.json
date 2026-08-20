@@ -1,8 +1,0 @@
-{
-  "name": "@open-pencil/image-editor-proof-tools",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "g135": "bun src/g135-production-effect.ts"
-  }
-}

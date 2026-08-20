@@ -1,38 +1,8 @@
 version: 2
 commands:
-  standaloneImageEditor: "bun --filter @open-pencil/image-editor typecheck && bun --filter @open-pencil/image-editor test && bun --filter @open-pencil/image-editor test:e2e"
   genericReviewReceiptHostile: "bun run build:packages && bun test tests/engine/cli/lint.test.ts"
   genericReviewProvenanceHostile: "bun test tests/engine/cli/implementation-provenance.test.ts"
-  imageEditorContractFocused: "bun test tests/engine/editor/image-brush.test.ts tests/engine/editor/image-capabilities.test.ts tests/engine/editor/image-geometry.test.ts tests/engine/editor/image-observability.test.ts tests/engine/editor/image-session.test.ts tests/engine/io/formats/psd.test.ts"
-  imageEditorPackageSurface: "bun run build:packages && node --input-type=module --eval \"import fs from 'node:fs'; const p=JSON.parse(fs.readFileSync('packages/core/package.json','utf8')); for (const [name, entry] of Object.entries(p.exports)) { if (!name.startsWith('./canvas/image-editor')) continue; for (const field of ['types','default','import']) { const path = entry[field]; if (!path || !fs.existsSync('packages/core/' + path)) throw new Error('missing ' + name + ' ' + field); } } await import('./packages/core/dist/canvas/image-editor/raster.js');\""
 proofs:
-  - id: standalone-image-editor
-    kind: integration
-    stages: [dev, staging, production]
-    run:
-      command: standaloneImageEditor
-    evidence:
-      path: artifacts/proof/standalone-image-editor
-    triggers:
-      - paths:
-          - apps/image-editor/**
-          - package.json
-          - bun.lock
-          - pitchfork.toml
-  - id: image-editor-package-surface
-    kind: integration
-    stages: [dev, staging, production]
-    run:
-      command: imageEditorPackageSurface
-    evidence:
-      path: artifacts/proof/image-editor-package-surface
-  - id: image-editor-contract-focused
-    kind: integration
-    stages: [dev, staging, production]
-    run:
-      command: imageEditorContractFocused
-    evidence:
-      path: artifacts/proof/image-editor-contract-focused
   - id: generic-review-receipt-hostile
     kind: integration
     stages: [dev, staging, production]

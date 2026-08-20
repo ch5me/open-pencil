@@ -33,9 +33,3 @@ run = "export PATH=\"$HOME/.local/bin:/opt/homebrew/bin:$HOME/.local/share/mise/
 dir = "."
 port = { expect = [11300], bump = 99 }
 ready_port = { port = 11300, timeout = "30s" }
-
-[daemons.image-editor]
-run = "bun run dev -- --host 127.0.0.1 --port $PORT --strictPort"
-dir = "apps/image-editor"
-port = { expect = [4310], bump = 20 }
-ready_port = { port = 4310, timeout = "60s" }

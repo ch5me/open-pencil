@@ -70,16 +70,6 @@
       "import": "./dist/canvas/index.js",
       "default": "./dist/canvas/index.js"
     },
-    "./canvas/composition": {
-      "types": "./dist/canvas/composition/index.d.ts",
-      "import": "./dist/canvas/composition/index.js",
-      "default": "./dist/canvas/composition/index.js"
-    },
-    "./canvas/image-editor": {
-      "types": "./dist/canvas/image-editor/index.d.ts",
-      "import": "./dist/canvas/image-editor/index.js",
-      "default": "./dist/canvas/image-editor/index.js"
-    },
     "./canvas/labels": {
       "types": "./dist/canvas/labels/index.d.ts",
       "import": "./dist/canvas/labels/index.js",
@@ -99,11 +89,6 @@
       "types": "./dist/editor/index.d.ts",
       "import": "./dist/editor/index.js",
       "default": "./dist/editor/index.js"
-    },
-    "./editor/assets": {
-      "types": "./dist/editor/assets/index.d.ts",
-      "import": "./dist/editor/assets/index.js",
-      "default": "./dist/editor/assets/index.js"
     },
     "./editor/storage": {
       "types": "./dist/editor/storage/index.d.ts",
