@@ -2,10 +2,6 @@
 /// <reference types="vite-plugin-pwa/vanillajs" />
 /// <reference types="unplugin-icons/types/vue" />
 
-interface ImportMetaEnv {
-  readonly VITE_OPENPENCIL_ENGINE_TRANSPORT?: 'true' | 'false' | '1' | '0'
-}
-
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }

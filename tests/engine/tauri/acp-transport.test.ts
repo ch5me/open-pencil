@@ -12,7 +12,7 @@ afterEach(async () => {
 })
 
 describe('Tauri ACP transport', () => {
-  test('uses Tauri home directory for transport cwd', async () => {
+  test('creates the generic ACP transport with Tauri home directory for cwd', async () => {
     await mockTauriIPC((cmd, args) => {
       expect(cmd).toBe('plugin:path|resolve_directory')
       expect(args).toEqual({ directory: 21 })
@@ -24,11 +24,5 @@ describe('Tauri ACP transport', () => {
     }
 
     expect(transport.cwd).toBe('/Users/tester')
-  })
-
-  test('fails loud when engine cutover is enabled before Gate 1', async () => {
-    await expect(createACPTransport('acp:claude-code', true)).rejects.toThrow(
-      '@ch5me/harness-engine-client is schema-compatible'
-    )
   })
 })
