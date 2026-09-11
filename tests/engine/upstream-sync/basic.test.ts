@@ -6,7 +6,10 @@ import { join } from 'node:path'
 const roots: string[] = []
 const script = join(import.meta.dir, '../../../scripts/upstream-sync.ts')
 
-setDefaultTimeout(20_000)
+// Each test spawns a full `bun` runtime 1-3 times plus ~10 git subprocesses.
+// Measured 40s+ on a loaded machine (load avg 134), so a 20s budget produced
+// timeout-only failures that looked like flaky assertions.
+setDefaultTimeout(120_000)
 
 function command(args: string[], cwd: string, allowFailure = false) {
   const result = Bun.spawnSync(args, { cwd, stderr: 'pipe', stdout: 'pipe' })
