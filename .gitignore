@@ -81,3 +81,6 @@ scratch/
 # ch5 shadow state: local runtime, durable trust decisions
 .ch5/shadow/*
 !.ch5/shadow/trust.json
+
+# Derived icon pack — regenerates from master + variant profile; do not commit.
+.ch5/assets/variants/

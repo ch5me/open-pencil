@@ -1,6 +1,6 @@
 version: 1
 project_id: open-pencil
-generated_at: '2026-05-19T02:35:51Z'
+generated_at: '2026-09-11T23:45:53Z'
 source_hash: 689b15de91169f32a5dab4cf04aa3ec4051478699233e70926db1519960de8a5
 plane:
   project_id: 723ef805-41d8-40b0-9655-0af5d0fb77e7
@@ -49,3 +49,335 @@ assets:
     model: image-01
     aspect_ratio: '16:9'
     key_source: coding-plan
+masters:
+  icon:
+    path: .ch5/assets/master/icon.png
+    sha256: f4e12d5fb9e50f05429ce1e7c7a0bf892f9111cf64555bd92a8ded4ce3ea5980
+    origin: generated
+    provider: ch5-img
+    model: ''
+    prompt: "A single sharpened wooden pencil, drawn as a bold geometric pictogram,\
+      \ held at a 45-degree diagonal so its faceted hexagonal barrel and angled graphite\
+      \ tip fill the entire square frame edge to edge \u2014 the pencil's own painted\
+      \ surface IS the icon background; no page, no canvas, no card shape, no empty\
+      \ margin anywhere in the image. Barrel in warm pencil-yellow (#F2B400) with\
+      \ a darker gold facet on its shaded side, a narrow graphite-black ferrule band,\
+      \ and a sharpened wood cone tapering to a dark graphite point. The pencil is\
+      \ sized to fill about 70% of the square, cropped tight by the frame at the upper-right\
+      \ so it reads as one large confident diagonal shape, not a small object centered\
+      \ in white space. This is a drawing of a physical pencil, NOT a written character,\
+      \ NOT a letter, NOT calligraphy, NOT a logo wordmark, NOT an abstract gem or\
+      \ diamond \u2014 no writing of any script anywhere in the image. Flat bold vector\
+      \ shading with a few hard-edged highlight facets, high contrast, no soft photographic\
+      \ gradients, no glassy reflections, no drop shadow, no background pattern, no\
+      \ purple."
+    prompt_sha256: ff941da35d442f52919731563881423f9c90d609cdf23c9616ccd94b8015681b
+    input_digest: c8ba87bb1b251abc1593b266fdb8d7c5fff6932c8a7d52e58a26987c40c5dd9c
+    generator_version: ch5-generated-asset-v1
+    generation:
+      asset_kind: icon
+      variant_profile: ch5-master-icon-v2
+      variant_profile_hash: 188d23e5772b10e140e646c2c5e7e6515bed7f3585d7cd8cf29bc5ea063d7c52
+      reference_hashes: []
+      primary_color: '#F2B400'
+      anti_goals:
+      - generic purple-AI-SaaS gradient background, or
+      - abstract gem/diamond/teardrop shape standing in for the pencil tip
+      - an icon-shaped card floating in empty margin instead of filling the square
+      - any wordmark, lettering, or calligraphy of any script
+      - soft photographic gradients, glassy reflections, or drop shadows
+    approved_by: dest-first+chris
+    approved_at: '2026-09-11T23:45:53Z'
+    picked_from: /Users/hassoncs/worktrees/ch5/open-pencil/project-icon-fleet-20260911/public/apple-touch-icon.png
+variants:
+  profile: ch5-master-icon-v2
+  source_sha256: f4e12d5fb9e50f05429ce1e7c7a0bf892f9111cf64555bd92a8ded4ce3ea5980
+  files:
+  - path: variants/web/icon-512.png
+    width: 512
+    height: 512
+    purpose: pwa
+  - path: variants/web/icon-192.png
+    width: 192
+    height: 192
+    purpose: pwa
+  - path: variants/web/apple-touch-icon.png
+    width: 180
+    height: 180
+    purpose: ios-web-clip
+  - path: variants/web/favicon-32x32.png
+    width: 32
+    height: 32
+    purpose: favicon
+  - path: variants/web/favicon-16x16.png
+    width: 16
+    height: 16
+    purpose: favicon
+  - path: variants/web/favicon.ico
+    width: 32
+    height: 32
+    purpose: favicon
+  - path: variants/ios/AppIcon.appiconset/icon-20.png
+    width: 20
+    height: 20
+    purpose: ios-notification
+  - path: variants/ios/AppIcon.appiconset/icon-20@2x.png
+    width: 40
+    height: 40
+    purpose: ios-notification
+  - path: variants/ios/AppIcon.appiconset/icon-20@3x.png
+    width: 60
+    height: 60
+    purpose: ios-notification
+  - path: variants/ios/AppIcon.appiconset/icon-29.png
+    width: 29
+    height: 29
+    purpose: ios-settings
+  - path: variants/ios/AppIcon.appiconset/icon-29@2x.png
+    width: 58
+    height: 58
+    purpose: ios-settings
+  - path: variants/ios/AppIcon.appiconset/icon-29@3x.png
+    width: 87
+    height: 87
+    purpose: ios-settings
+  - path: variants/ios/AppIcon.appiconset/icon-40.png
+    width: 40
+    height: 40
+    purpose: ios-spotlight
+  - path: variants/ios/AppIcon.appiconset/icon-40@2x.png
+    width: 80
+    height: 80
+    purpose: ios-spotlight
+  - path: variants/ios/AppIcon.appiconset/icon-40@3x.png
+    width: 120
+    height: 120
+    purpose: ios-spotlight
+  - path: variants/ios/AppIcon.appiconset/icon-60@2x.png
+    width: 120
+    height: 120
+    purpose: ios-home
+  - path: variants/ios/AppIcon.appiconset/icon-60@3x.png
+    width: 180
+    height: 180
+    purpose: ios-home
+  - path: variants/ios/AppIcon.appiconset/icon-20-ipad.png
+    width: 20
+    height: 20
+    purpose: ios-notification
+  - path: variants/ios/AppIcon.appiconset/icon-20-ipad@2x.png
+    width: 40
+    height: 40
+    purpose: ios-notification
+  - path: variants/ios/AppIcon.appiconset/icon-29-ipad.png
+    width: 29
+    height: 29
+    purpose: ios-settings
+  - path: variants/ios/AppIcon.appiconset/icon-29-ipad@2x.png
+    width: 58
+    height: 58
+    purpose: ios-settings
+  - path: variants/ios/AppIcon.appiconset/icon-40-ipad.png
+    width: 40
+    height: 40
+    purpose: ios-spotlight
+  - path: variants/ios/AppIcon.appiconset/icon-40-ipad@2x.png
+    width: 80
+    height: 80
+    purpose: ios-spotlight
+  - path: variants/ios/AppIcon.appiconset/icon-76.png
+    width: 76
+    height: 76
+    purpose: ios-home
+  - path: variants/ios/AppIcon.appiconset/icon-76@2x.png
+    width: 152
+    height: 152
+    purpose: ios-home
+  - path: variants/ios/AppIcon.appiconset/icon-83.5@2x.png
+    width: 167
+    height: 167
+    purpose: ios-home-ipad-pro
+  - path: variants/ios/AppIcon.appiconset/icon-1024.png
+    width: 1024
+    height: 1024
+    purpose: ios-marketing
+  - path: variants/macos/AppIcon.iconset/icon_16x16.png
+    width: 16
+    height: 16
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_16x16@2x.png
+    width: 32
+    height: 32
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_32x32.png
+    width: 32
+    height: 32
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_32x32@2x.png
+    width: 64
+    height: 64
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_128x128.png
+    width: 128
+    height: 128
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_128x128@2x.png
+    width: 256
+    height: 256
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_256x256.png
+    width: 256
+    height: 256
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_256x256@2x.png
+    width: 512
+    height: 512
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_512x512.png
+    width: 512
+    height: 512
+    purpose: macos-icon
+  - path: variants/macos/AppIcon.iconset/icon_512x512@2x.png
+    width: 1024
+    height: 1024
+    purpose: macos-icon
+  - path: variants/android/mipmap-mdpi/ic_launcher.png
+    width: 48
+    height: 48
+    purpose: android-launcher
+  - path: variants/android/mipmap-mdpi/ic_launcher_round.png
+    width: 48
+    height: 48
+    purpose: android-launcher-round
+  - path: variants/android/mipmap-hdpi/ic_launcher.png
+    width: 72
+    height: 72
+    purpose: android-launcher
+  - path: variants/android/mipmap-hdpi/ic_launcher_round.png
+    width: 72
+    height: 72
+    purpose: android-launcher-round
+  - path: variants/android/mipmap-xhdpi/ic_launcher.png
+    width: 96
+    height: 96
+    purpose: android-launcher
+  - path: variants/android/mipmap-xhdpi/ic_launcher_round.png
+    width: 96
+    height: 96
+    purpose: android-launcher-round
+  - path: variants/android/mipmap-xxhdpi/ic_launcher.png
+    width: 144
+    height: 144
+    purpose: android-launcher
+  - path: variants/android/mipmap-xxhdpi/ic_launcher_round.png
+    width: 144
+    height: 144
+    purpose: android-launcher-round
+  - path: variants/android/mipmap-xxxhdpi/ic_launcher.png
+    width: 192
+    height: 192
+    purpose: android-launcher
+  - path: variants/android/mipmap-xxxhdpi/ic_launcher_round.png
+    width: 192
+    height: 192
+    purpose: android-launcher-round
+  - path: variants/tvos/icon/back-1x.png
+    width: 400
+    height: 240
+    purpose: tvos-icon-layer-back
+  - path: variants/tvos/icon/back-2x.png
+    width: 800
+    height: 480
+    purpose: tvos-icon-layer-back
+  - path: variants/tvos/icon/middle-1x.png
+    width: 400
+    height: 240
+    purpose: tvos-icon-layer-middle
+  - path: variants/tvos/icon/middle-2x.png
+    width: 800
+    height: 480
+    purpose: tvos-icon-layer-middle
+  - path: variants/tvos/icon/front-1x.png
+    width: 400
+    height: 240
+    purpose: tvos-icon-layer-front
+  - path: variants/tvos/icon/front-2x.png
+    width: 800
+    height: 480
+    purpose: tvos-icon-layer-front
+  - path: variants/tvos/icon/app-store-icon.png
+    width: 1280
+    height: 768
+    purpose: tvos-app-store
+  - path: variants/tvos/top-shelf/standard-1x.png
+    width: 1920
+    height: 720
+    purpose: tvos-top-shelf
+  - path: variants/tvos/top-shelf/standard-2x.png
+    width: 3840
+    height: 1440
+    purpose: tvos-top-shelf
+  - path: variants/tvos/top-shelf/wide-1x.png
+    width: 2320
+    height: 720
+    purpose: tvos-top-shelf-wide
+  - path: variants/tvos/top-shelf/wide-2x.png
+    width: 4640
+    height: 1440
+    purpose: tvos-top-shelf-wide
+  - path: variants/store/ios-app-store-1024.png
+    width: 1024
+    height: 1024
+    purpose: ios-app-store-listing
+  - path: variants/store/android-play-store-512.png
+    width: 512
+    height: 512
+    purpose: android-play-store-listing
+  - path: variants/store/macos-app-store-1024.png
+    width: 1024
+    height: 1024
+    purpose: macos-app-store-listing
+  - path: variants/windows/Square30x30Logo.png
+    width: 30
+    height: 30
+    purpose: windows-tile
+  - path: variants/windows/Square44x44Logo.png
+    width: 44
+    height: 44
+    purpose: windows-tile
+  - path: variants/windows/StoreLogo.png
+    width: 50
+    height: 50
+    purpose: windows-store
+  - path: variants/windows/Square71x71Logo.png
+    width: 71
+    height: 71
+    purpose: windows-tile
+  - path: variants/windows/Square89x89Logo.png
+    width: 89
+    height: 89
+    purpose: windows-tile
+  - path: variants/windows/Square107x107Logo.png
+    width: 107
+    height: 107
+    purpose: windows-tile
+  - path: variants/windows/Square142x142Logo.png
+    width: 142
+    height: 142
+    purpose: windows-tile
+  - path: variants/windows/Square150x150Logo.png
+    width: 150
+    height: 150
+    purpose: windows-tile
+  - path: variants/windows/Square284x284Logo.png
+    width: 284
+    height: 284
+    purpose: windows-tile
+  - path: variants/windows/Square310x310Logo.png
+    width: 310
+    height: 310
+    purpose: windows-tile
+  - path: variants/windows/mstile-150x150.png
+    width: 270
+    height: 270
+    purpose: windows-browserconfig
