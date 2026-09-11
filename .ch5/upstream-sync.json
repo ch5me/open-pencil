@@ -25,7 +25,12 @@
     "src/app/document/io/"
   ],
   "verification": {
-    "commands": ["bun run format:verify", "bun run check", "bun run test:unit", "bun run test"]
+    "commands": [
+      "bun run format:verify",
+      "bun run check",
+      "bun run test:unit",
+      "bun run test"
+    ]
   },
   "commit": {
     "messagePrefix": "chore(upstream): merge"
@@ -36,6 +41,8 @@
     "additivePaths": [
       ".agents/skills/open-pencil-upstream-sync",
       ".ch5",
+      ".ch5rc",
+      ".cloud-work/config.json",
       ".forgejo",
       ".hush",
       ".mcp.json",
@@ -43,19 +50,28 @@
       ".npmrc",
       ".opencode",
       ".sops.yaml",
+      "CLAUDE.md",
       "api",
       "config/hosted-topology.json",
       "docs/ch5",
       "pitchfork.toml",
       "scripts/build-candidate.mjs",
       "scripts/ci-setup-hush.sh",
+      "scripts/export-fixture-visuals.ts",
       "scripts/hosted-proof.ts",
       "scripts/preview-proof.ts",
       "scripts/promote.mjs",
       "scripts/upstream-sync.ts",
       "scripts/validate-hosted-flags.ts",
+      "scripts/visual-bisect.ts",
+      "scripts/visual-compare.ts",
       "tests/engine/upstream-sync",
-      "tools/ch5"
+      "tools/agent-gateway",
+      "tools/ch5",
+      "tools/deployment",
+      "tools/hosted",
+      "tools/hosted-proof",
+      "tools/local-bootstrap"
     ]
   },
   "requireManagedWorktree": true
