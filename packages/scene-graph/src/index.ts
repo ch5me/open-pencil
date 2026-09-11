@@ -458,10 +458,10 @@ export class SceneGraph {
       Array.from(snapshot.variables, ([id, variable]) => [id, structuredClone(variable)] as const)
     )
     graph.variableCollections = new Map(
-      Array.from(snapshot.variableCollections, ([id, collection]) => [
-        id,
-        structuredClone(collection)
-      ] as const)
+      Array.from(
+        snapshot.variableCollections,
+        ([id, collection]) => [id, structuredClone(collection)] as const
+      )
     )
     graph.activeMode = new Map(snapshot.activeMode)
     graph.rootId = snapshot.rootId
@@ -478,10 +478,7 @@ export class SceneGraph {
       layoutMutationDepth: 0,
       positionPreviewVersion: 0,
       instanceIndex: new Map<string, Set<string>>(),
-      idAllocator: new SceneGraphIdAllocator(
-        collectSceneGraphEntityIds(snapshot),
-        allocatorState
-      )
+      idAllocator: new SceneGraphIdAllocator(collectSceneGraphEntityIds(snapshot), allocatorState)
     })
     for (const node of graph.nodes.values()) {
       if (node.type !== 'INSTANCE' || !node.componentId) continue

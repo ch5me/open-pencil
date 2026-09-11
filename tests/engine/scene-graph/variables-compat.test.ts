@@ -1,10 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { SceneGraph, SceneGraphIdAllocationError } from '@open-pencil/scene-graph'
-import {
-  createCollection,
-  createVariable
-} from '@open-pencil/scene-graph/variables'
+import { createCollection, createVariable } from '@open-pencil/scene-graph/variables'
 
 describe('public variable helper compatibility', () => {
   test('retains supplied generator signatures and reserves IDs atomically', () => {

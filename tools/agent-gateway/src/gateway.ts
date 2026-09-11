@@ -53,7 +53,11 @@ function actionAcceptsArguments(
   action: AgentRunRequest['tools']['definitions'][number],
   argumentsValue: AgentJSONValue
 ): boolean {
-  if (argumentsValue === null || typeof argumentsValue !== 'object' || Array.isArray(argumentsValue)) {
+  if (
+    argumentsValue === null ||
+    typeof argumentsValue !== 'object' ||
+    Array.isArray(argumentsValue)
+  ) {
     return false
   }
   const { properties, required } = action.inputSchema
@@ -289,8 +293,7 @@ async function startRun(
     })
   } catch (error) {
     if (state.cancelled) return sse(state.events)
-    const message =
-      error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
+    const message = error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
     push(state, {
       type: 'run.failed',
       data: {
@@ -405,8 +408,7 @@ async function continueRun(request: Request, state: RunState): Promise<Response>
       )
     }
   } catch (error) {
-    const message =
-      error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
+    const message = error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
     const failed = push(state, {
       type: 'run.failed',
       data: {

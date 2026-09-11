@@ -1,5 +1,6 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { generateText, jsonSchema, tool } from 'ai'
+
 import type {
   AgentGatewayActionDefinition,
   AgentJSONValue,

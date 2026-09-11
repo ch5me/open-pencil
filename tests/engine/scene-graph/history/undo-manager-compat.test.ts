@@ -37,9 +37,9 @@ describe('immutable history compatibility with UndoManager', () => {
         after,
         coalesceKey
       }).next
-      expect(state.undoEntryIds.at(-1) && state.entries.get(state.undoEntryIds.at(-1)!)?.label).toBe(
-        legacy.undoLabel
-      )
+      expect(
+        state.undoEntryIds.at(-1) && state.entries.get(state.undoEntryIds.at(-1)!)?.label
+      ).toBe(legacy.undoLabel)
     }
 
     record('one', 1, 'drag')

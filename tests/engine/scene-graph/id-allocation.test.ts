@@ -42,10 +42,7 @@ describe('SceneGraph ID allocation and hydration', () => {
   test('defensively copies hydrated bytes and graph records', () => {
     const source = new SceneGraph()
     source.images.set('image', new Uint8Array([1, 2, 3]))
-    const hydrated = SceneGraph.hydrate(
-      snapshot(source),
-      deriveSceneGraphIdAllocatorState(source)
-    )
+    const hydrated = SceneGraph.hydrate(snapshot(source), deriveSceneGraphIdAllocatorState(source))
 
     source.images.get('image')![0] = 9
     source.nodes.get(source.rootId)!.name = 'Changed'
@@ -77,10 +74,13 @@ describe('SceneGraph ID allocation and hydration', () => {
       childIds: []
     })
     expect(() =>
-      SceneGraph.hydrate({ ...snapshot(source), nodes: disconnectedNodes }, {
-        ...state,
-        nextIdFloor: state.nextIdFloor
-      })
+      SceneGraph.hydrate(
+        { ...snapshot(source), nodes: disconnectedNodes },
+        {
+          ...state,
+          nextIdFloor: state.nextIdFloor
+        }
+      )
     ).toThrow(/disconnected|does not reference/)
 
     const duplicateNodes = new Map(source.nodes)
@@ -88,9 +88,9 @@ describe('SceneGraph ID allocation and hydration', () => {
       ...structuredClone(source.nodes.get(source.rootId)!),
       childIds: [page.id, page.id]
     })
-    expect(() =>
-      SceneGraph.hydrate({ ...snapshot(source), nodes: duplicateNodes }, state)
-    ).toThrow(/duplicate/)
+    expect(() => SceneGraph.hydrate({ ...snapshot(source), nodes: duplicateNodes }, state)).toThrow(
+      /duplicate/
+    )
 
     const cyclicNodes = new Map(source.nodes)
     cyclicNodes.set(page.id, {
@@ -101,8 +101,6 @@ describe('SceneGraph ID allocation and hydration', () => {
       ...structuredClone(source.nodes.get(source.rootId)!),
       parentId: page.id
     })
-    expect(() =>
-      SceneGraph.hydrate({ ...snapshot(source), nodes: cyclicNodes }, state)
-    ).toThrow()
+    expect(() => SceneGraph.hydrate({ ...snapshot(source), nodes: cyclicNodes }, state)).toThrow()
   })
 })
