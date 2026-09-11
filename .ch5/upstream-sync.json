@@ -20,7 +20,7 @@
     "desktop/",
     "api/",
     "packages/core/src/kiwi/",
-    "packages/core/src/scene-graph/",
+    "packages/scene-graph/",
     "src/app/ai/",
     "src/app/document/io/"
   ],

@@ -6,11 +6,13 @@ either side's diff.
 
 ## Current status
 
-`PROGRAM`: the historical ledger is incomplete. The fork has 725 fork-only
-commits after the May 26, 2026 fork point: 413 substantive, 191 agent
-checkpoints, 90 merges, and 31 generated, fixture, or hygiene commits. Treat the
-repository as a hard fork until the one-time reconciliation reconstructs this
-ledger and restores a small maintained delta.
+`PROGRAM`: the historical ledger is incomplete. Measured 2026-09-11 against
+merge-base `51ab2157`, the fork has 905 fork-only commits: 582 substantive,
+192 agent checkpoints, 100 merges, and 31 generated, fixture, or hygiene
+commits. (A prior pass reported 725/413/191/90/31 against the older `ec31ea1`
+ancestor; that range is superseded, not contradicted.) Treat the repository as
+a hard fork until the one-time reconciliation reconstructs this ledger and
+restores a small maintained delta.
 `docs/ch5/upstream-capabilities.md` is the replay inventory.
 
 ## Known CH5 intent
