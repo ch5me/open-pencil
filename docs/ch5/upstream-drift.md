@@ -227,15 +227,11 @@ capability at a time.
 7. Final commit is a merge: parent one private `main`, parent two exact
    `9d4fe4e421ac2be301a3d76a0c7d7883350656a8`.
 
-### Chris-only gate: format repair
+### Format repair (Chris-authorized 2026-09-11)
 
-`format:verify` and `format:check` both fail at `ebed6410` on 7 files
-(`packages/core/src/constants.ts`, `packages/scene-graph/src/index.ts`, three
-`tests/engine/scene-graph/*` files, `tools/agent-gateway/src/{executor,gateway}.ts`).
-Two collide with upstream.
-
-**This owner will not touch those files or push to shared `main` without an
-explicit Chris gate.** They are other-owned, and the fix lands on shared history.
-Configured verification green is a precondition the skill requires before any
-upstream landing, so this gate blocks the whole sequence. Repair is mechanical
-(`bun run format`) but is Chris's call, not this owner's.
+Chris authorized the mechanical seven-file `oxfmt` repair. Landed
+`style: format the seven oxfmt gate files` on the owner branch.
+`bun run format:verify` is green on 2028 files. Focused
+tests for the formatted surfaces plus `tests/engine/upstream-sync/basic.test.ts`
+passed (29). Remaining replay gate is the additivePaths seed gap above, not
+format.
