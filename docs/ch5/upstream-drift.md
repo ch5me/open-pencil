@@ -56,3 +56,90 @@ proof. Additive CH5 modules do not require a drift row.
 - Duplicate CH5/upstream features are collapsed to one implementation.
 - `bun run upstream:inspect` reports `routine` or `review`, not `program`.
 - Full configured verification passes before the merge commit lands.
+
+## Baseline 2026-09-11 (owner: OpenPencil Upstream, thr_wjjkj9uq2c)
+
+Read-only inspection. No merge, replay, or landing performed.
+
+| Ref | SHA | Date |
+| --- | --- | --- |
+| `upstream/master` | `9d4fe4e421ac2be301a3d76a0c7d7883350656a8` | 2026-09-10 |
+| `origin/main` | `ebed6410f2d56d1506bc788c7770ff673b40aaf2` | 2026-08-28 |
+| merge-base | `51ab21571ad29cf86e4862e145dcf9e937860390` | 2026-08-11 |
+
+`classification: program`, `canAutomate: false`. All three thresholds exceeded:
+412 upstream commits (max 75), 2497 changed files (max 400), 156 conflicts (max 0).
+Artifact: `~/.local/state/ch5/open-pencil-upstream/inspect-20260911T202227Z.json`.
+
+### Scope reconciliation
+
+`2497` is the upstream-side file count (merge-base to `upstream/master`); `703` is the
+private-side count (merge-base to `origin/main`). Union 2945. The integration-cost
+number is neither: **255 files are touched by both sides**, and 156 of those conflict.
+The collision surface is 8.7% of the union, not a whole-tree rewrite.
+
+### Private delta composition (905 commits)
+
+| Kind | Count | Disposition |
+| --- | --- | --- |
+| Substantive | 582 | classify per capability |
+| `omx` agent auto-checkpoints | 192 | drop (process noise, folded into tip) |
+| Merge commits | 100 | drop |
+| Hygiene/generated (keyword lower bound) | 31 | regenerate |
+
+Two clusters are conflict fuel carrying no product intent and must be **regenerated,
+never merged**: the 230-file CH5 `oxfmt` reformat sweep (upstream independently
+reformatted in `ec0aacd4f`, 2026-09-10), and committed binary `.tgz` K1 proof
+artifacts under `artifacts/`.
+
+### Verification state at `ebed6410` — NOT GREEN
+
+`bun run format:verify` exits 1 on pristine HEAD; 7 files are unformatted under the
+repo's own pinned `oxfmt 0.60.0`:
+
+```
+packages/core/src/constants.ts                              (collides with upstream)
+packages/scene-graph/src/index.ts                           (collides with upstream)
+tests/engine/scene-graph/history/undo-manager-compat.test.ts
+tests/engine/scene-graph/id-allocation.test.ts
+tests/engine/scene-graph/variables-compat.test.ts
+tools/agent-gateway/src/executor.ts
+tools/agent-gateway/src/gateway.ts
+```
+
+The pin landed `99770b532` (2026-08-12); all 7 files landed 2026-08-18, after it.
+`.forgejo/*` runs `format:check`, which fails identically — the gate was not enforced.
+`bun run check` did not complete under a bounded run; its status is UNKNOWN.
+
+**Consequence:** the skill requires full configured verification green before a merge
+lands. That precondition is unmet today, independent of upstream. Any merge started
+now would inherit a red baseline and failures could not be attributed to upstream.
+
+### Upstream convergence: none
+
+All 412 pending upstream commits were searched for hosted auth, storage provider,
+remote-agent transport, and gateway equivalents. No match. No CH5 hosted-mode
+capability row has an invalidation signal firing in this range; that delta is
+load-bearing, not redundant.
+
+### Confirmed seam collisions
+
+- `be942783d` deletes the monolithic i18n dialog catalogs; its diff also modifies
+  `src/components/chat/ACPPermissionDialog.vue`, a ledger-named CH5 seam file.
+- `b4e479d9d` (chat history persistence) touches `src/app/ai/chat/transports.ts`,
+  `src/components/ChatPanel.vue`, `src/components/chat/ChatInput.vue` — all
+  ledger-named. This is the "upstream refactors chat orchestration" invalidation
+  signal firing.
+- `AppTextButton.vue` is deleted upstream (`5f8a373b2`) but imported by 5 CH5 files
+  including `ChatPanel.vue` → preserve or re-point. `AppComboboxInput.vue` is deleted
+  upstream (`f674f8c99`, Reka UI replacement) and self-referenced only in CH5 → drop
+  candidate. Same conflict class, opposite dispositions: do not batch-resolve.
+
+### Contract gaps
+
+- The helper emits boolean `canAutomate`; the current skill's Schedule section reads
+  `automation.scheduledLandingAllowed` and distinguishes `review-required` from
+  `reconciliation-required`. Fail-closed today, so safe, but non-conforming.
+- A local `v0.14.1` tag exists that is **not** an upstream release; it is fork-authored
+  and collides with upstream's version namespace. Do not cite it as upstream.
+- No `ch5-sched` job is registered. Correct while `program`, but nothing observes drift.
