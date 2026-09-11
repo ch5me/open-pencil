@@ -145,3 +145,97 @@ load-bearing, not redundant.
 - A local `v0.14.1` tag exists that is **not** an upstream release; it is fork-authored
   and collides with upstream's version namespace. Do not cite it as upstream.
 - No `ch5-sched` job is registered. Correct while `program`, but nothing observes drift.
+
+## Reconciliation plan: root-config bucket (2026-09-11, read-only)
+
+Owner `thr_wjjkj9uq2c`. No mutation to shared `main`, no merge, no replay started.
+
+### The 98 unclassified commits resolve to 28 files
+
+The `other-only` bucket (98 non-merge commits touching neither CH5-additive nor
+upstream-owned trees) spans 162 distinct files. **134 are already deleted at
+`origin/main`** — agent scratch (`.sisyphus`, `.omo`, `.playwright-mcp`,
+`openwiki`), image-editor authority probe receipts, and K1 tarballs, all shed
+during earlier cleanup. They need no replay action; the tip already reflects the
+decision.
+
+28 files survive. Of those, **11 also change upstream** and are the only members
+of this bucket carrying merge risk:
+
+```
+.gitignore  AGENTS.md  CHANGELOG.md  README.md  bun.lock  knip.json
+lint/plugin.js  oxlint.json  package.json  playwright.config.ts  vite.config.ts
+```
+
+Disposition: `package.json`/`bun.lock` reconcile by intent (CH5 pins
+`oxfmt 0.60.0`/`oxlint 1.75.0`, upstream `^0.67.0`/`1.57.0`); narrative docs
+(`AGENTS.md`, `README.md`, `CHANGELOG.md`) take upstream and re-apply CH5
+sections; tool configs merge additively. The remaining 17 surviving files are
+CH5-only and carry no upstream conflict.
+
+Conclusion: this bucket is a **history artifact, not a content problem**. It does
+not require per-commit classification.
+
+### BLOCKER: replay seed gap deletes CH5 capability code
+
+`replay.additivePaths` seeds `tools/ch5` only. **31 CH5-only files outside
+upstream-owned trees are unseeded** and would be deleted by
+`replay-start`, which replaces the candidate tree with exact upstream and
+restores only seeded paths:
+
+```
+tools/agent-gateway/    9 files   ledgered capability (hosted agent gateway)
+tools/deployment/       5 files   build-candidate, promote, workflow
+tools/hosted-proof/     4 files   hosted + preview proof
+tools/local-bootstrap/  4 files
+tools/hosted/           2 files   validate-flags
+scripts/visual-{bisect,compare}.ts, scripts/export-fixture-visuals.ts
+.ch5rc  .cloud-work/config.json  CLAUDE.md
+artifacts/h0-scene-graph-public-contract-receipt.json   (regenerate, do not seed)
+```
+
+Proven failure mode — 5 of 6 seeded shims import unseeded implementations:
+
+| Seeded shim | Imports | Status |
+| --- | --- | --- |
+| `scripts/build-candidate.mjs` | `tools/deployment/src/build-candidate.mjs` | UNSEEDED |
+| `scripts/promote.mjs` | `tools/deployment/src/promote.mjs` | UNSEEDED |
+| `scripts/hosted-proof.ts` | `tools/hosted-proof/src/hosted` | UNSEEDED |
+| `scripts/preview-proof.ts` | `tools/hosted-proof/src/preview` | UNSEEDED |
+| `scripts/validate-hosted-flags.ts` | `tools/hosted/src/validate-flags` | UNSEEDED |
+| `scripts/upstream-sync.ts` | `tools/ch5/src/upstream-sync` | seeded (only correct pair) |
+
+A replay run today restores 5 shims and deletes every module they import.
+`tools/agent-gateway` is deleted with no shim at all.
+
+Files under `packages/`, `src/`, `tests/`, `desktop/` are correctly unseeded —
+the skill forbids seeding edits to upstream-owned source; those port one
+capability at a time.
+
+### Acceptance criteria (all must hold before `replay-start`)
+
+1. `replay.additivePaths` covers all 31 files above; re-running the gap check
+   yields **0** unseeded CH5-only files outside upstream-owned trees.
+2. Every seeded shim resolves to a seeded implementation (shim table all-seeded,
+   `scripts/upstream-sync.ts` unchanged).
+3. `artifacts/**` is excluded from seeding and regenerated; no `.tgz` is seeded.
+4. `bun test tests/engine/upstream-sync/` green.
+5. `bun scripts/upstream-sync.ts inspect` still reports `program`, `criticalFiles`
+   = 107, classification unchanged by the seed edit.
+6. Replay runs in a dedicated Grove Tree with `--allow-program
+   --confirm-upstream-first`; `finish` without `--push`.
+7. Final commit is a merge: parent one private `main`, parent two exact
+   `9d4fe4e421ac2be301a3d76a0c7d7883350656a8`.
+
+### Chris-only gate: format repair
+
+`format:verify` and `format:check` both fail at `ebed6410` on 7 files
+(`packages/core/src/constants.ts`, `packages/scene-graph/src/index.ts`, three
+`tests/engine/scene-graph/*` files, `tools/agent-gateway/src/{executor,gateway}.ts`).
+Two collide with upstream.
+
+**This owner will not touch those files or push to shared `main` without an
+explicit Chris gate.** They are other-owned, and the fix lands on shared history.
+Configured verification green is a precondition the skill requires before any
+upstream landing, so this gate blocks the whole sequence. Repair is mechanical
+(`bun run format`) but is Chris's call, not this owner's.
