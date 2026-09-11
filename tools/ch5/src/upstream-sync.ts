@@ -70,6 +70,20 @@ interface ReplayReport {
   additiveFiles: string[]
 }
 
+interface ReplayCheckpointReport {
+  schema: 'ch5.upstream-replay.checkpoint.v1'
+  generatedAt: string
+  repository: string
+  ref: string
+  commit: string
+  tree: string
+  /** Exact parents the eventual `finish` merge must use. Recorded as metadata
+   *  only: the checkpoint commit itself is deliberately single-parent. */
+  intendedMergeParents: { privateHead: string; upstream: string }
+  additivePaths: string[]
+  unresolvedPaths: string[]
+}
+
 const CONFIG_PATH = '.ch5/upstream-sync.json'
 
 function run(command: string[], cwd: string, allowFailure = false): CommandResult {
@@ -378,6 +392,63 @@ function startReplay(
   return report
 }
 
+// Preserves an in-progress replay candidate for review WITHOUT landing it.
+// The checkpoint commit is deliberately single-parent (privateHead only) so it
+// can never be mistaken for, or substituted for, the real two-parent merge that
+// `finish` must produce. Merge state, HEAD, the index and the worktree are all
+// left untouched, and nothing is ever pushed.
+function checkpointReplay(root: string, config: SyncConfig): ReplayCheckpointReport {
+  if (!config.replay) throw new Error('UPSTREAM_REPLAY_CONFIG_REQUIRED')
+  requireManagedWorktree(root, config)
+  if (!mergeInProgress(root)) {
+    throw new Error('UPSTREAM_REPLAY_CHECKPOINT_NO_MERGE: no replay candidate in progress')
+  }
+  const unresolved = git(['diff', '--name-only', '--diff-filter=U'], root).stdout
+  if (unresolved) {
+    throw new Error(`UPSTREAM_REPLAY_CHECKPOINT_UNRESOLVED:\n${unresolved}`)
+  }
+  const statePath = resolve(root, config.replay.stateFile)
+  if (!existsSync(statePath)) {
+    throw new Error('UPSTREAM_REPLAY_CHECKPOINT_STATE_MISSING: replay-start has not run here')
+  }
+  const state = JSON.parse(readFileSync(statePath, 'utf8')) as {
+    privateHead: string
+    upstream: string
+  }
+  const mergeHead = git(['rev-parse', 'MERGE_HEAD'], root).stdout
+  if (mergeHead !== state.upstream) {
+    throw new Error(
+      `UPSTREAM_REPLAY_CHECKPOINT_PARENT_MISMATCH: MERGE_HEAD ${mergeHead} != state ${state.upstream}`
+    )
+  }
+  const tree = git(['write-tree'], root).stdout
+  const message = [
+    'chore(upstream): replay candidate checkpoint',
+    '',
+    'Reviewable snapshot of an in-progress upstream-first replay.',
+    'NOT the integration merge: this commit is single-parent by design.',
+    `intended-merge-parent-1: ${state.privateHead}`,
+    `intended-merge-parent-2: ${state.upstream}`
+  ].join('\n')
+  const commit = git(['commit-tree', tree, '-p', state.privateHead, '-m', message], root).stdout
+  const ref = `refs/ch5/upstream-replay-checkpoint/${new Date()
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\..+$/, 'Z')}`
+  git(['update-ref', ref, commit], root)
+  return {
+    schema: 'ch5.upstream-replay.checkpoint.v1',
+    generatedAt: new Date().toISOString(),
+    repository: root,
+    ref,
+    commit,
+    tree,
+    intendedMergeParents: { privateHead: state.privateHead, upstream: state.upstream },
+    additivePaths: config.replay.additivePaths,
+    unresolvedPaths: []
+  }
+}
+
 function finishMerge(root: string, config: SyncConfig, push: boolean): void {
   requireManagedWorktree(root, config)
   if (!mergeInProgress(root)) throw new Error('UPSTREAM_SYNC_MERGE_NOT_IN_PROGRESS')
@@ -459,6 +530,20 @@ function main(): void {
     const report = startReplay(root, config, options.allowProgram, options.confirmUpstreamFirst)
     if (options.report) writeJSON(options.report, report)
     printReplayReport(report, options.json)
+    return
+  }
+  if (command === 'replay-checkpoint') {
+    const report = checkpointReplay(root, config)
+    if (options.report) writeJSON(options.report, report)
+    if (options.json) console.log(JSON.stringify(report, null, 2))
+    else {
+      console.log(`checkpoint ref:    ${report.ref}`)
+      console.log(`checkpoint commit: ${report.commit}`)
+      console.log(`candidate tree:    ${report.tree}`)
+      console.log(
+        `intended parents:  ${report.intendedMergeParents.privateHead} + ${report.intendedMergeParents.upstream}`
+      )
+    }
     return
   }
   if (command === 'verify') {
