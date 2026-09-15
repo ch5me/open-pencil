@@ -23,6 +23,7 @@ import { bindNodeEvents } from './events'
 import * as HitTest from './hit-test'
 import {
   collectSceneGraphEntityIds,
+  deriveSceneGraphIdAllocatorState,
   SceneGraphIdAllocator,
   validateSceneGraphIdAllocatorState,
   type SceneGraphIdAllocatorStateV1
@@ -409,6 +410,19 @@ export class SceneGraph {
   }
   reserveExistingEntityIds(ids: readonly string[]): void {
     this.idAllocator.reserveExisting(ids)
+  }
+  /**
+   * Re-derive ID allocation from the graph's current content. A graph whose `nodes`, `variables`,
+   * or `variableCollections` were replaced wholesale — across a worker transfer boundary, or by a
+   * subgraph clone — holds IDs the constructor's allocator never saw, so the next allocation hands
+   * out an ID an existing entity already occupies and silently replaces it. Callers that assemble a
+   * graph by assignment rather than through `hydrate` must call this before mutating it.
+   */
+  adoptEntityIds(): void {
+    this.idAllocator = new SceneGraphIdAllocator(
+      collectSceneGraphEntityIds(this),
+      deriveSceneGraphIdAllocatorState(this)
+    )
   }
   private registerNode(node: SceneNode, parentId: string | null): SceneNode {
     node.parentId = parentId

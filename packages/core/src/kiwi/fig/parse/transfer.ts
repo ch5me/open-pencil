@@ -98,6 +98,11 @@ export function deserializeSceneGraph(data: SerializedSceneGraph): SceneGraph {
   graph.figKiwiVersion = data.figKiwiVersion
   graph.figSchemaDeflated = data.figSchemaDeflated
   graph.documentColorSpace = data.documentColorSpace
+  // The transferred maps replace the constructor's own nodes, so the allocator has to be re-derived
+  // from them. Without this the first ID it hands out is one a transferred node already holds, and
+  // lazy population — which clones component children into instances — replaces whatever sits
+  // there, up to and including an entire unvisited page.
+  graph.adoptEntityIds()
   if (data.lazyFigImport) {
     setLazyFigImportContext(graph, {
       changeMap: new Map(data.lazyFigImport.changeMap),

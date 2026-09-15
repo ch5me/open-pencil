@@ -12,6 +12,7 @@
 
 ### Fixed
 
+- Keep every page of a `.fig` document when saving after visiting only some of them, instead of dropping an unvisited page and everything on it.
 - Import `.fig` documents whose variable collections share mode GUIDs, as a library-subscribed collection does, instead of rejecting the file with an ID collision.
 - Keep an exported document's variable, collection, and mode IDs clear of the node IDs the importer allocates, so a `.fig` written by OpenPencil re-imports without a node and a variable collection landing on one ID.
 - Stop a newly created node from replacing a node created under a caller-supplied ID, such as one restored by undo.

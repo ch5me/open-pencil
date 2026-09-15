@@ -99,6 +99,9 @@ function cloneIntoGraph(source: SceneGraph, ids: Set<string>): SceneGraph {
     graph.variableCollections.get(collection.id)?.variableIds.push(variableId)
   }
 
+  // The clone holds the source graph's IDs, not the ones the constructor's allocator issued, so it
+  // has to re-derive allocation before any caller mutates the extracted graph.
+  graph.adoptEntityIds()
   graph.clearAbsPosCache()
   return graph
 }

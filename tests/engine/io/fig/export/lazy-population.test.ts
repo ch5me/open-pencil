@@ -48,6 +48,7 @@ describe('FIG population export lifecycle', () => {
     const exported = await exportFigFile(graph)
     expect(graph.getChildren(instance.id)).toHaveLength(0)
     const reimported = await parseFigFile(exported.buffer as ArrayBuffer, { populate: 'all' })
+    expect(reimported.getPages().map((page) => page.name)).toEqual(['Page 1', 'Second'])
     const reimportedInstance = [...reimported.getAllNodes()].find(
       (node) => node.type === 'INSTANCE' && node.name === 'Button instance'
     )

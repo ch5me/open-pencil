@@ -54,6 +54,26 @@ describe('SceneGraph ID allocation and hydration', () => {
     expect(hydrated.nodes.get(hydrated.rootId)?.name).toBe('Document')
   })
 
+  test('adopts the IDs of a graph assembled by replacing its maps', () => {
+    const source = new SceneGraph()
+    const page = source.getPages()[0]
+    const second = source.addPage('Second')
+
+    // The shape every worker transfer boundary and subgraph clone produces: a constructor-fresh
+    // graph whose maps are replaced wholesale, so its allocator has never seen the adopted IDs.
+    const transferred = new SceneGraph()
+    transferred.rootId = source.rootId
+    transferred.nodes = new Map(source.nodes)
+    expect(transferred.getPages()).toHaveLength(2)
+
+    transferred.adoptEntityIds()
+    const created = transferred.createNode('RECTANGLE', page.id, { name: 'Fresh' })
+
+    expect(created.id).not.toBe(second.id)
+    expect(transferred.getNode(second.id)?.type).toBe('CANVAS')
+    expect(transferred.getPages()).toHaveLength(2)
+  })
+
   test('rejects cross-domain explicit ID collisions without mutation', () => {
     const graph = new SceneGraph()
     const collection = graph.createCollection('Tokens')
