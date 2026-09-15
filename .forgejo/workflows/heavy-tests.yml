@@ -23,6 +23,6 @@ jobs:
           lfs: 'true'
 
       - name: Heavy fig roundtrip tests
-        run: bun test --timeout 180000 tests/engine/fig-roundtrip.test.ts
+        run: bun run test:unit:heavy
         env:
           BUN_HEAVY_TESTS: 'true'

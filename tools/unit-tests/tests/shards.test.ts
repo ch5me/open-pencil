@@ -1,17 +1,23 @@
 import { expect, test } from 'bun:test'
 
 import {
+  ENGINE_TESTS_ROOT,
   isHeavyUnitTest,
   listHeavyUnitTests,
   listUnitTests,
   pathsForUnitTestGroup,
+  uncoveredEngineTestDirectories,
   unitTestGroupNames
 } from '../src/shards'
 
 test('unit test groups cover all declared shards', () => {
   expect(unitTestGroupNames()).toContain('all')
   expect(pathsForUnitTestGroup('dom')).toContain('tests/engine/dom-css')
-  expect(pathsForUnitTestGroup('all')).toContain('tests/engine/io')
+  expect(pathsForUnitTestGroup('all')).toEqual([ENGINE_TESTS_ROOT])
+})
+
+test('every engine test directory belongs to a shard group', async () => {
+  expect(await uncoveredEngineTestDirectories()).toEqual([])
 })
 
 test('heavy unit test matcher excludes fixture-heavy tests', () => {

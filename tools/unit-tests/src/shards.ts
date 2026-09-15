@@ -4,17 +4,37 @@ import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..')
 
+export const ENGINE_TESTS_ROOT = 'tests/engine'
+
 export const UNIT_TEST_GROUPS = {
-  app: ['tests/engine/acp', 'tests/engine/app', 'tests/engine/cli', 'tests/engine/tauri'],
-  dom: ['tests/engine/dom-css', 'tests/engine/color', 'tests/engine/icons', 'tests/engine/pen'],
+  app: [
+    'tests/engine/acp',
+    'tests/engine/agent',
+    'tests/engine/app',
+    'tests/engine/cli',
+    'tests/engine/collab',
+    'tests/engine/tauri'
+  ],
+  dom: [
+    'tests/engine/bytes',
+    'tests/engine/dom-css',
+    'tests/engine/color',
+    'tests/engine/icons',
+    'tests/engine/pen'
+  ],
   editor: [
     'tests/engine/clipboard',
     'tests/engine/editor',
     'tests/engine/hit-test',
     'tests/engine/snap'
   ],
-  fig: ['tests/engine/figma', 'tests/engine/io', 'tests/engine/kiwi'],
-  render: ['tests/engine/geometry', 'tests/engine/layout', 'tests/engine/render'],
+  fig: ['tests/engine/figma', 'tests/engine/io', 'tests/engine/kiwi', 'tests/engine/upstream-sync'],
+  render: [
+    'tests/engine/build',
+    'tests/engine/geometry',
+    'tests/engine/layout',
+    'tests/engine/render'
+  ],
   scene: [
     'tests/engine/lint',
     'tests/engine/random',
@@ -50,8 +70,25 @@ export function unitTestGroupNames(): UnitTestGroup[] {
 }
 
 export function pathsForUnitTestGroup(group: UnitTestGroup): string[] {
-  if (group === 'all') return Object.values(UNIT_TEST_GROUPS).flat()
+  // 'all' walks the engine test root rather than replaying the group lists, so a directory added
+  // later is covered the moment it exists. The named groups stay declared because they shard CI.
+  if (group === 'all') return [ENGINE_TESTS_ROOT]
   return [...UNIT_TEST_GROUPS[group]]
+}
+
+/**
+ * List the engine test directories the sharded groups leave uncovered. A directory in no group runs
+ * in no shard, which reads exactly like a passing one — `tests/engine/agent`, `build`, `bytes`,
+ * `collab`, and `upstream-sync` were all invisible that way until this was checked.
+ */
+export async function uncoveredEngineTestDirectories(): Promise<string[]> {
+  const declared = new Set<string>(Object.values(UNIT_TEST_GROUPS).flat())
+  const entries = await readdir(resolve(REPO_ROOT, ENGINE_TESTS_ROOT), { withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `${ENGINE_TESTS_ROOT}/${entry.name}`)
+    .filter((path) => !declared.has(path))
+    .sort()
 }
 
 export function isHeavyUnitTest(path: string): boolean {
