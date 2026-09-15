@@ -1,10 +1,37 @@
-name: Build
+# CH5-local file (not upstream's). It holds the `macos-latest` and
+# `windows-latest` legs of the `build` matrix that used to live in
+# `.forgejo/workflows/build.yml`, so they can carry an `on:` trigger of their
+# own.
+#
+# WHY THEY ARE NOT IN build.yml ANY MORE
+#
+# No CH5 Forgejo runner carries `macos-latest` or `windows-latest` --
+# ch5-macmini-runner carries `macos` / `macos-arm64` / `ios`, and CH5 has no
+# Windows capacity at all -- so on git.ch5.me/ch5/open-pencil every `v*` tag
+# push created four job rows no runner could ever claim. All 30 runs this
+# workflow has ever had show those four legs at `task_id=0`, never started,
+# every one ending `cancelled`. Worse, `publish-npm` is `needs: build`, so the
+# four stuck legs also blocked the npm publish: it has never run once.
+#
+# `on:` is the only lever Forgejo honours server-side, and it is per-workflow,
+# so separating these legs is the only way to stop them being scheduled
+# without also stopping the `ubuntu-22.04` leg and `publish-npm`, which do run
+# there.
+#
+# WHY NOT RELABEL THEM
+#
+# Relabelling is dishonest. Pointing a Windows cross-compile at `ubuntu-latest`
+# would run something it was never meant to run and report green, and pointing
+# the macOS legs at `macos-arm64` would wire two full Tauri builds onto the
+# single ch5-macmini-runner that real iOS signing depends on. If a job cannot
+# be served, the honest outcome is that it is not automatically triggered.
+#
+# The job below is a verbatim copy of the removed matrix legs and their steps;
+# keep it that way so a future edit to build.yml can be mirrored mechanically.
+name: Build (macOS, Windows)
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
 
 permissions:
   contents: write
@@ -18,21 +45,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # CH5-local: the `macos-latest` and `windows-latest` legs moved to
-        # `build-macos-windows.yml`, which is `workflow_dispatch`-only. No CH5
-        # runner carries either label, so on git.ch5.me every `v*` tag push
-        # created four job rows nothing could claim -- and because
-        # `publish-npm` is `needs: build`, those stuck legs also blocked the
-        # npm publish, which has never run once. `on:` is per-workflow and is
-        # the only lever Forgejo honours server-side, so splitting the legs out
-        # is the only way to stop them queuing without also stopping this leg.
-        # Relabelling them was rejected: CH5 has no Windows capacity, and
-        # pointing a job at a runner it was never written for reports green
-        # for work it did not do. Full reasoning in build-macos-windows.yml.
         include:
-          - platform: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
-            label: linux-x64
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            label: macos-arm64
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            label: macos-x64
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows-x64
+          - platform: windows-latest
+            target: aarch64-pc-windows-msvc
+            label: windows-arm64
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -116,39 +141,3 @@ jobs:
           releaseDraft: true
           uploadUpdaterJson: true
           uploadUpdaterSignatures: true
-
-  publish-npm:
-    if: startsWith(forgejo.ref, 'refs/tags/v')
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24.x
-          registry-url: https://npm.ch5.me/
-
-      - uses: ./.forgejo/actions/setup-bun
-
-      - name: Build packages for publish
-        run: |
-          for dir in packages/scene-graph packages/pen packages/kiwi packages/fig packages/core packages/dom-css packages/cli packages/mcp packages/vue; do
-            if [ -f "$dir/package.json" ] && node -p "require('./$dir/package.json').scripts?.build" 2>/dev/null | grep -qv undefined; then
-              echo "Building $dir..."
-              (cd "$dir" && bun run build)
-            fi
-          done
-
-      - name: Prepare publish directories
-        run: bun tools/release-packages/src/prepare-publish-dirs.ts
-
-      - name: Pack packages for publish
-        run: bun tools/release-packages/src/cli.ts pack
-
-      - name: Publish packages to npm
-        run: bun tools/release-packages/src/cli.ts publish
