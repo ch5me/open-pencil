@@ -31,6 +31,32 @@ function atlaskitSubpathResolver() {
   }
 }
 
+// A chunk name becomes a path under `dist`, so it may only ever describe this
+// repo. Workspace modules keep their `src`-relative path; a bundled dependency
+// is named after its file alone, because the rest of its path belongs to the
+// build machine — `/Users/<someone>/src/...` on a canonical checkout, and an
+// absolute path into the shared Grove dependency store from a worktree. Naming
+// one after the last `src` segment of its absolute path wrote that layout into
+// `dist`, and npm pack drops every `node_modules/` and `.git/` directory, so the
+// entry chunk shipped importing files the tarball did not contain.
+function chunkName(id: string) {
+  const parts = id.split('?')[0].split(/[\\/]/g)
+  const basename = parts.at(-1) ?? 'index'
+  const srcIndex = parts.includes('node_modules') ? -1 : parts.lastIndexOf('src')
+  const file = srcIndex >= 0 ? parts.slice(srcIndex + 1).join('/') : basename
+  return file.replace(/\.(vue|ts)$/, '')
+}
+
+// A sourcemap `sources` entry ships too, and rolldown writes it as the path from
+// the map to the module on disk — which for a bundled dependency walks out of
+// the package and across the build machine. Name it from its own
+// `node_modules/` down instead: same file, no machine in front of it.
+function sourcemapSource(relativeSourcePath: string) {
+  const parts = relativeSourcePath.split(/[\\/]/g)
+  const dependencyIndex = parts.lastIndexOf('node_modules')
+  return dependencyIndex >= 0 ? parts.slice(dependencyIndex).join('/') : relativeSourcePath
+}
+
 export default defineConfig({
   entry: {
     index: './src/index.ts'
@@ -74,7 +100,12 @@ export default defineConfig({
     ],
     onlyBundle: false
   },
-  plugins: [atlaskitSubpathResolver(), raw(), vue()],
+  // `isProduction` drops the `__file` annotation unplugin-vue attaches to every
+  // SFC, which is the compiling machine's absolute path to the `.vue` source —
+  // `@open-pencil/vue@0.14.1` shipped three chunks carrying the worktree it was
+  // built in. This is a published library build; the annotation only ever names
+  // a directory the consumer does not have.
+  plugins: [atlaskitSubpathResolver(), raw(), vue({ isProduction: true })],
   inputOptions: {
     preserveEntrySignatures: 'allow-extension',
     checks: {
@@ -83,17 +114,12 @@ export default defineConfig({
   },
   outputOptions: {
     minifyInternalExports: false,
+    sourcemapPathTransform: sourcemapSource,
     codeSplitting: {
       groups: [
         {
           test: /(?<!\.d\.c?ts)$/,
-          name: (id) => {
-            const cleanId = id.split('?')[0]
-            const parts = cleanId.split(/[\\/]/g)
-            const srcIndex = parts.lastIndexOf('src')
-            const file = srcIndex >= 0 ? parts.slice(srcIndex + 1).join('/') : parts.at(-1) ?? 'index'
-            return file.replace(/\.(vue|ts)$/, '')
-          }
+          name: chunkName
         }
       ]
     }

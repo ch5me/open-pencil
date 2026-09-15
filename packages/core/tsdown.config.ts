@@ -62,6 +62,13 @@ export default defineConfig({
       ...Object.keys(packageJson.peerDependencies ?? {}),
       /^node:/
     ],
-    onlyBundle: false
+    // Empty whitelist: nothing from node_modules may be bundled, and tsdown
+    // fails the build naming anything that is. An undeclared dependency used to
+    // be inlined silently, and `unbundle` then wrote each inlined module to its
+    // own file named after the module's REAL path relative to the common root of
+    // the build -- so a package this one forgot to declare put a slice of the
+    // build machine's filesystem into `dist`, and into the import specifiers of
+    // the `.d.ts` beside it. Declare the dependency instead; do not widen this.
+    onlyBundle: []
   }
 })

@@ -211,6 +211,18 @@
     "build": "bunx tsdown --config tsdown.config.ts",
     "prepublishOnly": "bun run build"
   },
+  "peerDependencies": {
+    "@ai-sdk/valibot": "^2.0.27",
+    "ai": "^6.0.174"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk/valibot": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "@chenglou/pretext": "^0.0.7",
     "@iconify/utils": "^3.1.0",

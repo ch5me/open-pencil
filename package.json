@@ -43,7 +43,7 @@
     "check:secrets": "bun tools/secret-scan/src/index.ts",
     "check:monorepo": "sherif --ignore-rule root-package-dependencies",
     "check:i18n": "bun tools/i18n/src/check-locales.ts",
-    "check:packages": "bun tools/package-quality/src/check/metadata.ts && bun tools/package-quality/src/check/publint.ts && bun tools/package-quality/src/check/attw.ts",
+    "check:packages": "bun tools/package-quality/src/check/metadata.ts && bun tools/package-quality/src/check/dist-paths.ts && bun tools/package-quality/src/check/publint.ts && bun tools/package-quality/src/check/attw.ts",
     "check:arch": "steiger .",
     "check:vue": "vue-tsc --noEmit -p tsconfig.json && vue-tsc --noEmit -p packages/vue/tsconfig.json",
     "test": "playwright test --project=openpencil",

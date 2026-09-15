@@ -193,6 +193,14 @@
         "rolldown": "^1.1.3",
         "typescript": "~5.8.3",
       },
+      "peerDependencies": {
+        "@ai-sdk/valibot": "^2.0.27",
+        "ai": "^6.0.174",
+      },
+      "optionalPeers": [
+        "@ai-sdk/valibot",
+        "ai",
+      ],
     },
     "packages/docs": {
       "name": "@open-pencil/docs",

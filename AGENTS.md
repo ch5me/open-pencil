@@ -332,6 +332,8 @@ Self-review checklist:
 - Public packages publish built `dist/` output, not runtime TypeScript entrypoints
 - Public workspace packages build before publishing; most use tsdown, and split packages may also run `tsc --emitDeclarationOnly` plus dist smoke checks. Keep release tooling package lists in sync with `.github/workflows/build.yml`.
 - CLI publishes a Node-compatible `bin/openpencil.js` wrapper; do not point package `bin` entries at TypeScript source
+- A build may only write paths that describe this repo. `npm pack` silently drops every `node_modules/` and dot-directory, so a chunk emitted under one is absent from the tarball and the chunk importing it ships broken; an absolute path is a directory the consumer does not have. `bun run check:packages` runs `tools/package-quality/src/check/dist-paths.ts`, which fails on all three. A worktree makes this loud because dependencies resolve through a store under the canonical checkout's `.git/`, but the same build on a plain checkout is wrong in the same way — `@open-pencil/core@0.14.1` shipped 46 vendored `zod`/`ai` declaration files, and `@open-pencil/vue@0.14.1` shipped three chunks naming the worktree they were compiled in
+- A package whose public types name a third-party type must declare that dependency. `deps.onlyBundle: []` in a package's `tsdown.config.ts` turns an undeclared one into a build failure that names it; declare it (`peerDependencies`, optional when the feature is) rather than widening the whitelist
 
 ## Reference
 
