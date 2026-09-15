@@ -38,20 +38,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: https://github.com/dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: https://github.com/Swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri -> target
           key: ${{ matrix.target }}
 
+      # No `sudo`: the Forgejo runner executes this job as root inside
+      # `node:24-bookworm`, which does not ship sudo at all, so a `sudo apt-get`
+      # here dies with `sudo: command not found` rather than a permissions error.
       - name: Install dependencies (Linux)
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          apt-get update
+          apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - uses: ./.forgejo/actions/setup-bun
 
@@ -98,7 +101,7 @@ jobs:
           } >> "$FORGEJO_OUTPUT"
 
       - name: Build Tauri
-        uses: tauri-apps/tauri-action@v0
+        uses: https://github.com/tauri-apps/tauri-action@v0
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
