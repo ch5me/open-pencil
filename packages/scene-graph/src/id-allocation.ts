@@ -79,8 +79,11 @@ export function validateSceneGraphIdAllocatorState(
   graph: SceneGraphIdDomain,
   state: SceneGraphIdAllocatorStateV1
 ): void {
+  // Read through a widened type: allocator state is also restored from persistence, where the
+  // declared literal version is a claim rather than a guarantee.
+  const version: string = state.version
   if (
-    state.version !== 'open-pencil-id-allocation:1' ||
+    version !== 'open-pencil-id-allocation:1' ||
     !Number.isSafeInteger(state.nextIdFloor) ||
     state.nextIdFloor < 1 ||
     state.nextIdFloor > MAX_ID_FLOOR

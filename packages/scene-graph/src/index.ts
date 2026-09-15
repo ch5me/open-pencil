@@ -172,7 +172,7 @@ function validateHydrationActiveModes(snapshot: SceneGraphHydrationSnapshotV1): 
 
 function validateHydrationSnapshot(snapshot: SceneGraphHydrationSnapshotV1): void {
   const root = snapshot.nodes.get(snapshot.rootId)
-  if (!root || root.type !== 'FRAME' || root.parentId !== null) {
+  if (root?.type !== 'FRAME' || root.parentId !== null) {
     throw new Error('SceneGraph hydration root is missing or has a parent')
   }
   collectSceneGraphEntityIds(snapshot)

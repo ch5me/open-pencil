@@ -37,9 +37,8 @@ describe('immutable history compatibility with UndoManager', () => {
         after,
         coalesceKey
       }).next
-      expect(
-        state.undoEntryIds.at(-1) && state.entries.get(state.undoEntryIds.at(-1)!)?.label
-      ).toBe(legacy.undoLabel)
+      const lastUndoId = state.undoEntryIds.at(-1)
+      expect(lastUndoId && state.entries.get(lastUndoId)?.label).toBe(legacy.undoLabel)
     }
 
     record('one', 1, 'drag')
@@ -47,15 +46,16 @@ describe('immutable history compatibility with UndoManager', () => {
     record('three', 3)
 
     expect(legacy.undo()).toBe('three')
-    const undo = planHistoryUndo(state)!
+    const undo = planHistoryUndo(state)
+    if (!undo) throw new Error('Expected an undo plan matching the legacy UndoManager')
     state = undo.next
     expect(undo.selectedSnapshot).toBe(legacyValue)
-    expect(state.redoEntryIds.at(-1) && state.entries.get(state.redoEntryIds.at(-1)!)?.label).toBe(
-      legacy.redoLabel
-    )
+    const lastRedoId = state.redoEntryIds.at(-1)
+    expect(lastRedoId && state.entries.get(lastRedoId)?.label).toBe(legacy.redoLabel)
 
     expect(legacy.redo()).toBe('three')
-    const redo = planHistoryRedo(state)!
+    const redo = planHistoryRedo(state)
+    if (!redo) throw new Error('Expected a redo plan matching the legacy UndoManager')
     state = redo.next
     expect(redo.selectedSnapshot).toBe(legacyValue)
 

@@ -231,7 +231,10 @@ export function createHistoryState<TSnapshot>(
 }
 
 export function validateHistoryState<TSnapshot>(state: ImmutableHistoryState<TSnapshot>): void {
-  if (state.version !== 'open-pencil-history:1') throw new Error('Invalid history version')
+  // Read through a widened type: history state is also restored from persistence, where the
+  // declared literal version is a claim rather than a guarantee.
+  const version: string = state.version
+  if (version !== 'open-pencil-history:1') throw new Error('Invalid history version')
   if (Number.isNaN(state.limit) || state.limit < 0) throw new Error('Invalid history limit')
   const seen = new Set<HistoryEntryId>()
   for (const id of [...state.undoEntryIds, ...state.redoEntryIds]) {
@@ -328,16 +331,22 @@ export function planHistoryRedo<TSnapshot>(
   })
 }
 
+function currentSnapshot<TSnapshot>(
+  state: ImmutableHistoryState<TSnapshot>
+): TSnapshot | undefined {
+  const lastUndoId = state.undoEntryIds.at(-1)
+  if (lastUndoId) return state.entries.get(lastUndoId)?.after
+  const lastRedoId = state.redoEntryIds.at(-1)
+  if (lastRedoId) return state.entries.get(lastRedoId)?.before
+  return undefined
+}
+
 export function planHistoryClear<TSnapshot>(
   state: ImmutableHistoryState<TSnapshot>
 ): HistoryPlan<TSnapshot> {
   validateHistoryState(state)
   const ids = [...state.undoEntryIds, ...state.redoEntryIds]
-  const current = state.undoEntryIds.at(-1)
-    ? state.entries.get(state.undoEntryIds.at(-1)!)?.after
-    : state.redoEntryIds.at(-1)
-      ? state.entries.get(state.redoEntryIds.at(-1)!)?.before
-      : undefined
+  const current = currentSnapshot(state)
   const next = freezeState<TSnapshot>(state.limit, new Map(), [], [])
   return Object.freeze({
     previous: state,

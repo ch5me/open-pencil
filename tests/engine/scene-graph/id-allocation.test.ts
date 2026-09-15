@@ -44,8 +44,12 @@ describe('SceneGraph ID allocation and hydration', () => {
     source.images.set('image', new Uint8Array([1, 2, 3]))
     const hydrated = SceneGraph.hydrate(snapshot(source), deriveSceneGraphIdAllocatorState(source))
 
-    source.images.get('image')![0] = 9
-    source.nodes.get(source.rootId)!.name = 'Changed'
+    const sourceBytes = source.images.get('image')
+    if (!sourceBytes) throw new Error('Expected the source image bytes')
+    sourceBytes[0] = 9
+    const sourceRoot = source.nodes.get(source.rootId)
+    if (!sourceRoot) throw new Error('Expected the source root node')
+    sourceRoot.name = 'Changed'
     expect(hydrated.images.get('image')).toEqual(new Uint8Array([1, 2, 3]))
     expect(hydrated.nodes.get(hydrated.rootId)?.name).toBe('Document')
   })
@@ -65,6 +69,8 @@ describe('SceneGraph ID allocation and hydration', () => {
     const source = new SceneGraph()
     const state = deriveSceneGraphIdAllocatorState(source)
     const page = source.getPages()[0]
+    const root = source.nodes.get(source.rootId)
+    if (!root) throw new Error('Expected the source root node')
 
     const disconnectedNodes = new Map(source.nodes)
     disconnectedNodes.set('external:node', {
@@ -85,7 +91,7 @@ describe('SceneGraph ID allocation and hydration', () => {
 
     const duplicateNodes = new Map(source.nodes)
     duplicateNodes.set(source.rootId, {
-      ...structuredClone(source.nodes.get(source.rootId)!),
+      ...structuredClone(root),
       childIds: [page.id, page.id]
     })
     expect(() => SceneGraph.hydrate({ ...snapshot(source), nodes: duplicateNodes }, state)).toThrow(
@@ -98,7 +104,7 @@ describe('SceneGraph ID allocation and hydration', () => {
       childIds: [source.rootId]
     })
     cyclicNodes.set(source.rootId, {
-      ...structuredClone(source.nodes.get(source.rootId)!),
+      ...structuredClone(root),
       parentId: page.id
     })
     expect(() => SceneGraph.hydrate({ ...snapshot(source), nodes: cyclicNodes }, state)).toThrow()

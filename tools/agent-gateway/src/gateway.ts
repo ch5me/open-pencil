@@ -9,6 +9,7 @@ import {
 import type {
   AgentEvent,
   AgentJSONValue,
+  AgentOptionCatalogEntry,
   AgentRunReceipt,
   AgentRunRequest,
   AgentToolResultContinuation
@@ -174,26 +175,12 @@ function resolveRunRoute(
   return { state, action: match[3] as RunRoute['action'] }
 }
 
-async function startRun(
-  request: Request,
-  runs: Map<string, RunState>,
-  idempotency: Map<string, RunState>,
-  catalogSource: AgentCatalogSource,
-  executor: AgentExecutor
-): Promise<Response> {
-  const principal = request.headers.get('x-openpencil-principal')
-  if (!principal)
-    return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
-  let body: AgentRunRequest
-  try {
-    body = parseAgentRunRequest(await request.json())
-  } catch {
-    return json({ code: 'invalid-request', message: 'Malformed run request.' }, 400)
-  }
-  const idempotencyKey = `${principal}/${body.idempotencyKey}`
-  const existing = idempotency.get(idempotencyKey)
-  if (existing) return sse(existing.events)
-
+/** Resolves the catalog option a run executes under, or the response that refuses it. */
+async function resolveRunOption(
+  principal: string,
+  body: AgentRunRequest,
+  catalogSource: AgentCatalogSource
+): Promise<AgentOptionCatalogEntry | Response> {
   let catalog
   try {
     catalog = await catalogSource(principal)
@@ -215,8 +202,16 @@ async function startRun(
   if (!option) {
     return json({ code: 'options-unavailable', message: 'No agent option is available.' }, 503)
   }
+  return option
+}
 
-  const state: RunState = {
+function createRunState(
+  principal: string,
+  body: AgentRunRequest,
+  optionId: string,
+  executor: AgentExecutor
+): RunState {
+  return {
     principal,
     request: body,
     sessionId: body.conversation.sessionId ?? `session-${body.conversation.clientId}`,
@@ -224,20 +219,99 @@ async function startRun(
     events: [],
     cancelled: false,
     selection: body.selection,
-    optionId: option.optionId,
+    optionId,
     executor,
     abortController: new AbortController()
   }
-  runs.set(runKey(principal, state.sessionId, state.runId), state)
-  idempotency.set(idempotencyKey, state)
-  if (body.input.text.includes('[malformed]')) return sse([], true)
+}
 
-  push(state, { type: 'session.created', data: { requestId: body.requestId } })
-  push(state, { type: 'run.started', data: { requestId: body.requestId } })
+function pushRunStart(state: RunState): void {
+  const { requestId } = state.request
+  push(state, { type: 'session.created', data: { requestId } })
+  push(state, { type: 'run.started', data: { requestId } })
   push(state, {
     type: 'message.start',
     data: { messageId: 'assistant-1', role: 'assistant' }
   })
+}
+
+/** Admits a tool call against the request manifest, or returns the response that refuses it. */
+function admitToolCall(state: RunState, call: AgentToolCall): Response | null {
+  const body = state.request
+  const action = body.tools.definitions.find((definition) => definition.name === call.name)
+  if (!action) {
+    return json({ code: 'tool-not-allowed', message: 'Requested tool is not defined.' }, 403)
+  }
+  if (!action.mutates || !action.requiresApproval) {
+    return json({ code: 'invalid-request', message: 'Action policy diverges from runtime.' }, 400)
+  }
+  if (!actionAcceptsArguments(action, call.arguments)) {
+    return json({ code: 'invalid-request', message: 'Action schema diverges from runtime.' }, 400)
+  }
+  state.call = call
+  push(state, {
+    type: 'tool.call',
+    data: {
+      callId: call.callId,
+      continuationId: `continuation-${call.callId}`,
+      manifestId: body.tools.manifestId,
+      name: call.name,
+      arguments: call.arguments,
+      target: { documentId: body.context.documentId, pageId: body.context.pageId }
+    }
+  })
+  return null
+}
+
+function pushRunFailure(state: RunState, error: unknown): void {
+  const message = error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
+  push(state, {
+    type: 'run.failed',
+    data: {
+      error: {
+        schema: AGENT_ERROR_SCHEMA,
+        code: 'run-failed',
+        message,
+        retryable: true,
+        phase: 'request',
+        requestId: state.request.requestId,
+        sessionId: state.sessionId,
+        runId: state.runId
+      },
+      receipt: receipt(state, 'failed')
+    }
+  })
+}
+
+async function startRun(
+  request: Request,
+  runs: Map<string, RunState>,
+  idempotency: Map<string, RunState>,
+  catalogSource: AgentCatalogSource,
+  executor: AgentExecutor
+): Promise<Response> {
+  const principal = request.headers.get('x-openpencil-principal')
+  if (!principal)
+    return json({ code: 'unauthorized', message: 'Verified principal required.' }, 401)
+  let body: AgentRunRequest
+  try {
+    body = parseAgentRunRequest(await request.json())
+  } catch {
+    return json({ code: 'invalid-request', message: 'Malformed run request.' }, 400)
+  }
+  const idempotencyKey = `${principal}/${body.idempotencyKey}`
+  const existing = idempotency.get(idempotencyKey)
+  if (existing) return sse(existing.events)
+
+  const option = await resolveRunOption(principal, body, catalogSource)
+  if (option instanceof Response) return option
+
+  const state = createRunState(principal, body, option.optionId, executor)
+  runs.set(runKey(principal, state.sessionId, state.runId), state)
+  idempotency.set(idempotencyKey, state)
+  if (body.input.text.includes('[malformed]')) return sse([], true)
+
+  pushRunStart(state)
   try {
     const execution = await executor.start({
       request: body,
@@ -261,55 +335,15 @@ async function startRun(
       })
       return sse(state.events)
     }
-    const action = body.tools.definitions.find(
-      (definition) => definition.name === execution.call.name
-    )
-    if (!action) {
+    const refusal = admitToolCall(state, execution.call)
+    if (refusal) {
       runs.delete(runKey(principal, state.sessionId, state.runId))
       idempotency.delete(idempotencyKey)
-      return json({ code: 'tool-not-allowed', message: 'Requested tool is not defined.' }, 403)
+      return refusal
     }
-    if (!action.mutates || !action.requiresApproval) {
-      runs.delete(runKey(principal, state.sessionId, state.runId))
-      idempotency.delete(idempotencyKey)
-      return json({ code: 'invalid-request', message: 'Action policy diverges from runtime.' }, 400)
-    }
-    if (!actionAcceptsArguments(action, execution.call.arguments)) {
-      runs.delete(runKey(principal, state.sessionId, state.runId))
-      idempotency.delete(idempotencyKey)
-      return json({ code: 'invalid-request', message: 'Action schema diverges from runtime.' }, 400)
-    }
-    state.call = execution.call
-    push(state, {
-      type: 'tool.call',
-      data: {
-        callId: execution.call.callId,
-        continuationId: `continuation-${execution.call.callId}`,
-        manifestId: body.tools.manifestId,
-        name: execution.call.name,
-        arguments: execution.call.arguments,
-        target: { documentId: body.context.documentId, pageId: body.context.pageId }
-      }
-    })
   } catch (error) {
     if (state.cancelled) return sse(state.events)
-    const message = error instanceof AgentExecutorError ? error.message : 'Agent execution failed.'
-    push(state, {
-      type: 'run.failed',
-      data: {
-        error: {
-          schema: AGENT_ERROR_SCHEMA,
-          code: 'run-failed',
-          message,
-          retryable: true,
-          phase: 'request',
-          requestId: body.requestId,
-          sessionId: state.sessionId,
-          runId: state.runId
-        },
-        receipt: receipt(state, 'failed')
-      }
-    })
+    pushRunFailure(state, error)
   }
   if (body.input.text.includes('[disconnect-once]')) return interruptedSse(state.events.slice(0, 5))
   return sse(state.events)

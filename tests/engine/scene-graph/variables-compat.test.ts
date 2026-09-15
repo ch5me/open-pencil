@@ -7,7 +7,12 @@ describe('public variable helper compatibility', () => {
   test('retains supplied generator signatures and reserves IDs atomically', () => {
     const graph = new SceneGraph()
     const generated = ['external:collection', 'external:mode']
-    const collection = createCollection(graph, () => generated.shift()!, 'Tokens')
+    const nextGeneratedId = () => {
+      const value = generated.shift()
+      if (!value) throw new Error('Generated ID pool is exhausted')
+      return value
+    }
+    const collection = createCollection(graph, nextGeneratedId, 'Tokens')
     expect(collection.id).toBe('external:collection')
 
     const variable = createVariable(

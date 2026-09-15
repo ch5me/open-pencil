@@ -7,8 +7,10 @@ import {
   createAgentGatewayManifestId,
   parseAgentEvent
 } from '@open-pencil/agent-contracts'
+import type { AgentOptionCatalogEntry } from '@open-pencil/agent-contracts'
 
-import { createFakeGateway } from '../src/gateway'
+import type { AgentExecutor, AgentExecutionStart } from '../src/executor'
+import { createAgentGateway, createFakeGateway } from '../src/gateway'
 
 const fixtureCatalog = {
   schema: AGENT_OPTIONS_SCHEMA,
@@ -393,4 +395,121 @@ test('returns receipt-backed failure truth', async () => {
     status: 'failed',
     lastSequence: failed.seq
   })
+})
+
+function catalogOf(...options: AgentOptionCatalogEntry[]) {
+  return async () => ({ schema: AGENT_OPTIONS_SCHEMA, options })
+}
+
+function option(optionId: string, label: string, isDefault: boolean): AgentOptionCatalogEntry {
+  return {
+    optionId,
+    label,
+    group: 'Recommended',
+    description: `${label} option.`,
+    capabilities: ['tools'],
+    efforts: ['medium'],
+    default: isDefault
+  }
+}
+
+function runRequestWithoutSelection() {
+  const { selection: _selection, ...rest } = runRequest
+  return rest
+}
+
+function postRun(target: ReturnType<typeof createFakeGateway>, body: unknown): Promise<Response> {
+  return target.fetch(
+    new Request('http://gateway.test/v1/runs', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-openpencil-principal': 'stub-user-001'
+      },
+      body: JSON.stringify(body)
+    })
+  )
+}
+
+test('refuses an unauthenticated run before parsing its body', async () => {
+  const response = await gateway.fetch(
+    new Request('http://gateway.test/v1/runs', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(runRequest)
+    })
+  )
+  expect(response.status).toBe(401)
+  expect(await response.json()).toEqual({
+    code: 'unauthorized',
+    message: 'Verified principal required.'
+  })
+  expect(catalogPrincipals).toEqual([])
+})
+
+test('refuses a malformed run body', async () => {
+  const response = await startRun({ ...runRequest, requestId: 42 })
+  expect(response.status).toBe(400)
+  expect(await response.json()).toEqual({
+    code: 'invalid-request',
+    message: 'Malformed run request.'
+  })
+  expect(catalogPrincipals).toEqual([])
+})
+
+test('refuses a fresh run while the catalog is unavailable', async () => {
+  catalogUnavailable = true
+  const response = await startRun()
+  expect(response.status).toBe(502)
+  expect(await response.json()).toMatchObject({
+    code: 'options-unavailable',
+    message: 'Agent Native catalog is unavailable.',
+    retryable: true
+  })
+})
+
+test('falls back to the catalog default option when a run omits a selection', async () => {
+  const defaulted = createFakeGateway(
+    catalogOf(option('option-first', 'First', false), option('option-default', 'Default', true))
+  )
+  const streamed = events(await (await postRun(defaulted, runRequestWithoutSelection())).text())
+  const text = streamed
+    .filter((event) => event.type === 'message.delta')
+    .map((event) => (event.type === 'message.delta' ? event.data.text : ''))
+    .join('')
+  expect(text).toContain('Using Default (default)')
+})
+
+test('refuses a run when the catalog offers no option at all', async () => {
+  const empty = createFakeGateway(catalogOf())
+  const response = await postRun(empty, runRequestWithoutSelection())
+  expect(response.status).toBe(503)
+  expect(await response.json()).toEqual({
+    code: 'options-unavailable',
+    message: 'No agent option is available.'
+  })
+})
+
+test('completes a run whose executor requests no tool call', async () => {
+  const completedExecutor: AgentExecutor = {
+    async start(): Promise<AgentExecutionStart> {
+      return { kind: 'completed', text: ['Nothing to change.'] }
+    },
+    async continue() {
+      return ''
+    }
+  }
+  const completing = createAgentGateway(
+    catalogOf(option('option-balanced', 'Balanced', true)),
+    completedExecutor
+  )
+  const streamed = events(await (await postRun(completing, runRequest)).text())
+  expect(streamed.map((event) => event.type)).toEqual([
+    'session.created',
+    'run.started',
+    'message.start',
+    'message.delta',
+    'message.end',
+    'run.completed'
+  ])
 })

@@ -24,5 +24,5 @@ if (allocator.version !== 'open-pencil-id-allocation:1') {
 }
 
 if (typeof variables.createVariable !== 'function') {
-  throw new Error('Expected built variables subpath')
+  throw new TypeError('Expected built variables subpath')
 }

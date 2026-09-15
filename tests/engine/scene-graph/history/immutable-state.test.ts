@@ -27,11 +27,13 @@ describe('immutable SceneGraph history', () => {
     expect(recorded.selectedSnapshot).toBe('after')
 
     const undone = planHistoryUndo(recorded.next)
-    expect(undone?.selectedSnapshot).toBe('before')
-    expect(undone?.next.undoEntryIds).toEqual([])
-    expect(undone?.next.redoEntryIds).toEqual([id('one')])
+    expect(undone).not.toBeNull()
+    if (!undone) throw new Error('Expected an undo plan for a recorded entry')
+    expect(undone.selectedSnapshot).toBe('before')
+    expect(undone.next.undoEntryIds).toEqual([])
+    expect(undone.next.redoEntryIds).toEqual([id('one')])
 
-    const redone = planHistoryRedo(undone!.next)
+    const redone = planHistoryRedo(undone.next)
     expect(redone?.selectedSnapshot).toBe('after')
     expect(redone?.next.undoEntryIds).toEqual([id('one')])
     expect(redone?.disposition.disposed).toEqual([])
@@ -62,7 +64,9 @@ describe('immutable SceneGraph history', () => {
       before: 2,
       after: 3
     }).next
-    state = planHistoryUndo(state)!.next
+    const undoneThree = planHistoryUndo(state)
+    if (!undoneThree) throw new Error('Expected an undo plan for a recorded entry')
+    state = undoneThree.next
     const branched = planHistoryRecord(state, {
       id: id('four'),
       label: 'four',
@@ -97,7 +101,9 @@ describe('immutable SceneGraph history', () => {
       before: 1,
       after: 2
     }).next
-    state = planHistoryUndo(state)!.next
+    const undoneTwo = planHistoryUndo(state)
+    if (!undoneTwo) throw new Error('Expected an undo plan for a recorded entry')
+    state = undoneTwo.next
 
     const cleared = planHistoryClear(state)
     expect(cleared.selectedSnapshot).toBe(1)
@@ -120,7 +126,9 @@ describe('immutable SceneGraph history', () => {
     before.nested.value = 99
     after.value = 99
 
-    const entry = recorded.next.entries.get(id('immutable'))!
+    const entry = recorded.next.entries.get(id('immutable'))
+    expect(entry).toBeDefined()
+    if (!entry) throw new Error('Expected the recorded history entry')
     expect(entry.before).toEqual({ value: 1, nested: { value: 2 } })
     expect(entry.after).toEqual({ value: 3 })
     expect(Object.isFrozen(entry.before)).toBe(true)
