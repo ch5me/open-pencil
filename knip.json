@@ -3,7 +3,7 @@
   "ignore": ["desktop/target/**", "**/dist/**", "**/node_modules/**"],
   "ignoreWorkspaces": ["packages/demos"],
   "ignoreUnresolved": ["~icons/*", "/src/app/editor/fonts/index.ts", "#core/*"],
-  "ignoreBinaries": ["ch5-svc", "figma-use", "identify", "magick", "open", "osascript"],
+  "ignoreBinaries": ["ch5-svc", "chflags", "figma-use", "identify", "magick", "open", "osascript"],
   "workspaces": {
     "api": {
       "ignoreDependencies": ["cloudflare"],
