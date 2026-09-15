@@ -51,9 +51,25 @@ export function collectSceneGraphEntityIds(graph: SceneGraphIdDomain): Set<strin
 
   for (const id of graph.nodes.keys()) add(id)
   for (const id of graph.variables.keys()) add(id)
+  for (const collection of graph.variableCollections.values()) add(collection.id)
+
+  // A mode ID is unique within its collection, not across the graph: a library-subscribed `.fig`
+  // collection carries the source collection's mode GUIDs, so the same mode ID appears in both.
+  const modeIds = new Set<string>()
   for (const collection of graph.variableCollections.values()) {
-    add(collection.id)
-    for (const mode of collection.modes) add(mode.modeId)
+    const collectionModeIds = new Set<string>()
+    for (const mode of collection.modes) {
+      if (collectionModeIds.has(mode.modeId)) {
+        throw new SceneGraphIdAllocationError(
+          'E_GRAPH_ID_COLLISION',
+          `Duplicate SceneGraph mode ID "${mode.modeId}" in collection "${collection.id}"`
+        )
+      }
+      collectionModeIds.add(mode.modeId)
+      if (modeIds.has(mode.modeId)) continue
+      modeIds.add(mode.modeId)
+      add(mode.modeId)
+    }
   }
   return ids
 }
@@ -148,10 +164,24 @@ export class SceneGraphIdAllocator {
   }
 
   reserve(ids: readonly string[]): void {
+    this.reserveIds(ids, false)
+  }
+
+  /**
+   * Reserve IDs the graph may already hold, so they can never be allocated again while a repeat is
+   * accepted instead of rejected. Two shapes need it: a node re-created under its original ID by a
+   * history restore, and the mode IDs of a library-subscribed `.fig` variable collection, which
+   * carries the source collection's mode GUIDs. The batch itself must still be free of duplicates.
+   */
+  reserveExisting(ids: readonly string[]): void {
+    this.reserveIds(ids, true)
+  }
+
+  private reserveIds(ids: readonly string[], allowAlreadyReserved: boolean): void {
     const proposed = new Set<string>()
     let nextFloor = this.nextIdFloor
     for (const id of ids) {
-      if (proposed.has(id) || this.reserved.has(id)) {
+      if (proposed.has(id) || (!allowAlreadyReserved && this.reserved.has(id))) {
         throw new SceneGraphIdAllocationError(
           'E_GRAPH_ID_COLLISION',
           `SceneGraph entity ID "${id}" is already reserved`

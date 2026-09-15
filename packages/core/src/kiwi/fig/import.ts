@@ -199,6 +199,23 @@ function resolveDefaultValue(type: VariableType): VariableValue {
   return 0
 }
 
+/**
+ * Claim every variable-domain ID the archive carries before a single node is created. A `.fig` GUID
+ * and an OpenPencil local ID share one `0:N` text space, so a document exported from this editor
+ * comes back with variable GUIDs the importer's own node allocator would otherwise hand out first,
+ * leaving a node and a variable collection sitting on the same ID.
+ */
+function reserveVariableDomainIds(changeMap: Map<string, NodeChange>, graph: SceneGraph): void {
+  const ids = new Set<string>()
+  for (const [id, nc] of changeMap) {
+    if (nc.type === 'VARIABLE') ids.add(id)
+    if (nc.type !== 'VARIABLE_SET') continue
+    ids.add(id)
+    for (const mode of nc.variableSetModes ?? []) ids.add(guidToString(mode.id))
+  }
+  graph.reserveExistingEntityIds([...ids])
+}
+
 function importCollections(changeMap: Map<string, NodeChange>, graph: SceneGraph): void {
   for (const [id, nc] of changeMap) {
     if (nc.type !== 'VARIABLE_SET') continue
@@ -445,6 +462,7 @@ export function importNodeChanges(
   const assetRefs = buildAssetRefMap(changeMap)
   applyStyleRefs(changeMap, assetRefs)
   setVariableColorResolver(buildVariableColorResolver(changeMap, assetRefs))
+  reserveVariableDomainIds(changeMap, graph)
 
   const canvasIdToPageId = new Map<string, string>()
   const created = new Set<string>()

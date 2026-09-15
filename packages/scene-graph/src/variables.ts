@@ -5,8 +5,12 @@ import type { SceneGraph } from './index'
 import type { Color } from './primitives'
 import type { Variable, VariableCollection, VariableType, VariableValue } from './types'
 
+// `addVariable` and `addCollection` upsert an entity under an ID the caller already owns — a `.fig`
+// import replaying archive GUIDs, a collaboration peer replaying a remote record, or a second
+// `addCollection` for a collection the graph already holds. Minting a genuinely new ID is
+// `createVariable` / `createCollection`, which stay strict.
 export function addVariable(graph: SceneGraph, variable: Variable): void {
-  graph.reserveEntityIds([variable.id])
+  graph.reserveExistingEntityIds([variable.id])
   graph.variables.set(variable.id, variable)
   const collection = graph.variableCollections.get(variable.collectionId)
   if (collection && !collection.variableIds.includes(variable.id)) {
@@ -35,7 +39,8 @@ export function removeVariable(graph: SceneGraph, id: string): void {
 }
 
 export function addCollection(graph: SceneGraph, collection: VariableCollection): void {
-  graph.reserveEntityIds([collection.id, ...collection.modes.map((mode) => mode.modeId)])
+  graph.reserveExistingEntityIds([collection.id])
+  graph.reserveExistingEntityIds(collection.modes.map((mode) => mode.modeId))
   graph.variableCollections.set(collection.id, collection)
   if (!graph.activeMode.has(collection.id)) {
     graph.activeMode.set(collection.id, collection.defaultModeId)

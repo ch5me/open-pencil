@@ -407,6 +407,9 @@ export class SceneGraph {
   reserveEntityIds(ids: readonly string[]): void {
     this.idAllocator.reserve(ids)
   }
+  reserveExistingEntityIds(ids: readonly string[]): void {
+    this.idAllocator.reserveExisting(ids)
+  }
   private registerNode(node: SceneNode, parentId: string | null): SceneNode {
     node.parentId = parentId
     this.nodes.set(node.id, node)
@@ -422,7 +425,16 @@ export class SceneGraph {
     return node
   }
   createNode(type: NodeType, parentId: string, overrides: Partial<SceneNode> = {}): SceneNode {
-    const node = createDefaultNode(() => this.generateNodeId(), type, overrides)
+    // An overridden ID belongs to a node the graph is re-creating, such as a history restore, so it
+    // is retained rather than reserved as new and must not burn a generated ID. Without this the
+    // allocator never learns the ID is taken and later hands it to a fresh node, replacing it.
+    const existingId = overrides.id
+    if (existingId !== undefined) this.reserveExistingEntityIds([existingId])
+    const node = createDefaultNode(
+      existingId === undefined ? () => this.generateNodeId() : () => existingId,
+      type,
+      overrides
+    )
     this.nodes.get(parentId)?.childIds.push(node.id)
     return this.registerNode(node, parentId)
   }

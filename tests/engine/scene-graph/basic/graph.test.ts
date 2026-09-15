@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { generateId, SceneGraph } from '@open-pencil/scene-graph'
+import { SceneGraph } from '@open-pencil/scene-graph'
 
 import { expectDefined } from '#tests/helpers/assert'
 
@@ -20,10 +20,13 @@ describe('SceneGraph', () => {
   test('create node skips imported ids that collide with the local generator', () => {
     const graph = new SceneGraph()
     const page = pageId(graph)
-    const probe = generateId()
-    const nextLocalId = `0:${Number(probe.split(':')[1]) + 1}`
+    // Derive the colliding id from this graph's own allocator rather than the module-global
+    // generateId() counter, which no longer feeds it. Skipping one past the allocator's next id
+    // puts the imported node where a later generated id lands.
+    const probe = graph.createNode('RECTANGLE', page, { name: 'Probe node' })
+    const importedId = `0:${Number(probe.id.split(':')[1]) + 2}`
     const imported = graph.createNode('RECTANGLE', page, {
-      id: nextLocalId,
+      id: importedId,
       name: 'Imported node'
     })
     const countBefore = graph.nodes.size
