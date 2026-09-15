@@ -1,7 +1,24 @@
-import { copyFileSync, createReadStream, existsSync, mkdirSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import {
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 import type { Connect, Plugin, ResolvedConfig } from 'vite'
+
+// Clear a macOS immutable flag from a file we are about to overwrite. Only ever
+// the destination: the source may be an immutable dependency store, and that is
+// deliberate. Failure stays silent here because the write immediately after it
+// reports the same EPERM with the path that matters.
+function clearImmutableFlag(path: string) {
+  if (process.platform !== 'darwin' || !existsSync(path)) return
+  spawnSync('chflags', ['nouchg', path])
+}
 
 function syncWasmFromNodeModules(root: string, source: string, destination: string) {
   const sourcePath = resolve(root, source)
@@ -11,7 +28,18 @@ function syncWasmFromNodeModules(root: string, source: string, destination: stri
     return
   }
   mkdirSync(dirname(destinationPath), { recursive: true })
-  copyFileSync(sourcePath, destinationPath)
+  // Replace the destination rather than `copyFileSync`: on macOS that clones the
+  // file (`fclonefileat`), and a clone carries the SOURCE's mode and BSD flags to
+  // the destination. Under Grove these sources live in a shared dependency store
+  // marked `uchg` and `a-w`, so a cloned `public/canvaskit.wasm` came out
+  // immutable and read-only too -- then Vite's own `publicDir` copy cloned that
+  // one hop further into the build's `outDir`, where even `rm -rf` fails with
+  // EPERM. Unlinking first also clears whatever an earlier build left behind.
+  // Build output belongs to this repo; it should carry nothing the store put on
+  // its payload to protect it.
+  clearImmutableFlag(destinationPath)
+  rmSync(destinationPath, { force: true })
+  writeFileSync(destinationPath, readFileSync(sourcePath))
 }
 
 function serveCanvasKitWasm(root: string): Connect.NextHandleFunction {
