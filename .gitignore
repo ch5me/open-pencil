@@ -82,5 +82,8 @@ scratch/
 .ch5/shadow/*
 !.ch5/shadow/trust.json
 
+# ch5 repo-doctor stamp: local runtime residue, not durable config
+.ch5/state/
+
 # Derived icon pack — regenerates from master + variant profile; do not commit.
 .ch5/assets/variants/
